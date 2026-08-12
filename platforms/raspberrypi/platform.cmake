@@ -4,6 +4,7 @@
 if(NOT DEFINED PICO_SDK_PATH)
     set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/../../examples/raspberrypi/pico-sdk" CACHE PATH "Path to the Raspberry Pi Pico SDK")
 endif()
+set(PICOTOOL_FORCE_FETCH_FROM_GIT ON CACHE BOOL "Build matching picotool from source")
 
 # Check if SDK path exists
 if(NOT EXISTS "${PICO_SDK_PATH}")

@@ -4,7 +4,7 @@
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/gcc-nrf52840.cmake")
 
 # nRF5 SDK root
-set(NRF5_SDK_DIR "${DMK_ROOT}/examples/nrf52/nRF5_SDK_17.1.0_ddde560")
+set(NRF5_SDK_DIR "${CMAKE_CURRENT_LIST_DIR}/sdk")
 
 # Linker script configuration
 set(LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/nrf52840_uf2.ld")
