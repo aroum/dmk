@@ -1,7 +1,7 @@
 [project]
-name = "dmk-firmware"
+name = "dmk"
 version = "0.1.0"
-description = "Unified uv environment for dmk-firmware tools"
+description = "Unified uv environment for dmk tools"
 requires-python = ">=3.10"
 dependencies = [
   "adafruit-nrfutil",

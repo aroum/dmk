@@ -6,7 +6,7 @@
 
 # Vial / VIA Integration Guide
 
-Vial is an open-source, cross-platform GUI application for configuring keyboard layouts, macros, and settings in real-time. This guide explains how to build and configure `dmk-firmware` with Vial support.
+Vial is an open-source, cross-platform GUI application for configuring keyboard layouts, macros, and settings in real-time. This guide explains how to build and configure `dmk` with Vial support.
 
 ---
 
@@ -14,7 +14,7 @@ Vial is an open-source, cross-platform GUI application for configuring keyboard 
 
 Vial support can be enabled in two ways:
 
-1. **Via Keyboard Configuration File**: Add `#define VIAL` in your keyboard's `config.h` (e.g., in [keyboards/corne/config.h](file:///home/aroum/Documents/dmk-firmware/keyboards/corne/config.h)). This is the preferred method because it preserves the configuration directly in your layout source code.
+1. **Via Keyboard Configuration File**: Add `#define VIAL` in your keyboard's `config.h` (e.g., in [keyboards/corne/config.h](file:///home/aroum/Documents/dmk/keyboards/corne/config.h)). This is the preferred method because it preserves the configuration directly in your layout source code.
 2. **Via CMake Build Option**: Pass `-DVIAL=ON` when configuring the build.
 
 When Vial support is enabled, a secondary **Raw HID** USB interface is initialized to facilitate communication between the keyboard and the Vial GUI.
@@ -52,17 +52,17 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 
 ## 💡 RGB Lighting Integration
 
-`dmk-firmware` supports WS2812 RGB underglow/backlight control directly through the Vial GUI:
+`dmk` supports WS2812 RGB underglow/backlight control directly through the Vial GUI:
 
 - **Supported MCUs**: RP2040 (using PIO) and nRF52840 (using SPIM).
 - **Features**: Toggle lighting, adjust brightness, change solid color (Hue & Saturation), and save/load settings to/from EEPROM.
 - **Configuring RGB**:
-  - Define `RGB_NUM` (number of LEDs) and `RGB_PIN` in your keyboard's `config.h` (e.g., in [keyboards/pncateho/config.h](file:///Users/aroum/Documents/GitHub/dmk-firmware/keyboards/pncateho/config.h)).
+  - Define `RGB_NUM` (number of LEDs) and `RGB_PIN` in your keyboard's `config.h` (e.g., in [keyboards/pncateho/config.h](file:///Users/aroum/Documents/GitHub/dmk/keyboards/pncateho/config.h)).
   - Optional: Define `RGB_MAP` to map logical indexes to physical LED indexes.
 
 ### 🎭 Supported RGB Effects
 
-While the Vial interface shows a full list of QMK animations, `dmk-firmware` implements a optimized subset of effects to save flash space. Only the first index of each animation type is supported:
+While the Vial interface shows a full list of QMK animations, `dmk` implements a optimized subset of effects to save flash space. Only the first index of each animation type is supported:
 
 1. **Solid Color** (`RGBLIGHT_MODE_STATIC_LIGHT`)
 2. **Breathing 1** (`RGBLIGHT_MODE_BREATHING`)
@@ -80,20 +80,20 @@ While the Vial interface shows a full list of QMK animations, `dmk-firmware` imp
 
 ## 📊 Vial Features Support Matrix
 
-Here is the current implementation status of various Vial / VIA features in `dmk-firmware`:
+Here is the current implementation status of various Vial / VIA features in `dmk`:
 
-| Vial / VIA Feature         | Status in dmk-firmware | Description / Limitations                                                                                   |
-| -------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Dynamic Keymap**         | 🟢 Supported           | Configurable in real-time. Changes persist in EEPROM (currently supported on Milandr MCUs) when saved.      |
-| **Layers**                 | 🟢 Supported           | Up to 16 independent layers are supported.                                                                  |
-| **Matrix Tester**          | 🟢 Supported           | Works out of the box using the standard VIA/Vial protocol.                                                  |
-| **RGB Lighting**           | 🟢 Supported           | Supports toggle, brightness, animation speed, and 8 standard QMK effects/animations.                        |
-| **Security (Lock/Unlock)** | 🟡 Simplified          | Keymap locking features are bypassed (the keyboard is always unlocked).                                     |
-| **Macros**                 | 🟢 Supported           | Dynamic Macro configuration (up to 16 macros, 2048 bytes buffer) supported via the Vial GUI.                |
-| **Encoders**               | ❌ Not Supported       | Stubbed out in the protocol. Physical encoders are not processed by Vial.                                   |
-| **Tap Dance**              | ❌ Not Supported       | Dynamic Tap Dance configuration via the Vial GUI is disabled.                                               |
-| **Combos**                 | 🟢 Supported           | Dynamic Combo (chording) configuration (up to 8 combos, up to 4 keys per combo) supported via the Vial GUI. |
-| **Key Overrides**          | ❌ Not Supported       | Key override features are disabled.                                                                         |
+| Vial / VIA Feature         | Status in dmk    | Description / Limitations                                                                                   |
+| -------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Dynamic Keymap**         | 🟢 Supported     | Configurable in real-time. Changes persist in EEPROM (currently supported on Milandr MCUs) when saved.      |
+| **Layers**                 | 🟢 Supported     | Up to 16 independent layers are supported.                                                                  |
+| **Matrix Tester**          | 🟢 Supported     | Works out of the box using the standard VIA/Vial protocol.                                                  |
+| **RGB Lighting**           | 🟢 Supported     | Supports toggle, brightness, animation speed, and 8 standard QMK effects/animations.                        |
+| **Security (Lock/Unlock)** | 🟡 Simplified    | Keymap locking features are bypassed (the keyboard is always unlocked).                                     |
+| **Macros**                 | 🟢 Supported     | Dynamic Macro configuration (up to 16 macros, 2048 bytes buffer) supported via the Vial GUI.                |
+| **Encoders**               | ❌ Not Supported | Stubbed out in the protocol. Physical encoders are not processed by Vial.                                   |
+| **Tap Dance**              | ❌ Not Supported | Dynamic Tap Dance configuration via the Vial GUI is disabled.                                               |
+| **Combos**                 | 🟢 Supported     | Dynamic Combo (chording) configuration (up to 8 combos, up to 4 keys per combo) supported via the Vial GUI. |
+| **Key Overrides**          | ❌ Not Supported | Key override features are disabled.                                                                         |
 
 ---
 

@@ -391,7 +391,7 @@ For split keyboards (such as Corne, Jianovka, or Nizkoteno Split), communication
 
 ## LEDs Indicator Configuration
 
-`dmk-firmware` supports mapping status and diagnostics LEDs.
+`dmk` supports mapping status and diagnostics LEDs.
 
 ```c
 #define LED_PINS           { PA4, PA4, PA5, PA6, PA7, PA8 }
@@ -430,7 +430,7 @@ WS2812 RGB LED strips can be controlled by defining the count, connection pin, m
 
 ### Supported Effects and Animations
 
-`dmk-firmware` supports QMK-style RGB lighting effects:
+`dmk` supports QMK-style RGB lighting effects:
 
 - **Mode 1 (Static Light)**: Solid color.
 - **Mode 2 (Breathing)**: Smooth sinusoidal value modulation over time.

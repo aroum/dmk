@@ -256,8 +256,8 @@ jobs:
       - name: Checkout DMK Firmware Core
         uses: actions/checkout@v4
         with:
-          repository: aroum/dmk-firmware
-          path: dmk-firmware
+          repository: aroum/dmk
+          path: dmk
           submodules: recursive
 
       - name: Install Toolchain and Dependencies
@@ -270,18 +270,20 @@ jobs:
 
       - name: Build Firmware
         run: |
-          mkdir -p dmk-firmware/keyboards
-          cp -r user_config/keyboards/* dmk-firmware/keyboards/
-          
-          cd dmk-firmware
+          # Скопировать конфигурацию клавиатуры пользователя в дерево DMK
+          mkdir -p dmk/keyboards
+          cp -r user_config/keyboards/* dmk/keyboards/
+
+          cd dmk
+          # Замените 'my_keyboard' и 'rp2040' на имя вашей клавиатуры и целевой MCU
           ./build_all.sh -b my_keyboard --mcu rp2040 -c --uf2
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dmk-firmware-binaries
+          name: dmk-binaries
           path: |
-            dmk-firmware/build/dmk_*
+            dmk/build/dmk_*
           if-no-files-found: error
 ```
 

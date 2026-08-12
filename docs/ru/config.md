@@ -394,7 +394,7 @@ const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_
 
 ## Конфигурация светодиодов (LEDs)
 
-`dmk-firmware` поддерживает сопоставление светодиодов состояния и диагностики.
+`dmk` поддерживает сопоставление светодиодов состояния и диагностики.
 
 ```c
 #define LED_PINS           { PA4, PA4, PA5, PA6, PA7, PA8 }
@@ -433,7 +433,7 @@ const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_
 
 ### Поддерживаемые эффекты и анимации
 
-`dmk-firmware` поддерживает световые эффекты в стиле QMK:
+`dmk` поддерживает световые эффекты в стиле QMK:
 
 - **Режим 1 (Static Light)**: Статический (солидный) цвет.
 - **Режим 2 (Breathing)**: Плавное затухание и разгорание цвета (эффект дыхания).
