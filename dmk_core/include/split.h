@@ -37,6 +37,14 @@
 
 #define BIT_TIME_US (1000000 / SPLIT_UART_BAUD)
 
+#ifndef SPLIT_COL_OFFSET
+#ifdef NUM_COLS_SPLIT
+#define SPLIT_COL_OFFSET NUM_COLS_SPLIT
+#else
+#define SPLIT_COL_OFFSET 0
+#endif
+#endif
+
 typedef struct {
     uint8_t header; // 0xA5
     uint8_t row;
