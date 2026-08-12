@@ -3,7 +3,7 @@
 
 #include "pin_defs.h"
 #define MATRIX_TYPE DIRECT
-/* --- Настройки матрицы --- */
+/* --- Matrix Settings --- */
 
 #if defined(MCU_milandr)
 #define DIRECT_PINS {PE0, PE1, PE2, PE3, PE4, PD0, PD1, PD2, PA3, PD4}
@@ -26,7 +26,7 @@
 // #define LED_HID_COMPOSE     3
 // #define LED_HID_KANA        4
 
-/* --- Настройки RGB --- */
+/* --- RGB Settings --- */
 #define RGB_NUM 10
 
 #define RGB_PIN GPIO29
@@ -45,14 +45,18 @@
 // {ROW, COL}
 // clang-format off
 #define LAYOUT { \
-    {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {0, 9} \
+    {0, 0}, {0, 1}, {0, 2}, {0, 3}, \
+    {0, 4}, {0, 5}, {0, 6}, {0, 7}, \
+                            {0, 8}, {0, 9} \
 }
 #define LAYOUT_DEFAULT LAYOUT
 
 // Optional editor layout positioning grid coordinates
 // Renders the 10 keys visually as two rows of 5 keys in the editor
 #define LAYOUT_EDITOR { \
-    {0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 0}, {1, 1}, {1, 2}, {1, 3}, {2, 3}, {2, 4} \
+    {0, 0}, {0, 1}, {0, 2}, {0, 3}, \
+    {1, 0}, {1, 1}, {1, 2}, {1, 3}, \
+                            {2, 3}, {2, 4} \
 }
 // clang-format on
 
@@ -95,8 +99,17 @@ const Chord my_chords[] = {
 
 // Flat keymap: one entry per key in LAYOUT order
 const uint32_t keymap[][NUM_KEYS] = {
-    [DEF] = {RGB_TOGG, RGB_NEXT, K_D, K_F, K_R, K_W, K_E, K_C, K_L, K_A},
-    [FN1] = {K_ESC, K_APOS, K_A_U, K_BRAL, K_BRAR, K_SHFT, K_BKSL, K_SCLN, K_0, K_TRNS}};
+    [DEF] = {
+        RGB_TOGG, RGB_NEXT, K_D,    K_F, \
+        K_R,      K_W,      K_E,    K_C, \
+                                    K_L,      K_A \
+    },
+    [FN1] = {
+        K_ESC,    K_APOS,   K_A_U,  K_BRAL, \
+        K_BRAR,   K_SHFT,   K_BKSL, K_SCLN, \
+                                    K_0,      K_TRNS \
+    }
+};
 
 const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 

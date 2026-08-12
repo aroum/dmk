@@ -10,7 +10,7 @@
 #define MATRIX_MH3SS2
 #define MH3SS2_ROW_PINS_PER_KEY 1
 
-// PB10 - питание линейки датчиков, B9, PB8, A7 - выход с датчиков
+// PB10 - power for sensor strip, B9, PB8, A7 - output from sensors
 
 // Pins for columns (14 cols) and rows (6 pins, paired 1a/1b, 2a/2b, 3a/3b)
 #if defined(MCU_milandr)
@@ -31,17 +31,17 @@
 // {ROW, COL} coordinate mapping (physically 6 cols per side + 3 thumb keys per side, 3 rows)
 // clang-format off
 #define LAYOUT { \
-    {0, 0},  {0, 1},  {0, 2},  {0, 3}, {0, 4}, {0, 5}, {0, 7},  {0, 8},  {0, 9}, {0, 10}, {0, 11}, \
-    {0, 12}, {1, 0},  {1, 1},  {1, 2}, {1, 3}, {1, 4}, {1, 5},  {1, 7},  {1, 8}, {1, 9},  {1, 10}, \
-    {1, 11}, {1, 12}, {2, 0},  {2, 1}, {2, 2}, {2, 3}, {2, 4},  {2, 5},  {2, 7}, {2, 8},  {2, 9}, \
-    {2, 10}, {2, 11}, {2, 12}, {2, 6}, {1, 6}, {0, 6}, {0, 13}, {1, 13}, {2, 13} \
+    {0, 0},  {0, 1},  {0, 2},  {0, 3},  {0, 4},  {0, 5},  {0, 7},  {0, 8},  {0, 9},  {0, 10}, {0, 11}, {0, 12}, \
+    {1, 0},  {1, 1},  {1, 2},  {1, 3},  {1, 4},  {1, 5},  {1, 7},  {1, 8},  {1, 9},  {1, 10}, {1, 11}, {1, 12}, \
+    {2, 0},  {2, 1},  {2, 2},  {2, 3},  {2, 4},  {2, 5},  {2, 7},  {2, 8},  {2, 9},  {2, 10}, {2, 11}, {2, 12}, \
+                               {2, 6},  {1, 6},  {0, 6},  {0, 13}, {1, 13}, {2, 13} \
 }
 // clang-format on
 
 #define LAYOUT_DEFAULT LAYOUT
 
 // ==========================================================================
-// config.h - Идентификаторы слоев и макросы
+// Layer identifiers and macros
 // ==========================================================================
 #include "keys.h"
 
@@ -52,20 +52,20 @@
 enum layers { DEF = 0, LWR = 1, RSE = 2, ADJ = 3 };
 
 // clang-format off
-// Макрос 0: ZM_numdot (Alt + 4 6)
+// Macro 0: ZM_numdot (Alt + 4 6)
 const MacroStep MACRO_NUMDOT[] = {M_DN(K_LALT), M_D(40),     M_DN(K_KP4), M_UP(K_KP4), M_D(40),
                                   M_DN(K_KP6),  M_UP(K_KP6), M_D(40),     M_UP(K_LALT)};
 
-// Макрос 1: ZM_grtsgn (Alt + 6 2)
+// Macro 1: ZM_grtsgn (Alt + 6 2)
 const MacroStep MACRO_GRTSGN[] = {M_DN(K_LALT), M_D(40),     M_DN(K_KP6), M_UP(K_KP6), M_D(40),
                                   M_DN(K_KP2),  M_UP(K_KP2), M_D(40),     M_UP(K_LALT)};
 
-// Регистрация макросов в глобальном массиве
+// Macro registration in global array
 const Macro keyboard_macros[] = {[0] = {MACRO_NUMDOT, sizeof(MACRO_NUMDOT) / sizeof(MACRO_NUMDOT[0]), MACRO_NO_LAYER},
                                  [1] = {MACRO_GRTSGN, sizeof(MACRO_GRTSGN) / sizeof(MACRO_GRTSGN[0]), MACRO_NO_LAYER}};
 
 
-// Определяем общее количество макросов для прошивки
+// Define total number of macros for firmware
 const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_macros[0]);
 // clang-format on
 

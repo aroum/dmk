@@ -3,7 +3,7 @@
 
 #include "pin_defs.h"
 #define MATRIX_TYPE DIRECT
-/* --- Настройки матрицы --- */
+/* --- Matrix Settings --- */
 // #include "../../dmk_core/include/proMicro_pins.h"
 // clang-format off
 #define DIRECT_PINS {PM_18, PM_19, PM_20, PM_21, PM_10, PM_16, PM_14, PM_15, PM_7, PM_8}
@@ -12,7 +12,7 @@
 
 #define VIAL
 
-/* --- Настройки RGB --- */
+/* --- RGB Settings --- */
 #define RGB_NUM 10
 #define POWER_PIN PM_VCC
 #define RGB_PIN PF0
@@ -27,8 +27,11 @@
 #define NUM_KEYS 10
 
 // {ROW, COL}
+// clang-format off
 #define LAYOUT { \
-    {0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 8}, {0, 9} \
+    {0, 0}, {0, 1}, {0, 2}, {0, 3}, \
+    {0, 4}, {0, 5}, {0, 6}, {0, 7}, \
+                            {0, 8}, {0, 9} \
 }
 #define LAYOUT_DEFAULT LAYOUT
 // clang-format on
@@ -72,8 +75,17 @@ const Chord my_chords[] = {
 
 // Flat keymap: one entry per key in LAYOUT order
 const uint32_t keymap[][NUM_KEYS] = {
-    [DEF] = {RGB_TOGG, K_S, K_D, K_F, K_R, K_W, K_E, K_C, K_L, K_A},
-    [FN1] = {K_ESC, K_APOS, K_A_U, K_BRAL, K_BRAR, K_SHFT, K_BKSL, K_SCLN, K_0, K_TRNS}};
+    [DEF] = {
+        RGB_TOGG, K_S,      K_D,    K_F, \
+        K_R,      K_W,      K_E,    K_C, \
+                                    K_L,      K_A \
+    },
+    [FN1] = {
+        K_ESC,    K_APOS,   K_A_U,  K_BRAL, \
+        K_BRAR,   K_SHFT,   K_BKSL, K_SCLN, \
+                                    K_0,      K_TRNS \
+    }
+};
 const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 
 // Macros
