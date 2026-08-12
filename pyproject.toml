@@ -1,0 +1,13 @@
+[project]
+name = "dmk-firmware"
+version = "0.1.0"
+description = "Unified uv environment for dmk-firmware tools"
+requires-python = ">=3.10"
+dependencies = [
+  "adafruit-nrfutil",
+  "pyserial",
+]
+
+[tool.uv]
+# Disable package building to treat this repo as a dependency container only
+package = false

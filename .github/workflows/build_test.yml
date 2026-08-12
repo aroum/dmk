@@ -1,0 +1,51 @@
+name: Test Firmware Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-test-keyboards:
+    name: Build Test Keyboards
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - keyboard: corne
+            mcu: rp2040
+            args: "-c --uf2"
+          - keyboard: corne
+            mcu: milandr
+            args: "-c"
+          - keyboard: kabarga
+            mcu: nrf52840
+            args: "-c --uf2"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Toolchain and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Firmware (${{ matrix.keyboard }} / ${{ matrix.mcu }})
+        run: |
+          ./build_all.sh -b ${{ matrix.keyboard }} --mcu ${{ matrix.mcu }} ${{ matrix.args }}
+
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}
+          path: |
+            build/dmk_*
+          if-no-files-found: error

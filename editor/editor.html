@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>DMK Editor</title>
+    <script src="keycodes.js"></script>
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --panel: #2d2d2d;
+            --text: #d4d4d4;
+            --accent: #569cd6;
+            --key-bg: #3c3c3c;
+            --key-hover: #4a4a4a;
+            --key-active: #007acc;
+            --ht-bg: #4a3c6b;
+            --os-bg: #2e5c6e;
+            --tg-bg: #6e4e2e;
+            --m-bg: #3e6e3e;
+            --border: #444;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        h1 { font-size: 1.2rem; margin-top: 0; }
+        
+        .toolbar { background: var(--panel); padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; }
+        button, .file-upload { background: var(--key-bg); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; cursor: pointer; border-radius: 4px; font-size: 14px; }
+        button:hover, .file-upload:hover { background: var(--key-hover); }
+        .primary-btn { background: var(--accent); color: #fff; border: none; }
+        .primary-btn:hover { background: #4b8bbf; }
+        
+        .main-workspace { display: flex; flex: 1; gap: 20px; min-height: 0; }
+        .editor-area { flex: 2; background: var(--panel); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
+        .palette-area { flex: 1; background: var(--panel); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; min-width: 320px; }
+        
+        /* Слой контроллеры */
+        .layer-toolbar { display: flex; gap: 5px; margin-bottom: 20px; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px;}
+        .layer-tabs { display: flex; gap: 5px; overflow-x: auto; flex: 1; padding-left: 10px; border-left: 1px solid var(--border); }
+        .layer-tab { padding: 5px 15px; background: var(--key-bg); border: 1px solid var(--border); cursor: pointer; border-radius: 4px; white-space: nowrap; display: flex; align-items: center; justify-content: center; min-width: 40px; }
+        .layer-tab.active { background: var(--key-active); border-color: var(--key-active); }
+        .layer-btn { padding: 5px 10px; background: var(--bg); font-weight: bold; }
+        
+        /* Поле ввода для имени слоя */
+        .layer-edit-input { background: transparent; border: none; color: #fff; font-size: 14px; outline: none; text-align: center; font-family: inherit; width: 60px; padding: 0; margin: 0; }
+        .layer-edit-input::placeholder { color: #aaa; }
+
+        /* Клавиатура */
+        .kb-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+        .kb-key { width: 65px; height: 65px; background: var(--key-bg); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; font-weight: bold; text-align: center; word-break: break-all; padding: 4px; box-sizing: border-box; user-select: none; position: relative; }
+        .kb-key.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); z-index: 10;}
+        
+        /* Визуализация макросов */
+        .ht-key { background: var(--ht-bg); border-color: #6a5acd; }
+        .os-key { background: var(--os-bg); border-color: #4da6ff; }
+        .tg-key { background: var(--tg-bg); border-color: #ffa54d; }
+        .m-key  { background: var(--m-bg); border-color: #66cc66; }
+        .lyr-key { background: #555; }
+        
+        .mac-hold { position: absolute; top: 4px; left: 4px; font-size: 9px; font-weight: normal; color: #ccc; }
+        .mac-tap { position: absolute; bottom: 4px; right: 6px; font-size: 16px; }
+
+        /* Табы Режимов */
+        .b-tabs { display: flex; gap: 2px; margin-bottom: 15px; background: var(--bg); padding: 4px; border-radius: 6px; flex-wrap: wrap;}
+        .b-tab { padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .b-tab.active { background: var(--key-active); color: white; }
+        .b-tab:hover:not(.active) { background: var(--key-hover); }
+
+        /* Билдеры */
+        .builder-container { background: var(--bg); padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid var(--border); }
+        .builder-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+        select, input[type="text"], input[type="number"] { width: 100%; padding: 8px; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 4px; box-sizing: border-box; }
+        .apply-btn { width: 100%; background: var(--accent); color: white; border: none; font-weight: bold; margin-top: 5px;}
+        .apply-btn:hover { background: #4b8bbf; }
+        
+        /* Палитра */
+        .palette-search { width: 100%; padding: 8px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; }
+        .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 5px; overflow-y: auto; flex: 1; padding-right: 5px; }
+        .palette-key { background: var(--key-bg); border: 1px solid var(--border); padding: 8px 4px; text-align: center; cursor: pointer; font-size: 11px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .palette-key:hover { background: var(--key-hover); border-color: #888; }
+        
+        #outputModal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 40px; z-index: 100; }
+        #outputModal pre { background: var(--bg); padding: 20px; border-radius: 6px; max-width: 800px; width: 100%; max-height: 80vh; overflow-y: auto; border: 1px solid var(--border); }
+        .close-modal { position: absolute; top: 20px; right: 20px; }
+        
+        /* Macro Editor Styles */
+        .macro-step-row select, .macro-step-row input { padding: 4px; font-size: 12px; }
+        .macro-step-row td { padding: 4px 2px; }
+        .macro-btn-row { display: flex; gap: 4px; margin-top: 5px; }
+        .macro-action-btn { background: var(--key-bg); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; cursor: pointer; border-radius: 4px; font-size: 11px; flex: 1; }
+        .macro-action-btn:hover { background: var(--key-hover); }
+        .macro-delete-btn { background: #963a3a; color: white; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px; font-size: 11px; }
+        .macro-delete-btn:hover { background: #b84d4d; }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <h1>DMK Editor</h1>
+        <input type="file" id="configFile" accept=".h,.c,.txt" style="display: none;">
+        <label for="configFile" class="file-upload">Загрузить config.h</label>
+        <button id="generateBtn" class="primary-btn" style="display: none;">Сгенерировать keymap.h</button>
+    </div>
+
+    <div class="main-workspace" id="workspace" style="display: none;">
+        <div class="editor-area">
+            <div class="layer-toolbar">
+                <button class="layer-btn" onclick="addLayer()" title="Добавить слой">+</button>
+                <button class="layer-btn" onclick="removeLayer()" title="Удалить слой">-</button>
+                <button class="layer-btn" onclick="renameLayer()" title="Переименовать слой">✏️</button>
+                <div class="layer-tabs" id="layerTabs"></div>
+            </div>
+            <div id="keyboardDisplay"></div>
+        </div>
+        
+        <div class="palette-area">
+            <div class="b-tabs" id="behaviorTabs">
+                <div class="b-tab active" onclick="setBehavior('BASIC')">Basic</div>
+                <div class="b-tab" onclick="setBehavior('HT')">Hold-Tap</div>
+                <div class="b-tab" onclick="setBehavior('OS')">One-Shot</div>
+                <div class="b-tab" onclick="setBehavior('TG')">Toggle</div>
+                <div class="b-tab" onclick="setBehavior('MO')">Layer</div>
+                <div class="b-tab" onclick="setBehavior('MACRO')">Macro</div>
+            </div>
+
+            <div class="builder-container" id="builderContainer" style="display:none;">
+                <div id="b-HT" style="display:none;">
+                    <div class="builder-row">
+                        <label>Hold (Модификатор или Слой):</label>
+                        <select id="htHold"></select>
+                    </div>
+                    <div class="builder-row">
+                        <label>Tap (Кликните по кнопке в палитре ниже):</label>
+                        <input type="text" id="htTap" readonly placeholder="Нажмите кнопку ниже...">
+                    </div>
+                </div>
+
+                <div id="b-OS" style="display:none;">
+                    <div class="builder-row">
+                        <label>Target (Модификатор или Слой):</label>
+                        <select id="osTarget"></select>
+                    </div>
+                </div>
+
+                <div id="b-TG" style="display:none;">
+                    <div class="builder-row">
+                        <label>Layer (Слой для переключения):</label>
+                        <select id="tgLayer"></select>
+                    </div>
+                </div>
+
+                <div id="b-MO" style="display:none;">
+                    <div class="builder-row">
+                        <label>Layer (Удержание слоя):</label>
+                        <select id="moLayer"></select>
+                    </div>
+                </div>
+
+                <div id="b-MACRO" style="display:none;">
+                    <div class="builder-row">
+                        <label>Выбор макроса:</label>
+                        <select id="macroListSelect" onchange="onSelectMacro(this.value)"></select>
+                    </div>
+                    <div class="macro-btn-row">
+                        <button class="macro-action-btn" onclick="addNewMacro()">+ Добавить</button>
+                        <button class="macro-action-btn" style="background:#5c2d2d;" onclick="deleteCurrentMacro()">- Удалить</button>
+                    </div>
+                    <div class="builder-row" style="margin-top: 10px;">
+                        <label>Имя макроса в C-коде:</label>
+                        <input type="text" id="macroNameInput" placeholder="MACRO_MY_MACRO" oninput="onRenameMacro(this.value)">
+                    </div>
+                    <div class="builder-row" style="margin-top: 10px;">
+                        <label>Шаги макроса:</label>
+                        <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 4px; background: var(--bg);">
+                            <table style="width:100%; border-collapse: collapse;">
+                                <tbody id="macroStepsBody"></tbody>
+                            </table>
+                        </div>
+                        <button class="macro-action-btn" style="margin-top: 5px;" onclick="addMacroStep()">+ Добавить шаг</button>
+                    </div>
+                </div>
+
+                <button class="apply-btn" onclick="applyBuilder()">Применить к выделенной кнопке</button>
+            </div>
+
+            <input type="text" id="paletteSearch" class="palette-search" placeholder="Поиск по палитре...">
+            <div class="palette-grid" id="paletteGrid"></div>
+        </div>
+    </div>
+
+    <div id="outputModal">
+        <button class="close-modal" id="closeModalBtn">Закрыть</button>
+        <pre id="outputCode"></pre>
+    </div>
+
+    <script>
+        const CORE_MODS = [
+            'MOD_LCTRL', 'MOD_LSHIFT', 'MOD_LALT', 'MOD_LGUI', 
+            'MOD_RCTRL', 'MOD_RSHIFT', 'MOD_RALT', 'MOD_RGUI', 'MOD_HYPER'
+        ];
+
+        let state = {
+            layoutMap: [], 
+            layers: [],    
+            keymap: {},    
+            currentLayer: null,
+            selectedKeyIndex: null,
+            behaviorMode: 'BASIC',
+            macros: [],
+            currentMacroIndex: 0
+        };
+
+        const dom = {
+            workspace: document.getElementById('workspace'),
+            generateBtn: document.getElementById('generateBtn'),
+            keyboardDisplay: document.getElementById('keyboardDisplay'),
+            layerTabs: document.getElementById('layerTabs'),
+            paletteGrid: document.getElementById('paletteGrid'),
+            builderContainer: document.getElementById('builderContainer')
+        };
+
+        // --- Управление слоями (Inline Редактирование) ---
+        
+        function addLayer() {
+            // Убираем подсветку со всех других вкладок
+            document.querySelectorAll('.layer-tab').forEach(t => t.classList.remove('active'));
+            
+            // Создаем временную вкладку для ввода
+            const tempTab = document.createElement('div');
+            tempTab.className = 'layer-tab active';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = 'Новый...';
+            input.className = 'layer-edit-input';
+            
+            tempTab.appendChild(input);
+            dom.layerTabs.appendChild(tempTab);
+            
+            input.focus();
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    commitNewLayer(input.value);
+                } else if (e.key === 'Escape') {
+                    renderUI(); // Отмена и перерисовка
+                }
+            });
+        }
+
+        function commitNewLayer(newNameRaw) {
+            let newName = newNameRaw.trim().toUpperCase().replace(/\s+/g, '_');
+            
+            if (!newName) return renderUI();
+            if (state.layers.includes(newName)) {
+                alert("Слой уже существует!");
+                return renderUI();
+            }
+            
+            state.layers.push(newName);
+            let numKeys = state.layoutMap.reduce((sum, row) => sum + row.filter(x => x !== null).length, 0);
+            state.keymap[newName] = Array(numKeys).fill('K_TRNS');
+            state.currentLayer = newName;
+            
+            updateDropdowns();
+            renderUI();
+        }
+
+        function removeLayer() {
+            if (state.layers.length <= 1) return alert("Нельзя удалить последний слой.");
+            if (!confirm(`Точно удалить слой [${state.currentLayer}]?`)) return;
+            
+            delete state.keymap[state.currentLayer];
+            state.layers = state.layers.filter(l => l !== state.currentLayer);
+            state.currentLayer = state.layers[0];
+            
+            updateDropdowns();
+            renderUI();
+        }
+
+        function renameLayer() {
+            if (!state.currentLayer) return;
+            
+            // Находим активную вкладку
+            const tabs = document.querySelectorAll('.layer-tab');
+            let activeTab = Array.from(tabs).find(t => t.classList.contains('active'));
+            
+            // Если вкладка не найдена или уже редактируется
+            if (!activeTab || activeTab.querySelector('input')) return;
+
+            const oldName = state.currentLayer;
+            
+            // Отключаем клик по вкладке, чтобы избежать багов при фокусе
+            activeTab.onclick = null;
+            activeTab.innerHTML = ''; 
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = oldName;
+            input.className = 'layer-edit-input';
+            
+            activeTab.appendChild(input);
+            input.focus();
+            input.select();
+
+            // Предотвращаем срабатывание других кликов
+            input.addEventListener('click', (e) => e.stopPropagation());
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    commitRename(oldName, input.value);
+                } else if (e.key === 'Escape') {
+                    renderUI(); // Отмена
+                }
+            });
+        }
+
+        function commitRename(oldName, newNameRaw) {
+            let newName = newNameRaw.trim().toUpperCase().replace(/\s+/g, '_');
+            
+            if (!newName || newName === oldName) return renderUI();
+            if (state.layers.includes(newName)) {
+                alert("Имя занято!");
+                return renderUI();
+            }
+            
+            state.layers[state.layers.indexOf(oldName)] = newName;
+            
+            state.keymap[newName] = state.keymap[oldName];
+            delete state.keymap[oldName];
+            
+            // Автоматическая замена ссылок на переименованный слой во всех кеймапах
+            let regex = new RegExp(`\\b${oldName}\\b`, 'g');
+            Object.keys(state.keymap).forEach(layer => {
+                state.keymap[layer] = state.keymap[layer].map(code => code.replace(regex, newName));
+            });
+            
+            state.currentLayer = newName;
+            updateDropdowns();
+            renderUI();
+        }
+
+        function updateDropdowns() {
+            const modsAndLayers = [...CORE_MODS, ...state.layers];
+            const justLayers = [...state.layers];
+
+            function fillSelect(id, options) {
+                let sel = document.getElementById(id);
+                if (!sel) return;
+                let currentVal = sel.value;
+                sel.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
+                if (options.includes(currentVal)) sel.value = currentVal;
+            }
+
+            fillSelect('htHold', modsAndLayers);
+            fillSelect('osTarget', modsAndLayers);
+            fillSelect('tgLayer', justLayers);
+            fillSelect('moLayer', justLayers);
+
+            let mSel = document.getElementById('macroListSelect');
+            if (mSel) {
+                mSel.innerHTML = state.macros.map((m, idx) => 
+                    `<option value="${idx}">${idx}: ${m.name}</option>`
+                ).join('');
+                if (state.macros.length > 0) {
+                    if (state.currentMacroIndex >= state.macros.length) {
+                        state.currentMacroIndex = 0;
+                    }
+                    mSel.value = state.currentMacroIndex;
+                }
+            }
+        }
+
+        // --- Билдер Режимов ---
+
+        function setBehavior(mode) {
+            state.behaviorMode = mode;
+            
+            document.querySelectorAll('.b-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('[id^="b-"]').forEach(el => el.style.display = 'none');
+            
+            if (mode === 'BASIC') {
+                dom.builderContainer.style.display = 'none';
+            } else {
+                dom.builderContainer.style.display = 'block';
+                document.getElementById(`b-${mode}`).style.display = 'block';
+                if (mode === 'MACRO') {
+                    if (state.macros.length === 0) {
+                        addNewMacro();
+                    }
+                    renderMacroSteps();
+                }
+            }
+        }
+
+        // --- Macro Editor Helpers ---
+        function renderMacroSteps() {
+            let tbody = document.getElementById('macroStepsBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            let macro = state.macros[state.currentMacroIndex];
+            if (!macro) {
+                document.getElementById('macroNameInput').value = '';
+                return;
+            }
+            
+            document.getElementById('macroNameInput').value = macro.name;
+            
+            macro.steps.forEach((step, sIdx) => {
+                let tr = document.createElement('tr');
+                tr.className = 'macro-step-row';
+                
+                // Action select
+                let actionSelect = `<select onchange="updateMacroStepAction(${sIdx}, this.value)">
+                    <option value="DOWN" ${step.action === 'DOWN' ? 'selected' : ''}>DOWN</option>
+                    <option value="UP" ${step.action === 'UP' ? 'selected' : ''}>UP</option>
+                    <option value="DELAY" ${step.action === 'DELAY' ? 'selected' : ''}>DELAY</option>
+                </select>`;
+                
+                // Value control
+                let valueControl = '';
+                if (step.action === 'DELAY') {
+                    valueControl = `<input type="number" min="0" value="${step.value}" onchange="updateMacroStepValue(${sIdx}, this.value)" style="width:70px;">`;
+                } else {
+                    valueControl = `<select onchange="updateMacroStepValue(${sIdx}, this.value)" style="width:110px;">
+                        ${PALETTE_CODES.map(code => `<option value="${code}" ${code === step.value ? 'selected' : ''}>${getSymbol(code)}</option>`).join('')}
+                    </select>`;
+                }
+                
+                tr.innerHTML = `
+                    <td style="font-size: 11px; color: #888; width: 20px;">#${sIdx + 1}</td>
+                    <td>${actionSelect}</td>
+                    <td>${valueControl}</td>
+                    <td><button class="macro-delete-btn" onclick="deleteMacroStep(${sIdx})">✕</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateMacroStepAction(sIdx, newAction) {
+            let macro = state.macros[state.currentMacroIndex];
+            if (!macro) return;
+            macro.steps[sIdx].action = newAction;
+            if (newAction === 'DELAY') {
+                macro.steps[sIdx].value = 40;
+            } else {
+                macro.steps[sIdx].value = 'K_A';
+            }
+            renderMacroSteps();
+        }
+
+        function updateMacroStepValue(sIdx, val) {
+            let macro = state.macros[state.currentMacroIndex];
+            if (!macro) return;
+            if (macro.steps[sIdx].action === 'DELAY') {
+                macro.steps[sIdx].value = parseInt(val, 10) || 0;
+            } else {
+                macro.steps[sIdx].value = val;
+            }
+        }
+
+        function deleteMacroStep(sIdx) {
+            let macro = state.macros[state.currentMacroIndex];
+            if (!macro) return;
+            macro.steps.splice(sIdx, 1);
+            renderMacroSteps();
+        }
+
+        function addMacroStep() {
+            let macro = state.macros[state.currentMacroIndex];
+            if (!macro) {
+                addNewMacro();
+                macro = state.macros[state.currentMacroIndex];
+            }
+            macro.steps.push({ action: 'DOWN', value: 'K_A' });
+            renderMacroSteps();
+        }
+
+        function addNewMacro() {
+            let newIdx = state.macros.length;
+            state.macros.push({
+                name: `MACRO_${newIdx}`,
+                steps: []
+            });
+            state.currentMacroIndex = newIdx;
+            updateDropdowns();
+            renderMacroSteps();
+        }
+
+        function deleteCurrentMacro() {
+            if (state.macros.length === 0) return;
+            if (!confirm(`Удалить макрос ${state.macros[state.currentMacroIndex].name}?`)) return;
+            state.macros.splice(state.currentMacroIndex, 1);
+            state.currentMacroIndex = Math.max(0, state.currentMacroIndex - 1);
+            updateDropdowns();
+            renderMacroSteps();
+        }
+
+        function onRenameMacro(newName) {
+            let macro = state.macros[state.currentMacroIndex];
+            if (!macro) return;
+            let cleanName = newName.trim().toUpperCase().replace(/\s+/g, '_');
+            macro.name = cleanName;
+            let mSel = document.getElementById('macroListSelect');
+            if (mSel && mSel.options[state.currentMacroIndex]) {
+                mSel.options[state.currentMacroIndex].text = `${state.currentMacroIndex}: ${cleanName}`;
+            }
+        }
+
+        function onSelectMacro(idx) {
+            state.currentMacroIndex = parseInt(idx, 10);
+            renderMacroSteps();
+        }
+
+        function applyBuilder() {
+            if (state.selectedKeyIndex === null) return alert("Сначала выделите кнопку на клавиатуре слева!");
+            let code = "";
+            
+            if (state.behaviorMode === 'HT') {
+                let hold = document.getElementById('htHold').value;
+                let tap = document.getElementById('htTap').value;
+                if (!tap) return alert("Выберите Tap кейкод, кликнув на него в палитре ниже.");
+                code = `HT(${hold}, ${tap})`;
+            } else if (state.behaviorMode === 'OS') {
+                code = `OS(${document.getElementById('osTarget').value})`;
+            } else if (state.behaviorMode === 'TG') {
+                code = `TG(${document.getElementById('tgLayer').value})`;
+            } else if (state.behaviorMode === 'MO') {
+                code = document.getElementById('moLayer').value;
+            } else if (state.behaviorMode === 'MACRO') {
+                if (state.macros.length === 0) return alert("Сначала создайте хотя бы один макрос!");
+                code = `M(${state.currentMacroIndex})`;
+            }
+            
+            state.keymap[state.currentLayer][state.selectedKeyIndex] = code;
+            renderUI();
+        }
+
+        function assignKeycodeFromPalette(code) {
+            if (state.behaviorMode === 'HT') {
+                document.getElementById('htTap').value = code;
+            } else if (state.behaviorMode === 'BASIC') {
+                if (state.selectedKeyIndex !== null && state.currentLayer) {
+                    state.keymap[state.currentLayer][state.selectedKeyIndex] = code;
+                    renderUI();
+                }
+            }
+        }
+
+        // --- Палитра и Утилиты ---
+
+        function getSymbol(code) {
+            code = code.trim();
+            if (DISPLAY_MAP && DISPLAY_MAP[code]) return DISPLAY_MAP[code];
+            return code.replace(/^(K_|MOD_|OS_)/, '');
+        }
+
+        function renderPalette(filterText = '') {
+            dom.paletteGrid.innerHTML = '';
+            if (typeof PALETTE_CODES === 'undefined') return;
+            let filter = filterText.toLowerCase();
+            
+            PALETTE_CODES.forEach(code => {
+                let symbol = getSymbol(code);
+                if (code.toLowerCase().includes(filter) || symbol.toLowerCase().includes(filter)) {
+                    let btn = document.createElement('div');
+                    btn.className = 'palette-key';
+                    btn.innerText = symbol;
+                    btn.title = code; 
+                    btn.onclick = () => assignKeycodeFromPalette(code);
+                    dom.paletteGrid.appendChild(btn);
+                }
+            });
+        }
+        
+        document.getElementById('paletteSearch').addEventListener('input', (e) => renderPalette(e.target.value));
+        renderPalette();
+
+        // --- Отрисовка Клавиатуры ---
+
+        function renderUI() {
+            dom.layerTabs.innerHTML = '';
+            state.layers.forEach(layer => {
+                let btn = document.createElement('div');
+                btn.className = 'layer-tab ' + (layer === state.currentLayer ? 'active' : '');
+                btn.innerText = layer;
+                btn.onclick = () => {
+                    state.currentLayer = layer;
+                    state.selectedKeyIndex = null;
+                    renderUI();
+                };
+                dom.layerTabs.appendChild(btn);
+            });
+
+            dom.keyboardDisplay.innerHTML = '';
+            let currentMapData = state.keymap[state.currentLayer] || [];
+
+            state.layoutMap.forEach(rowIndices => {
+                let rowDiv = document.createElement('div');
+                rowDiv.className = 'kb-row';
+                
+                rowIndices.forEach(idx => {
+                    if (idx === null) {
+                        let spacer = document.createElement('div');
+                        spacer.style.width = '65px';
+                        spacer.style.height = '65px';
+                        spacer.style.border = '1px solid transparent';
+                        spacer.style.boxSizing = 'border-box';
+                        spacer.style.padding = '4px';
+                        rowDiv.appendChild(spacer);
+                        return;
+                    }
+                    let keyDiv = document.createElement('div');
+                    let isSelected = state.selectedKeyIndex === idx;
+                    let rawCode = currentMapData[idx] || 'K_NO';
+                    
+                    keyDiv.className = 'kb-key ' + (isSelected ? 'selected' : '');
+                    keyDiv.title = rawCode;
+
+                    let htMatch = rawCode.match(/^HT(?:_T)?\s*\(\s*([^,]+)\s*,\s*([^,\)]+)/);
+                    let osMatch = rawCode.match(/^OS\s*\(\s*([^,\)]+)\s*\)/);
+                    let tgMatch = rawCode.match(/^TG\s*\(\s*([^,\)]+)\s*\)/);
+                    let mMatch = rawCode.match(/^M\s*\(\s*(\d+)\s*\)/);
+                    
+                    if (htMatch) {
+                        keyDiv.classList.add('ht-key');
+                        keyDiv.innerHTML = `<div class="mac-hold">${getSymbol(htMatch[1])}</div><div class="mac-tap">${getSymbol(htMatch[2])}</div>`;
+                    } else if (osMatch) {
+                        keyDiv.classList.add('os-key');
+                        keyDiv.innerHTML = `<div class="mac-hold">OS</div><div class="mac-tap">${getSymbol(osMatch[1])}</div>`;
+                    } else if (tgMatch) {
+                        keyDiv.classList.add('tg-key');
+                        keyDiv.innerHTML = `<div class="mac-hold">TG</div><div class="mac-tap">${getSymbol(tgMatch[1])}</div>`;
+                    } else if (mMatch) {
+                        keyDiv.classList.add('m-key');
+                        keyDiv.innerHTML = `<div class="mac-hold">MACRO</div><div class="mac-tap">${mMatch[1]}</div>`;
+                    } else if (state.layers.includes(rawCode)) {
+                        keyDiv.classList.add('lyr-key');
+                        keyDiv.innerHTML = `<div class="mac-hold">MO</div><div class="mac-tap">${rawCode}</div>`;
+                    } else {
+                        keyDiv.innerText = getSymbol(rawCode);
+                    }
+                    
+                    keyDiv.onclick = () => {
+                        state.selectedKeyIndex = idx;
+                        renderUI();
+                    };
+                    rowDiv.appendChild(keyDiv);
+                });
+                dom.keyboardDisplay.appendChild(rowDiv);
+            });
+        }
+
+        // --- Парсинг и Генерация ---
+
+        document.getElementById('configFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) { parseConfig(e.target.result); };
+            reader.readAsText(file);
+        });
+
+        function parseConfig(text) {
+            // --- Parse macros ---
+            state.macros = [];
+            let stepArrays = {};
+            let stepArrayRegex = /const\s+MacroStep\s+([a-zA-Z0-9_]+)\[\]\s*=\s*\{([\s\S]*?)\}/g;
+            let stepMatch;
+            while ((stepMatch = stepArrayRegex.exec(text)) !== null) {
+                let name = stepMatch[1];
+                let stepsRaw = stepMatch[2];
+                let steps = [];
+                let stepRe = /(M_DN|M_UP|M_D)\s*\(\s*([^)]+)\s*\)/g;
+                let sMatch;
+                while ((sMatch = stepRe.exec(stepsRaw)) !== null) {
+                    let type = sMatch[1];
+                    let val = sMatch[2].trim();
+                    if (type === 'M_DN') {
+                        steps.push({ action: 'DOWN', value: val });
+                    } else if (type === 'M_UP') {
+                        steps.push({ action: 'UP', value: val });
+                    } else if (type === 'M_D') {
+                        steps.push({ action: 'DELAY', value: parseInt(val, 10) || 0 });
+                    }
+                }
+                if (steps.length > 0) {
+                    stepArrays[name] = steps;
+                }
+            }
+
+            let kbMacrosMatch = text.match(/const\s+Macro\s+keyboard_macros\[\]\s*=\s*\{([\s\S]*?)\}/);
+            if (kbMacrosMatch) {
+                let kbMacrosContent = kbMacrosMatch[1];
+                let entryRe = /(?:\[(\d+)\]\s*=\s*)?\{\s*([a-zA-Z0-9_]+)/g;
+                let entryMatch;
+                let indexCounter = 0;
+                while ((entryMatch = entryRe.exec(kbMacrosContent)) !== null) {
+                    let idx = entryMatch[1] !== undefined ? parseInt(entryMatch[1], 10) : indexCounter;
+                    let name = entryMatch[2];
+                    if (stepArrays[name]) {
+                        state.macros[idx] = {
+                            name: name,
+                            steps: stepArrays[name]
+                        };
+                    }
+                    indexCounter = Math.max(indexCounter, idx + 1);
+                }
+            }
+            // Fill empty slots
+            for (let i = 0; i < state.macros.length; i++) {
+                if (!state.macros[i]) {
+                    state.macros[i] = { name: `MACRO_${i}`, steps: [] };
+                }
+            }
+            state.currentMacroIndex = 0;
+
+            let lines = text.split('\n');
+            let layoutLines = [];
+            let inLayout = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+                if (!inLayout && line.match(/#define\s+LAYOUT\b/)) inLayout = true;
+                if (inLayout) {
+                    layoutLines.push(line);
+                    let cleanLine = line.replace(/\/\/.*/, '').trim();
+                    if (layoutLines.length > 1 && !cleanLine.endsWith('\\')) break;
+                }
+            }
+
+            state.generatorRows = [];
+            layoutLines.forEach(line => {
+                let coords = line.match(/\{\s*\d+\s*,\s*\d+\s*\}/g);
+                if (coords) {
+                    state.generatorRows.push(coords.length);
+                }
+            });
+
+            // Parse optional LAYOUT_EDITOR
+            let layoutEditorLines = [];
+            let inLayoutEditor = false;
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+                if (!inLayoutEditor && line.match(/#define\s+LAYOUT_EDITOR\b/)) inLayoutEditor = true;
+                if (inLayoutEditor) {
+                    layoutEditorLines.push(line);
+                    let cleanLine = line.replace(/\/\/.*/, '').trim();
+                    if (layoutEditorLines.length > 1 && !cleanLine.endsWith('\\')) break;
+                }
+            }
+
+            if (layoutEditorLines.length > 0) {
+                let coords = [];
+                layoutEditorLines.forEach(line => {
+                    let matches = line.match(/\{\s*(\d+)\s*,\s*(\d+)\s*\}/g);
+                    if (matches) {
+                        matches.forEach(m => {
+                            let parts = m.match(/\{\s*(\d+)\s*,\s*(\d+)\s*\}/);
+                            coords.push({
+                                r: parseInt(parts[1], 10),
+                                c: parseInt(parts[2], 10)
+                            });
+                        });
+                    }
+                });
+
+                if (coords.length > 0) {
+                    let maxRow = 0;
+                    let maxCol = 0;
+                    coords.forEach(coord => {
+                        if (coord.r > maxRow) maxRow = coord.r;
+                        if (coord.c > maxCol) maxCol = coord.c;
+                    });
+
+                    let grid = [];
+                    for (let r = 0; r <= maxRow; r++) {
+                        grid.push(Array(maxCol + 1).fill(null));
+                    }
+
+                    coords.forEach((coord, i) => {
+                        grid[coord.r][coord.c] = i;
+                    });
+                    
+                    state.layoutMap = grid;
+                } else {
+                    fallbackToStandardLayout();
+                }
+            } else {
+                fallbackToStandardLayout();
+            }
+
+            function fallbackToStandardLayout() {
+                state.layoutMap = [];
+                let keyIndexCounter = 0;
+                layoutLines.forEach(line => {
+                    let coords = line.match(/\{\s*\d+\s*,\s*\d+\s*\}/g);
+                    if (coords) {
+                        let rowIndices = [];
+                        for (let i = 0; i < coords.length; i++) rowIndices.push(keyIndexCounter++);
+                        state.layoutMap.push(rowIndices);
+                    }
+                });
+            }
+
+            // Find keymap declaration by locating the exact token, then use
+            // brace counting to extract the full block (handles files where
+            // other arrays like my_chords[] appear before the keymap).
+            const keymapDeclRe = /\bkeymap\s*\[[\s\S]*?\]\s*=\s*\{/g;
+            let keymapDeclMatch = null;
+            let km;
+            while ((km = keymapDeclRe.exec(text)) !== null) {
+                // Must be a variable declaration (starts with const/uint or similar),
+                // not just a reference inside another expression.
+                const before = text.slice(Math.max(0, km.index - 30), km.index);
+                if (/\b(const|uint32_t)\b/.test(before) || km.index < 60) {
+                    keymapDeclMatch = km;
+                    break;
+                }
+            }
+            if (!keymapDeclMatch) return alert("Не найден массив keymap");
+
+            // Extract the content between the outer braces using brace counting
+            let braceStart = keymapDeclMatch.index + keymapDeclMatch[0].length - 1; // position of opening '{'
+            let depth = 0, keymapEnd = -1;
+            for (let ci = braceStart; ci < text.length; ci++) {
+                if (text[ci] === '{') depth++;
+                else if (text[ci] === '}') { depth--; if (depth === 0) { keymapEnd = ci; break; } }
+            }
+            if (keymapEnd === -1) return alert("Не найден конец массива keymap");
+            const parsedBlock = text.slice(braceStart + 1, keymapEnd);
+            const keymapMatch = { 1: parsedBlock }; // keep compat with code below
+            
+            let keymapBlock = keymapMatch[1];
+            state.layers = [];
+            state.keymap = {};
+
+            let layerRegex = /\[(.*?)\]\s*=\s*\{/g;
+            let match;
+            let layerStarts = [];
+            while ((match = layerRegex.exec(keymapBlock)) !== null) {
+                layerStarts.push({ name: match[1].trim(), index: match.index });
+            }
+
+            for (let i = 0; i < layerStarts.length; i++) {
+                let name = layerStarts[i].name;
+                let endIdx = i + 1 < layerStarts.length ? layerStarts[i+1].index : keymapBlock.length;
+                let content = keymapBlock.substring(layerStarts[i].index, endIdx);
+                
+                let keysStr = content.replace(/\[.*?\]\s*=\s*\{/, '');
+                let lastBrace = keysStr.lastIndexOf('}');
+                if (lastBrace !== -1) keysStr = keysStr.substring(0, lastBrace);
+                
+                keysStr = keysStr.replace(/[{}\\\]]/g, '').replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+                
+                let keys = [], currentKey = "", inParens = 0;
+                for (let j = 0; j < keysStr.length; j++) {
+                    let char = keysStr[j];
+                    if (char === '(') inParens++;
+                    if (char === ')') inParens--;
+                    
+                    if (char === ',' && inParens === 0) {
+                        keys.push(currentKey.trim());
+                        currentKey = "";
+                    } else {
+                        currentKey += char;
+                    }
+                }
+                if (currentKey.trim()) keys.push(currentKey.trim());
+
+                state.layers.push(name);
+                state.keymap[name] = keys;
+            }
+
+            if (state.layers.length > 0) {
+                state.currentLayer = state.layers[0];
+                dom.workspace.style.display = 'flex';
+                dom.generateBtn.style.display = 'block';
+                updateDropdowns();
+                renderUI();
+            }
+        }
+
+        dom.generateBtn.onclick = () => {
+            let out = "";
+            
+            // Generate macros
+            if (state.macros && state.macros.length > 0) {
+                out += "// === MACROS ===\n\n";
+                state.macros.forEach((macro, idx) => {
+                    let stepsStr = macro.steps.map(step => {
+                        if (step.action === 'DELAY') return `M_D(${step.value})`;
+                        if (step.action === 'DOWN') return `M_DN(${step.value})`;
+                        if (step.action === 'UP') return `M_UP(${step.value})`;
+                        return '';
+                    }).filter(s => s !== '').join(', ');
+                    out += `const MacroStep ${macro.name}[] = {${stepsStr}};\n`;
+                });
+                out += "\n";
+                
+                out += "const Macro keyboard_macros[] = {\n";
+                state.macros.forEach((macro, idx) => {
+                    out += `    [${idx}] = {${macro.name}, sizeof(${macro.name}) / sizeof(${macro.name}[0])}${idx < state.macros.length - 1 ? ',' : ''}\n`;
+                });
+                out += "};\n\n";
+                
+                out += "const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_macros[0]);\n\n";
+                out += "// ==========================================================================\n\n";
+            }
+
+            let totalKeys = state.layoutMap.reduce((s, r) => s + r.filter(x => x !== null).length, 0);
+            out += `#define NUM_KEYS ${totalKeys}\n\n`;
+            out += "// Flat keymap: one entry per key in LAYOUT order\n";
+            out += "const uint32_t keymap[][NUM_KEYS] = {\n";
+            
+            // Ensure generatorRows is populated
+            if (!state.generatorRows || state.generatorRows.length === 0) {
+                state.generatorRows = state.layoutMap.map(row => row.filter(x => x !== null).length);
+            }
+
+            state.layers.forEach((layer, li) => {
+                out += `    [${layer}] = {\n`;
+                let keys = state.keymap[layer];
+                let keyCounter = 0;
+
+                for (let i = 0; i < state.generatorRows.length; i++) {
+                    let rowLength = state.generatorRows[i];
+                    let lineStr = "        ";
+                    for (let j = 0; j < rowLength; j++) {
+                        lineStr += (keys[keyCounter] || "K_TRNS") + ", ";
+                        keyCounter++;
+                    }
+                    lineStr = lineStr.trimEnd();
+                    // Add line-continuation backslash for all rows except the last
+                    if (i < state.generatorRows.length - 1) {
+                        out += lineStr + " \\\n";
+                    } else {
+                        if (lineStr.endsWith(",")) lineStr = lineStr.slice(0, -1);
+                        out += lineStr + "\n";
+                    }
+                }
+                out += "    }";
+                out += (li < state.layers.length - 1) ? ",\n" : "\n";
+            });
+            out += "};\n";
+            document.getElementById('outputCode').innerText = out;
+            document.getElementById('outputModal').style.display = 'flex';
+        };
+
+        document.getElementById('closeModalBtn').onclick = () => document.getElementById('outputModal').style.display = 'none';
+    </script>
+</body>
+</html>

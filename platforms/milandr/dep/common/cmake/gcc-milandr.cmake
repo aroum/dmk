@@ -1,0 +1,32 @@
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_VERSION 1)
+# specify cross compilers and tools
+set(CMAKE_C_COMPILER arm-none-eabi-gcc)
+set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+set(CMAKE_ASM_COMPILER arm-none-eabi-gcc)
+set(CMAKE_AR arm-none-eabi-ar)
+set(CMAKE_OBJCOPY arm-none-eabi-objcopy)
+set(CMAKE_OBJDUMP arm-none-eabi-objdump)
+set(SIZE arm-none-eabi-size)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+add_compile_options(-mfloat-abi=soft)
+add_compile_options(-mcpu=cortex-m3 -mthumb)
+add_compile_options(-ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
+
+# Don't override LINKER_SCRIPT if it's already set
+if(NOT LINKER_SCRIPT)
+    get_filename_component(USB_EXAMPLES_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+    set(LINKER_SCRIPT "${USB_EXAMPLES_ROOT}/dep/gcc/MDR32F9Q2I.ld")
+endif()
+
+add_link_options(-Wl,-gc-sections,--print-memory-usage)
+add_link_options(-mcpu=cortex-m3 -mthumb -mthumb-interwork)
+add_link_options(-T ${LINKER_SCRIPT})

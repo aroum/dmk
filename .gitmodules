@@ -1,0 +1,23 @@
+[submodule "examples/raspberrypi/pico-sdk"]
+	path = examples/raspberrypi/pico-sdk
+	url = https://github.com/raspberrypi/pico-sdk.git
+	ignore = dirty
+[submodule "examples/zmk"]
+	path = examples/zmk
+	url = https://github.com/aroum/zmk.git
+[submodule "examples/rmk"]
+	path = examples/rmk
+	url = https://github.com/HaoboGu/rmk.git
+[submodule "examples/vial-gui"]
+	path = examples/vial-gui
+	url = https://github.com/vial-kb/vial-gui.git
+[submodule "examples/vial-qmk"]
+	path = examples/vial-qmk
+	url = https://github.com/vial-kb/vial-qmk.git
+	ignore = dirty
+[submodule "examples/nrf52/nrf52840-mdk"]
+	path = examples/nrf52/nrf52840-mdk
+	url = https://github.com/makerdiary/nrf52840-mdk.git
+[submodule "tools/vial/cJSON"]
+	path = tools/vial/cJSON
+	url = https://github.com/DaveGamble/cJSON.git

@@ -1,0 +1,24 @@
+.program split_tx
+.side_set 1 opt pindirs
+
+; Open-drain UART transmitter.
+; Drives low when bit is 0 (pindir=1), floats high (pindir=0) when bit is 1.
+; Data is inverted in software (~byte) before writing to the FIFO.
+
+    pull block          side 0 [7]  ; Assert stop bit (float high) and pull next byte
+    set x, 7            side 1 [7]  ; Assert start bit (drive low) for 8 cycles
+bitloop:
+    out pindirs, 1                  ; Shift 1 bit into pindir (1 = drive low, 0 = float high)
+    jmp x-- bitloop            [6]  ; Loop 8 times, each bit is 8 cycles long
+
+.program split_rx
+
+; Standard UART receiver.
+; Shift register should be configured to shift right, autopush disabled.
+
+    wait 0 pin 0                    ; Wait for start bit (low)
+    set x, 7            [10]        ; Wait 1.5 bit times (12 cycles at 8x baudrate)
+bitloop:
+    in pins, 1                      ; Sample pin into ISR
+    jmp x-- bitloop            [6]  ; Loop 8 times, each bit is 8 cycles long
+    push block                      ; Push received byte to RX FIFO

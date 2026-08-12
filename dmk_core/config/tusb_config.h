@@ -1,0 +1,42 @@
+#ifndef _TUSB_CONFIG_H_
+#define _TUSB_CONFIG_H_
+
+#ifndef CFG_TUSB_MCU
+#if defined(MCU_baikal)
+#define CFG_TUSB_MCU OPT_MCU_BMCU
+#elif defined(MCU_nrf52840)
+#define CFG_TUSB_MCU OPT_MCU_NRF5X
+#else
+#define CFG_TUSB_MCU OPT_MCU_RP2040
+#endif
+#endif
+#define BOARD_DEVICE_RHPORT_NUM 0
+#define BOARD_DEVICE_RHPORT_SPEED OPT_MODE_FULL_SPEED
+#ifndef BOARD_TUD_RHPORT
+#define BOARD_TUD_RHPORT 0
+#endif
+
+#define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE | OPT_MODE_FULL_SPEED)
+
+#define CFG_TUD_ENDPOINT0_SIZE 64
+
+#ifdef VIAL
+#define CFG_TUD_HID 2
+#else
+#define CFG_TUD_HID 1
+#endif
+#define CFG_TUD_CDC 0
+
+#ifdef MIDI_USB
+#define CFG_TUD_MIDI 1
+#define CFG_TUD_MIDI_RX_BUFSIZE 64
+#define CFG_TUD_MIDI_TX_BUFSIZE 64
+#else
+#define CFG_TUD_MIDI 0
+#endif
+
+#define CFG_TUD_HID_EP_BUFSIZE 64
+#define CFG_TUD_CDC_RX_BUFSIZE 64
+#define CFG_TUD_CDC_TX_BUFSIZE 64
+
+#endif // _TUSB_CONFIG_H_
