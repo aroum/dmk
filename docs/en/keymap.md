@@ -228,7 +228,7 @@ enum layers {
 };
 
 // ==========================================================================
-// 3. KEYMAP WITH UPDATED MO (keymap.c)
+// 3. KEYMAP WITH UPDATED MO 
 // ==========================================================================
 
 const uint16_t keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -268,7 +268,7 @@ See [ZMK Sticky Key Documentation](https://zmk.dev/docs/keymaps/behaviors/sticky
 
 ```c
 // ==========================================================================
-// 1. CONFIGURATION PARAMETERS (Usually located in config.h)
+// 1. CONFIGURATION PARAMETERS 
 // ==========================================================================
 // Timeout (in ms). If no key is pressed within 1.5s after tapping 
 // an OS key, the modifier is automatically released.
@@ -324,7 +324,7 @@ See [ZMK Sticky Key Documentation](https://zmk.dev/docs/keymaps/behaviors/sticky
 
 
 // ==========================================================================
-// 3. KEYMAP USAGE EXAMPLE (keymap.c)
+// 3. KEYMAP USAGE EXAMPLE
 // ==========================================================================
 
 
@@ -388,7 +388,7 @@ In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` 
 
 
 // ==========================================================================
-// 3. KEYMAP USAGE EXAMPLE (keymap.c)
+// 3. KEYMAP USAGE EXAMPLE
 // ==========================================================================
 
 enum layers {
@@ -424,7 +424,7 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 #define TG(layer)    (DMK_TG | (layer))
 
 // ==========================================================================
-// 3. KEYMAP USAGE EXAMPLE (keymap.c)
+// 3. KEYMAP USAGE EXAMPLE
 // ==========================================================================
 
 enum layers {

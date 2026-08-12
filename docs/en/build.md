@@ -224,8 +224,7 @@ my-dmk-config/
 │       └── build.yml               # GitHub Actions workflow file
 └── keyboards/
     └── my_keyboard/                # Your keyboard name (passed to -b)
-        ├── config.h                # Matrix and pin configurations
-        ├── keymap.c                # Keymaps definition
+        ├── config.h                # Matrix, pin and keymap configurations 
         └── vial.json               # (Optional) Vial layout configuration
 ```
 

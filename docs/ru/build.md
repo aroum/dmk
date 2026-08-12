@@ -224,8 +224,7 @@ my-dmk-config/
 │       └── build.yml               # Workflow файл GitHub Actions
 └── keyboards/
     └── my_keyboard/                # Имя вашей клавиатуры (передается в -b)
-        ├── config.h                # Конфигурация пинов и матрицы
-        ├── keymap.c                # Раскладка клавиш
+        ├── config.h                # Конфигурация пинов матрицы, раскладки
         └── vial.json               # (Опционально) Конфигурация для Vial
 ```
 
