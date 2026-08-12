@@ -48,12 +48,12 @@ Thanks to this approach, support for new microcontrollers can be added very quic
 
 Below is a comparison of the codebase size of DMK and other firmwares. Measured in source lines of code (SLOC) — only `.c`, `.h`, `.cpp`, `.rs` files are included; documentation, configs, third-party libraries, and auto-generated files are excluded.
 
-| Project                                                | Language | SLOC | Relative to DMK |
-| :----------------------------------------------------- | :------- | :--- | :-------------- |
-| **DMK** (~6.6K core + ~5.2K platforms)                 | C        | ~12K | 1×              |
-| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K | 2.8×            |
-| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K | 4.5×            |
-| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K | 6.3×            |
+| Project                                                | Language | SLOC   | Relative to DMK |
+| :----------------------------------------------------- | :------- | :----- | :-------------- |
+| **DMK** (~6.9K core + ~6.7K platforms)                 | C        | ~13.5K | 1×              |
+| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 2.4×            |
+| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 4×              |
+| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 5.6×            |
 
 ---
 
