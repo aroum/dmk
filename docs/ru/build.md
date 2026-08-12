@@ -17,10 +17,10 @@
    sudo apt install -y build-essential cmake ninja-build git python3 python3-pip
    ```
 
-2. Установите компилятор ARM GCC:
+2. Установите компиляторы ARM GCC и RISC-V GCC (для процессоров Baikal):
 
    ```bash
-   sudo apt install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+   sudo apt install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi gcc-riscv64-unknown-elf
    ```
 
 3. Установите `uv` (рекомендуемый менеджер окружения Python):

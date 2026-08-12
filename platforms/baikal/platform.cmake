@@ -11,7 +11,7 @@ if(RISCV_GCC_SYSTEM)
     string(REGEX REPLACE "gcc$" "" TOOLCHAIN_PREFIX_NAME "${COMPILER_NAME}")
     set(TOOLCHAIN_PREFIX "${TOOLCHAIN_BIN_DIR}/${TOOLCHAIN_PREFIX_NAME}")
 else()
-    set(TOOLCHAIN_PREFIX "${DMK_ROOT}/examples/baikal/Tools/toolchain/riscv32-none-elf/bin/riscv32-none-elf-")
+    message(FATAL_ERROR "RISC-V GCC toolchain (riscv32-none-elf-gcc) not found in PATH. Please install riscv-none-elf-gcc or riscv32-unknown-elf-gcc.")
 endif()
 
 set(CMAKE_C_COMPILER   "${TOOLCHAIN_PREFIX}gcc")

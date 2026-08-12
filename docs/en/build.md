@@ -17,10 +17,10 @@ Building the firmware requires the `ARM GCC` toolchain and `uv`.
    sudo apt install -y build-essential cmake ninja-build git python3 python3-pip
    ```
 
-2. Install the ARM GCC toolchain:
+2. Install ARM GCC and RISC-V GCC (for Baikal MCUs) toolchains:
 
    ```bash
-   sudo apt install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi
+   sudo apt install -y gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi gcc-riscv64-unknown-elf
    ```
 
 3. Install `uv` (recommended Python package installer):
