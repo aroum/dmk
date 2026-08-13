@@ -4,6 +4,8 @@
 
 # DMK Firmware
 
+![logo](logo.png)
+
 A lightweight, modern, and highly modular keyboard firmware designed for cross-platform MCU compatibility.
 
 **Documentation:** [Build](docs/en/build.md) • [Config](docs/en/config.md) • [Keycodes](docs/en/keycodes.md) • [Keymap](docs/en/keymap.md) • [Pins](docs/en/pins.md) • [Vial](docs/en/vial.md)
