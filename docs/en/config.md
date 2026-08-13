@@ -463,3 +463,44 @@ To enable support for multimedia keys (Consumer Page keys like play, pause, volu
 ```
 
 This initializes a secondary HID interface on the device configured as a composite device, enabling the transmission of 16-bit Consumer Control usage codes.
+
+---
+
+## Physical Rotary Encoders
+
+DMK supports hardware quadrature rotary encoders (using 2-bit Gray code transition decoding), multi-layer keymaps, and real-time GUI configuration through **Vial GUI**.
+
+### 1. Pin and Resolution Configuration
+
+In `config.h`, define the channel A and channel B pin arrays for all connected encoders:
+
+```c
+// Pins for channels A and B of each connected encoder
+#define ENCODER_PINS_A { GPIO14 }
+#define ENCODER_PINS_B { GPIO15 }
+
+// Optional: Number of quadrature state transitions per physical detent (default is 4)
+#define ENCODER_RESOLUTIONS { 4 }
+```
+
+For multiple encoders:
+```c
+#define ENCODER_PINS_A { GPIO14, GPIO16 }
+#define ENCODER_PINS_B { GPIO15, GPIO17 }
+#define ENCODER_RESOLUTIONS { 4, 2 }
+```
+
+### 2. Layer Keymap Definition (`ENCODER_KEYMAP`)
+
+Clockwise (CW) and Counter-Clockwise (CCW) rotation actions are defined per layer in `ENCODER_KEYMAP`:
+
+```c
+#define ENCODER_KEYMAP { \
+    [0] = { { K_VOLU, K_VOLD } }, \
+    [1] = { { K_PGUP, K_PGDN } }  \
+}
+```
+
+- When rotated, the firmware generates a synthetic pulse keypress (20 ms) and automatically releases it.
+- When `#define VIAL` is enabled, encoders can be remapped directly in the *Encoders* tab in Vial GUI in real time.
+

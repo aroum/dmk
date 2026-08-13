@@ -64,7 +64,7 @@ Below is a comparison of the codebase size of DMK and other firmwares. Measured 
 
 Below is our current development roadmap:
 
-- [ ] **Physical Rotary Encoders**
+- [x] **Physical Rotary Encoders**
 - [ ] **OLED Display Support**
 - [ ] **E-Ink Display Support**
 - [ ] **Memory LCD Display Support**
