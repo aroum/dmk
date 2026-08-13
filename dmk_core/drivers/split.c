@@ -197,4 +197,33 @@ void split_soft_init(void) {
     xTaskCreate(split_soft_task, "split_soft", 512, NULL, configMAX_PRIORITIES - 1, NULL);
 }
 
+/**
+ * @brief Universal packet parser for split UART / PIO / soft receivers.
+ * Collects 4-byte split_packet_t (header 0xA5, row, col, pressed) and enqueues matrix event.
+ */
+void split_process_received_byte(uint8_t byte) {
+    static split_packet_t s_pkt;
+    static uint8_t *s_pkt_ptr = (uint8_t *)&s_pkt;
+    static uint8_t s_byte_count = 0;
+
+    if (s_byte_count == 0) {
+        if (byte == 0xA5) {
+            s_pkt_ptr[0] = byte;
+            s_byte_count = 1;
+        }
+    } else {
+        s_pkt_ptr[s_byte_count] = byte;
+        s_byte_count++;
+        if (s_byte_count == sizeof(split_packet_t)) {
+            matrix_event_t event;
+            event.split = 1;
+            event.row = s_pkt.row;
+            event.col = s_pkt.col;
+            event.pressed = s_pkt.pressed;
+            xQueueSend(matrix_queue, &event, 0);
+            s_byte_count = 0;
+        }
+    }
+}
+
 #endif
