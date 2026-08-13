@@ -52,10 +52,11 @@ DMK сфокусирована на ограниченном наборе воз
 
 | Проект                                                 | Язык | SLOC   | Относительно DMK |
 | :----------------------------------------------------- | :--- | :----- | :--------------- |
-| **DMK** (~6.9K ядро + ~6.7K платформы)                 | C    | ~13.5K | 1×               |
-| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C    | ~33K   | 2.4×             |
-| [RMK](https://github.com/HaoboGu/rmk)                  | Rust | ~54K   | 4×               |
-| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C    | ~76K   | 5.6×             |
+| **DMK** (~5.7K ядро + ~2.9K платформы)                 | C    | ~8.6K  | 1×               |
+| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C    | ~24.5K | 2.8×             |
+| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C    | ~33K   | 3.8×             |
+| [RMK](https://github.com/HaoboGu/rmk)                  | Rust | ~54K   | 6.3×             |
+| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C    | ~76K   | 8.8×             |
 
 ---
 
