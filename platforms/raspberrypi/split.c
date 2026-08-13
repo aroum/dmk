@@ -14,27 +14,6 @@
 
 #if defined(NUM_ROWS_SPLIT) && defined(NUM_COLS_SPLIT)
 
-// Standard Pin & Connection Type Fallbacks
-#ifndef SPLIT_TX_PIN
-#ifdef SERIAL_PIN
-#define SPLIT_TX_PIN SERIAL_PIN
-#else
-#define SPLIT_TX_PIN GPIO0
-#endif
-#endif
-
-#ifndef SPLIT_RX_PIN
-#ifdef SERIAL_PIN
-#define SPLIT_RX_PIN SERIAL_PIN
-#else
-#define SPLIT_RX_PIN SPLIT_TX_PIN
-#endif
-#endif
-
-#ifndef SERIAL_PIN
-#define SERIAL_PIN SPLIT_TX_PIN
-#endif
-
 #ifndef SPLIT_CONNECTION_TYPE
 #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX
 #endif
@@ -148,40 +127,16 @@ void split_send_event(matrix_event_t *event) {
 void split_task(void *pvParameters) {
     (void)pvParameters;
 
-    split_packet_t pkt;
-    uint8_t *pkt_ptr = (uint8_t *)&pkt;
-    uint8_t byte_count = 0;
-
     while (1) {
         bool master = is_master();
         if (master) {
             if (current_role != 1) {
                 configure_split_role(true);
-                byte_count = 0; // Reset byte assembly on role change
             }
 
             if (!pio_sm_is_rx_fifo_empty(split_pio, split_sm)) {
                 uint8_t byte = (pio_sm_get(split_pio, split_sm) >> 24) & 0xFF;
-
-                if (byte_count == 0) {
-                    if (byte == 0xA5) {
-                        pkt_ptr[0] = byte;
-                        byte_count = 1;
-                    }
-                } else {
-                    pkt_ptr[byte_count] = byte;
-                    byte_count++;
-                    if (byte_count == sizeof(split_packet_t)) {
-                        matrix_event_t event;
-                        event.split = 1;
-                        event.row = pkt.row;
-                        event.col = pkt.col;
-                        event.pressed = pkt.pressed;
-
-                        xQueueSend(matrix_queue, &event, 0);
-                        byte_count = 0;
-                    }
-                }
+                split_process_received_byte(byte);
             } else {
                 vTaskDelay(pdMS_TO_TICKS(1));
             }
@@ -215,12 +170,4 @@ void split_init(void) {
 
 #endif // SOFT / PIO
 
-#else
-
-void split_send_event(matrix_event_t *event) {
-    (void)event;
-}
-
-void split_init(void) {}
-
-#endif
+#endif // defined(NUM_ROWS_SPLIT) && defined(NUM_COLS_SPLIT)

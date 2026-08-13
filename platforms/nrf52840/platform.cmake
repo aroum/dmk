@@ -33,8 +33,8 @@ endif()
 set(PLATFORM_INC
     "${PLATFORM_DIR}"
     "${PLATFORM_DIR}/include"
-    "${PLATFORM_DIR}/freertos/include"
-    "${PLATFORM_DIR}/freertos/portable/GCC/ARM_CM4F"
+    "${DMK_ROOT}/lib/freertos/include"
+    "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM4F"
     # nRF5 SDK – CMSIS / MDK (nrf52840.h, nrf.h, __NVIC_PRIO_BITS, etc.)
     "${NRF5_SDK_DIR}/modules/nrfx/mdk"
     # nrfx core and HAL (nrfx.h, nrf_gpio.h, nrfx_usbd.h, nrfx_clock.h)
@@ -89,15 +89,15 @@ set(PLATFORM_SRC
     # nRF5 MDK startup and system init
     "${NRF5_SDK_DIR}/modules/nrfx/mdk/gcc_startup_nrf52840.S"
     "${NRF5_SDK_DIR}/modules/nrfx/mdk/system_nrf52840.c"
-    "${PLATFORM_DIR}/freertos/croutine.c"
-    "${PLATFORM_DIR}/freertos/event_groups.c"
-    "${PLATFORM_DIR}/freertos/list.c"
-    "${PLATFORM_DIR}/freertos/queue.c"
-    "${PLATFORM_DIR}/freertos/stream_buffer.c"
-    "${PLATFORM_DIR}/freertos/tasks.c"
-    "${PLATFORM_DIR}/freertos/timers.c"
-    "${PLATFORM_DIR}/freertos/portable/GCC/ARM_CM4F/port.c"
-    "${PLATFORM_DIR}/freertos/portable/MemMang/heap_4.c"
+    "${DMK_ROOT}/lib/freertos/croutine.c"
+    "${DMK_ROOT}/lib/freertos/event_groups.c"
+    "${DMK_ROOT}/lib/freertos/list.c"
+    "${DMK_ROOT}/lib/freertos/queue.c"
+    "${DMK_ROOT}/lib/freertos/stream_buffer.c"
+    "${DMK_ROOT}/lib/freertos/tasks.c"
+    "${DMK_ROOT}/lib/freertos/timers.c"
+    "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM4F/port.c"
+    "${DMK_ROOT}/lib/freertos/heap_4.c"
     "${PLATFORM_DIR}/hal_gpio.c"
     "${PLATFORM_DIR}/app_usb_hid.c"
     # nRF5 SDK – clock driver

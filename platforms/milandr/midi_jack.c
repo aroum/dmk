@@ -6,27 +6,12 @@
 #include "MDR32FxQI_rst_clk.h"
 #include "MDR32FxQI_uart.h"
 #include "task.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 static MDR_UART_TypeDef *midi_uart = MDR_UART2;
 
-static void midi_rx_task(void *pvParameters) {
-    (void)pvParameters;
-    while (1) {
-        if (UART_GetFlagStatus(midi_uart, UART_FLAG_RXFE) == RESET) {
-            uint8_t byte = UART_ReceiveData(midi_uart) & 0xFF;
-#ifdef MIDI_THRU
-            while (UART_GetFlagStatus(midi_uart, UART_FLAG_TXFF) == SET) {
-                vTaskDelay(pdMS_TO_TICKS(1));
-            }
-            UART_SendData(midi_uart, byte);
-#endif
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-    }
-}
-
-void midi_jack_init(void) {
+void hal_midi_jack_hw_init(void) {
     RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTF, ENABLE);
 
     PORT_InitTypeDef PORT_InitStructure;
@@ -53,14 +38,21 @@ void midi_jack_init(void) {
 
     UART_Init(midi_uart, &UART_InitStructure);
     UART_Cmd(midi_uart, ENABLE);
-
-    xTaskCreate(midi_rx_task, "midi_rx", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
-void midi_jack_write(uint8_t byte) {
+bool hal_midi_jack_readable(void) {
+    return (UART_GetFlagStatus(midi_uart, UART_FLAG_RXFE) == RESET);
+}
+
+uint8_t hal_midi_jack_getc(void) {
+    return (uint8_t)(UART_ReceiveData(midi_uart) & 0xFF);
+}
+
+void hal_midi_jack_putc(uint8_t byte) {
     while (UART_GetFlagStatus(midi_uart, UART_FLAG_TXFF) == SET) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
     UART_SendData(midi_uart, byte);
 }
-#endif
+
+#endif // MIDI_JACK

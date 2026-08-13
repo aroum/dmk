@@ -40,7 +40,7 @@ endif()
 
 # Select FreeRTOS port based on MCU
 if(MCU STREQUAL "rp2040")
-    set(FREERTOS_PORT_DIR "${PLATFORM_DIR}/freertos/portable/GCC/ARM_CM0")
+    set(FREERTOS_PORT_DIR "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM0")
     set(FREERTOS_PORT_SRC "${FREERTOS_PORT_DIR}/port.c")
 elseif(MCU STREQUAL "rp2350")
     set(FREERTOS_PORT_DIR "${DMK_ROOT}/platforms/baikal/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ/non_secure")
@@ -54,24 +54,24 @@ endif()
 set(PLATFORM_INC
     "${PLATFORM_DIR}"
     "${PLATFORM_DIR}/include"
-    "${PLATFORM_DIR}/freertos/include"
+    "${DMK_ROOT}/lib/freertos/include"
     "${FREERTOS_PORT_DIR}"
 )
 
 # Platform sources
 set(PLATFORM_SRC
-    "${PLATFORM_DIR}/freertos/croutine.c"
-    "${PLATFORM_DIR}/freertos/event_groups.c"
-    "${PLATFORM_DIR}/freertos/list.c"
-    "${PLATFORM_DIR}/freertos/queue.c"
-    "${PLATFORM_DIR}/freertos/stream_buffer.c"
-    "${PLATFORM_DIR}/freertos/tasks.c"
-    "${PLATFORM_DIR}/freertos/timers.c"
+    "${DMK_ROOT}/lib/freertos/croutine.c"
+    "${DMK_ROOT}/lib/freertos/event_groups.c"
+    "${DMK_ROOT}/lib/freertos/list.c"
+    "${DMK_ROOT}/lib/freertos/queue.c"
+    "${DMK_ROOT}/lib/freertos/stream_buffer.c"
+    "${DMK_ROOT}/lib/freertos/tasks.c"
+    "${DMK_ROOT}/lib/freertos/timers.c"
     ${FREERTOS_PORT_SRC}
-    "${PLATFORM_DIR}/freertos/portable/MemMang/heap_4.c"
+    "${DMK_ROOT}/lib/freertos/heap_4.c"
     "${PLATFORM_DIR}/hal_gpio.c"
-    "${PLATFORM_DIR}/app_usb_hid.c"
-    "${PLATFORM_DIR}/usb_descriptors.c"
+    "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
+    "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     "${PLATFORM_DIR}/pio/WS2812.cpp"
     "${PLATFORM_DIR}/split.c"
     "${PLATFORM_DIR}/midi_jack.c"

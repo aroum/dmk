@@ -1,26 +1,33 @@
 # Common includes and sources
 set(DMK_COMMON_INC
     "${DMK_ROOT}/dmk_core/include"
+    "${DMK_ROOT}/dmk_core/core"
+    "${DMK_ROOT}/dmk_core/features"
+    "${DMK_ROOT}/dmk_core/drivers"
     "${DMK_ROOT}/dmk_core/config"
     "${PLATFORM_DIR}"
 )
 
 set(DMK_CORE_SRC
-    "${DMK_ROOT}/dmk_core/src/main.c"
-    "${DMK_ROOT}/dmk_core/src/matrix.c"
-    "${DMK_ROOT}/dmk_core/src/keyboard.c"
-    "${DMK_ROOT}/dmk_core/src/layers.c"
-    "${DMK_ROOT}/dmk_core/src/hold_tap.c"
-    "${DMK_ROOT}/dmk_core/src/oneshot.c"
-    "${DMK_ROOT}/dmk_core/src/combos.c"
-    "${DMK_ROOT}/dmk_core/src/midi.c"
-    "${DMK_ROOT}/dmk_core/src/macros.c"
-    "${DMK_ROOT}/dmk_core/src/hooks.c"
-    "${DMK_ROOT}/dmk_core/src/split.c"
-    "${DMK_ROOT}/dmk_core/src/usb.c"
-    "${DMK_ROOT}/dmk_core/src/led.c"
-    "${DMK_ROOT}/dmk_core/src/rgb.c"
-    "${DMK_ROOT}/dmk_core/src/encoder.c"
+    # Core orchestration
+    "${DMK_ROOT}/dmk_core/core/main.c"
+    "${DMK_ROOT}/dmk_core/core/keyboard.c"
+    "${DMK_ROOT}/dmk_core/core/hooks.c"
+    # Software features
+    "${DMK_ROOT}/dmk_core/features/layers.c"
+    "${DMK_ROOT}/dmk_core/features/hold_tap.c"
+    "${DMK_ROOT}/dmk_core/features/oneshot.c"
+    "${DMK_ROOT}/dmk_core/features/combos.c"
+    "${DMK_ROOT}/dmk_core/features/macros.c"
+    "${DMK_ROOT}/dmk_core/features/midi.c"
+    # Hardware subsystems & drivers
+    "${DMK_ROOT}/dmk_core/drivers/matrix.c"
+    "${DMK_ROOT}/dmk_core/drivers/split.c"
+    "${DMK_ROOT}/dmk_core/drivers/encoder.c"
+    "${DMK_ROOT}/dmk_core/drivers/led.c"
+    "${DMK_ROOT}/dmk_core/drivers/rgb.c"
+    "${DMK_ROOT}/dmk_core/drivers/usb.c"
+    "${DMK_ROOT}/dmk_core/drivers/midi_jack.c"
 )
 
 # Function to build keyboard firmware
@@ -69,7 +76,7 @@ function(build_keyboard KEYBOARD_NAME)
 
     set(VIAL_SRC "")
     if(VIAL_ENABLED)
-        set(VIAL_SRC "${DMK_ROOT}/dmk_core/src/vial.c")
+        set(VIAL_SRC "${DMK_ROOT}/dmk_core/features/vial.c")
 
         # vial.json lives in the keyboard source dir so it's visible alongside config.h
         set(VIAL_JSON_FILE "${KEYBOARD_DIR}/vial.json")
@@ -88,8 +95,8 @@ function(build_keyboard KEYBOARD_NAME)
             endforeach()
         endif()
         execute_process(
-            COMMAND gcc -O2 -DMCU_${MCU} ${GEN_EXTRA_DEFS} -I${KEYBOARD_DIR} -I${DMK_ROOT}/dmk_core/include -I${PLATFORM_DIR} -I${DMK_ROOT}/tools/vial/cJSON
-                    ${DMK_ROOT}/tools/vial/generate_json.c ${DMK_ROOT}/tools/vial/cJSON/cJSON.c
+            COMMAND gcc -O2 -DMCU_${MCU} ${GEN_EXTRA_DEFS} -I${KEYBOARD_DIR} -I${DMK_ROOT}/dmk_core/include -I${PLATFORM_DIR} -I${DMK_ROOT}/lib/cJSON
+                    ${DMK_ROOT}/tools/vial/generate_json.c ${DMK_ROOT}/lib/cJSON/cJSON.c
                     -o ${CMAKE_BINARY_DIR}/generate_json
             RESULT_VARIABLE GEN_COMPILE_RESULT
         )

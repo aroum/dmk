@@ -27,6 +27,6 @@ if(NOT LINKER_SCRIPT)
     set(LINKER_SCRIPT "${USB_EXAMPLES_ROOT}/dep/gcc/MDR32F9Q2I.ld")
 endif()
 
-add_link_options(-Wl,-gc-sections,--print-memory-usage)
+add_link_options(-Wl,-gc-sections,--print-memory-usage --specs=nosys.specs)
 add_link_options(-mcpu=cortex-m3 -mthumb -mthumb-interwork)
 add_link_options(-T ${LINKER_SCRIPT})
