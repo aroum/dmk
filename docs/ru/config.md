@@ -469,7 +469,7 @@ const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_
 
 ---
 
-## Физические энкодеры (Rotary Encoders)
+## Энкодеры (Rotary Encoders)
 
 DMK поддерживает аппаратный опрос квадратурных поворотных энкодеров (с 2-битным кодом Грея), поддержку слоёв и настройку в реальном времени через **Vial GUI**.
 

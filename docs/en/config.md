@@ -466,7 +466,7 @@ This initializes a secondary HID interface on the device configured as a composi
 
 ---
 
-## Physical Rotary Encoders
+## Rotary Encoders
 
 DMK supports hardware quadrature rotary encoders (using 2-bit Gray code transition decoding), multi-layer keymaps, and real-time GUI configuration through **Vial GUI**.
 
