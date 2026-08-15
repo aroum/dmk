@@ -1,6 +1,8 @@
 // FreeRTOS includes
 #include "FreeRTOS.h" /* Must come first. */
 #include "task.h"     /* RTOS task related API prototypes. */
+#include <stdbool.h>
+#include <stdint.h>
 
 void vApplicationMallocFailedHook(void) {
     /* The malloc failed hook is enabled by setting
@@ -32,4 +34,26 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
 void vApplicationIdleHook(void) {
     for (;;)
         ;
+}
+
+// Default weak implementations for module hooks
+__attribute__((weak)) void hook_early_init(void) {}
+
+__attribute__((weak)) void hook_layer_change(uint8_t active_layer) {
+    (void)active_layer;
+}
+
+__attribute__((weak)) void hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
+    (void)row;
+    (void)col;
+    (void)pressed;
+}
+
+__attribute__((weak)) void hook_key_sent(uint16_t keycode, bool pressed) {
+    (void)keycode;
+    (void)pressed;
+}
+
+__attribute__((weak)) void hook_hid_led_change(uint8_t led_mask) {
+    (void)led_mask;
 }

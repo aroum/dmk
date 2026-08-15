@@ -11,6 +11,7 @@
 // Core modules
 #include "combos.h"
 #include "hold_tap.h"
+#include "hooks.h"
 #include "keyboard.h"
 #include "layers.h"
 #include "macros.h"
@@ -52,6 +53,7 @@ static uint32_t pressed_keycodes[NUM_ROWS][NUM_COLS];
 void keyboard_send_key(uint16_t keycode, bool pressed) {
     key_event_t event = {keycode, pressed};
     xQueueSend(usb_queue, &event, 0);
+    hook_key_sent(keycode, pressed);
 }
 
 /**
@@ -300,6 +302,9 @@ void keyboard_check(void) {
             }
             hal_gpio_put(LED_ACTIVITY_PIN, active_keys_count > 0);
 #endif
+
+            // Notify user modules of matrix events
+            hook_matrix_change(row, col, pressed);
 
             now = xTaskGetTickCount();
 

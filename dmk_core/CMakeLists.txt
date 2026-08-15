@@ -8,7 +8,8 @@ set(DMK_COMMON_INC
     "${PLATFORM_DIR}"
 )
 
-set(DMK_CORE_SRC
+# Base core source files (matrix.c will be conditionally included based on CUSTOM_MATRIX)
+set(DMK_CORE_BASE_SRC
     # Core orchestration
     "${DMK_ROOT}/dmk_core/core/main.c"
     "${DMK_ROOT}/dmk_core/core/keyboard.c"
@@ -21,7 +22,6 @@ set(DMK_CORE_SRC
     "${DMK_ROOT}/dmk_core/features/macros.c"
     "${DMK_ROOT}/dmk_core/features/midi.c"
     # Hardware subsystems & drivers
-    "${DMK_ROOT}/dmk_core/drivers/matrix.c"
     "${DMK_ROOT}/dmk_core/drivers/split.c"
     "${DMK_ROOT}/dmk_core/drivers/encoder.c"
     "${DMK_ROOT}/dmk_core/drivers/led.c"
@@ -32,11 +32,20 @@ set(DMK_CORE_SRC
 
 # Function to build keyboard firmware
 function(build_keyboard KEYBOARD_NAME)
-    set(KEYBOARD_DIR "${DMK_ROOT}/keyboards/${KEYBOARD_NAME}")
+    # Resolve keyboard directory (supports in-tree names or custom external directories)
+    if(KEYBOARD_DIR AND EXISTS "${KEYBOARD_DIR}")
+        set(ACTUAL_KEYBOARD_DIR "${KEYBOARD_DIR}")
+        get_filename_component(KBD_BASE "${KEYBOARD_DIR}" NAME)
+    elseif(EXISTS "${KEYBOARD_NAME}")
+        get_filename_component(ACTUAL_KEYBOARD_DIR "${KEYBOARD_NAME}" ABSOLUTE)
+        get_filename_component(KBD_BASE "${ACTUAL_KEYBOARD_DIR}" NAME)
+    else()
+        set(ACTUAL_KEYBOARD_DIR "${DMK_ROOT}/keyboards/${KEYBOARD_NAME}")
+        set(KBD_BASE "${KEYBOARD_NAME}")
+    endif()
     
-    if(NOT EXISTS "${KEYBOARD_DIR}")
-        message(WARNING "Keyboard ${KEYBOARD_NAME} not found in ${KEYBOARD_DIR}")
-        return()
+    if(NOT EXISTS "${ACTUAL_KEYBOARD_DIR}")
+        message(FATAL_ERROR "Keyboard configuration not found in ${ACTUAL_KEYBOARD_DIR}")
     endif()
     
     set(SUFFIX "")
@@ -53,24 +62,26 @@ function(build_keyboard KEYBOARD_NAME)
             endif()
         endif()
     endif()
-    set(TARGET_NAME "dmk_${KEYBOARD_NAME}_${MCU}${SUFFIX}")
+    set(TARGET_NAME "dmk_${KBD_BASE}_${MCU}${SUFFIX}")
     
     add_executable(${TARGET_NAME})
     
     target_include_directories(${TARGET_NAME} PRIVATE
-        "${KEYBOARD_DIR}"
+        "${ACTUAL_KEYBOARD_DIR}"
         ${DMK_COMMON_INC}
         ${PLATFORM_INC}
     )
     
-    # Enable VIAL if it is defined in the CMake cache or in the keyboard's config.h
+    # Check for VIAL and CUSTOM_MATRIX configurations
     set(VIAL_ENABLED ${VIAL})
-    set(VIAL_FROM_CONFIG OFF)
-    if(EXISTS "${KEYBOARD_DIR}/config.h")
-        file(READ "${KEYBOARD_DIR}/config.h" CONFIG_CONTENT)
+    set(CUSTOM_MATRIX_ENABLED ${CUSTOM_MATRIX})
+    if(EXISTS "${ACTUAL_KEYBOARD_DIR}/config.h")
+        file(READ "${ACTUAL_KEYBOARD_DIR}/config.h" CONFIG_CONTENT)
         if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIAL([ \t\r\n]|$)")
             set(VIAL_ENABLED ON)
-            set(VIAL_FROM_CONFIG ON)
+        endif()
+        if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+CUSTOM_MATRIX([ \t\r\n]|$)")
+            set(CUSTOM_MATRIX_ENABLED ON)
         endif()
     endif()
 
@@ -79,11 +90,11 @@ function(build_keyboard KEYBOARD_NAME)
         set(VIAL_SRC "${DMK_ROOT}/dmk_core/features/vial.c")
 
         # vial.json lives in the keyboard source dir so it's visible alongside config.h
-        set(VIAL_JSON_FILE "${KEYBOARD_DIR}/vial.json")
-        set(VIAL_GEN_H_FILE "${KEYBOARD_DIR}/vial_generated.h")
+        set(VIAL_JSON_FILE "${ACTUAL_KEYBOARD_DIR}/vial.json")
+        set(VIAL_GEN_H_FILE "${ACTUAL_KEYBOARD_DIR}/vial_generated.h")
 
         # Regenerate vial.json if it doesn't exist or if config.h has changed
-        message(STATUS "Generating vial.json for ${KEYBOARD_NAME} in ${KEYBOARD_DIR}...")
+        message(STATUS "Generating vial.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}...")
         set(GEN_EXTRA_DEFS "")
         if(DEFINE)
             string(REPLACE "," ";" DEFINE_LIST "${DEFINE}")
@@ -95,21 +106,11 @@ function(build_keyboard KEYBOARD_NAME)
             endforeach()
         endif()
         execute_process(
-            COMMAND gcc -O2 -DMCU_${MCU} ${GEN_EXTRA_DEFS} -I${KEYBOARD_DIR} -I${DMK_ROOT}/dmk_core/include -I${PLATFORM_DIR} -I${DMK_ROOT}/lib/cJSON
-                    ${DMK_ROOT}/tools/vial/generate_json.c ${DMK_ROOT}/lib/cJSON/cJSON.c
-                    -o ${CMAKE_BINARY_DIR}/generate_json
-            RESULT_VARIABLE GEN_COMPILE_RESULT
-        )
-        if(NOT GEN_COMPILE_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to compile host vial.json generator")
-        endif()
-
-        execute_process(
-            COMMAND ${CMAKE_BINARY_DIR}/generate_json "${VIAL_JSON_FILE}"
+            COMMAND uv run python3 "${DMK_ROOT}/tools/vial/generate_json.py" "${ACTUAL_KEYBOARD_DIR}/config.h" "${VIAL_JSON_FILE}" ${GEN_EXTRA_DEFS}
             RESULT_VARIABLE GEN_EXEC_RESULT
         )
         if(NOT GEN_EXEC_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to execute host vial.json generator")
+            message(FATAL_ERROR "Failed to execute vial.json generator")
         endif()
 
         if(EXISTS "${VIAL_JSON_FILE}")
@@ -117,11 +118,17 @@ function(build_keyboard KEYBOARD_NAME)
                 OUTPUT "${VIAL_GEN_H_FILE}"
                 COMMAND uv run python3 "${DMK_ROOT}/tools/vial/compress.py" "${VIAL_JSON_FILE}" "${VIAL_GEN_H_FILE}"
                 DEPENDS "${VIAL_JSON_FILE}" "${DMK_ROOT}/tools/vial/compress.py"
-                COMMENT "Compressing vial.json for ${KEYBOARD_NAME}"
+                COMMENT "Compressing vial.json for ${KBD_BASE}"
             )
             set_source_files_properties("${VIAL_SRC}" PROPERTIES OBJECT_DEPENDS "${VIAL_GEN_H_FILE}")
             target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
         endif()
+    endif()
+
+    # Core source list
+    set(DMK_CORE_SRC ${DMK_CORE_BASE_SRC})
+    if(NOT CUSTOM_MATRIX_ENABLED)
+        list(APPEND DMK_CORE_SRC "${DMK_ROOT}/dmk_core/drivers/matrix.c")
     endif()
 
     target_sources(${TARGET_NAME} PRIVATE
@@ -130,12 +137,35 @@ function(build_keyboard KEYBOARD_NAME)
         ${VIAL_SRC}
     )
     
+    # Load external modules
+    if(DMK_MODULES)
+        foreach(MODULE_PATH ${DMK_MODULES})
+            get_filename_component(ABS_MODULE_PATH "${MODULE_PATH}" ABSOLUTE)
+            if(EXISTS "${ABS_MODULE_PATH}")
+                message(STATUS "Loading external module: ${ABS_MODULE_PATH}")
+                target_include_directories(${TARGET_NAME} PRIVATE "${ABS_MODULE_PATH}")
+                if(EXISTS "${ABS_MODULE_PATH}/include")
+                    target_include_directories(${TARGET_NAME} PRIVATE "${ABS_MODULE_PATH}/include")
+                endif()
+                if(EXISTS "${ABS_MODULE_PATH}/module.cmake")
+                    include("${ABS_MODULE_PATH}/module.cmake")
+                endif()
+            else()
+                message(FATAL_ERROR "External module directory not found: ${MODULE_PATH}")
+            endif()
+        endforeach()
+    endif()
+    
     # Note: Keyboard configuration and keymaps are fully defined in config.h
     
     target_link_libraries(${TARGET_NAME} PRIVATE ${PLATFORM_LIBS})
     
     # Add compile definitions
     target_compile_definitions(${TARGET_NAME} PRIVATE "MCU_${MCU}")
+
+    if(CUSTOM_MATRIX_ENABLED)
+        target_compile_definitions(${TARGET_NAME} PRIVATE "CUSTOM_MATRIX")
+    endif()
 
     if(DEFINE)
         string(REPLACE "," ";" DEFINE_LIST "${DEFINE}")

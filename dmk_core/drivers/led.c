@@ -2,6 +2,7 @@
 #include "FreeRTOS.h"
 #include "config.h"
 #include "hal_gpio.h"
+#include "hooks.h"
 #include "queue.h"
 #include "task.h"
 
@@ -158,4 +159,5 @@ void led_set_hid_state(uint8_t state) {
     }
 #endif
 #endif
+    hook_hid_led_change(state);
 }

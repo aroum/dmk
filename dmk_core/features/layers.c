@@ -1,5 +1,6 @@
 #include "layers.h"
 #include "FreeRTOS.h"
+#include "hooks.h"
 #include "keys.h"
 #include "macros.h"
 #include "queue.h"
@@ -91,6 +92,7 @@ void layers_set_state(uint16_t state) {
     layer_state = state ? state : 1;
     layer = compute_active_layer(layer_state);
     macros_run_layer_triggers(layer);
+    hook_layer_change(layer);
 }
 
 /**
@@ -102,6 +104,7 @@ void layers_on(uint8_t layer_idx) {
         layer_state |= (1U << layer_idx);
         layer = compute_active_layer(layer_state);
         macros_run_layer_triggers(layer);
+        hook_layer_change(layer);
     }
 }
 
@@ -117,6 +120,7 @@ void layers_off(uint8_t layer_idx) {
         }
         layer = compute_active_layer(layer_state);
         macros_run_layer_triggers(layer);
+        hook_layer_change(layer);
     }
 }
 
@@ -132,6 +136,7 @@ void layers_toggle(uint8_t layer_idx) {
         }
         layer = compute_active_layer(layer_state);
         macros_run_layer_triggers(layer);
+        hook_layer_change(layer);
     }
 }
 

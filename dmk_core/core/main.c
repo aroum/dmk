@@ -9,6 +9,7 @@
 // Project includes
 #include "config.h"
 #include "hal_gpio.h"
+#include "hooks.h"
 #include "keyboard.h"
 #include "led.h"
 #include "matrix.h"
@@ -90,6 +91,9 @@ int main(void) {
     // Initialize WS2812 hardware drivers before scheduler starts
     rgb_init();
 #endif
+
+    // Invoke user modules / extension early initialization
+    hook_early_init();
 
     // Start FreeRTOS preemptive multitasking scheduler
     vTaskStartScheduler();

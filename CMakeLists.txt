@@ -7,6 +7,9 @@ set(KEYMAP "default" CACHE STRING "Keymap name")
 set(LAYOUT "DEFAULT" CACHE STRING "Physical layout name")
 set(MCU "milandr" CACHE STRING "Target MCU (milandr/rp2040/rp2350/nrf52840/baikal)")
 set(MEMORY "" CACHE STRING "Memory configuration (e.g., 2MB, 16MB)")
+set(DMK_MODULES "" CACHE STRING "Semicolon-separated list of external module directories")
+set(KEYBOARD_DIR "" CACHE PATH "Optional path to external keyboard directory containing config.h")
+option(CUSTOM_MATRIX "Enable custom matrix scanning driver" OFF)
 option(VIAL "Enable Vial support" OFF)
 
 # Add global compile definitions from DEFINE variable

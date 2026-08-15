@@ -42,6 +42,10 @@ void rgb_decrease_val(void);
 void rgb_increase_speed(void);
 void rgb_decrease_speed(void);
 
+// Low-level individual LED control
+void rgb_set_pixel_raw(uint32_t index, uint32_t color);
+void rgb_show(void);
+
 // Serialization for EEPROM storage
 void rgb_get_config(uint8_t *dest);
 void rgb_set_config(const uint8_t *src);

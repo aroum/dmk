@@ -180,6 +180,14 @@ static void set_led_color(uint32_t index, uint32_t color) {
 #endif
 }
 
+void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
+    set_led_color(index, color);
+}
+
+void rgb_show(void) {
+    ws2812_show();
+}
+
 /**
  * @brief Initialize power gating pin and WS2812 driver hardware (PIO/SPI/PWM/Timer).
  */
