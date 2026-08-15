@@ -38,6 +38,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Run Unit Tests
+        run: |
+          uv run python3 -m unittest discover tests
+
       - name: Build Firmware (${{ matrix.keyboard }} / ${{ matrix.mcu }})
         run: |
           ./build_all.sh -b ${{ matrix.keyboard }} --mcu ${{ matrix.mcu }} ${{ matrix.args }}

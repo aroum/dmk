@@ -23,7 +23,6 @@
   ],
   "excludes": [
     "examples/**",
-    "tools/vial/cJSON/**",
     "**/dep/**",
     "**/freertos/**",
     "**/Drivers/**",
