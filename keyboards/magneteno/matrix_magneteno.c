@@ -1,6 +1,7 @@
 #include "FreeRTOS.h"
 #include "config.h"
 #include "hal_gpio.h"
+#include "hall_calibration.h"
 #include "matrix.h"
 #include "queue.h"
 #include "task.h"
@@ -75,6 +76,9 @@ static void magneteno_matrix_init(void) {
     hal_gpio_init(DIRECT_KEY10_PIN);
     hal_gpio_set_dir(DIRECT_KEY10_PIN, false);
 #endif
+
+    // 3. Initialize Hall Calibration and Rapid Trigger engine
+    hall_calibration_init(NUM_KEYS);
 }
 
 /**
@@ -87,7 +91,7 @@ static inline uint16_t read_adc_input(uint8_t adc_channel) {
 #elif defined(MCU_milandr)
     // Fallback simulation for non-RP2350 test builds
     (void)adc_channel;
-    return HALL_RELEASE_THRESHOLD - 100;
+    return HE_DEFAULT_REST_ADC;
 #else
     (void)adc_channel;
     return 0;
@@ -95,17 +99,11 @@ static inline uint16_t read_adc_input(uint8_t adc_channel) {
 }
 
 /**
- * @brief Process single key press/release event with hysteresis
+ * @brief Process single key press/release event using Rapid Trigger calibration engine
  */
 static inline void update_key_state(uint8_t key_idx, uint16_t adc_val) {
     bool current = key_states[key_idx];
-    bool next = current;
-
-    if (!current && adc_val >= HALL_ACTUATION_THRESHOLD) {
-        next = true;
-    } else if (current && adc_val <= HALL_RELEASE_THRESHOLD) {
-        next = false;
-    }
+    bool next = hall_process_sample(key_idx, adc_val);
 
     if (next != current) {
         key_states[key_idx] = next;
