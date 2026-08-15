@@ -95,21 +95,11 @@ function(build_keyboard KEYBOARD_NAME)
             endforeach()
         endif()
         execute_process(
-            COMMAND gcc -O2 -DMCU_${MCU} ${GEN_EXTRA_DEFS} -I${KEYBOARD_DIR} -I${DMK_ROOT}/dmk_core/include -I${PLATFORM_DIR} -I${DMK_ROOT}/lib/cJSON
-                    ${DMK_ROOT}/tools/vial/generate_json.c ${DMK_ROOT}/lib/cJSON/cJSON.c
-                    -o ${CMAKE_BINARY_DIR}/generate_json
-            RESULT_VARIABLE GEN_COMPILE_RESULT
-        )
-        if(NOT GEN_COMPILE_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to compile host vial.json generator")
-        endif()
-
-        execute_process(
-            COMMAND ${CMAKE_BINARY_DIR}/generate_json "${VIAL_JSON_FILE}"
+            COMMAND uv run python3 "${DMK_ROOT}/tools/vial/generate_json.py" "${KEYBOARD_DIR}/config.h" "${VIAL_JSON_FILE}" ${GEN_EXTRA_DEFS}
             RESULT_VARIABLE GEN_EXEC_RESULT
         )
         if(NOT GEN_EXEC_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to execute host vial.json generator")
+            message(FATAL_ERROR "Failed to execute vial.json generator")
         endif()
 
         if(EXISTS "${VIAL_JSON_FILE}")
