@@ -82,6 +82,7 @@ set(PLATFORM_LIBS
     pico_stdlib
     hardware_exception
     hardware_clocks
+    hardware_adc
     pico_multicore
     tinyusb_device
     tinyusb_board

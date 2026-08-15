@@ -131,16 +131,24 @@ function(build_keyboard KEYBOARD_NAME)
         list(APPEND DMK_CORE_SRC "${DMK_ROOT}/dmk_core/drivers/matrix.c")
     endif()
 
+    # Collect any local keyboard-specific sources (e.g. matrix_magneteno.c)
+    file(GLOB KEYBOARD_LOCAL_SRC "${ACTUAL_KEYBOARD_DIR}/*.c")
+
     target_sources(${TARGET_NAME} PRIVATE
         ${DMK_CORE_SRC}
         ${PLATFORM_SRC}
         ${VIAL_SRC}
+        ${KEYBOARD_LOCAL_SRC}
     )
     
     # Load external modules
     if(DMK_MODULES)
         foreach(MODULE_PATH ${DMK_MODULES})
-            get_filename_component(ABS_MODULE_PATH "${MODULE_PATH}" ABSOLUTE)
+            if(IS_ABSOLUTE "${MODULE_PATH}")
+                set(ABS_MODULE_PATH "${MODULE_PATH}")
+            else()
+                set(ABS_MODULE_PATH "${DMK_ROOT}/${MODULE_PATH}")
+            endif()
             if(EXISTS "${ABS_MODULE_PATH}")
                 message(STATUS "Loading external module: ${ABS_MODULE_PATH}")
                 target_include_directories(${TARGET_NAME} PRIVATE "${ABS_MODULE_PATH}")
