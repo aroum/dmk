@@ -2,3 +2,6 @@
 	path = platforms/raspberrypi/pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
 	ignore = dirty
+[submodule "lib/u8g2"]
+	path = lib/u8g2
+	url = https://github.com/olikraus/u8g2.git
