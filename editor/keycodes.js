@@ -337,6 +337,11 @@ const DISPLAY_MAP = {
   // Custom Layer & System Keys
   K_LYRUP: "LYR↑",
   K_LYRDWN: "LYR↓",
+  K_BOOTLOADER: "BOOT",
+  K_BOOT: "BOOT",
+  QK_BOOTLOADER: "BOOT",
+  QK_BOOT: "BOOT",
+  BOOTLOADER: "BOOT",
 };
 
 // Полный список всех уникальных алиасов для палитры
@@ -561,7 +566,9 @@ const PALETTE_CODES = [
   "K_ACL1",
   "K_ACL2",
 
-  // Custom Layer
+  // Custom Layer & System
   "K_LYRUP",
   "K_LYRDWN",
+  "K_BOOTLOADER",
+  "K_BOOT",
 ];

@@ -113,6 +113,11 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
         return 0x7820 + (dmk_key - K_RGB_TOGG);
     }
 
+    // Map DMK bootloader keycode to standard QMK QK_BOOTLOADER (0x7C00)
+    if (dmk_key == K_BOOTLOADER) {
+        return 0x7C00;
+    }
+
     // Map DMK internal Macro keycodes (0xC0 - 0xDF) to QMK standard macro keycodes (0x7700 - 0x771F)
     if (dmk_key >= 0xC0 && dmk_key <= 0xDF) {
         return 0x7700 + (dmk_key - 0xC0);
@@ -246,6 +251,11 @@ uint32_t from_via_keycode(uint16_t via_key) {
     // Map QMK standard underglow keycodes (0x7820 - 0x782A) to DMK internal RGB keycodes
     if (via_key >= 0x7820 && via_key <= 0x782A) {
         return K_RGB_TOGG + (via_key - 0x7820);
+    }
+
+    // Map QMK bootloader keycode (0x7C00 or legacy 0x5C00) to DMK bootloader keycode
+    if (via_key == 0x7C00 || via_key == 0x5C00) {
+        return K_BOOTLOADER;
     }
 
     // Map QMK standard macro keycodes (0x7700 - 0x771F) to DMK internal Macro keycodes
@@ -792,6 +802,11 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
 #ifdef MCU_milandr
         vial_eeprom_save();
 #endif
+        break;
+    }
+
+    case VIA_BOOTLOADER_JUMP: {
+        bootloader_jump();
         break;
     }
 
