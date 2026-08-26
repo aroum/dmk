@@ -158,9 +158,27 @@ function(build_keyboard KEYBOARD_NAME)
                 if(EXISTS "${ABS_MODULE_PATH}/module.cmake")
                     include("${ABS_MODULE_PATH}/module.cmake")
                 endif()
+
+                # Automatically compile any .pio assembly files found in the module
+                if(COMMAND pico_generate_pio_header)
+                    file(GLOB_RECURSE MODULE_PIO_FILES "${ABS_MODULE_PATH}/*.pio")
+                    foreach(PIO_FILE ${MODULE_PIO_FILES})
+                        message(STATUS "Generating PIO header for module: ${PIO_FILE}")
+                        pico_generate_pio_header(${TARGET_NAME} "${PIO_FILE}")
+                    endforeach()
+                endif()
             else()
                 message(FATAL_ERROR "External module directory not found: ${MODULE_PATH}")
             endif()
+        endforeach()
+    endif()
+
+    # Automatically compile any .pio assembly files found in keyboard directory
+    if(COMMAND pico_generate_pio_header)
+        file(GLOB KEYBOARD_PIO_FILES "${ACTUAL_KEYBOARD_DIR}/*.pio")
+        foreach(PIO_FILE ${KEYBOARD_PIO_FILES})
+            message(STATUS "Generating PIO header for keyboard: ${PIO_FILE}")
+            pico_generate_pio_header(${TARGET_NAME} "${PIO_FILE}")
         endforeach()
     endif()
     
