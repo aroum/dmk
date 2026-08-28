@@ -23,6 +23,9 @@ void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
 // Core event processor for resolving actions
 void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed);
 
+// Software jump / reboot to bootloader mode across supported platforms
+void bootloader_jump(void);
+
 #ifdef __cplusplus
 }
 #endif

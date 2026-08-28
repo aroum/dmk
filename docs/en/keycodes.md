@@ -219,11 +219,12 @@ This document lists all the standard HID keycodes, consumer media keys, modifier
 
 ## Custom Layer & System Keys
 
-| Keycode Symbol       | Short Name / Alias | Description                                                      | Custom Code (Hex)     |
-| -------------------- | ------------------ | ---------------------------------------------------------------- | --------------------- |
-| -                    | `K_LYRUP`          | Switch to Next Layer (Layer Up)                                  | `0xA5`                |
-| -                    | `K_LYRDWN`         | Switch to Previous Layer (Layer Down)                            | `0xA6`                |
-| `HID_KEY_NONE`       | `K_NULL`           | Null / No action                                                 | `0x00`                |
-| `K_TRNS`             | `K_TRNS`           | Transparent key (behaves as transparent in layer stack)          | `0x00000000`          |
-| `L_0` ... `L_15`     | -                  | Raw Layer Momentary Switch (Layer 0 ... 15)                      | `0x0100` ... `0x010F` |
-| `K_FN0` ... `K_FN15` | -                  | Fn Keys (Bound to momentary layer switches `MO(0)` ... `MO(15)`) | Encoded Layer         |
+| Keycode Symbol       | Short Name / Alias                                               | Description                                                      | Custom Code (Hex)     |
+| -------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------- |
+| -                    | `K_LYRUP`                                                        | Switch to Next Layer (Layer Up)                                  | `0xA5`                |
+| -                    | `K_LYRDWN`                                                       | Switch to Previous Layer (Layer Down)                            | `0xA6`                |
+| `K_BOOTLOADER`       | `K_BOOT` / `QK_BOOTLOADER` / `QK_BOOT`                           | Reboot into Bootloader mode (DFU / UF2 / ROM)                    | `0xB2`                |
+| `HID_KEY_NONE`       | `K_NULL`                                                         | Null / No action                                                 | `0x00`                |
+| `K_TRNS`             | `K_TRNS`                                                         | Transparent key (behaves as transparent in layer stack)          | `0x00000000`          |
+| `L_0` ... `L_15`     | -                                                                | Raw Layer Momentary Switch (Layer 0 ... 15)                      | `0x0100` ... `0x010F` |
+| `K_FN0` ... `K_FN15` | -                                                                | Fn Keys (Bound to momentary layer switches `MO(0)` ... `MO(15)`) | Encoded Layer         |

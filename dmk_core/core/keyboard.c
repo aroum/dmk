@@ -32,11 +32,45 @@
 #include "vial.h"
 #endif
 
+#if defined(MCU_rp2040) || defined(MCU_rp2350)
+#include "pico/bootrom.h"
+#elif defined(MCU_nrf52840)
+#include "nrf.h"
+#include "nrf_nvic.h"
+#elif defined(MCU_milandr)
+#include "MDR32FxQI_rst_clk.h"
+#include "MDR32FxQI_bkp.h"
+#elif defined(MCU_baikal)
+#include "bsp/board_api.h"
+#endif
+
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
 #include "encoder.h"
 extern void encoder_update_timers(uint32_t delta_ms);
 extern void encoder_process_event(uint8_t encoder_idx, bool direction);
 #endif
+
+/**
+ * @brief Enter bootloader mode for firmware update.
+ */
+void bootloader_jump(void) {
+#if defined(MCU_rp2040) || defined(MCU_rp2350)
+    reset_usb_boot(0, 0);
+#elif defined(MCU_nrf52840)
+    // Magic value to enter Adafruit / UF2 bootloader mode upon system reset
+    NRF_POWER->GPREGRET = 0x57;
+    NVIC_SystemReset();
+#elif defined(MCU_milandr)
+    RST_CLK_PCLKcmd(RST_CLK_PCLK_BKP, ENABLE);
+    MDR_BKP->REG_00 = 0xDFDB007; // DFU bootloader request signature
+    NVIC_SystemReset();
+#elif defined(MCU_baikal)
+    board_reset_to_bootloader();
+#else
+    // Fallback: standard CMSIS system reset
+    NVIC_SystemReset();
+#endif
+}
 
 // FreeRTOS queues
 extern QueueHandle_t matrix_queue;
@@ -221,6 +255,9 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
     } else if (key == K_RGB_SPD) {
         if (pressed)
             rgb_decrease_speed();
+    } else if (key == K_BOOTLOADER) {
+        if (pressed)
+            bootloader_jump();
     } else if ((key & 0xFF000000) == DMK_CONSUMER) {
         uint16_t consumer_usage = (uint16_t)(key & 0xFFFF);
         keyboard_send_key((uint16_t)(consumer_usage | KEY_CONSUMER_FLAG), pressed);

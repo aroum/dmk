@@ -505,6 +505,7 @@
 #define K_RGB_VAD 0xAF
 #define K_RGB_SPI 0xB0
 #define K_RGB_SPD 0xB1
+#define K_BOOTLOADER 0xB2
 
 #define RGB_TOGG K_RGB_TOGG
 #define RGB_NEXT K_RGB_NEXT
@@ -517,6 +518,10 @@
 #define RGB_VAD K_RGB_VAD
 #define RGB_SPI K_RGB_SPI
 #define RGB_SPD K_RGB_SPD
+#define K_BOOT K_BOOTLOADER
+#define QK_BOOTLOADER K_BOOTLOADER
+#define QK_BOOT K_BOOTLOADER
+#define BOOTLOADER_KEY K_BOOTLOADER
 
 // Media Keys Aliases (Requires Consumer Report)
 #define K_AUDIO_MUTE DMK_CONSUMER_MUTE
