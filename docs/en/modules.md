@@ -1,3 +1,9 @@
+🌐 **Language / Язык:** [English](modules.md) | [Русский](../ru/modules.md)
+
+📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md) • [Modules](modules.md)
+
+---
+
 # External Modules & Extensions System in DMK
 
 DMK features a flexible external module system that allows adding custom hardware drivers, indicators, displays, and algorithms without modifying the core firmware codebase.
@@ -146,3 +152,107 @@ You can find reference implementations in the `tests/modules/` directory:
 | `tests/modules/hall_calibration` | Full Hall-effect analog calibration, continuous rapid trigger, and Flash storage. |
 | `tests/modules/sharp_memory_lcd` | Sharp MIP LCD dashboard with WPM calculator, layers, and USB status. |
 | `tests/modules/u8g2_display` | Generic OLED/LCD display engine powered by U8g2. |
+
+---
+
+## 9. External User Config Repositories & CI/CD (GitHub Actions)
+
+You can maintain a standalone user repository (e.g. `my-dmk-config`) containing multiple custom keyboard configs and modules, and compile them automatically using GitHub Actions.
+
+### Repository Layout
+```text
+my-dmk-config/
+├── .github/
+│   └── workflows/
+│       └── build.yml       # Automated multi-target firmware build
+├── keyboards/
+│   ├── corne/
+│   │   └── config.h
+│   ├── magneteno/
+│   │   ├── config.h
+│   │   └── matrix_magneteno.c
+│   └── custom_pad/
+│       └── config.h
+└── modules/                # Custom modules
+    └── custom_display/
+```
+
+### GitHub Actions Workflow Example (`.github/workflows/build.yml`)
+```yaml
+name: Build DMK Firmware
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.keyboard }} (${{ matrix.mcu }} ${{ matrix.side }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - keyboard: corne
+            mcu: rp2040
+            side: left
+            modules: ""
+          - keyboard: corne
+            mcu: rp2040
+            side: right
+            modules: ""
+          - keyboard: magneteno
+            mcu: rp2350
+            side: ""
+            modules: "tests/modules/hall_calibration;tests/modules/sharp_memory_lcd"
+
+    steps:
+      - name: Checkout User Config Repo
+        uses: actions/checkout@v4
+        with:
+          path: config
+
+      - name: Checkout DMK Firmware Core
+        uses: actions/checkout@v4
+        with:
+          repository: aroum/dmk
+          submodules: recursive
+          path: dmk
+
+      - name: Install Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Firmware
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ matrix.side }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS -DSIDE=${{ matrix.side }} -DDEFINE=${{ matrix.side }}"
+          fi
+          if [ -n "${{ matrix.modules }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS -DDMK_MODULES=${{ matrix.modules }}"
+          fi
+
+          cmake -B build -S dmk \
+            -DKEYBOARD_DIR="$GITHUB_WORKSPACE/config/keyboards/${{ matrix.keyboard }}" \
+            -DMCU=${{ matrix.mcu }} \
+            $EXTRA_ARGS
+
+          cmake --build build -j$(nproc)
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}${{ matrix.side && format('-{0}', matrix.side) || '' }}
+          path: |
+            build/dmk_*.bin
+            build/dmk_*.hex
+            build/dmk_*.uf2
+          if-no-files-found: error
+```

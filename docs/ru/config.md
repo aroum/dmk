@@ -1,6 +1,6 @@
 🌐 **Язык / Language:** [Русский](config.md) | [English](../en/config.md)
 
-📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md)
+📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md)
 
 ---
 
@@ -506,4 +506,117 @@ DMK поддерживает аппаратный опрос квадратур�
 
 - При вращении энкодера прошивка генерирует кратковременный импульс нажатия (20 мс) и автоматически отпускает клавишу.
 - Если включена поддержка `#define VIAL`, энкодеры можно переназначать прямо во вкладке *Encoders* графического интерфейса Vial.
+
+---
+
+## Внешний репозиторий конфигураций и GitHub Actions (User Config Repo)
+
+Вы можете хранить все свои клавиатуры, слои и кастомные модули в отдельном изолированном Git-репозитории (например, `my-dmk-config` по аналогии с `zmk-config`), а GitHub Actions будет автоматически собирать прошивки по матрице при каждом коммите.
+
+### 1. Рекомендуемая структура пользовательского репозитория
+```text
+my-dmk-config/
+├── .github/
+│   └── workflows/
+│       └── build.yml       # Экшен автоматической сборки
+├── keyboards/
+│   ├── corne/
+│   │   └── config.h        # Конфигурация Corne
+│   ├── magneteno/
+│   │   ├── config.h        # Конфигурация Magneteno
+│   │   └── matrix_magneteno.c
+│   └── my_macro_pad/
+│       └── config.h        # Конфигурация макропада
+└── modules/                # Ваши кастомные модули (опционально)
+    └── my_display/
+```
+
+### 2. Готовый шаблон GitHub Action Workflow (`.github/workflows/build.yml`)
+```yaml
+name: Build DMK Firmware
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.keyboard }} (${{ matrix.mcu }} ${{ matrix.side }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Corne Split RP2040
+          - keyboard: corne
+            mcu: rp2040
+            side: left
+            modules: ""
+          - keyboard: corne
+            mcu: rp2040
+            side: right
+            modules: ""
+
+          # Magneteno Hall-Effect RP2350 с модулями калибровки и экрана
+          - keyboard: magneteno
+            mcu: rp2350
+            side: ""
+            modules: "tests/modules/hall_calibration;tests/modules/sharp_memory_lcd"
+
+          # Кастомный макропад на Milandr
+          - keyboard: my_macro_pad
+            mcu: milandr
+            side: ""
+            modules: ""
+
+    steps:
+      - name: Checkout User Config Repo
+        uses: actions/checkout@v4
+        with:
+          path: config
+
+      - name: Checkout DMK Firmware Core
+        uses: actions/checkout@v4
+        with:
+          repository: aroum/dmk
+          submodules: recursive
+          path: dmk
+
+      - name: Install Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Firmware
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ matrix.side }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS -DSIDE=${{ matrix.side }} -DDEFINE=${{ matrix.side }}"
+          fi
+          if [ -n "${{ matrix.modules }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS -DDMK_MODULES=${{ matrix.modules }}"
+          fi
+
+          cmake -B build -S dmk \
+            -DKEYBOARD_DIR="$GITHUB_WORKSPACE/config/keyboards/${{ matrix.keyboard }}" \
+            -DMCU=${{ matrix.mcu }} \
+            $EXTRA_ARGS
+
+          cmake --build build -j$(nproc)
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}${{ matrix.side && format('-{0}', matrix.side) || '' }}
+          path: |
+            build/dmk_*.bin
+            build/dmk_*.hex
+            build/dmk_*.uf2
+          if-no-files-found: error
+```
 
