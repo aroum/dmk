@@ -47,7 +47,10 @@ int main(void) {
 
     BaseType_t status = pdPASS;
 
-#if defined(ROLE_CONTROLLER)
+#ifndef ROLE_CONTROLLER
+#define ROLE_CONTROLLER
+#endif
+
     // LED heartbeat & lock indicator task
     if (xTaskCreate(led_task, "led", TASK_STACK_LED, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
         status = pdFAIL;
@@ -64,19 +67,16 @@ int main(void) {
         status = pdFAIL;
     }
 #endif
-#endif
 
     // Matrix switch scanner task
     if (xTaskCreate(matrix_task, "matrix", TASK_STACK_MATRIX, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
         status = pdFAIL;
     }
 
-#if defined(ROLE_CONTROLLER)
     // USB HID / MIDI report pump task
     if (xTaskCreate(usb_task, "usb", TASK_STACK_USB, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
         status = pdFAIL;
     }
-#endif
 
     if (status != pdPASS) {
         while (1) {

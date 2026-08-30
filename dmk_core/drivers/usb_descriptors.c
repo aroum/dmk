@@ -80,10 +80,10 @@ tusb_desc_device_t const desc_device = {
 #endif
 
 #if defined(VIAL) && defined(MIDI_USB)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_MIDI_DESC_LEN)
 #define TOTAL_INTERFACES 4
 #elif defined(VIAL)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2 * TUD_HID_DESC_LEN)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
 #define TOTAL_INTERFACES 2
 #elif defined(MIDI_USB)
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
@@ -113,14 +113,15 @@ uint8_t const desc_configuration[] = {
                        10),                       // Polling interval in milliseconds
 
 #ifdef VIAL
-    // Interface 1: Vial Raw HID Descriptor
-    TUD_HID_DESCRIPTOR(1,                        // Interface number
-                       0,                        // String index
-                       HID_ITF_PROTOCOL_NONE,    // Protocol code
-                       sizeof(desc_vial_report), // HID report descriptor length
-                       0x82,                     // Endpoint address (IN endpoint)
-                       32,                       // Endpoint size (32 bytes)
-                       1),                       // Polling interval in milliseconds
+    // Interface 1: Vial Raw HID Descriptor (IN & OUT endpoints)
+    TUD_HID_INOUT_DESCRIPTOR(1,                        // Interface number
+                             0,                        // String index
+                             HID_ITF_PROTOCOL_NONE,    // Protocol code
+                             sizeof(desc_vial_report), // HID report descriptor length
+                             0x02,                     // Endpoint address (OUT endpoint)
+                             0x82,                     // Endpoint address (IN endpoint)
+                             32,                       // Endpoint size (32 bytes)
+                             1),                       // Polling interval in milliseconds
 #endif
 
 #ifdef MIDI_USB

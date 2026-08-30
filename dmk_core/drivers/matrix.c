@@ -192,9 +192,7 @@ void matrix_send_event(matrix_event_t *matrix_event) {
         split_send_event(matrix_event);
     }
 #else
-#if defined(ROLE_CONTROLLER)
     xQueueSend(matrix_queue, matrix_event, 0);
-#endif
 #endif
 }
 

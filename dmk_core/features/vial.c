@@ -981,6 +981,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
                 response[0] = 0;                  // Tap dance entries
                 response[1] = VIAL_COMBO_ENTRIES; // Combo entries
                 response[2] = 0;                  // Key override entries
+                response[3] = 0;                  // Alt repeat key entries
             } else if (op == 3) {                 // dynamic_vial_combo_get
                 uint8_t idx = request[3];
                 response[0] = (idx < VIAL_COMBO_ENTRIES) ? 0 : 1;
