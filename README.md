@@ -8,7 +8,7 @@
 
 A lightweight, modern, and highly modular keyboard firmware designed for cross-platform MCU compatibility.
 
-**Documentation:** [Build](docs/en/build.md) • [Config](docs/en/config.md) • [Keycodes](docs/en/keycodes.md) • [Keymap](docs/en/keymap.md) • [Pins](docs/en/pins.md) • [Vial](docs/en/vial.md)
+**Documentation:** [Build](docs/en/build.md) • [Config](docs/en/config.md) • [Keycodes](docs/en/keycodes.md) • [Keymap](docs/en/keymap.md) • [Pins](docs/en/pins.md) • [Vial](docs/en/vial.md) • [Modules](docs/en/modules.md) • [MIDI](docs/en/midi.md)
 
 ## Features
 
@@ -19,6 +19,7 @@ A lightweight, modern, and highly modular keyboard firmware designed for cross-p
   - **Raspberry Pi RP2040 / RP2350**
   - **Nordic Semiconductor nRF52840**
   - **Baikal** (BE-U1000)
+- **External Modules & Extensions**: Flexible peripheral and driver architecture via CMake `-DDMK_MODULES` and lifecycle hooks (`hooks.h`) without modifying core code.
 - **Split Keyboard Support**: Hardware and software (bit-bang/UART) split communication between halves.
 - **6KRO (6-Key Roll Over)**: Reliable USB HID reporting allowing up to 6 concurrent keypresses plus modifiers.
 - **FreeRTOS Integration**: Built on top of FreeRTOS for robust multi-tasking, reliable scanning, and clean event-driven queues.

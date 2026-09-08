@@ -1,73 +1,88 @@
 🌐 **Language / Язык:** [English](modules.md) | [Русский](../ru/modules.md)
 
-📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md) • [Modules](modules.md)
+📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md) • [Modules](modules.md) • [MIDI](midi.md)
 
 ---
 
 # External Modules & Extensions System in DMK
 
-DMK features a flexible external module system that allows adding custom hardware drivers, indicators, displays, and algorithms without modifying the core firmware codebase.
+DMK features a flexible external module system designed to allow adding custom hardware drivers, indicators, displays, sensors, and background tasks without modifying or polluting the core firmware codebase.
+
+This architecture enables:
+* **Zero Core Pollution**: Keep proprietary, experimental, or display-heavy code completely isolated from DMK core.
+* **Seamless Upgrades**: Easily pull upstream DMK updates without merge conflicts.
+* **Standalone User Config Repositories**: Maintain your personal keyboards, keymaps, and modules in a separate GitHub repository and build them with GitHub Actions.
 
 ---
 
-## 1. Module Structure
+## 1. Module Structure & Anatomy
 
-An external module is a directory containing a `module.cmake` file along with its source and header files.
+An external module is a self-contained directory containing a `module.cmake` manifest file along with its source code and header files.
 
-```
+```text
 my_custom_module/
 ├── module.cmake           # CMake build instructions for the module
-├── include/               # Public headers
+├── include/               # Public headers (automatically added to include path)
 │   └── my_module.h
-├── my_module.c            # Module implementation
-└── custom_driver.pio      # (Optional) Raspberry Pi Pico / RP2350 PIO program
+├── my_module.c            # Module source code
+├── custom_driver.pio      # (Optional) PIO assembly program for RP2040 / RP2350
+└── README.md              # (Optional) Module documentation
 ```
 
-### `module.cmake` Example
+### `module.cmake` Syntax
+Inside `module.cmake`, you use standard CMake target commands to attach sources, include directories, compiler definitions, or external libraries to `${TARGET_NAME}`:
+
 ```cmake
+# Add module source files
 target_sources(${TARGET_NAME} PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/my_module.c"
 )
 
+# Add private include directories (module root and include/ are added automatically by DMK)
 target_include_directories(${TARGET_NAME} PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/include"
 )
+
+# Optional: compile definitions or external libraries
+# target_compile_definitions(${TARGET_NAME} PRIVATE HAS_MY_MODULE=1)
+# target_link_libraries(${TARGET_NAME} PRIVATE hardware_adc)
 ```
 
 ---
 
 ## 2. Enabling Modules during Build
 
-Pass a semicolon-separated list of module directories to CMake using `-DDMK_MODULES`:
+Pass a semicolon-separated list of module directory paths to CMake using the `-DDMK_MODULES` flag:
 
 ```bash
-# Single module
-cmake -B build -DKEYBOARD=corne -DDMK_MODULES=/path/to/my_custom_module -DMCU=rp2040
+# Single module (relative or absolute path)
+cmake -B build -DKEYBOARD=corne -DDMK_MODULES=tests/modules/led_layer_indicator -DMCU=rp2040
 
-# Multiple modules
+# Multiple modules (enclosed in quotes and separated by semicolon)
 cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibration;tests/modules/sharp_memory_lcd" -DMCU=rp2350
 ```
 
-Both relative (to repository root) and absolute paths are supported.
+Both relative paths (resolved relative to repository root) and absolute paths (e.g. `/home/user/my_modules/my_module`) are supported.
 
 ---
 
-## 3. Core Lifecycle & Event Hooks
+## 3. Core Lifecycle & Event Hooks (Hooks API)
 
-Modules communicate with DMK via weak hooks declared in `dmk_core/include/hooks.h`. Modules can override any of these hooks without boilerplate:
+Modules communicate with DMK through non-blocking weak hooks declared in `dmk_core/include/hooks.h`. Modules simply implement any of these functions without requiring glue code or core edits:
 
 | Hook Function | When It Is Called | Typical Use Cases |
 | :--- | :--- | :--- |
-| `void hook_early_init(void)` | In `main.c` before `vTaskStartScheduler()` | Starting custom FreeRTOS background tasks (display tasks, sensor polling, etc.) |
-| `void hook_layer_change(uint8_t active_layer)` | On every active layer change (`layers.c`) | Layer LED / RGB indicators, OLED/LCD layer display |
-| `void hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | On every physical key matrix state change | Matrix debug LEDs, custom audio feedback |
-| `void hook_key_sent(uint16_t keycode, bool pressed)` | When USB HID keycode is queued to host | Real-time WPM calculation, keypress counters |
-| `void hook_hid_led_change(uint8_t led_mask)` | When host updates keyboard LEDs (`led.c`) | CapsLock (`0x02`), NumLock (`0x01`), ScrollLock (`0x04`) indicators |
+| `void hook_early_init(void)` | In `main.c` before `vTaskStartScheduler()` | Initializing custom GPIOs/buses, launching FreeRTOS background tasks |
+| `void hook_layer_change(uint8_t active_layer)` | On every active layer switch (`layers.c`) | Layer LED/RGB color switching, OLED/LCD status updates |
+| `void hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | On every physical switch state change (`matrix.c`) | Keypress debug LEDs, haptic clickers, audio buzzers |
+| `void hook_key_sent(uint16_t keycode, bool pressed)` | When USB HID keycode is sent to host (`keys.c`) | Rolling WPM speed calculation, key logging, heatmaps |
+| `void hook_hid_led_change(uint8_t led_mask)` | When host updates Lock LEDs (`led.c`) | CapsLock (`0x02`), NumLock (`0x01`), ScrollLock (`0x04`) indicators |
 
 ### Hook Implementation Example:
 ```c
 #include "hooks.h"
 #include "rgb.h"
+#include "hal_gpio.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -75,8 +90,8 @@ Modules communicate with DMK via weak hooks declared in `dmk_core/include/hooks.
 #define CAPS_LED_INDEX  1
 
 void hook_layer_change(uint8_t active_layer) {
-    uint32_t colors[] = { 0x00FF00, 0x0000FF, 0xFF00FF, 0xFFFF00 };
-    uint32_t color = (active_layer < 4) ? colors[active_layer] : 0xFFFFFF;
+    const uint32_t layer_colors[] = { 0x00FF00, 0x0000FF, 0xFF00FF, 0xFFFF00 };
+    uint32_t color = (active_layer < 4) ? layer_colors[active_layer] : 0xFFFFFF;
     rgb_set_pixel_raw(LAYER_LED_INDEX, color);
     rgb_show();
 }
@@ -90,32 +105,71 @@ void hook_hid_led_change(uint8_t led_mask) {
 
 ---
 
-## 4. Direct RGB Control API
+## 4. Hardware Abstraction & Core Services for Modules
 
-DMK provides low-level functions in `dmk_core/drivers/rgb.h` for direct module control over addressable RGB LEDs:
+Modules have full access to DMK core subsystems and FreeRTOS APIs:
 
-* `void rgb_set_pixel_raw(uint32_t index, uint32_t color_hex)` — Sets the color of a specific LED index in `0xRRGGBB` format.
-* `void rgb_show(void)` — Instantly transmits the RGB frame buffer to hardware.
+### 4.1. Cross-Platform GPIO HAL (`hal_gpio.h`)
+Unified GPIO operations across all supported MCUs (Milandr, RP2040, RP2350, nRF52840, Baikal):
+* `void hal_gpio_init(uint32_t pin)` — Initializes pin for GPIO operation.
+* `void hal_gpio_set_dir(uint32_t pin, bool out)` — Sets pin direction (`true` for output, `false` for input).
+* `void hal_gpio_put(uint32_t pin, bool value)` — Drives pin high (`true`) or low (`false`).
+* `bool hal_gpio_get(uint32_t pin)` — Reads current logical state of pin.
+
+### 4.2. FreeRTOS Tasks and Synchronization
+Modules can spawn dedicated RTOS worker tasks in `hook_early_init()`:
+```c
+static void my_display_task(void *pvParameters) {
+    (void)pvParameters;
+    while (1) {
+        // Perform non-blocking updates
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
+void hook_early_init(void) {
+    xTaskCreate(my_display_task, "display", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+}
+```
+
+### 4.3. Direct RGB LED Control (`rgb.h`)
+Low-level direct pixel manipulation without interfering with standard lighting animations:
+* `void rgb_set_pixel_raw(uint32_t index, uint32_t color_hex)` — Sets color in `0xRRGGBB` format.
+* `void rgb_show(void)` — Flushes buffer to hardware (WS2812 / SK6812).
+* `void rgb_set_color(uint8_t hue, uint8_t sat)` — Sets global color in HSV space.
+* `void rgb_set_mode(uint8_t mode)` — Selects lighting effect mode.
 
 ---
 
-## 5. Custom Matrix Drivers (Hall Effect, MUX, Trackballs)
+## 5. Custom Matrix Drivers (Hall Effect, Rapid Trigger, MUX, Trackballs)
 
-To replace the standard DMK matrix scanner with a custom implementation:
-1. Define `#define CUSTOM_MATRIX 1` in your keyboard's `config.h` or pass `-DCUSTOM_MATRIX=ON` to CMake.
-2. Provide your custom `matrix_task(void *pvParameters)` and `matrix_is_pressed(row, col)` functions.
-3. Queue events to `matrix_queue` using `matrix_event_t`:
+For non-standard keyboard matrices (e.g. analog Hall Effect switches, multiplexers, trackballs):
+1. Set `#define CUSTOM_MATRIX 1` in `config.h` or pass `-DCUSTOM_MATRIX=ON` to CMake. This excludes the standard `dmk_core/drivers/matrix.c` from the build.
+2. Implement custom `matrix_task(void *pvParameters)` and `bool matrix_is_pressed(uint8_t row, uint8_t col)`.
+3. Push key events into DMK's `matrix_queue` using `matrix_event_t`:
    ```c
-   matrix_event_t event = { .split = 0, .row = r, .col = c, .pressed = 1 };
-   xQueueSend(matrix_queue, &event, 0);
+   #include "matrix.h"
+   #include "queue.h"
+
+   extern QueueHandle_t matrix_queue;
+
+   void send_key_event(uint8_t row, uint8_t col, bool pressed) {
+       matrix_event_t event = {
+           .split = 0,
+           .row = row,
+           .col = col,
+           .pressed = pressed ? 1 : 0
+       };
+       xQueueSend(matrix_queue, &event, 0);
+   }
    ```
 
-### Hall Effect & Rapid Trigger Module (`hall_calibration`)
+### Hall Effect & Rapid Trigger Reference (`tests/modules/hall_calibration`)
 The module in `tests/modules/hall_calibration` provides:
-* **Analog Endpoints Calibration:** `rest_adc` (top deadzone) and `bottom_adc` (bottom-out).
-* **Configurable Actuation Point:** Dynamic 5%..95% travel distance.
-* **Continuous Rapid Trigger:** Instant key release upon upward stroke detection (e.g. 0.1 mm) and immediate repeat actuation.
-* **Non-volatile Flash Persistence:** Calibration profiles saved to dedicated Flash sector on RP2040/RP2350.
+* **Dynamic Endpoints Calibration:** Automated `rest_adc` (deadzone) and `bottom_adc` (bottom-out travel).
+* **Configurable Actuation Point:** Dynamic 5%..95% keystroke travel threshold.
+* **Continuous Rapid Trigger:** Key deactivates instantly on upward movement (e.g. 0.1 mm release travel) and reactivates immediately on downward stroke.
+* **Non-volatile Flash Persistence:** Calibration profiles saved directly to dedicated Flash memory on RP2040/RP2350.
 
 ---
 
@@ -124,135 +178,38 @@ The module in `tests/modules/hall_calibration` provides:
 DMK includes `lib/u8g2` as a submodule for full monochrome and grayscale display support.
 
 * **Sharp Memory LCD (`LS011B7DH03` 160x68):**
-  * Uses native `u8g2_Setup_ls011b7dh03_160x68_f`.
-  * Automatic `EXTCOMIN` 1 Hz polarity toggling task.
-  * Real-time rolling WPM (Words Per Minute) calculation with speedometer bar.
-  * Active layer name, CapsLock / NumLock badges, and USB status.
+  * Uses native driver `u8g2_Setup_ls011b7dh03_160x68_f`.
+  * Background FreeRTOS task handling 1 Hz `EXTCOMIN` toggle to prevent DC bias crystallization.
+  * Real-time rolling WPM (Words Per Minute) calculation with visual speedometer bar.
+  * Layer name badges, `[CAPS]`, `[NUM]`, and USB connection status indicators.
 
 ---
 
 ## 7. Programmable I/O (PIO) on Raspberry Pi Pico & RP2350
 
-Any `.pio` assembly files placed in a module directory or custom keyboard directory are **automatically compiled** by DMK using `pioasm` and the Pico SDK `pico_generate_pio_header()`.
+Any `.pio` assembly file located inside your module directory is **automatically detected and compiled** during CMake configuration using `pioasm` and Pico SDK's `pico_generate_pio_header()`.
 
-* Generated header files `*.pio.h` are immediately available for inclusion: `#include "my_driver.pio.h"`.
-* All Pico SDK PIO APIs from `hardware/pio.h` are linked and ready to use.
+* Generated header files `*.pio.h` can be immediately included: `#include "my_driver.pio.h"`.
+* Pico SDK hardware libraries (`hardware_pio`, `hardware_dma`, `hardware_timer`) are linked and ready to use.
 
 ---
 
-## 8. Built-in Module Reference Examples
+## 8. Built-in Reference Modules
 
-You can find reference implementations in the `tests/modules/` directory:
+The repository includes tested reference implementations in `tests/modules/`:
 
 | Module Path | Description |
 | :--- | :--- |
-| `tests/modules/led_layer_indicator` | Controls discrete GPIO LEDs based on active layer. |
-| `tests/modules/rgb_layer_indicator` | Dynamic RGB underglow/indicator color switching per layer. |
-| `tests/modules/debug_indicator` | Arbitrary routing of USB mount and keypress events to GPIO LEDs or RGB indices. |
-| `tests/modules/hall_calibration` | Full Hall-effect analog calibration, continuous rapid trigger, and Flash storage. |
-| `tests/modules/sharp_memory_lcd` | Sharp MIP LCD dashboard with WPM calculator, layers, and USB status. |
+| `tests/modules/led_layer_indicator` | Controls discrete GPIO LEDs according to active layer index. |
+| `tests/modules/rgb_layer_indicator` | Dynamic RGB underglow / indicator color switching per layer. |
+| `tests/modules/debug_indicator` | Routing USB mount and keypress events to GPIO LEDs or RGB indices. |
+| `tests/modules/hall_calibration` | Full Hall-effect analog calibration, continuous Rapid Trigger, and Flash storage. |
+| `tests/modules/sharp_memory_lcd` | Sharp MIP LCD dashboard with WPM calculator, layers, and status indicators. |
 | `tests/modules/u8g2_display` | Generic OLED/LCD display engine powered by U8g2. |
 
----
+## 9. Building Modules in Isolated Repositories & CI/CD
 
-## 9. External User Config Repositories & CI/CD (GitHub Actions)
+Custom external modules do not need to reside inside the DMK core source tree. You can place them in your standalone user configuration repository (e.g. inside a `modules/my_module` directory) and pass their paths to CMake using the `-DDMK_MODULES` flag.
 
-You can maintain a standalone user repository (e.g. `my-dmk-config`) containing multiple custom keyboard configs and modules, and compile them automatically using GitHub Actions.
+For complete repository layout instructions and a ready-to-use **GitHub Actions CI/CD** workflow matrix template, see the [Build Guide (build.md)](build.md#automated-build-in-custom-repository-github-actions).
 
-### Repository Layout
-```text
-my-dmk-config/
-├── .github/
-│   └── workflows/
-│       └── build.yml       # Automated multi-target firmware build
-├── keyboards/
-│   ├── corne/
-│   │   └── config.h
-│   ├── magneteno/
-│   │   ├── config.h
-│   │   └── matrix_magneteno.c
-│   └── custom_pad/
-│       └── config.h
-└── modules/                # Custom modules
-    └── custom_display/
-```
-
-### GitHub Actions Workflow Example (`.github/workflows/build.yml`)
-```yaml
-name: Build DMK Firmware
-
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-  workflow_dispatch:
-
-jobs:
-  build:
-    name: Build ${{ matrix.keyboard }} (${{ matrix.mcu }} ${{ matrix.side }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - keyboard: corne
-            mcu: rp2040
-            side: left
-            modules: ""
-          - keyboard: corne
-            mcu: rp2040
-            side: right
-            modules: ""
-          - keyboard: magneteno
-            mcu: rp2350
-            side: ""
-            modules: "tests/modules/hall_calibration;tests/modules/sharp_memory_lcd"
-
-    steps:
-      - name: Checkout User Config Repo
-        uses: actions/checkout@v4
-        with:
-          path: config
-
-      - name: Checkout DMK Firmware Core
-        uses: actions/checkout@v4
-        with:
-          repository: aroum/dmk
-          submodules: recursive
-          path: dmk
-
-      - name: Install Toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Build Firmware
-        run: |
-          EXTRA_ARGS=""
-          if [ -n "${{ matrix.side }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS -DSIDE=${{ matrix.side }} -DDEFINE=${{ matrix.side }}"
-          fi
-          if [ -n "${{ matrix.modules }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS -DDMK_MODULES=${{ matrix.modules }}"
-          fi
-
-          cmake -B build -S dmk \
-            -DKEYBOARD_DIR="$GITHUB_WORKSPACE/config/keyboards/${{ matrix.keyboard }}" \
-            -DMCU=${{ matrix.mcu }} \
-            $EXTRA_ARGS
-
-          cmake --build build -j$(nproc)
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}${{ matrix.side && format('-{0}', matrix.side) || '' }}
-          path: |
-            build/dmk_*.bin
-            build/dmk_*.hex
-            build/dmk_*.uf2
-          if-no-files-found: error
-```

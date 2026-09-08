@@ -1,3 +1,9 @@
+🌐 **Language / Язык:** [English](midi.md) | [Русский](../ru/midi.md)
+
+📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md) • [Modules](modules.md) • [MIDI](midi.md)
+
+---
+
 # MIDI Support
 
 The firmware supports sending MIDI messages (Notes, Control Change, Pitch Bend, Octave/Channel/Transpose controls) directly from keypresses and rotary encoders.

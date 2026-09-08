@@ -1,6 +1,6 @@
 🌐 **Язык / Language:** [Русский](build.md) | [English](../en/build.md)
 
-📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md)
+📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md)
 
 ---
 
@@ -211,26 +211,31 @@
 
 ## Автоматическая сборка в своем репозитории (GitHub Actions)
 
-Вы можете вынести конфигурацию своей клавиатуры в отдельный репозиторий и собирать прошивку автоматически при каждом `git push` через GitHub Actions.
+Вы можете вынести конфигурацию своих клавиатур и кастомные модули в отдельный репозиторий (например, `my-dmk-config`) и собирать прошивки автоматически через GitHub Actions при каждом коммите без форка ядра DMK.
 
 ### Структура пользовательского репозитория
-
-Ваш репозиторий конфигурации должен иметь следующую структуру файлов:
 
 ```text
 my-dmk-config/
 ├── .github/
 │   └── workflows/
-│       └── build.yml               # Workflow файл GitHub Actions
-└── keyboards/
-    └── my_keyboard/                # Имя вашей клавиатуры (передается в -b)
-        ├── config.h                # Конфигурация пинов матрицы, раскладки
-        └── vial.json               # (Опционально) Конфигурация для Vial
+│       └── build.yml       # Сценарий автоматической сборки GitHub Actions
+├── keyboards/
+│   ├── corne/              # Папка клавиатуры (содержит config.h)
+│   │   ├── config.h
+│   │   └── vial.json       # (Опционально)
+│   └── magneteno/
+│       ├── config.h
+│       └── matrix_magneteno.c
+└── modules/                # (Опционально) Пользовательские внешние модули
+    └── custom_display/
+        ├── module.cmake
+        └── custom_display.c
 ```
 
-### Шаблон файла `.github/workflows/build.yml`
+### Пример GitHub Actions Workflow (`.github/workflows/build.yml`)
 
-Шаблон готового `workflow`:
+Сборка использует флаги `-DKEYBOARD_DIR` (указывает напрямую на папку клавиатуры) и `-DDMK_MODULES` (список подключаемых модулей):
 
 ```yaml
 name: Build DMK Firmware
@@ -244,20 +249,37 @@ on:
 
 jobs:
   build:
+    name: Build ${{ matrix.keyboard }} (${{ matrix.mcu }} ${{ matrix.side }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - keyboard: corne
+            mcu: rp2040
+            side: left
+            modules: ""
+          - keyboard: corne
+            mcu: rp2040
+            side: right
+            modules: ""
+          - keyboard: magneteno
+            mcu: rp2350
+            side: ""
+            modules: "tests/modules/hall_calibration;tests/modules/sharp_memory_lcd"
 
     steps:
-      - name: Checkout User Configuration
+      - name: Checkout User Config Repo
         uses: actions/checkout@v4
         with:
-          path: user_config
+          path: config
 
       - name: Checkout DMK Firmware Core
         uses: actions/checkout@v4
         with:
           repository: aroum/dmk
-          path: dmk
           submodules: recursive
+          path: dmk
 
       - name: Install Toolchain and Dependencies
         run: |
@@ -269,20 +291,29 @@ jobs:
 
       - name: Build Firmware
         run: |
-          # Скопировать конфигурацию клавиатуры пользователя в дерево DMK
-          mkdir -p dmk/keyboards
-          cp -r user_config/keyboards/* dmk/keyboards/
+          EXTRA_ARGS=""
+          if [ -n "${{ matrix.side }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS -DSIDE=${{ matrix.side }} -DDEFINE=${{ matrix.side }}"
+          fi
+          if [ -n "${{ matrix.modules }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS -DDMK_MODULES=${{ matrix.modules }}"
+          fi
 
-          cd dmk
-          # Замените 'my_keyboard' и 'rp2040' на имя вашей клавиатуры и целевой MCU
-          ./build_all.sh -b my_keyboard --mcu rp2040 -c --uf2
+          cmake -B build -S dmk \
+            -DKEYBOARD_DIR="$GITHUB_WORKSPACE/config/keyboards/${{ matrix.keyboard }}" \
+            -DMCU=${{ matrix.mcu }} \
+            $EXTRA_ARGS
+
+          cmake --build build -j$(nproc)
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dmk-binaries
+          name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}${{ matrix.side && format('-{0}', matrix.side) || '' }}
           path: |
-            dmk/build/dmk_*
+            build/dmk_*.bin
+            build/dmk_*.hex
+            build/dmk_*.uf2
           if-no-files-found: error
 ```
 

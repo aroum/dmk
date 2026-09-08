@@ -1,6 +1,6 @@
-🌐 **Language / Язык:** [Русский](vial.md) | [English](../en/vial.md)
+🌐 **Язык / Language:** [Русский](vial.md) | [English](../en/vial.md)
 
-📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md)
+📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md)
 
 ---
 
