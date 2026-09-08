@@ -298,10 +298,23 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Проверка существования клавиатуры
-KEYBOARD_DIR="${SCRIPT_DIR}/keyboards/${KEYBOARD}"
-if [[ ! -d "$KEYBOARD_DIR" ]]; then
-    echo -e "${RED}${MSG_ERR_KBD_NOT_FOUND} ${KEYBOARD_DIR}${NC}"
+# Проверка существования клавиатуры (встроенной или по внешнему пути)
+if [[ -d "$KEYBOARD" ]]; then
+    KEYBOARD_DIR="$(cd "$KEYBOARD" && pwd)"
+    if [[ ! -f "$KEYBOARD_DIR/config.h" && -d "$KEYBOARD_DIR/keyboards" ]]; then
+        for sub in "$KEYBOARD_DIR"/keyboards/*; do
+            if [[ -d "$sub" && -f "$sub/config.h" ]]; then
+                KEYBOARD_DIR="$sub"
+                break
+            fi
+        done
+    fi
+    KBD_BASE="$(basename "$KEYBOARD_DIR")"
+elif [[ -d "${SCRIPT_DIR}/keyboards/${KEYBOARD}" ]]; then
+    KEYBOARD_DIR="${SCRIPT_DIR}/keyboards/${KEYBOARD}"
+    KBD_BASE="$KEYBOARD"
+else
+    echo -e "${RED}${MSG_ERR_KBD_NOT_FOUND} ${SCRIPT_DIR}/keyboards/${KEYBOARD}${NC}"
     echo "${MSG_AVAIL_KBD}"
     ls -1 "${SCRIPT_DIR}/keyboards/"
     exit 1
@@ -320,7 +333,7 @@ if [[ -n "$DEFINE" ]]; then
         [[ -n "$CLEAN_DEF" ]] && SUFFIX="_${CLEAN_DEF}"
     fi
 fi
-TARGET_NAME="dmk_${KEYBOARD}_${MCU}${SUFFIX}"
+TARGET_NAME="dmk_${KBD_BASE}_${MCU}${SUFFIX}"
 BUILD_DIR="${SCRIPT_DIR}/build"
 HRD_PROBE="${SCRIPT_DIR}/platforms/milandr/dep/probe/jlink4swd.cfg"
 
@@ -335,7 +348,8 @@ fi
 
 echo -e "${YELLOW}${MSG_INIT_CMAKE}${NC}"
 CMAKE_ARGS=(-G "Unix Makefiles" -S "$SCRIPT_DIR" -B "$BUILD_DIR")
-CMAKE_ARGS+=(-DKEYBOARD="${KEYBOARD}")
+CMAKE_ARGS+=(-DKEYBOARD="${KBD_BASE}")
+CMAKE_ARGS+=(-DKEYBOARD_DIR="${KEYBOARD_DIR}")
 CMAKE_ARGS+=(-DMCU="${MCU}")
 if [[ "$MCU" == "rp2350" ]]; then
     CMAKE_ARGS+=(-DPICO_PLATFORM=rp2350)
