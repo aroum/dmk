@@ -519,7 +519,51 @@
             color: var(--text);
             user-select: none;
             box-sizing: border-box;
-            transition: border-color 0.1s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .visual-key:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.35);
+        }
+
+        .visual-key.selected {
+            outline: 2px solid #ffffff !important;
+            border-color: var(--accent) !important;
+            background: var(--accent) !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent), 0 2px 10px rgba(0,0,0,0.4) !important;
+            z-index: 10 !important;
+            filter: brightness(1.15);
+        }
+
+        .visual-key.selected .coord,
+        .visual-key.selected .idx {
+            color: #ffffff !important;
+        }
+
+        .visual-key .coord {
+            font-size: 0.78rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: inherit;
+            line-height: 1.1;
+            margin-bottom: 2px;
+            pointer-events: none;
+        }
+
+        .visual-key .idx {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: inherit;
+            text-align: center;
+            line-height: 1.1;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            max-width: 95%;
+            overflow: hidden;
+            pointer-events: none;
         }
 
         /* Physical Keyboard Palette Styling */
@@ -1507,7 +1551,7 @@
         // Multi-MCU per-platform pin configurations for Universal mode derived from MCU_DEFAULTS
         let currentUniversalMcu = 'rp2040';
 
-        function setMcu(mcu) {
+        function setMcu(mcu, resetPins = true) {
             configState.mcu = mcu;
             ['rp2040', 'milandr', 'nrf52840', 'baikal', 'all'].forEach(k => {
                 const el = document.getElementById(`opt-mcu-${k}`);
@@ -1522,7 +1566,7 @@
 
             if (isAll) {
                 switchUniversalMcuTab(currentUniversalMcu);
-            } else {
+            } else if (resetPins) {
                 const defs = MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040;
                 document.getElementById('serialPinRP').value = defs.serial;
                 document.getElementById('rgbPin').value = defs.rgb;
@@ -1532,8 +1576,8 @@
                     document.getElementById('rowPins').value = defs.rows.join(', ');
                     document.getElementById('colPins').value = defs.cols.join(', ');
                 }
+                initMatrixGrid();
             }
-            initMatrixGrid();
         }
 
         function switchUniversalMcuTab(mcu) {
@@ -1878,20 +1922,29 @@
 
         function ensureActiveKeys(customPattern) {
             const { totalRows, totalCols } = getParsedPins();
-            if (!Array.isArray(configState.activeKeys) || configState.activeKeys.length !== totalRows) {
+            if (!Array.isArray(configState.activeKeys)) {
                 configState.activeKeys = [];
-                for (let r = 0; r < totalRows; r++) {
-                    configState.activeKeys[r] = [];
-                    for (let c = 0; c < totalCols; c++) {
-                        let isActive = true;
-                        if (customPattern && customPattern[r] && typeof customPattern[r][c] !== 'undefined') {
-                            isActive = (customPattern[r][c] === 1);
-                        }
-                        configState.activeKeys[r][c] = isActive;
+            }
+            while (configState.activeKeys.length < totalRows) {
+                configState.activeKeys.push([]);
+            }
+            if (configState.activeKeys.length > totalRows) {
+                configState.activeKeys.length = totalRows;
+            }
+            for (let r = 0; r < totalRows; r++) {
+                if (!Array.isArray(configState.activeKeys[r])) configState.activeKeys[r] = [];
+                while (configState.activeKeys[r].length < totalCols) {
+                    const c = configState.activeKeys[r].length;
+                    let isActive = true;
+                    if (customPattern && customPattern[r] && typeof customPattern[r][c] !== 'undefined') {
+                        isActive = (customPattern[r][c] === 1);
                     }
+                    configState.activeKeys[r].push(isActive);
                 }
-            } else if (customPattern) {
-                for (let r = 0; r < totalRows; r++) {
+                if (configState.activeKeys[r].length > totalCols) {
+                    configState.activeKeys[r].length = totalCols;
+                }
+                if (customPattern) {
                     for (let c = 0; c < totalCols; c++) {
                         if (customPattern[r] && typeof customPattern[r][c] !== 'undefined') {
                             configState.activeKeys[r][c] = (customPattern[r][c] === 1);
@@ -3341,7 +3394,7 @@ visualElements.push({
                 keyEl.style.width = `${el.w}px`;
                 keyEl.style.height = `${el.h}px`;
 
-                const fontSize = el.label.length > 8 ? '0.6rem' : '0.7rem';
+                const fontSize = el.label.length > 8 ? '0.65rem' : '0.78rem';
                 keyEl.innerHTML = `
                     <span class="coord">${el.coordText}</span>
                     <span class="idx" style="font-size: ${fontSize};">${el.label}</span>
@@ -3836,6 +3889,7 @@ visualElements.push({
 
         // Multi-selection state: array of { type: 'key'|'enc', id: number, dir?: 'ccw'|'cw', r?: number, c?: number }
         configState.selectedItems = [];
+        let lastVisualClickedItem = null;
 
         function isElementSelected(type, id, dir) {
             return configState.selectedItems.some(item => item.type === type && item.id === id && (type !== 'enc' || item.dir === dir));
@@ -3847,10 +3901,87 @@ visualElements.push({
                 return;
             }
 
-            const isShift = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
-            const existsIdx = configState.selectedItems.findIndex(item => item.type === type && item.id === id && (type !== 'enc' || item.dir === extra));
+            const isShift = evt && (evt.shiftKey);
+            const isCtrl = evt && (evt.ctrlKey || evt.metaKey) && !isShift;
 
-            if (isShift) {
+            if (isShift && lastVisualClickedItem && lastVisualClickedItem.type === 'key' && type === 'key' && extra) {
+                const pairs = getActiveLayoutPairs();
+                const anchor = lastVisualClickedItem;
+
+                const anchorGeom = (configState.keyGeometry && configState.keyGeometry[anchor.id]) || { x: 0, y: 0, w: 1, h: 1 };
+                const targetGeom = (configState.keyGeometry && configState.keyGeometry[id]) || { x: 0, y: 0, w: 1, h: 1 };
+
+                const anchorVx = anchor.c + (anchorGeom.x || 0);
+                const anchorVy = anchor.r + (anchorGeom.y || 0);
+                const targetVx = extra.c + (targetGeom.x || 0);
+                const targetVy = extra.r + (targetGeom.y || 0);
+
+                const minVx = Math.min(anchorVx, targetVx) - 0.1;
+                const maxVx = Math.max(anchorVx, targetVx) + 0.1;
+                const minVy = Math.min(anchorVy, targetVy) - 0.1;
+                const maxVy = Math.max(anchorVy, targetVy) + 0.1;
+
+                const minR = Math.min(anchor.r, extra.r);
+                const maxR = Math.max(anchor.r, extra.r);
+                const minC = Math.min(anchor.c, extra.c);
+                const maxC = Math.max(anchor.c, extra.c);
+                const minId = Math.min(anchor.id, id);
+                const maxId = Math.max(anchor.id, id);
+
+                const sameVisualRow = Math.abs(anchorVy - targetVy) < 0.35;
+                const sameMatrixRow = (anchor.r === extra.r);
+
+                let selectedKeys = [];
+
+                if (sameVisualRow) {
+                    // Select all keys on this visual row between anchor and target
+                    pairs.forEach((p, idx) => {
+                        const g = (configState.keyGeometry && configState.keyGeometry[idx]) || { x: 0, y: 0 };
+                        const vx = p.c + (g.x || 0);
+                        const vy = p.r + (g.y || 0);
+                        if (Math.abs(vy - anchorVy) < 0.35 && vx >= minVx && vx <= maxVx) {
+                            selectedKeys.push({ type: 'key', id: idx, r: p.r, c: p.c });
+                        }
+                    });
+                } else if (sameMatrixRow) {
+                    // Select all keys in this matrix row between minC and maxC
+                    pairs.forEach((p, idx) => {
+                        if (p.r === anchor.r && p.c >= minC && p.c <= maxC) {
+                            selectedKeys.push({ type: 'key', id: idx, r: p.r, c: p.c });
+                        }
+                    });
+                } else {
+                    // 2D bounding box (visual and matrix)
+                    pairs.forEach((p, idx) => {
+                        const g = (configState.keyGeometry && configState.keyGeometry[idx]) || { x: 0, y: 0 };
+                        const vx = p.c + (g.x || 0);
+                        const vy = p.r + (g.y || 0);
+                        const inVisualBox = (vx >= minVx && vx <= maxVx && vy >= minVy && vy <= maxVy);
+                        const inMatrixBox = (p.r >= minR && p.r <= maxR && p.c >= minC && p.c <= maxC);
+                        if (inVisualBox || inMatrixBox) {
+                            selectedKeys.push({ type: 'key', id: idx, r: p.r, c: p.c });
+                        }
+                    });
+                }
+
+                // Fallback to linear index if anchor or target is missing
+                if (!selectedKeys.some(k => k.id === id) || !selectedKeys.some(k => k.id === anchor.id)) {
+                    selectedKeys = [];
+                    pairs.forEach((p, idx) => {
+                        if (idx >= minId && idx <= maxId) {
+                            selectedKeys.push({ type: 'key', id: idx, r: p.r, c: p.c });
+                        }
+                    });
+                }
+
+                const seen = new Set();
+                configState.selectedItems = selectedKeys.filter(k => {
+                    if (seen.has(k.id)) return false;
+                    seen.add(k.id);
+                    return true;
+                });
+            } else if (isCtrl) {
+                const existsIdx = configState.selectedItems.findIndex(item => item.type === type && item.id === id && (type !== 'enc' || item.dir === extra));
                 if (existsIdx !== -1) {
                     configState.selectedItems.splice(existsIdx, 1);
                 } else {
@@ -3862,6 +3993,9 @@ visualElements.push({
                         c: type === 'key' ? extra.c : undefined
                     });
                 }
+                if (type === 'key' && extra) {
+                    lastVisualClickedItem = { type, id, r: extra.r, c: extra.c };
+                }
             } else {
                 configState.selectedItems = [{
                     type,
@@ -3870,6 +4004,11 @@ visualElements.push({
                     r: type === 'key' ? extra.r : undefined,
                     c: type === 'key' ? extra.c : undefined
                 }];
+                if (type === 'key' && extra) {
+                    lastVisualClickedItem = { type, id, r: extra.r, c: extra.c };
+                } else {
+                    lastVisualClickedItem = null;
+                }
             }
 
             // Sync legacy state
@@ -4557,31 +4696,64 @@ visualElements.push({
                 matrixMap.push(encRow);
             }
 
+            // Collect all active keys with their absolute visual coordinates
+            const allKeys = [];
             let keySeqIndex = 0;
-
             for (let r = 0; r < totalRows; r++) {
-                const rowArr = [];
                 for (let c = 0; c < totalCols; c++) {
                     if (configState.activeKeys[r] && configState.activeKeys[r][c]) {
                         const geom = (configState.keyGeometry && configState.keyGeometry[keySeqIndex]) ? configState.keyGeometry[keySeqIndex] : { w: 1, h: 1, x: 0, y: 0 };
-                        
-                        const props = {};
-                        if (geom.x !== 0) props.x = geom.x;
-                        if (geom.y !== 0) props.y = geom.y;
-                        if (geom.w > 1) props.w = geom.w;
-                        if (geom.h > 1) props.h = geom.h;
-
-                        if (Object.keys(props).length > 0) {
-                            rowArr.push(props);
-                        }
-                        rowArr.push(`${r},${c}`);
+                        const vX = Math.round((c + (geom.x || 0)) * 1000) / 1000;
+                        const vY = Math.round((r + (geom.y || 0)) * 1000) / 1000;
+                        allKeys.push({
+                            r, c,
+                            w: geom.w || 1,
+                            h: geom.h || 1,
+                            vX, vY
+                        });
                         keySeqIndex++;
                     }
                 }
-                if (rowArr.length > 0) {
-                    matrixMap.push(rowArr);
-                }
             }
+
+            // Group keys into visual rows by vY (KLE standard)
+            const yValues = [...new Set(allKeys.map(k => k.vY))].sort((a, b) => a - b);
+            let currentKLE_Y = 0;
+
+            yValues.forEach((yVal, rowIdx) => {
+                const rowArr = [];
+                const keysInRow = allKeys.filter(k => k.vY === yVal).sort((a, b) => a.vX - b.vX);
+
+                const defaultY = (rowIdx === 0) ? 0 : (currentKLE_Y + 1);
+                const deltaY = Math.round((yVal - defaultY) * 1000) / 1000;
+
+                let currentKLE_X = 0;
+
+                keysInRow.forEach((k, kIdx) => {
+                    const props = {};
+                    if (kIdx === 0 && deltaY !== 0) {
+                        props.y = deltaY;
+                    }
+
+                    const deltaX = Math.round((k.vX - currentKLE_X) * 1000) / 1000;
+                    if (deltaX !== 0) {
+                        props.x = deltaX;
+                    }
+
+                    if (k.w > 1) props.w = k.w;
+                    if (k.h > 1) props.h = k.h;
+
+                    if (Object.keys(props).length > 0) {
+                        rowArr.push(props);
+                    }
+                    rowArr.push(`${k.r},${k.c}`);
+
+                    currentKLE_X = k.vX + k.w;
+                });
+
+                currentKLE_Y = yVal;
+                matrixMap.push(rowArr);
+            });
 
             const vialObj = {
                 "name": kbName,
@@ -5040,9 +5212,14 @@ visualElements.push({
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(evt) {
-                const text = evt.target.result;
-                parseAndApplyConfigH(text, file.name);
-                e.target.value = '';
+                try {
+                    const text = evt.target.result;
+                    parseAndApplyConfigH(text, file.name);
+                } catch (err) {
+                    alert("Ошибка чтения config.h: " + err.message);
+                } finally {
+                    e.target.value = '';
+                }
             };
             reader.readAsText(file);
         }
@@ -5057,14 +5234,26 @@ visualElements.push({
                     parseAndApplyVialJson(json, file.name);
                 } catch (err) {
                     alert("Ошибка чтения JSON файла: " + err.message);
+                } finally {
+                    e.target.value = '';
                 }
-                e.target.value = '';
             };
             reader.readAsText(file);
         }
 
         function parseAndApplyConfigH(text, filename) {
             let loadedSomething = false;
+
+            // Capture existing geometry by coordinate (r, c) before any pin or mode changes
+            const oldGeomMap = {};
+            if (configState.keyGeometry && Array.isArray(configState.keyGeometry)) {
+                const oldPairs = getActiveLayoutPairs();
+                oldPairs.forEach((p, idx) => {
+                    if (configState.keyGeometry[idx]) {
+                        oldGeomMap[`${p.r},${p.c}`] = configState.keyGeometry[idx];
+                    }
+                });
+            }
 
             // 1. Vial definitions
             const vNameMatch = text.match(/#define\s+VIAL_KEYBOARD_NAME\s+"([^"]+)"/);
@@ -5085,11 +5274,11 @@ visualElements.push({
             const vPidMatch = text.match(/#define\s+VIAL_PRODUCT_ID\s+(0x[0-9a-fA-F]+)/);
             if (vPidMatch) document.getElementById('vialPid').value = vPidMatch[1];
 
-            // 2. MCU detection
-            if (text.includes('MCU_milandr')) setMcu('milandr');
-            else if (text.includes('MCU_nrf52840')) setMcu('nrf52840');
-            else if (text.includes('MCU_baikal')) setMcu('baikal');
-            else if (text.includes('MCU_rp2040')) setMcu('rp2040');
+            // 2. MCU detection (preserve custom pins / don't reset pins with default MCU pins)
+            if (text.includes('MCU_milandr')) setMcu('milandr', false);
+            else if (text.includes('MCU_nrf52840')) setMcu('nrf52840', false);
+            else if (text.includes('MCU_baikal')) setMcu('baikal', false);
+            else if (text.includes('MCU_rp2040')) setMcu('rp2040', false);
 
             // 3. Split vs Single
             const masterMatch = text.match(/#define\s+MASTER_SIDE\s+(LEFT|RIGHT|AUTO)/);
@@ -5108,6 +5297,9 @@ visualElements.push({
                 setMatrixType(mTypeMatch[1]);
                 loadedSomething = true;
             }
+            if (text.includes('#define CUSTOM_MATRIX')) {
+                loadedSomething = true;
+            }
 
             if (text.includes('#define MATRIX_ACTIVE_LOW')) {
                 document.getElementById('matrixPolarity').value = 'ACTIVE_LOW';
@@ -5119,12 +5311,12 @@ visualElements.push({
             if (debMatch) document.getElementById('debounceMs').value = parseInt(debMatch[1], 10);
 
             // 5. Pins
-            const rowPinsMatch = text.match(/#define\s+ROW_PINS\s+\{([^}]+)\}/);
+            const rowPinsMatch = text.match(/#define\s+(?:MATRIX_)?ROW_PINS\s+\{([^}]+)\}/);
             if (rowPinsMatch) {
                 document.getElementById('rowPins').value = rowPinsMatch[1].trim();
                 loadedSomething = true;
             }
-            const colPinsMatch = text.match(/#define\s+COL_PINS\s+\{([^}]+)\}/);
+            const colPinsMatch = text.match(/#define\s+(?:MATRIX_)?COL_PINS\s+\{([^}]+)\}/);
             if (colPinsMatch) {
                 document.getElementById('colPins').value = colPinsMatch[1].trim();
                 loadedSomething = true;
@@ -5172,21 +5364,71 @@ visualElements.push({
             if (layoutMatch) {
                 const coordPairs = layoutMatch[1].match(/\{\s*(\d+)\s*,\s*(\d+)\s*\}/g);
                 if (coordPairs && coordPairs.length > 0) {
-                    const { totalRows, totalCols } = getParsedPins();
-                    configState.activeKeys = [];
-                    for (let r = 0; r < totalRows; r++) {
-                        configState.activeKeys[r] = Array(totalCols).fill(false);
-                    }
+                    let reqRows = 0;
+                    let reqCols = 0;
+                    const numRowsMatch = text.match(/#define\s+NUM_ROWS\s+(\d+)/);
+                    const numColsMatch = text.match(/#define\s+NUM_COLS\s+(\d+)/);
+                    if (numRowsMatch) reqRows = parseInt(numRowsMatch[1], 10);
+                    if (numColsMatch) reqCols = parseInt(numColsMatch[1], 10);
+
+                    const parsedCoords = [];
                     coordPairs.forEach(cp => {
                         const m = cp.match(/\{\s*(\d+)\s*,\s*(\d+)\s*\}/);
                         if (m) {
                             const r = parseInt(m[1], 10);
                             const c = parseInt(m[2], 10);
-                            if (r < totalRows && c < totalCols) {
-                                configState.activeKeys[r][c] = true;
-                            }
+                            parsedCoords.push({ r, c });
+                            if (r + 1 > reqRows) reqRows = r + 1;
+                            if (c + 1 > reqCols) reqCols = c + 1;
                         }
                     });
+
+                    // If oldGeomMap wasn't populated earlier, capture it now
+                    if (Object.keys(oldGeomMap).length === 0 && configState.keyGeometry) {
+                        const oldPairs = getActiveLayoutPairs();
+                        oldPairs.forEach((p, idx) => {
+                            if (configState.keyGeometry[idx]) {
+                                oldGeomMap[`${p.r},${p.c}`] = configState.keyGeometry[idx];
+                            }
+                        });
+                    }
+
+                    // Update rowPins and colPins inputs according to reqRows and reqCols
+                    let rows = parsePins(document.getElementById('rowPins').value);
+                    if (reqRows > 0) {
+                        if (rows.length > reqRows) {
+                            rows = rows.slice(0, reqRows);
+                        } else {
+                            while (rows.length < reqRows) rows.push(`GPIO${rows.length}`);
+                        }
+                        document.getElementById('rowPins').value = rows.join(', ');
+                    }
+
+                    let cols = parsePins(document.getElementById('colPins').value);
+                    if (reqCols > 0) {
+                        if (cols.length > reqCols) {
+                            cols = cols.slice(0, reqCols);
+                        } else {
+                            while (cols.length < reqCols) cols.push(`GPIO${cols.length}`);
+                        }
+                        document.getElementById('colPins').value = cols.join(', ');
+                    }
+
+                    const { totalRows, totalCols } = getParsedPins();
+                    configState.activeKeys = [];
+                    for (let r = 0; r < totalRows; r++) {
+                        configState.activeKeys[r] = Array(totalCols).fill(false);
+                    }
+                    parsedCoords.forEach(p => {
+                        if (p.r < totalRows && p.c < totalCols) {
+                            configState.activeKeys[p.r][p.c] = true;
+                        }
+                    });
+
+                    // Restore or generate keyGeometry in new layout order
+                    const newPairs = getActiveLayoutPairs();
+                    configState.keyGeometry = newPairs.map(p => oldGeomMap[`${p.r},${p.c}`] || { w: 1, h: 1, x: 0, y: 0 });
+
                     loadedSomething = true;
                 }
             }
@@ -5236,6 +5478,8 @@ visualElements.push({
             }
 
             if (loadedSomething) {
+                initMatrixGrid();
+                renderVisualKeymap();
                 gotoStep(1);
                 applyLanguage();
                 alert(currentLanguage === 'en' ? `Successfully loaded config from ${filename}!` : `Файл ${filename} успешно загружен и применен в конфигураторе!`);
@@ -5276,18 +5520,23 @@ visualElements.push({
                 const activePairs = [];
                 let detectedEncCount = 0;
 
-                km.forEach(row => {
-                    let curX = 0;
-                    let curY = 0;
+                let currentKLE_Y = 0;
+                let currentKLE_X = 0;
+
+                km.forEach((row, rowIdx) => {
+                    if (rowIdx > 0) {
+                        currentKLE_Y += 1;
+                        currentKLE_X = 0;
+                    }
                     let curW = 1;
                     let curH = 1;
 
                     row.forEach(item => {
                         if (typeof item === 'object') {
-                            if (item.x) curX += item.x;
-                            if (item.y) curY += item.y;
-                            if (item.w) curW = item.w;
-                            if (item.h) curH = item.h;
+                            if (item.x !== undefined) currentKLE_X += item.x;
+                            if (item.y !== undefined) currentKLE_Y += item.y;
+                            if (item.w !== undefined) curW = item.w;
+                            if (item.h !== undefined) curH = item.h;
                         } else if (typeof item === 'string') {
                             if (item.includes('\ne') || item.endsWith('e')) {
                                 const clean = item.split('\n')[0];
@@ -5296,17 +5545,23 @@ visualElements.push({
                                     if (parts[0] + 1 > detectedEncCount) detectedEncCount = parts[0] + 1;
                                 }
                             } else {
-                                const parts = item.split(',').map(s => parseInt(s.trim(), 10));
+                                const parts = item.split('\n')[0].split(',').map(s => parseInt(s.trim(), 10));
                                 if (parts.length >= 2) {
                                     const r = parts[0];
                                     const c = parts[1];
                                     if (r >= maxRows) maxRows = r + 1;
                                     if (c >= maxCols) maxCols = c + 1;
-                                    activePairs.push({ r, c, w: curW, h: curH, x: curX, y: curY });
+
+                                    const vX = Math.round(currentKLE_X * 1000) / 1000;
+                                    const vY = Math.round(currentKLE_Y * 1000) / 1000;
+                                    // Delta relative to matrix cell (r, c)
+                                    const geomX = Math.round((vX - c) * 1000) / 1000;
+                                    const geomY = Math.round((vY - r) * 1000) / 1000;
+
+                                    activePairs.push({ r, c, w: curW, h: curH, x: geomX, y: geomY });
                                 }
                             }
-                            curX = 0;
-                            curY = 0;
+                            currentKLE_X += curW;
                             curW = 1;
                             curH = 1;
                         }
@@ -5319,28 +5574,36 @@ visualElements.push({
                     toggleEncoderOptions();
                 }
 
-                // Set row and col pins placeholder count if empty
+                // Set row and col pins placeholder count if needed
                 if (maxRows > 0 && maxCols > 0) {
-                    const rowPins = [];
-                    for (let r = 0; r < maxRows; r++) rowPins.push(`GPIO${r}`);
-                    const colPins = [];
-                    for (let c = 0; c < maxCols; c++) colPins.push(`GPIO${maxRows + c}`);
-                    document.getElementById('rowPins').value = rowPins.join(', ');
-                    document.getElementById('colPins').value = colPins.join(', ');
+                    const existingRows = parsePins(document.getElementById('rowPins').value);
+                    const existingCols = parsePins(document.getElementById('colPins').value);
+                    const rowPins = [...existingRows];
+                    while (rowPins.length < maxRows) rowPins.push(`GPIO${rowPins.length}`);
+                    const colPins = [...existingCols];
+                    while (colPins.length < maxCols) colPins.push(`GPIO${colPins.length}`);
+
+                    document.getElementById('rowPins').value = rowPins.slice(0, maxRows).join(', ');
+                    document.getElementById('colPins').value = colPins.slice(0, maxCols).join(', ');
 
                     configState.activeKeys = [];
                     for (let r = 0; r < maxRows; r++) {
                         configState.activeKeys[r] = Array(maxCols).fill(false);
                     }
 
-                    configState.keyGeometry = [];
+                    const geomByCoord = {};
                     activePairs.forEach(p => {
                         configState.activeKeys[p.r][p.c] = true;
-                        configState.keyGeometry.push({ w: p.w, h: p.h, x: p.x, y: p.y });
+                        geomByCoord[`${p.r},${p.c}`] = { w: p.w, h: p.h, x: p.x, y: p.y };
                     });
+
+                    const pairs = getActiveLayoutPairs();
+                    configState.keyGeometry = pairs.map(p => geomByCoord[`${p.r},${p.c}`] || { w: 1, h: 1, x: 0, y: 0 });
                 }
             }
 
+            initMatrixGrid();
+            renderVisualKeymap();
             gotoStep(1);
             applyLanguage();
             alert(currentLanguage === 'en' ? `Successfully loaded Vial layout from ${filename}!` : `Файл ${filename} успешно загружен! Геометрия и матрица Vial применены.`);
