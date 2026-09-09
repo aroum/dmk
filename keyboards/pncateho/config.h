@@ -43,27 +43,21 @@
 #if __has_include("keymap_external.h")
 #include "keymap_external.h"
 #else
+extern void keyboard_send_key(uint16_t keycode, bool pressed);
+
 // Chord action callbacks
 static inline void do_copy(void) {
-    key_event_t event1 = {K_LCTL, 1};
-    xQueueSend(usb_queue, &event1, 0);
-    key_event_t event2 = {K_C, 1};
-    xQueueSend(usb_queue, &event2, 0);
-    key_event_t event3 = {K_C, 0};
-    xQueueSend(usb_queue, &event3, 0);
-    key_event_t event4 = {K_LCTL, 0};
-    xQueueSend(usb_queue, &event4, 0);
+    keyboard_send_key(K_LCTL, true);
+    keyboard_send_key(K_C, true);
+    keyboard_send_key(K_C, false);
+    keyboard_send_key(K_LCTL, false);
 }
 
 static inline void do_paste(void) {
-    key_event_t event1 = {K_LCTL, 1};
-    xQueueSend(usb_queue, &event1, 0);
-    key_event_t event2 = {K_V, 1};
-    xQueueSend(usb_queue, &event2, 0);
-    key_event_t event3 = {K_V, 0};
-    xQueueSend(usb_queue, &event3, 0);
-    key_event_t event4 = {K_LCTL, 0};
-    xQueueSend(usb_queue, &event4, 0);
+    keyboard_send_key(K_LCTL, true);
+    keyboard_send_key(K_V, true);
+    keyboard_send_key(K_V, false);
+    keyboard_send_key(K_LCTL, false);
 }
 
 // clang-format off

@@ -3,7 +3,6 @@
 #include "config.h"
 #include "hal_gpio.h"
 #include "hooks.h"
-#include "queue.h"
 #include "task.h"
 
 #ifdef LED_PINS
@@ -35,7 +34,12 @@ static inline void Board_LED_Off(void) {
 }
 
 bool led_initialized = false;
-extern QueueHandle_t led_queue;
+volatile bool usb_mounted = false;
+
+static TickType_t blink_until = 0;
+static bool is_blinking = false;
+static TickType_t last_toggle_time = 0;
+static bool led_heartbeat_state = false;
 
 /**
  * @brief Initialize configured status and lock LED GPIO pins as outputs.
@@ -58,10 +62,12 @@ void led_init(void) {
  * @brief Trigger a non-blocking activity blink on the debug LED.
  */
 void led_blink(void) {
-    if (led_initialized) {
-        bool test = true;
-        xQueueSend(led_queue, &test, 0);
+    if (!led_initialized) {
+        return;
     }
+    Board_LED_On();
+    blink_until = xTaskGetTickCount() + pdMS_TO_TICKS(25);
+    is_blinking = true;
 }
 
 /**
@@ -78,53 +84,37 @@ void led_off(void) {
     Board_LED_Off();
 }
 
-// Global USB mount status flag (synced from USB stack)
-volatile bool usb_mounted = false;
-
 /**
- * @brief FreeRTOS task handling LED heartbeat blink and activity indicator pulses.
+ * @brief Periodic update called from keyboard loop to service debug blink & heartbeat.
  */
-void led_task(void *pvParameters) {
-    (void)pvParameters;
-    led_init();
+void led_update(TickType_t now) {
+#ifdef LED_PINS
+#ifdef LED_DEBUG
+    if (LED_DEBUG >= LED_COUNT) {
+        return;
+    }
 
-    TickType_t last_toggle_time = xTaskGetTickCount();
-    TickType_t blink_until = 0;
-    bool led_state = false;
-    bool is_blinking = false;
-
-    while (1) {
-        TickType_t now = xTaskGetTickCount();
-
-        // Handle non-blocking activity blink request
-        bool trigger;
-        if (pdTRUE == xQueueReceive(led_queue, &trigger, 0)) {
-            Board_LED_On();
-            blink_until = now + pdMS_TO_TICKS(25);
-            is_blinking = true;
-        }
-
-        if (is_blinking && now >= blink_until) {
+    if (is_blinking) {
+        if (now >= blink_until) {
             Board_LED_Off();
             is_blinking = false;
         }
-
-        // Heartbeat toggle: 250ms when USB mounted, 1000ms when disconnected
-        TickType_t interval = usb_mounted ? pdMS_TO_TICKS(250) : pdMS_TO_TICKS(1000);
-        if ((now - last_toggle_time) >= interval) {
-            last_toggle_time = now;
-            led_state = !led_state;
-#ifdef LED_PINS
-#ifdef LED_DEBUG
-            if (LED_DEBUG < LED_COUNT && !is_blinking) {
-                hal_gpio_put(led_pins[LED_DEBUG], led_state);
-            }
-#endif
-#endif
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(10));
+        return;
     }
+
+    // Heartbeat toggle: 250ms when USB mounted, 1000ms when disconnected
+    TickType_t interval = usb_mounted ? pdMS_TO_TICKS(250) : pdMS_TO_TICKS(1000);
+    if ((now - last_toggle_time) >= interval) {
+        last_toggle_time = now;
+        led_heartbeat_state = !led_heartbeat_state;
+        hal_gpio_put(led_pins[LED_DEBUG], led_heartbeat_state);
+    }
+#else
+    (void)now;
+#endif
+#else
+    (void)now;
+#endif
 }
 
 /**

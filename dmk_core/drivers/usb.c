@@ -34,9 +34,7 @@ void usb_init(void) {
     Board_USB_Init(true);
 #endif
 
-#ifdef EXTRAKEY_ENABLE
     current_report.ReportID = 1;
-#endif
     current_report.Modifier = 0;
     current_report.Reserved = 0;
     for (int i = 0; i < 6; i++) {
@@ -45,79 +43,73 @@ void usb_init(void) {
 }
 
 /**
- * @brief FreeRTOS task handling the USB event queue, updating HID reports, and transmitting to host.
+ * @brief Zero-Queue Fast Path: processes a key event, updates the active HID report, and transmits to host.
+ * @param keycode 16-bit USB HID / Consumer keycode.
+ * @param pressed True for press, false for release.
  */
-void usb_task(void *pvParameters) {
-    (void)pvParameters;
-    usb_init();
+void usb_process_key(uint16_t keycode, bool pressed) {
+    // Handle Consumer / Media keys (Volume, Play/Pause, Brightness, etc.)
+    if (keycode & KEY_CONSUMER_FLAG) {
+        uint16_t usage = keycode & ~KEY_CONSUMER_FLAG;
+        extern USB_Result USB_HID_SendConsumerReport(uint16_t usage);
+        USB_HID_SendConsumerReport(pressed ? usage : 0);
+        return;
+    }
 
-    while (1) {
-        key_event_t event;
-        if (pdTRUE == xQueueReceive(usb_queue, &event, portMAX_DELAY)) {
-            // Handle Consumer / Media keys (Volume, Play/Pause, Brightness, etc.)
-            if (event.keycode & KEY_CONSUMER_FLAG) {
-                uint16_t usage = event.keycode & ~KEY_CONSUMER_FLAG;
-                extern USB_Result USB_HID_SendConsumerReport(uint16_t usage);
-                USB_HID_SendConsumerReport(event.pressed ? usage : 0);
-                continue;
-            }
+    bool report_changed = false;
 
-            bool report_changed = false;
-
-            if (event.pressed) {
-                // Handle 8 standard HID modifier keys (0xE0..0xE7)
-                if (event.keycode >= 0xE0 && event.keycode <= 0xE7) {
-                    uint8_t mod_bit = 1 << (event.keycode - 0xE0);
-                    if (!(current_report.Modifier & mod_bit)) {
-                        current_report.Modifier |= mod_bit;
-                        report_changed = true;
-                    }
-                }
-                // Handle standard 6KRO keycodes
-                else if (event.keycode != 0) {
-                    bool found = false;
-                    for (int i = 0; i < 6; i++) {
-                        if (current_report.Keycodes[i] == event.keycode) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        for (int i = 0; i < 6; i++) {
-                            if (current_report.Keycodes[i] == 0) {
-                                current_report.Keycodes[i] = event.keycode;
-                                report_changed = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Handle modifier key release
-                if (event.keycode >= 0xE0 && event.keycode <= 0xE7) {
-                    uint8_t mod_bit = 1 << (event.keycode - 0xE0);
-                    if (current_report.Modifier & mod_bit) {
-                        current_report.Modifier &= ~mod_bit;
-                        report_changed = true;
-                    }
-                }
-                // Handle standard keycode release
-                else if (event.keycode != 0) {
-                    for (int i = 0; i < 6; i++) {
-                        if (current_report.Keycodes[i] == event.keycode) {
-                            current_report.Keycodes[i] = 0;
-                            report_changed = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Only send over USB if report payload actually changed (saves bus bandwidth)
-            if (report_changed) {
-                USB_HID_SendReport(&current_report);
+    if (pressed) {
+        // Handle 8 standard HID modifier keys (0xE0..0xE7)
+        if (keycode >= 0xE0 && keycode <= 0xE7) {
+            uint8_t mod_bit = 1 << (keycode - 0xE0);
+            if (!(current_report.Modifier & mod_bit)) {
+                current_report.Modifier |= mod_bit;
+                report_changed = true;
             }
         }
+        // Handle standard 6KRO keycodes
+        else if (keycode != 0) {
+            bool found = false;
+            for (int i = 0; i < 6; i++) {
+                if (current_report.Keycodes[i] == (uint8_t)keycode) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                for (int i = 0; i < 6; i++) {
+                    if (current_report.Keycodes[i] == 0) {
+                        current_report.Keycodes[i] = (uint8_t)keycode;
+                        report_changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+    } else {
+        // Handle modifier key release
+        if (keycode >= 0xE0 && keycode <= 0xE7) {
+            uint8_t mod_bit = 1 << (keycode - 0xE0);
+            if (current_report.Modifier & mod_bit) {
+                current_report.Modifier &= ~mod_bit;
+                report_changed = true;
+            }
+        }
+        // Handle standard keycode release
+        else if (keycode != 0) {
+            for (int i = 0; i < 6; i++) {
+                if (current_report.Keycodes[i] == (uint8_t)keycode) {
+                    current_report.Keycodes[i] = 0;
+                    report_changed = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Only send over USB if report payload actually changed (saves bus bandwidth)
+    if (report_changed) {
+        USB_HID_SendReport(&current_report);
     }
 }
 

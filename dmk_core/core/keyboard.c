@@ -16,6 +16,7 @@
 #include "layers.h"
 #include "macros.h"
 #include "midi.h"
+#include "mouse.h"
 #include "oneshot.h"
 
 // Project includes
@@ -74,19 +75,17 @@ void bootloader_jump(void) {
 
 // FreeRTOS queues
 extern QueueHandle_t matrix_queue;
-extern QueueHandle_t usb_queue;
 
 // Tracks the exact keycode resolved when key was pressed, ensuring correct release even if layers change
 static uint32_t pressed_keycodes[NUM_ROWS][NUM_COLS];
 
 /**
- * @brief Enqueue a single key event (press/release) to the USB transmission queue.
+ * @brief Dispatch a single key event (press/release) directly to the USB HID report engine (Zero-Queue Fast Path).
  * @param keycode 16-bit USB HID / Consumer keycode.
  * @param pressed True for keydown, false for keyup.
  */
 void keyboard_send_key(uint16_t keycode, bool pressed) {
-    key_event_t event = {keycode, pressed};
-    xQueueSend(usb_queue, &event, 0);
+    usb_process_key(keycode, pressed);
     hook_key_sent(keycode, pressed);
 }
 
@@ -128,6 +127,7 @@ void keyboard_init(void) {
     oneshot_init();
     combos_init();
     dmk_midi_init();
+    mouse_init();
     memset(pressed_keycodes, 0, sizeof(pressed_keycodes));
 
 #ifdef VIAL
@@ -211,7 +211,12 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
         return;
     }
 
-    // 9. Standard HID, Consumer Media, and Lighting Controls
+    // 9. Mouse keys (buttons, movement, wheel, acceleration)
+    if (mouse_process_key(key, pressed)) {
+        return;
+    }
+
+    // 10. Standard HID, Consumer Media, and Lighting Controls
     if (key == K_LYRUP) {
         if (pressed && (layers_get_active() + 1 < layers_get_count())) {
             layers_on(layers_get_active() + 1);
@@ -287,6 +292,12 @@ void keyboard_check(void) {
     if (combo_rem < next_deadline)
         next_deadline = combo_rem;
 
+    TickType_t mouse_rem = mouse_check_timeouts(now);
+    if (mouse_rem < next_deadline)
+        next_deadline = mouse_rem;
+
+    led_update(now);
+
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
     static TickType_t last_encoder_time = 0;
     if (last_encoder_time == 0)
@@ -340,8 +351,10 @@ void keyboard_check(void) {
             hal_gpio_put(LED_ACTIVITY_PIN, active_keys_count > 0);
 #endif
 
-            // Notify user modules of matrix events
-            hook_matrix_change(row, col, pressed);
+            // Notify user modules of matrix events (if hook returns true, event was consumed)
+            if (hook_matrix_change(row, col, pressed)) {
+                continue;
+            }
 
             now = xTaskGetTickCount();
 

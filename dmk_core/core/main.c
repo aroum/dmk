@@ -24,8 +24,6 @@
 
 // Global FreeRTOS inter-task communication queues
 QueueHandle_t matrix_queue;
-QueueHandle_t usb_queue;
-QueueHandle_t led_queue;
 
 /**
  * @brief Firmware entry point: initializes platform HAL, allocates queues, spawns tasks, and starts RTOS scheduler.
@@ -34,12 +32,16 @@ int main(void) {
     // Platform-specific low-level clock and system peripheral setup
     platform_init();
 
-    // Create FreeRTOS queues with optimized memory footprints
-    matrix_queue = xQueueCreate(QUEUE_DEF_SIZE, sizeof(matrix_event_t));
-    usb_queue = xQueueCreate(QUEUE_DEF_SIZE, sizeof(key_event_t));
-    led_queue = xQueueCreate(QUEUE_LED_SIZE, sizeof(bool));
+    // Initialize board indicator and lock LEDs
+    led_init();
 
-    if (matrix_queue == NULL || usb_queue == NULL || led_queue == NULL) {
+    // Initialize USB HID / MIDI hardware and endpoints
+    usb_init();
+
+    // Create FreeRTOS matrix event queue
+    matrix_queue = xQueueCreate(QUEUE_DEF_SIZE, sizeof(matrix_event_t));
+
+    if (matrix_queue == NULL) {
         while (1) {
             __NOP();
         }
@@ -50,11 +52,6 @@ int main(void) {
 #ifndef ROLE_CONTROLLER
 #define ROLE_CONTROLLER
 #endif
-
-    // LED heartbeat & lock indicator task
-    if (xTaskCreate(led_task, "led", TASK_STACK_LED, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
-        status = pdFAIL;
-    }
 
     // Keyboard state machine, layer stack, and tap engine task
     if (xTaskCreate(keyboard_task, "keyboard", TASK_STACK_KEYBOARD, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
@@ -70,11 +67,6 @@ int main(void) {
 
     // Matrix switch scanner task
     if (xTaskCreate(matrix_task, "matrix", TASK_STACK_MATRIX, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
-        status = pdFAIL;
-    }
-
-    // USB HID / MIDI report pump task
-    if (xTaskCreate(usb_task, "usb", TASK_STACK_USB, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
         status = pdFAIL;
     }
 

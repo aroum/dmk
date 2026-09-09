@@ -11,9 +11,14 @@ extern "C" {
 // Weak hooks for user modules and extensions
 void hook_early_init(void);
 void hook_layer_change(uint8_t active_layer);
-void hook_matrix_change(uint8_t row, uint8_t col, bool pressed);
+bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed);
 void hook_key_sent(uint16_t keycode, bool pressed);
 void hook_hid_led_change(uint8_t led_mask);
+
+// Mouse and trackball motion/scroll interception hooks
+bool hook_mouse_move(int8_t *dx, int8_t *dy);
+bool hook_mouse_scroll(int8_t *wheel, int8_t *pan);
+void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan);
 
 #ifdef __cplusplus
 }

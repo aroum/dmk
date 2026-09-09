@@ -1,10 +1,12 @@
 #ifndef _USB_H
 #define _USB_H
 
-#include "FreeRTOS.h"
-#include "queue.h"
-
+#include <stdbool.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define KEY_CONSUMER_FLAG 0x8000
 
@@ -13,9 +15,14 @@ typedef struct {
     uint8_t pressed;
 } key_event_t;
 
-extern QueueHandle_t usb_queue;
+// Initialize USB hardware and endpoints
+void usb_init(void);
 
-// USB HID output main task, to be executed by FreeRTOS scheduler
-void usb_task(void *pvParameters);
+// Zero-Queue Fast Path: updates HID report and transmits to host directly
+void usb_process_key(uint16_t keycode, bool pressed);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _USB_H

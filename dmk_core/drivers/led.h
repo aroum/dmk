@@ -1,21 +1,34 @@
+#ifndef LED_H
+#define LED_H
+
+#include <stdbool.h>
+#include <stdint.h>
 #include "FreeRTOS.h"
-#include "queue.h"
-#include "task.h" /* RTOS task related API prototypes. */
-#include "task_internal.h"
 
-extern QueueHandle_t led_queue;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// Led main task, to be executed by FreeRTOS scheduler periodically
-void led_task(void *pvParameters);
+// Initialize board LED GPIO pins
+void led_init(void);
+
+// Non-blocking periodic update for debug/heartbeat LED (called from keyboard loop)
+void led_update(TickType_t now);
 
 // Makes pi pico led blink
 void led_blink(void);
 
-// Makes pi pico led on
+// Turns debug LED on
 void led_on(void);
 
-// Makes pi pico led off
+// Turns debug LED off
 void led_off(void);
 
-// Set HID LED indicators state
+// Set host HID LED indicators state (Caps Lock, Num Lock, etc.)
 void led_set_hid_state(uint8_t state);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // LED_H

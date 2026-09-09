@@ -521,7 +521,6 @@
 #define K_BOOT K_BOOTLOADER
 #define QK_BOOTLOADER K_BOOTLOADER
 #define QK_BOOT K_BOOTLOADER
-#define BOOTLOADER_KEY K_BOOTLOADER
 
 // Media Keys Aliases (Requires Consumer Report)
 #define K_AUDIO_MUTE DMK_CONSUMER_MUTE
@@ -566,7 +565,7 @@
 #define K_WWW_FAVORITES DMK_CONSUMER_AC_BOOKMARKS
 #define K_WFAV DMK_CONSUMER_AC_BOOKMARKS
 
-/* Mousekeys (Virtual) - Stub for future implementation
+// Mousekeys (Virtual USB HID Mouse Emulation)
 #define HID_KEY_MOUSE_UP           0xF0
 #define HID_KEY_MOUSE_DOWN         0xF1
 #define HID_KEY_MOUSE_LEFT         0xF2
@@ -616,7 +615,7 @@
 #define K_ACL1                     HID_KEY_MOUSE_ACCEL1
 #define K_MS_ACCEL2                HID_KEY_MOUSE_ACCEL2
 #define K_ACL2                     HID_KEY_MOUSE_ACCEL2
-*/
+
 
 // Fn Keys Aliases (Momentary Layer Switches)
 #define K_FN0 MO(0)
@@ -874,10 +873,5 @@ typedef struct {
 #define MIDI_CC_TOGGLE(cc) (MIDI_CC_TOGGLE_BASE + ((cc) & 0x0F))
 #define MIDI_CC_INC(cc) (MIDI_CC_INC_BASE + ((cc) & 0x0F))
 #define MIDI_CC_DEC(cc) (MIDI_CC_DEC_BASE + ((cc) & 0x0F))
-
-#define MIDI_CC_X_VAL_127(cc) MIDI_CC_VAL_127(cc)
-#define MIDI_CC_X_TOGGLE(cc) MIDI_CC_TOGGLE(cc)
-#define MIDI_CC_X_INC(cc) MIDI_CC_INC(cc)
-#define MIDI_CC_X_DEC(cc) MIDI_CC_DEC(cc)
 
 #endif

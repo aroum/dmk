@@ -198,59 +198,41 @@ void matrix_send_event(matrix_event_t *matrix_event) {
 
 #if (MATRIX_TYPE != DIRECT)
 /**
- * @brief Integrator debounce filter for 2D matrix switches.
+ * @brief Eager debounce filter for 2D matrix switches.
+ * Immediately dispatches switch state transitions on contact (0ms latency),
+ * then locks out physical chatter for DEBOUNCE_TICKS.
  * @param col Column index
  * @param row Row index
  * @param raw_state Raw electrical reading (true = closed/pressed)
  */
 static inline void matrix_update_key(uint8_t col, uint8_t row, bool raw_state) {
-    if (raw_state) {
-        if (debounce_counters[col][row] < DEBOUNCE_TICKS) {
-            debounce_counters[col][row]++;
-            if (debounce_counters[col][row] == DEBOUNCE_TICKS) {
-                debounced_state[col][row] = true;
-                matrix_event_t event = {.split = 0, .col = col, .row = row, .pressed = 1};
-                matrix_send_event(&event);
-            }
-        }
-    } else {
-        if (debounce_counters[col][row] > 0) {
-            debounce_counters[col][row]--;
-            if (debounce_counters[col][row] == 0) {
-                debounced_state[col][row] = false;
-                matrix_event_t event = {.split = 0, .col = col, .row = row, .pressed = 0};
-                matrix_send_event(&event);
-            }
-        }
+    if (debounce_counters[col][row] > 0) {
+        debounce_counters[col][row]--;
+    } else if (raw_state != debounced_state[col][row]) {
+        debounced_state[col][row] = raw_state;
+        debounce_counters[col][row] = DEBOUNCE_TICKS;
+        matrix_event_t event = {.split = 0, .col = col, .row = row, .pressed = raw_state ? 1 : 0};
+        matrix_send_event(&event);
     }
 }
 #endif
 
 #if (MATRIX_TYPE == DIRECT)
 /**
- * @brief Integrator debounce filter for direct-pin switches.
+ * @brief Eager debounce filter for direct-pin switches.
+ * Immediately dispatches switch state transitions on contact (0ms latency),
+ * then locks out physical chatter for DEBOUNCE_TICKS.
  * @param key_idx Key index in direct_pins array
  * @param raw_state Raw electrical reading (true = closed/pressed)
  */
 static inline void matrix_update_direct_key(uint8_t key_idx, bool raw_state) {
-    if (raw_state) {
-        if (debounce_counters[key_idx] < DEBOUNCE_TICKS) {
-            debounce_counters[key_idx]++;
-            if (debounce_counters[key_idx] == DEBOUNCE_TICKS) {
-                debounced_state[key_idx] = true;
-                matrix_event_t event = {.split = 0, .col = key_idx, .row = 0, .pressed = 1};
-                matrix_send_event(&event);
-            }
-        }
-    } else {
-        if (debounce_counters[key_idx] > 0) {
-            debounce_counters[key_idx]--;
-            if (debounce_counters[key_idx] == 0) {
-                debounced_state[key_idx] = false;
-                matrix_event_t event = {.split = 0, .col = key_idx, .row = 0, .pressed = 0};
-                matrix_send_event(&event);
-            }
-        }
+    if (debounce_counters[key_idx] > 0) {
+        debounce_counters[key_idx]--;
+    } else if (raw_state != debounced_state[key_idx]) {
+        debounced_state[key_idx] = raw_state;
+        debounce_counters[key_idx] = DEBOUNCE_TICKS;
+        matrix_event_t event = {.split = 0, .col = key_idx, .row = 0, .pressed = raw_state ? 1 : 0};
+        matrix_send_event(&event);
     }
 }
 #endif

@@ -69,7 +69,7 @@ void hook_early_init(void) {
 /**
  * @brief Matrix switch change hook called on press/release of any key
  */
-void hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
+bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
     (void)row;
     (void)col;
 
@@ -89,4 +89,5 @@ void hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
     rgb_set_pixel_raw(DEBUG_KEY_RGB_INDEX, has_active_keys ? DEBUG_KEY_RGB_COLOR : 0x000000);
     rgb_show();
 #endif
+    return false;
 }

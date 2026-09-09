@@ -56,7 +56,7 @@
 #endif
 
 #ifndef configMAX_PRIORITIES
-#define configMAX_PRIORITIES 32
+#define configMAX_PRIORITIES 6
 #endif
 
 #ifndef configMINIMAL_STACK_SIZE
@@ -131,7 +131,7 @@
 #endif
 
 #ifndef configTOTAL_HEAP_SIZE
-#define configTOTAL_HEAP_SIZE (128 * 1024)
+#define configTOTAL_HEAP_SIZE (24 * 1024)
 #endif
 
 #ifndef configAPPLICATION_ALLOCATED_HEAP

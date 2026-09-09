@@ -32,8 +32,9 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
 }
 
 void vApplicationIdleHook(void) {
-    for (;;)
-        ;
+#if defined(__ARM_ARCH) || defined(__arm__)
+    __asm__ volatile("wfi");
+#endif
 }
 
 // Default weak implementations for module hooks
@@ -43,10 +44,11 @@ __attribute__((weak)) void hook_layer_change(uint8_t active_layer) {
     (void)active_layer;
 }
 
-__attribute__((weak)) void hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
+__attribute__((weak)) bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
     (void)row;
     (void)col;
     (void)pressed;
+    return false;
 }
 
 __attribute__((weak)) void hook_key_sent(uint16_t keycode, bool pressed) {
@@ -56,4 +58,24 @@ __attribute__((weak)) void hook_key_sent(uint16_t keycode, bool pressed) {
 
 __attribute__((weak)) void hook_hid_led_change(uint8_t led_mask) {
     (void)led_mask;
+}
+
+__attribute__((weak)) bool hook_mouse_move(int8_t *dx, int8_t *dy) {
+    (void)dx;
+    (void)dy;
+    return true;
+}
+
+__attribute__((weak)) bool hook_mouse_scroll(int8_t *wheel, int8_t *pan) {
+    (void)wheel;
+    (void)pan;
+    return true;
+}
+
+__attribute__((weak)) void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan) {
+    (void)buttons;
+    (void)dx;
+    (void)dy;
+    (void)wheel;
+    (void)pan;
 }
