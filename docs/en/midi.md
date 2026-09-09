@@ -12,26 +12,26 @@ The firmware supports sending MIDI messages (Notes, Control Change, Pitch Bend, 
 
 MIDI support is flexible and can be customized in the keyboard's `config.h` using the following definitions:
 
-- `#define MIDI_USB`: Enables USB MIDI support (using TinyUSB on RP2040 or native hardware USB driver on Milandr).
-- `#define MIDI_JACK`: Enables physical MIDI port (DIN-5) support via UART.
-- `#define MIDI_THRU`: (When `MIDI_JACK` is enabled) automatically routes incoming MIDI data from the input port to the output port.
+- `#define MIDI_USB`: Enables USB MIDI class support (via TinyUSB on RP2040/RP2350 or native USB driver on Milandr).
+- **MIDI Jack Module (`keyboards/omsk/modules/midi_jack`)**: Modular physical MIDI port (DIN-5 / TRS Jack) support over hardware UART (31250 baud). Automatically included when building `omsk` or manually via `-m midi_jack`.
+- `#define MIDI_THRU`: (When using the MIDI Jack module) automatically forwards incoming MIDI bytes from the input port to the output port.
 
-### Physical MIDI Port Pins Definition
+### Physical MIDI Port Pin Configuration (`config.h`)
 
-If `MIDI_JACK` is enabled, you must also define the UART TX and RX pins:
+When using the `midi_jack` module, define the UART TX and RX pins in `config.h`:
 
 ```c
-#define PIN_MIDI_JACK_OUT 0 // GPIO/pin number for transmission (TX)
-#define PIN_MIDI_JACK_IN 1  // GPIO/pin number for reception (RX)
+#define PIN_MIDI_JACK_OUT GPIO0 // Transmit pin (TX)
+#define PIN_MIDI_JACK_IN  GPIO1 // Receive pin (RX)
 ```
 
-Example build command:
+Example build command for `omsk` (MIDI Jack module is auto-discovered):
 
 ```bash
-./build_all.sh --keyboard omsk --mcu rp2040 -cs -d MIDI_USB -d MIDI_JACK
+./build_all.sh -b omsk -d MIDI_USB -c
 ```
 
-If neither `MIDI_USB` nor `MIDI_JACK` is defined, all MIDI features and descriptors are omitted, keeping the binary size as small as possible.
+If neither `MIDI_USB` nor a MIDI module is enabled, all MIDI features and descriptors are omitted, keeping the core binary size as small as possible.
 
 ### Mapping Fixed MIDI CC Values to Keys
 

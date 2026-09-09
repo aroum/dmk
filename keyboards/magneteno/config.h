@@ -3,14 +3,20 @@
 
 #include "pin_defs.h"
 
+#define DEFAULT_MCU rp2350
+
 /* --- Keyboard Identity & Features --- */
+#ifndef VIAL
 #define VIAL
+#endif
 #define VIAL_KEYBOARD_NAME "Magneteno"
 #define VIAL_VENDOR_ID 0xCafe
 #define VIAL_PRODUCT_ID 0x4012
 
 /* --- Custom Hall-Effect Matrix & SN74LV4052A Multiplexer --- */
+#ifndef CUSTOM_MATRIX
 #define CUSTOM_MATRIX 1
+#endif
 
 // SN74LV4052A Multiplexer Control Pins
 #if defined(MCU_rp2040) || defined(MCU_rp2350)

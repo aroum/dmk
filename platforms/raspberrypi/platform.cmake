@@ -74,7 +74,6 @@ set(PLATFORM_SRC
     "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     "${PLATFORM_DIR}/pio/WS2812.cpp"
     "${PLATFORM_DIR}/split.c"
-    "${PLATFORM_DIR}/midi_jack.c"
 )
 
 # Platform libraries

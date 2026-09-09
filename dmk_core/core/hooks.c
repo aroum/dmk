@@ -79,3 +79,8 @@ __attribute__((weak)) void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t 
     (void)wheel;
     (void)pan;
 }
+
+__attribute__((weak)) void hook_midi_send(const uint8_t *msg, uint8_t len) {
+    (void)msg;
+    (void)len;
+}

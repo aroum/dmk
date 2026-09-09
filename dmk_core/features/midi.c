@@ -1,11 +1,12 @@
 #include "midi.h"
 #include "FreeRTOS.h"
 #include "config.h"
+#include "hooks.h"
 #include "keys.h"
 #include "queue.h"
 #include "usb.h"
 
-#if defined(MIDI_USB) || defined(MIDI_JACK)
+#if defined(MIDI_USB) || defined(MIDI_ENABLE) || defined(MIDI_JACK)
 
 // Active MIDI configuration state (channel, octave, transpose, velocity)
 typedef struct {
@@ -29,43 +30,15 @@ extern void usb_send_midi_cc(uint8_t chan, uint8_t cc, uint8_t val);
 extern void usb_send_midi_pitchbend(uint8_t chan, int16_t val);
 #endif
 
-#ifdef MIDI_JACK
-extern void midi_jack_init(void);
-extern void midi_jack_write(uint8_t byte);
-
-static void jack_send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {
-    midi_jack_write(0x90 | (chan & 0x0F));
-    midi_jack_write(note & 0x7F);
-    midi_jack_write(vel & 0x7F);
-}
-static void jack_send_midi_noteoff(uint8_t chan, uint8_t note, uint8_t vel) {
-    midi_jack_write(0x80 | (chan & 0x0F));
-    midi_jack_write(note & 0x7F);
-    midi_jack_write(vel & 0x7F);
-}
-static void jack_send_midi_cc(uint8_t chan, uint8_t cc, uint8_t val) {
-    midi_jack_write(0xB0 | (chan & 0x0F));
-    midi_jack_write(cc & 0x7F);
-    midi_jack_write(val & 0x7F);
-}
-static void jack_send_midi_pitchbend(uint8_t chan, int16_t val) {
-    uint16_t pb = (uint16_t)(val + 8192);
-    midi_jack_write(0xE0 | (chan & 0x0F));
-    midi_jack_write(pb & 0x7F);
-    midi_jack_write((pb >> 7) & 0x7F);
-}
-#endif
-
 /**
- * @brief Dispatch MIDI Note-On message across enabled transports (USB and/or DIN5/TRS Jack).
+ * @brief Dispatch MIDI Note-On message across enabled transports (USB and/or external module hooks).
  */
 static void send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {
 #ifdef MIDI_USB
     usb_send_midi_noteon(chan, note, vel);
 #endif
-#ifdef MIDI_JACK
-    jack_send_midi_noteon(chan, note, vel);
-#endif
+    uint8_t msg[3] = { (uint8_t)(0x90 | (chan & 0x0F)), (uint8_t)(note & 0x7F), (uint8_t)(vel & 0x7F) };
+    hook_midi_send(msg, 3);
 }
 
 /**
@@ -75,9 +48,8 @@ static void send_midi_noteoff(uint8_t chan, uint8_t note, uint8_t vel) {
 #ifdef MIDI_USB
     usb_send_midi_noteoff(chan, note, vel);
 #endif
-#ifdef MIDI_JACK
-    jack_send_midi_noteoff(chan, note, vel);
-#endif
+    uint8_t msg[3] = { (uint8_t)(0x80 | (chan & 0x0F)), (uint8_t)(note & 0x7F), (uint8_t)(vel & 0x7F) };
+    hook_midi_send(msg, 3);
 }
 
 /**
@@ -87,9 +59,8 @@ static void send_midi_cc(uint8_t chan, uint8_t cc, uint8_t val) {
 #ifdef MIDI_USB
     usb_send_midi_cc(chan, cc, val);
 #endif
-#ifdef MIDI_JACK
-    jack_send_midi_cc(chan, cc, val);
-#endif
+    uint8_t msg[3] = { (uint8_t)(0xB0 | (chan & 0x0F)), (uint8_t)(cc & 0x7F), (uint8_t)(val & 0x7F) };
+    hook_midi_send(msg, 3);
 }
 
 /**
@@ -99,13 +70,13 @@ static void send_midi_pitchbend(uint8_t chan, int16_t val) {
 #ifdef MIDI_USB
     usb_send_midi_pitchbend(chan, val);
 #endif
-#ifdef MIDI_JACK
-    jack_send_midi_pitchbend(chan, val);
-#endif
+    uint16_t pb = (uint16_t)(val + 8192);
+    uint8_t msg[3] = { (uint8_t)(0xE0 | (chan & 0x0F)), (uint8_t)(pb & 0x7F), (uint8_t)((pb >> 7) & 0x7F) };
+    hook_midi_send(msg, 3);
 }
 
 /**
- * @brief Initialize MIDI state, CC lookup tables, and hardware UART/Jack output if enabled.
+ * @brief Initialize MIDI state and CC lookup tables.
  */
 void dmk_midi_init(void) {
     for (int i = 0; i < 72; i++) {
@@ -114,9 +85,6 @@ void dmk_midi_init(void) {
     for (int i = 0; i < 128; i++) {
         midi_cc_values[i] = 64;
     }
-#ifdef MIDI_JACK
-    midi_jack_init();
-#endif
     midi_initialized = true;
 }
 

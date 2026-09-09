@@ -64,6 +64,19 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 
 Both relative paths (resolved relative to repository root) and absolute paths (e.g. `/home/user/my_modules/my_module`) are supported.
 
+### Keyboard-Internal Modules (`keyboards/<keyboard>/modules/`)
+When a module belongs specifically to a given keyboard (such as `keyboards/omsk/modules/midi_jack` or custom matrix driver `keyboards/magneteno/modules/matrix_magneteno`):
+* Place the module directly inside `keyboards/<keyboard>/modules/<module_name>/`.
+* The DMK build system **automatically discovers and loads all submodules inside `keyboards/<keyboard>/modules/`** when building that keyboard!
+* Passing `-DDMK_MODULES` or `-m` on the command line is **not required**:
+  ```bash
+  # Building omsk automatically includes keyboards/omsk/modules/midi_jack:
+  ./build_all.sh -b omsk -c
+
+  # Building magneteno automatically includes matrix_magneteno and hall_calibration:
+  ./build_all.sh -b magneteno -c
+  ```
+
 ---
 
 ## 3. Core Lifecycle & Event Hooks (Hooks API)
@@ -80,6 +93,7 @@ Modules communicate with DMK through non-blocking weak hooks declared in `dmk_co
 | `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Before sending cursor movement report (`mouse.c`) | Intercept trackball/mouse motion, drag-scroll (scroll wheel while holding layer/key), DPI scaling |
 | `bool hook_mouse_scroll(int8_t *wheel, int8_t *pan)` | Before sending wheel scroll report (`mouse.c`) | Invert or programmatically filter vertical and horizontal scrolling |
 | `void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan)` | Before transmitting composite USB HID Mouse report | Analytics, click LED feedback, or mirroring to secondary interfaces |
+| `void hook_midi_send(const uint8_t *msg, uint8_t len)` | When MIDI message is dispatched (`midi.c`) | Physical DIN-5 / TRS MIDI Jack output via UART, BLE MIDI, CV/Gate |
 
 ### Hook Implementation Example:
 ```c
@@ -222,11 +236,14 @@ The repository includes tested reference implementations in `tests/modules/`:
 | `tests/modules/hall_calibration` | Full Hall-effect analog calibration, continuous Rapid Trigger, and Flash storage. |
 | `tests/modules/sharp_memory_lcd` | Sharp MIP LCD dashboard with WPM calculator, layers, and status indicators. |
 | `tests/modules/u8g2_display` | Generic OLED/LCD display engine powered by U8g2. |
-| `tests/modules/trackball_example` | Trackball / optical sensor integration with `hook_mouse_move` for drag-scroll on layers. |
+| `tests/modules/trackball_example` | Trackball/optical sensor integration with `hook_mouse_move` for drag-scroll. |
+| `keyboards/omsk/modules/midi_jack` | Physical DIN-5 / TRS MIDI Jack transport over hardware UART (31250 baud) via `hook_midi_send`. |
+| `keyboards/magneteno/modules/matrix_magneteno` | Custom Hall-Effect matrix scanner using SN74LV4052A analog multiplexer. |
 
 ## 9. Building Modules in Isolated Repositories & CI/CD
 
 Custom external modules do not need to reside inside the DMK core source tree. You can place them in your standalone user configuration repository (e.g. inside a `modules/my_module` directory) and pass their paths to CMake using the `-DDMK_MODULES` flag.
 
 For complete repository layout instructions and a ready-to-use **GitHub Actions CI/CD** workflow matrix template, see the [Build Guide (build.md)](build.md#automated-build-in-custom-repository-github-actions).
+
 

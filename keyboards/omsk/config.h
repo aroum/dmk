@@ -4,6 +4,7 @@
 #include "pin_defs.h"
 
 #define VIAL
+#define MCU rp2040
 #define VIAL_KEYBOARD_NAME "Omsk MIDI"
 #define VIAL_VENDOR_ID 0xCAFE
 #define VIAL_PRODUCT_ID 0x4006
@@ -49,6 +50,12 @@
 #define ENCODER_PINS_B {GPIO3, GPIO5, GPIO26, GPIO28}
 #endif
 #define ENCODER_RESOLUTION 2
+
+/* --- MIDI Jack (UART) --- */
+#if defined(MCU_rp2040) || defined(MCU_rp2350)
+#define PIN_MIDI_JACK_OUT GPIO0
+#define PIN_MIDI_JACK_IN  GPIO1
+#endif
 
 /* --- Keymap --- */
 // clang-format off

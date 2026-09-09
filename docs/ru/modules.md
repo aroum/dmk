@@ -64,6 +64,19 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 
 Поддерживаются как относительные пути (от корня репозитория DMK), так и абсолютные пути на диске (например, `/home/user/my_modules/display_driver`).
 
+### Модули внутри папки клавиатуры (`keyboards/<клавиатура>/modules/`)
+Если модуль относится к конкретной клавиатуре (например, `keyboards/omsk/modules/midi_jack` или кастомная матрица `keyboards/magneteno/modules/matrix_magneteno`):
+* Поместите модуль прямо в подпапку `keyboards/<клавиатура>/modules/<имя_модуля>/`.
+* Система сборки DMK **автоматически находит и подключает все модули из папки `modules/` клавиатуры** при её компиляции!
+* Передавать `-DDMK_MODULES` или `-m` в командной строке для них **не требуется**:
+  ```bash
+  # Сборка omsk автоматически подключит модуль keyboards/omsk/modules/midi_jack:
+  ./build_all.sh -b omsk -c
+
+  # Сборка magneteno автоматически подключит модули matrix_magneteno и hall_calibration:
+  ./build_all.sh -b magneteno -c
+  ```
+
 ---
 
 ## 3. Хуки событий и жизненного цикла ядра (Hooks API)
@@ -80,6 +93,7 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 | `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Перед отправкой отчета движения курсора (`mouse.c`) | Перехват движения трекбола/мыши, drag-scroll (скролл колесом при зажатии слоя), масштабирование DPI |
 | `bool hook_mouse_scroll(int8_t *wheel, int8_t *pan)` | Перед отправкой отчета прокрутки (`mouse.c`) | Инверсия или программная фильтрация вертикального и горизонтального скролла |
 | `void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan)` | Перед отправкой составного USB HID Mouse отчета | Аналитика, светодиодная индикация кликов или репликация на вторичные интерфейсы |
+| `void hook_midi_send(const uint8_t *msg, uint8_t len)` | При отправке MIDI-сообщения (`midi.c`) | Вывод в аппаратный DIN-5 / TRS MIDI Jack по UART, передача по BLE MIDI или CV/Gate |
 
 ### Пример реализации хуков в модуле:
 ```c
@@ -223,6 +237,8 @@ DMK включает полноценную подсистему USB HID мыш�
 | `tests/modules/sharp_memory_lcd` | Панель приборов на экране Sharp Memory LCD с расчетом WPM, слоями и бейджами. |
 | `tests/modules/u8g2_display` | Универсальный графический движок вывода на экраны на базе библиотеки U8g2. |
 | `tests/modules/trackball_example` | Интеграция трекбола/оптического сенсора с хуком `hook_mouse_move` для drag-scroll на слое. |
+| `keyboards/omsk/modules/midi_jack` | Физический транспорт DIN-5 / TRS MIDI Jack через аппаратный UART (31250 бод) через хук `hook_midi_send`. |
+| `keyboards/magneteno/modules/matrix_magneteno` | Кастомный драйвер сканирования матрицы Hall-Effect через мультиплексор SN74LV4052A. |
 
 ## 9. Сборка модулей в изолированном репозитории и CI/CD
 

@@ -20,6 +20,9 @@ bool hook_mouse_move(int8_t *dx, int8_t *dy);
 bool hook_mouse_scroll(int8_t *wheel, int8_t *pan);
 void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan);
 
+// MIDI output hook for external modules (DIN-5 Jack, BLE MIDI, CV/Gate)
+void hook_midi_send(const uint8_t *msg, uint8_t len);
+
 #ifdef __cplusplus
 }
 #endif

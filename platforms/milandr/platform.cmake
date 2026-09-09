@@ -56,7 +56,6 @@ set(PLATFORM_SRC
     "${PLATFORM_DIR}/app_usb_hid.c"
     "${PLATFORM_DIR}/ws2812_ssp.c"
     "${PLATFORM_DIR}/split.c"
-    "${PLATFORM_DIR}/midi_jack.c"
 )
 
 # Platform libraries

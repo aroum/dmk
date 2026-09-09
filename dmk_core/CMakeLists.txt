@@ -28,7 +28,6 @@ set(DMK_CORE_BASE_SRC
     "${DMK_ROOT}/dmk_core/drivers/led.c"
     "${DMK_ROOT}/dmk_core/drivers/rgb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb.c"
-    "${DMK_ROOT}/dmk_core/drivers/midi_jack.c"
 )
 
 # Function to build keyboard firmware
@@ -157,22 +156,54 @@ function(build_keyboard KEYBOARD_NAME)
         ${KEYBOARD_LOCAL_SRC}
     )
     
-    # Load external modules
+    # Auto-discover keyboard-specific modules (e.g. keyboards/<kbd>/modules/*)
+    set(ALL_ACTIVE_MODULES "")
+    if(EXISTS "${ACTUAL_KEYBOARD_DIR}/modules")
+        file(GLOB KBD_MODULE_DIRS LIST_DIRECTORIES true "${ACTUAL_KEYBOARD_DIR}/modules/*")
+        foreach(MOD_DIR ${KBD_MODULE_DIRS})
+            if(IS_DIRECTORY "${MOD_DIR}")
+                list(APPEND ALL_ACTIVE_MODULES "${MOD_DIR}")
+            endif()
+        endforeach()
+    endif()
+    if(EXISTS "${ACTUAL_KEYBOARD_DIR}/module.cmake")
+        list(APPEND ALL_ACTIVE_MODULES "${ACTUAL_KEYBOARD_DIR}")
+    endif()
+
+    # Load external and user-specified modules
     if(DMK_MODULES)
         foreach(MODULE_PATH ${DMK_MODULES})
             if(IS_ABSOLUTE "${MODULE_PATH}")
-                set(ABS_MODULE_PATH "${MODULE_PATH}")
+                list(APPEND ALL_ACTIVE_MODULES "${MODULE_PATH}")
             else()
-                set(ABS_MODULE_PATH "${DMK_ROOT}/${MODULE_PATH}")
+                set(RESOLVED_PATH "${DMK_ROOT}/${MODULE_PATH}")
+                if(NOT EXISTS "${RESOLVED_PATH}" AND EXISTS "${ACTUAL_KEYBOARD_DIR}/modules/${MODULE_PATH}")
+                    set(RESOLVED_PATH "${ACTUAL_KEYBOARD_DIR}/modules/${MODULE_PATH}")
+                elseif(NOT EXISTS "${RESOLVED_PATH}" AND EXISTS "${DMK_ROOT}/tests/modules/${MODULE_PATH}")
+                    set(RESOLVED_PATH "${DMK_ROOT}/tests/modules/${MODULE_PATH}")
+                endif()
+                list(APPEND ALL_ACTIVE_MODULES "${RESOLVED_PATH}")
             endif()
+        endforeach()
+    endif()
+
+    if(ALL_ACTIVE_MODULES)
+        list(REMOVE_DUPLICATES ALL_ACTIVE_MODULES)
+        foreach(ABS_MODULE_PATH ${ALL_ACTIVE_MODULES})
             if(EXISTS "${ABS_MODULE_PATH}")
-                message(STATUS "Loading external module: ${ABS_MODULE_PATH}")
+                message(STATUS "Loading module: ${ABS_MODULE_PATH}")
                 target_include_directories(${TARGET_NAME} PRIVATE "${ABS_MODULE_PATH}")
                 if(EXISTS "${ABS_MODULE_PATH}/include")
                     target_include_directories(${TARGET_NAME} PRIVATE "${ABS_MODULE_PATH}/include")
                 endif()
                 if(EXISTS "${ABS_MODULE_PATH}/module.cmake")
                     include("${ABS_MODULE_PATH}/module.cmake")
+                else()
+                    # Auto-add any .c source files if module.cmake is omitted
+                    file(GLOB MOD_C_FILES "${ABS_MODULE_PATH}/*.c")
+                    if(MOD_C_FILES)
+                        target_sources(${TARGET_NAME} PRIVATE ${MOD_C_FILES})
+                    endif()
                 endif()
 
                 # Automatically compile any .pio assembly files found in the module
@@ -184,7 +215,7 @@ function(build_keyboard KEYBOARD_NAME)
                     endforeach()
                 endif()
             else()
-                message(FATAL_ERROR "External module directory not found: ${MODULE_PATH}")
+                message(FATAL_ERROR "Module directory not found: ${ABS_MODULE_PATH}")
             endif()
         endforeach()
     endif()

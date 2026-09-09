@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#if defined(MIDI_USB) || defined(MIDI_JACK)
+#if defined(MIDI_USB) || defined(MIDI_ENABLE) || defined(MIDI_JACK)
 
 // Initialize MIDI subsystem (tables and hardware interfaces)
 void dmk_midi_init(void);
@@ -25,7 +25,7 @@ static inline bool dmk_midi_process_keycode(uint32_t key, bool pressed) {
     return false;
 }
 
-#endif // defined(MIDI_USB) || defined(MIDI_JACK)
+#endif // defined(MIDI_USB) || defined(MIDI_ENABLE) || defined(MIDI_JACK)
 
 #ifdef __cplusplus
 }
