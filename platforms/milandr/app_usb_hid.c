@@ -169,466 +169,91 @@ static const uint8_t Usb_Vial_Report_Descriptor[] = {
     0x91, 0x02,       // Output (Data, Var, Abs)
     0xC0              // End Collection
 };
+#endif
 
-#ifdef MIDI_USB
-/* Composite Configuration Descriptor: Keyboard HID (Interface 0) + Vial Raw HID (Interface 1) + MIDI AC (Interface 2) +
- * MIDI MS (Interface 3) */
-static const uint8_t Usb_HID_Configuration_Descriptor[154] = {
+#ifdef VIAL
+#if defined(MIDI_USB)
+#define VIAL_RX_EP USB_EP2
+#define TOTAL_CONFIG_LEN 154
+#define TOTAL_NUM_INTERFACES 4
+#define MIDI_IF_AC 0x02
+#define MIDI_IF_MS 0x03
+#else
+#define VIAL_RX_EP USB_EP3
+#define TOTAL_CONFIG_LEN 66
+#define TOTAL_NUM_INTERFACES 2
+#endif
+#else
+#if defined(MIDI_USB)
+#define TOTAL_CONFIG_LEN 122
+#define TOTAL_NUM_INTERFACES 3
+#define MIDI_IF_AC 0x01
+#define MIDI_IF_MS 0x02
+#else
+#define TOTAL_CONFIG_LEN 34
+#define TOTAL_NUM_INTERFACES 1
+#endif
+#endif
+
+static const uint8_t Usb_HID_Configuration_Descriptor[] = {
     /* Configuration Descriptor (9 bytes) */
-    0x09,      /* bLength */
-    0x02,      /* bDescriptorType (Configuration) */
-    154, 0x00, /* wTotalLength (154 bytes) */
-    0x04,      /* bNumInterfaces (Keyboard, Vial, MIDI AC, MIDI MS) */
-    0x01,      /* bConfigurationValue */
-    0x00,      /* iConfiguration */
-    0xA0,      /* bmAttributes (Bus Powered, Remote Wakeup) */
-    50,        /* bMaxPower (100 mA) */
+    0x09, 0x02, (uint8_t)(TOTAL_CONFIG_LEN & 0xFF), (uint8_t)((TOTAL_CONFIG_LEN >> 8) & 0xFF),
+    TOTAL_NUM_INTERFACES, 0x01, 0x00, 0xA0, 50,
 
     /* Interface 0 Descriptor - Keyboard (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x00, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x01, /* bNumEndpoints */
-    0x03, /* bInterfaceClass (HID) */
-    0x01, /* bInterfaceSubClass (Boot) */
-    0x01, /* bInterfaceProtocol (Keyboard) */
-    0x00, /* iInterface */
-
+    0x09, 0x04, 0x00, 0x00, 0x01, 0x03, 0x01, 0x01, 0x00,
     /* HID Descriptor (9 bytes) */
-    0x09,       /* bLength */
-    0x21,       /* bDescriptorType (HID) */
-    0x11, 0x01, /* bcdHID (1.11) */
-    0x00,       /* bCountryCode */
-    0x01,       /* bNumDescriptors */
-    0x22,       /* bDescriptorType (Report) */
+    0x09, 0x21, 0x11, 0x01, 0x00, 0x01, 0x22,
     (uint8_t)(sizeof(Usb_HID_Report_Descriptor) & 0xFF),
-    (uint8_t)((sizeof(Usb_HID_Report_Descriptor) >> 8) & 0xFF), /* wDescriptorLength */
-
+    (uint8_t)((sizeof(Usb_HID_Report_Descriptor) >> 8) & 0xFF),
     /* Endpoint 1 IN Descriptor - Keyboard (7 bytes) */
-    0x07,       /* bLength */
-    0x05,       /* bDescriptorType (Endpoint) */
-    0x81,       /* bEndpointAddress (IN EP1) */
-    0x03,       /* bmAttributes (Interrupt) */
-    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
-    10,         /* bInterval (10 ms) */
+    0x07, 0x05, 0x81, 0x03, 0x10, 0x00, 10,
 
+#ifdef VIAL
     /* Interface 1 Descriptor - Vial Raw HID (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x01, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x02, /* bNumEndpoints (1 IN + 1 OUT) */
-    0x03, /* bInterfaceClass (HID) */
-    0x00, /* bInterfaceSubClass (None) */
-    0x00, /* bInterfaceProtocol (None) */
-    0x00, /* iInterface */
-
+    0x09, 0x04, 0x01, 0x00, 0x02, 0x03, 0x00, 0x00, 0x00,
     /* HID Descriptor for Vial (9 bytes) */
-    0x09,       /* bLength */
-    0x21,       /* bDescriptorType (HID) */
-    0x11, 0x01, /* bcdHID (1.11) */
-    0x00,       /* bCountryCode */
-    0x01,       /* bNumDescriptors */
-    0x22,       /* bDescriptorType (Report) */
+    0x09, 0x21, 0x11, 0x01, 0x00, 0x01, 0x22,
     (uint8_t)(sizeof(Usb_Vial_Report_Descriptor) & 0xFF),
-    (uint8_t)((sizeof(Usb_Vial_Report_Descriptor) >> 8) & 0xFF), /* wDescriptorLength */
-
+    (uint8_t)((sizeof(Usb_Vial_Report_Descriptor) >> 8) & 0xFF),
     /* Endpoint 2 IN Descriptor - Vial IN (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x82,     /* bEndpointAddress (IN EP2) */
-    0x03,     /* bmAttributes (Interrupt) */
-    32, 0x00, /* wMaxPacketSize (32 bytes) */
-    1,        /* bInterval (1 ms) */
-
-    /* Endpoint 2 OUT Descriptor - Vial OUT (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x02,     /* bEndpointAddress (OUT EP2) */
-    0x03,     /* bmAttributes (Interrupt) */
-    32, 0x00, /* wMaxPacketSize (32 bytes) */
-    1,        /* bInterval (1 ms) */
-
-    /* Interface 2 Descriptor - Audio Control (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x02, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x00, /* bNumEndpoints */
-    0x01, /* bInterfaceClass (Audio) */
-    0x01, /* bInterfaceSubClass (Audio Control) */
-    0x00, /* bInterfaceProtocol */
-    0x00, /* iInterface */
-
-    /* Class-Specific Audio Control Interface Descriptor (9 bytes) */
-    0x09,       /* bLength */
-    0x24,       /* bDescriptorType (CS Interface) */
-    0x01,       /* bDescriptorSubtype (Header) */
-    0x00, 0x01, /* bcdADC (1.00) */
-    0x09, 0x00, /* wTotalLength (9 bytes) */
-    0x01,       /* bInCollection */
-    0x03,       /* baInterfaceNr (Interface 3 is MIDI Streaming) */
-
-    /* Interface 3 Descriptor - MIDI Streaming (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x03, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x02, /* bNumEndpoints */
-    0x01, /* bInterfaceClass (Audio) */
-    0x03, /* bInterfaceSubClass (MIDI Streaming) */
-    0x00, /* bInterfaceProtocol */
-    0x00, /* iInterface */
-
-    /* Class-Specific MIDI Streaming Interface Descriptor (7 bytes) */
-    0x07,       /* bLength */
-    0x24,       /* bDescriptorType (CS Interface) */
-    0x01,       /* bDescriptorSubtype (MS Header) */
-    0x00, 0x01, /* bcdMSC (1.00) */
-    37, 0x00,   /* wTotalLength (37 bytes) */
-
-    /* MIDI IN Jack Descriptor (Embedded) (6 bytes) */
-    0x06, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x02, /* bDescriptorSubtype (MIDI_IN_JACK) */
-    0x01, /* bJackType (Embedded) */
-    0x01, /* bJackID */
-    0x00, /* iJack */
-
-    /* MIDI IN Jack Descriptor (External) (6 bytes) */
-    0x06, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x02, /* bDescriptorSubtype (MIDI_IN_JACK) */
-    0x02, /* bJackType (External) */
-    0x02, /* bJackID */
-    0x00, /* iJack */
-
-    /* MIDI OUT Jack Descriptor (Embedded) (9 bytes) */
-    0x09, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x03, /* bDescriptorSubtype (MIDI_OUT_JACK) */
-    0x01, /* bJackType (Embedded) */
-    0x03, /* bJackID */
-    0x01, /* bNrInputPins */
-    0x02, /* baSourceID (from External MIDI IN Jack 2) */
-    0x01, /* baSourcePin */
-    0x00, /* iJack */
-
-    /* MIDI OUT Jack Descriptor (External) (9 bytes) */
-    0x09, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x03, /* bDescriptorSubtype (MIDI_OUT_JACK) */
-    0x02, /* bJackType (External) */
-    0x04, /* bJackID */
-    0x01, /* bNrInputPins */
-    0x01, /* baSourceID (from Embedded MIDI IN Jack 1) */
-    0x01, /* baSourcePin */
-    0x00, /* iJack */
-
-    /* Endpoint 3 OUT Descriptor - MIDI Bulk OUT (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x03,     /* bEndpointAddress (OUT EP3) */
-    0x02,     /* bmAttributes (Bulk) */
-    64, 0x00, /* wMaxPacketSize (64 bytes) */
-    0,        /* bInterval */
-
-    /* Class-Specific MIDI Bulk OUT Endpoint Descriptor (5 bytes) */
-    0x05, /* bLength */
-    0x25, /* bDescriptorType (CS Endpoint) */
-    0x01, /* bDescriptorSubtype (MS General) */
-    0x01, /* bNumEmbMIDIJack */
-    0x01, /* baAssocJackID (Embedded MIDI IN Jack 1) */
-
-    /* Endpoint 3 IN Descriptor - MIDI Bulk IN (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x83,     /* bEndpointAddress (IN EP3) */
-    0x02,     /* bmAttributes (Bulk) */
-    64, 0x00, /* wMaxPacketSize (64 bytes) */
-    0,        /* bInterval */
-
-    /* Class-Specific MIDI Bulk IN Endpoint Descriptor (5 bytes) */
-    0x05, /* bLength */
-    0x25, /* bDescriptorType (CS Endpoint) */
-    0x01, /* bDescriptorSubtype (MS General) */
-    0x01, /* bNumEmbMIDIJack */
-    0x03  /* baAssocJackID (Embedded MIDI OUT Jack 3) */
-};
+    0x07, 0x05, 0x82, 0x03, 32, 0x00, 1,
+    /* Endpoint OUT Descriptor - Vial OUT (7 bytes) */
+#if defined(MIDI_USB)
+    0x07, 0x05, 0x02, 0x03, 32, 0x00, 1,
 #else
-/* Standard Configuration Descriptor for VIAL (Configuration + 2 Interfaces) */
-static const uint8_t Usb_HID_Configuration_Descriptor[66] = {
-    /* Configuration Descriptor (9 bytes) */
-    0x09,     /* bLength */
-    0x02,     /* bDescriptorType (Configuration) */
-    66, 0x00, /* wTotalLength (66 bytes) */
-    0x02,     /* bNumInterfaces */
-    0x01,     /* bConfigurationValue */
-    0x00,     /* iConfiguration */
-    0xA0,     /* bmAttributes (Bus Powered, Remote Wakeup) */
-    50,       /* bMaxPower (100 mA) */
-
-    /* Interface 0 Descriptor - Keyboard (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x00, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x01, /* bNumEndpoints */
-    0x03, /* bInterfaceClass (HID) */
-    0x01, /* bInterfaceSubClass (Boot) */
-    0x01, /* bInterfaceProtocol (Keyboard) */
-    0x00, /* iInterface */
-
-    /* HID Descriptor (9 bytes) */
-    0x09,       /* bLength */
-    0x21,       /* bDescriptorType (HID) */
-    0x11, 0x01, /* bcdHID (1.11) */
-    0x00,       /* bCountryCode */
-    0x01,       /* bNumDescriptors */
-    0x22,       /* bDescriptorType (Report) */
-    (uint8_t)(sizeof(Usb_HID_Report_Descriptor) & 0xFF),
-    (uint8_t)((sizeof(Usb_HID_Report_Descriptor) >> 8) & 0xFF), /* wDescriptorLength */
-
-    /* Endpoint 1 IN Descriptor - Keyboard (7 bytes) */
-    0x07,       /* bLength */
-    0x05,       /* bDescriptorType (Endpoint) */
-    0x81,       /* bEndpointAddress (IN EP1) */
-    0x03,       /* bmAttributes (Interrupt) */
-    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
-    10,         /* bInterval (10 ms) */
-
-    /* Interface 1 Descriptor - Vial Raw HID (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x01, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x02, /* bNumEndpoints (1 IN + 1 OUT) */
-    0x03, /* bInterfaceClass (HID) */
-    0x00, /* bInterfaceSubClass (None) */
-    0x00, /* bInterfaceProtocol (None) */
-    0x00, /* iInterface */
-
-    /* HID Descriptor for Vial (9 bytes) */
-    0x09,       /* bLength */
-    0x21,       /* bDescriptorType (HID) */
-    0x11, 0x01, /* bcdHID (1.11) */
-    0x00,       /* bCountryCode */
-    0x01,       /* bNumDescriptors */
-    0x22,       /* bDescriptorType (Report) */
-    (uint8_t)(sizeof(Usb_Vial_Report_Descriptor) & 0xFF),
-    (uint8_t)((sizeof(Usb_Vial_Report_Descriptor) >> 8) & 0xFF), /* wDescriptorLength */
-
-    /* Endpoint 2 IN Descriptor - Vial IN (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x82,     /* bEndpointAddress (IN EP2) */
-    0x03,     /* bmAttributes (Interrupt) */
-    32, 0x00, /* wMaxPacketSize (32 bytes) */
-    1,        /* bInterval (1 ms) */
-
-    /* Endpoint 3 OUT Descriptor - Vial OUT (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x03,     /* bEndpointAddress (OUT EP3) */
-    0x03,     /* bmAttributes (Interrupt) */
-    32, 0x00, /* wMaxPacketSize (32 bytes) */
-    1         /* bInterval (1 ms) */
-};
+    0x07, 0x05, 0x03, 0x03, 32, 0x00, 1,
 #endif
-#else
+#endif
+
 #ifdef MIDI_USB
-/* Configuration Descriptor: Keyboard HID (Interface 0) + MIDI AC (Interface 1) + MIDI MS (Interface 2) */
-static const uint8_t Usb_HID_Configuration_Descriptor[122] = {
-    /* Configuration Descriptor (9 bytes) */
-    0x09,      /* bLength */
-    0x02,      /* bDescriptorType (Configuration) */
-    122, 0x00, /* wTotalLength (122 bytes) */
-    0x03,      /* bNumInterfaces (Keyboard, MIDI AC, MIDI MS) */
-    0x01,      /* bConfigurationValue */
-    0x00,      /* iConfiguration */
-    0xA0,      /* bmAttributes (Bus Powered, Remote Wakeup) */
-    50,        /* bMaxPower (100 mA) */
-
-    /* Interface Descriptor (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x00, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x01, /* bNumEndpoints */
-    0x03, /* bInterfaceClass (HID) */
-    0x01, /* bInterfaceSubClass (Boot) */
-    0x01, /* bInterfaceProtocol (Keyboard) */
-    0x00, /* iInterface */
-
-    /* HID Descriptor (9 bytes) */
-    0x09,       /* bLength */
-    0x21,       /* bDescriptorType (HID) */
-    0x11, 0x01, /* bcdHID (1.11) */
-    0x00,       /* bCountryCode */
-    0x01,       /* bNumDescriptors */
-    0x22,       /* bDescriptorType (Report) */
-    (uint8_t)(sizeof(Usb_HID_Report_Descriptor) & 0xFF),
-    (uint8_t)((sizeof(Usb_HID_Report_Descriptor) >> 8) & 0xFF), /* wDescriptorLength */
-
-    /* Endpoint Descriptor (7 bytes) */
-    0x07,       /* bLength */
-    0x05,       /* bDescriptorType (Endpoint) */
-    0x81,       /* bEndpointAddress (IN EP1) */
-    0x03,       /* bmAttributes (Interrupt) */
-    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
-    10,         /* bInterval (10 ms) */
-
-    /* Interface 1 Descriptor - Audio Control (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x01, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x00, /* bNumEndpoints */
-    0x01, /* bInterfaceClass (Audio) */
-    0x01, /* bInterfaceSubClass (Audio Control) */
-    0x00, /* bInterfaceProtocol */
-    0x00, /* iInterface */
-
+    /* Interface Descriptor - Audio Control (9 bytes) */
+    0x09, 0x04, MIDI_IF_AC, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00,
     /* Class-Specific Audio Control Interface Descriptor (9 bytes) */
-    0x09,       /* bLength */
-    0x24,       /* bDescriptorType (CS Interface) */
-    0x01,       /* bDescriptorSubtype (Header) */
-    0x00, 0x01, /* bcdADC (1.00) */
-    0x09, 0x00, /* wTotalLength (9 bytes) */
-    0x01,       /* bInCollection */
-    0x02,       /* baInterfaceNr (Interface 2 is MIDI Streaming) */
+    0x09, 0x24, 0x01, 0x00, 0x01, 0x09, 0x00, 0x01, MIDI_IF_MS,
 
-    /* Interface 2 Descriptor - MIDI Streaming (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x02, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x02, /* bNumEndpoints */
-    0x01, /* bInterfaceClass (Audio) */
-    0x03, /* bInterfaceSubClass (MIDI Streaming) */
-    0x00, /* bInterfaceProtocol */
-    0x00, /* iInterface */
-
+    /* Interface Descriptor - MIDI Streaming (9 bytes) */
+    0x09, 0x04, MIDI_IF_MS, 0x00, 0x02, 0x01, 0x03, 0x00, 0x00,
     /* Class-Specific MIDI Streaming Interface Descriptor (7 bytes) */
-    0x07,       /* bLength */
-    0x24,       /* bDescriptorType (CS Interface) */
-    0x01,       /* bDescriptorSubtype (MS Header) */
-    0x00, 0x01, /* bcdMSC (1.00) */
-    37, 0x00,   /* wTotalLength (37 bytes) */
-
+    0x07, 0x24, 0x01, 0x00, 0x01, 37, 0x00,
     /* MIDI IN Jack Descriptor (Embedded) (6 bytes) */
-    0x06, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x02, /* bDescriptorSubtype (MIDI_IN_JACK) */
-    0x01, /* bJackType (Embedded) */
-    0x01, /* bJackID */
-    0x00, /* iJack */
-
+    0x06, 0x24, 0x02, 0x01, 0x01, 0x00,
     /* MIDI IN Jack Descriptor (External) (6 bytes) */
-    0x06, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x02, /* bDescriptorSubtype (MIDI_IN_JACK) */
-    0x02, /* bJackType (External) */
-    0x02, /* bJackID */
-    0x00, /* iJack */
-
+    0x06, 0x24, 0x02, 0x02, 0x02, 0x00,
     /* MIDI OUT Jack Descriptor (Embedded) (9 bytes) */
-    0x09, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x03, /* bDescriptorSubtype (MIDI_OUT_JACK) */
-    0x01, /* bJackType (Embedded) */
-    0x03, /* bJackID */
-    0x01, /* bNrInputPins */
-    0x02, /* baSourceID (from External MIDI IN Jack 2) */
-    0x01, /* baSourcePin */
-    0x00, /* iJack */
-
+    0x09, 0x24, 0x03, 0x01, 0x03, 0x01, 0x02, 0x01, 0x00,
     /* MIDI OUT Jack Descriptor (External) (9 bytes) */
-    0x09, /* bLength */
-    0x24, /* bDescriptorType (CS Interface) */
-    0x03, /* bDescriptorSubtype (MIDI_OUT_JACK) */
-    0x02, /* bJackType (External) */
-    0x04, /* bJackID */
-    0x01, /* bNrInputPins */
-    0x01, /* baSourceID (from Embedded MIDI IN Jack 1) */
-    0x01, /* baSourcePin */
-    0x00, /* iJack */
-
+    0x09, 0x24, 0x03, 0x02, 0x04, 0x01, 0x01, 0x01, 0x00,
     /* Endpoint 3 OUT Descriptor - MIDI Bulk OUT (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x03,     /* bEndpointAddress (OUT EP3) */
-    0x02,     /* bmAttributes (Bulk) */
-    64, 0x00, /* wMaxPacketSize (64 bytes) */
-    0,        /* bInterval */
-
+    0x07, 0x05, 0x03, 0x02, 64, 0x00, 0,
     /* Class-Specific MIDI Bulk OUT Endpoint Descriptor (5 bytes) */
-    0x05, /* bLength */
-    0x25, /* bDescriptorType (CS Endpoint) */
-    0x01, /* bDescriptorSubtype (MS General) */
-    0x01, /* bNumEmbMIDIJack */
-    0x01, /* baAssocJackID (Embedded MIDI IN Jack 1) */
-
+    0x05, 0x25, 0x01, 0x01, 0x01,
     /* Endpoint 3 IN Descriptor - MIDI Bulk IN (7 bytes) */
-    0x07,     /* bLength */
-    0x05,     /* bDescriptorType (Endpoint) */
-    0x83,     /* bEndpointAddress (IN EP3) */
-    0x02,     /* bmAttributes (Bulk) */
-    64, 0x00, /* wMaxPacketSize (64 bytes) */
-    0,        /* bInterval */
-
+    0x07, 0x05, 0x83, 0x02, 64, 0x00, 0,
     /* Class-Specific MIDI Bulk IN Endpoint Descriptor (5 bytes) */
-    0x05, /* bLength */
-    0x25, /* bDescriptorType (CS Endpoint) */
-    0x01, /* bDescriptorSubtype (MS General) */
-    0x01, /* bNumEmbMIDIJack */
-    0x03  /* baAssocJackID (Embedded MIDI OUT Jack 3) */
-};
-#else
-/* Standard Configuration Descriptor (Configuration + Interface + HID + Endpoint) */
-static const uint8_t Usb_HID_Configuration_Descriptor[34] = {
-    /* Configuration Descriptor (9 bytes) */
-    0x09,     /* bLength */
-    0x02,     /* bDescriptorType (Configuration) */
-    34, 0x00, /* wTotalLength (34 bytes) */
-    0x01,     /* bNumInterfaces */
-    0x01,     /* bConfigurationValue */
-    0x00,     /* iConfiguration */
-    0xA0,     /* bmAttributes (Bus Powered, Remote Wakeup) */
-    50,       /* bMaxPower (100 mA) */
-
-    /* Interface Descriptor (9 bytes) */
-    0x09, /* bLength */
-    0x04, /* bDescriptorType (Interface) */
-    0x00, /* bInterfaceNumber */
-    0x00, /* bAlternateSetting */
-    0x01, /* bNumEndpoints */
-    0x03, /* bInterfaceClass (HID) */
-    0x01, /* bInterfaceSubClass (Boot) */
-    0x01, /* bInterfaceProtocol (Keyboard) */
-    0x00, /* iInterface */
-
-    /* HID Descriptor (9 bytes) */
-    0x09,       /* bLength */
-    0x21,       /* bDescriptorType (HID) */
-    0x11, 0x01, /* bcdHID (1.11) */
-    0x00,       /* bCountryCode */
-    0x01,       /* bNumDescriptors */
-    0x22,       /* bDescriptorType (Report) */
-    (uint8_t)(sizeof(Usb_HID_Report_Descriptor) & 0xFF),
-    (uint8_t)((sizeof(Usb_HID_Report_Descriptor) >> 8) & 0xFF), /* wDescriptorLength */
-
-    /* Endpoint Descriptor (7 bytes) */
-    0x07,       /* bLength */
-    0x05,       /* bDescriptorType (Endpoint) */
-    0x81,       /* bEndpointAddress (IN EP1) */
-    0x03,       /* bmAttributes (Interrupt) */
-    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
-    10          /* bInterval (10 ms) */
-};
+    0x05, 0x25, 0x01, 0x01, 0x03
 #endif
-#endif
+};
 
 /* String Descriptor 0 (Language ID) */
 static const uint8_t Usb_HID_String_LangID[4] = {
@@ -695,11 +320,7 @@ static USB_Result VIAL_OnDataReceived(USB_EP_TypeDef EPx, uint8_t *Buffer, uint3
         USB_EP_doDataIn(USB_EP2, vial_tx_buffer, 32, VIAL_OnDataSent);
     } else {
         /* Re-arm receiver if packet was invalid */
-#if defined(MIDI_USB)
-        USB_EP_doDataOut(USB_EP2, vial_rx_buffer, 32, VIAL_OnDataReceived);
-#else
-        USB_EP_doDataOut(USB_EP3, vial_rx_buffer, 32, VIAL_OnDataReceived);
-#endif
+        USB_EP_doDataOut(VIAL_RX_EP, vial_rx_buffer, 32, VIAL_OnDataReceived);
     }
     return USB_SUCCESS;
 }
@@ -714,11 +335,7 @@ static USB_Result VIAL_OnDataSent(USB_EP_TypeDef EPx, uint8_t *Buffer, uint32_t 
 
     vial_tx_busy = false;
     /* Arm receiver for next host packet */
-#if defined(MIDI_USB)
-    USB_EP_doDataOut(USB_EP2, vial_rx_buffer, 32, VIAL_OnDataReceived);
-#else
-    USB_EP_doDataOut(USB_EP3, vial_rx_buffer, 32, VIAL_OnDataReceived);
-#endif
+    USB_EP_doDataOut(VIAL_RX_EP, vial_rx_buffer, 32, VIAL_OnDataReceived);
     return USB_SUCCESS;
 }
 #endif
@@ -778,26 +395,18 @@ USB_Result USB_HID_Reset(void) {
         USB_EP_Init(USB_HID_EP_SEND, USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPDATASEQ_Data1, 0);
 
 #ifdef VIAL
-#if defined(MIDI_USB)
-        /* Initialize Interrupt Endpoint 2 (IN/OUT) for Vial raw HID */
+        /* Initialize Interrupt Endpoint 2 (IN) and RX endpoint for Vial raw HID */
         USB_EP_Init(USB_EP2, USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPDATASEQ_Data1, 0);
+        if (VIAL_RX_EP != USB_EP2) {
+            USB_EP_Init(VIAL_RX_EP, USB_SEPx_CTRL_EPEN_Enable, 0);
+        }
         vial_tx_busy = false;
-        USB_EP_doDataOut(USB_EP2, vial_rx_buffer, 32, VIAL_OnDataReceived);
+        USB_EP_doDataOut(VIAL_RX_EP, vial_rx_buffer, 32, VIAL_OnDataReceived);
+#endif
 
+#ifdef MIDI_USB
         /* Initialize Bulk Endpoint 3 (IN/OUT) for MIDI */
         USB_EP_Init(USB_EP3, USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPDATASEQ_Data1, 0);
-#else
-        /* Initialize Interrupt Endpoint 2 (IN) and Endpoint 3 (OUT) for Vial raw HID */
-        USB_EP_Init(USB_EP2, USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPDATASEQ_Data1, 0);
-        USB_EP_Init(USB_EP3, USB_SEPx_CTRL_EPEN_Enable, 0);
-        vial_tx_busy = false;
-        USB_EP_doDataOut(USB_EP3, vial_rx_buffer, 32, VIAL_OnDataReceived);
-#endif
-#else
-#if defined(MIDI_USB)
-        /* Initialize Bulk Endpoint 3 (IN/OUT) for MIDI */
-        USB_EP_Init(USB_EP3, USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPDATASEQ_Data1, 0);
-#endif
 #endif
 
         /* Reset context variables */

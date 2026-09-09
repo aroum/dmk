@@ -74,6 +74,26 @@
 #define DEBOUNCE_TICKS 1
 #endif
 
+#if defined(MATRIX_ACTIVE_LOW)
+#define MATRIX_DRV_ACT 0
+#define MATRIX_DRV_IDL 1
+#define MATRIX_READ(pin) (!hal_gpio_get(pin))
+#define MATRIX_PULL_UP true
+#else
+#define MATRIX_DRV_ACT 1
+#define MATRIX_DRV_IDL 0
+#define MATRIX_READ(pin) (hal_gpio_get(pin))
+#define MATRIX_PULL_UP false
+#endif
+
+#if defined(DIRECT_PINS_ACTIVE_HIGH)
+#define DIRECT_PULL_UP false
+#define DIRECT_READ(pin) (hal_gpio_get(pin))
+#else
+#define DIRECT_PULL_UP true
+#define DIRECT_READ(pin) (!hal_gpio_get(pin))
+#endif
+
 // Physical pin mapping arrays derived from config.h
 #if defined(COL_PINS) && defined(ROW_PINS)
 static const pin_t columns_gpios[] = COL_PINS;
@@ -101,75 +121,35 @@ static uint8_t debounce_counters[CUR_NUM_KEYS] = {0};
 static bool debounced_state[CUR_NUM_KEYS] = {false};
 #endif
 
+static void init_pins(const pin_t *pins, size_t count, bool is_output, bool idle_val, bool pull_up) {
+    for (size_t i = 0; i < count; ++i) {
+        hal_gpio_init(pins[i]);
+        hal_gpio_set_dir(pins[i], is_output);
+        if (is_output) {
+            hal_gpio_put(pins[i], idle_val);
+        } else if (pull_up) {
+            hal_gpio_pull_up(pins[i]);
+        } else {
+            hal_gpio_pull_down(pins[i]);
+        }
+    }
+}
+
 /**
  * @brief Initialize matrix GPIO pins and default electrical states (pull-ups/pull-downs).
  */
 void matrix_init(void) {
 #if (MATRIX_TYPE == ROW2COL)
-    // Configure row pins as active drivers
-    for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-        hal_gpio_init(rows_gpios[j]);
-        hal_gpio_set_dir(rows_gpios[j], true);
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_put(rows_gpios[j], 1); // idle high
-#else
-        hal_gpio_put(rows_gpios[j], 0); // idle low
-#endif
-    }
-    // Configure column pins as sensed inputs with appropriate bias
-    for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-        hal_gpio_init(columns_gpios[i]);
-        hal_gpio_set_dir(columns_gpios[i], false);
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_pull_up(columns_gpios[i]);
-#else
-        hal_gpio_pull_down(columns_gpios[i]);
-#endif
-    }
+    init_pins(rows_gpios, CUR_NUM_ROWS, true, MATRIX_DRV_IDL, false);
+    init_pins(columns_gpios, CUR_NUM_COLS, false, 0, MATRIX_PULL_UP);
 #elif (MATRIX_TYPE == COL2ROW)
-    // Configure column pins as active drivers
-    for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-        hal_gpio_init(columns_gpios[i]);
-        hal_gpio_set_dir(columns_gpios[i], true);
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_put(columns_gpios[i], 1); // idle high
-#else
-        hal_gpio_put(columns_gpios[i], 0); // idle low
-#endif
-    }
-    // Configure row pins as sensed inputs with appropriate bias
-    for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-        hal_gpio_init(rows_gpios[j]);
-        hal_gpio_set_dir(rows_gpios[j], false);
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_pull_up(rows_gpios[j]);
-#else
-        hal_gpio_pull_down(rows_gpios[j]);
-#endif
-    }
+    init_pins(columns_gpios, CUR_NUM_COLS, true, MATRIX_DRV_IDL, false);
+    init_pins(rows_gpios, CUR_NUM_ROWS, false, 0, MATRIX_PULL_UP);
 #elif (MATRIX_TYPE == MH3SS2)
-    // Hall effect matrix: Columns drive active high, rows pulled down
-    for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-        hal_gpio_init(columns_gpios[i]);
-        hal_gpio_set_dir(columns_gpios[i], true);
-        hal_gpio_put(columns_gpios[i], 0); // idle low
-    }
-    for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-        hal_gpio_init(rows_gpios[j]);
-        hal_gpio_set_dir(rows_gpios[j], false);
-        hal_gpio_pull_down(rows_gpios[j]);
-    }
+    init_pins(columns_gpios, CUR_NUM_COLS, true, 0, false);
+    init_pins(rows_gpios, CUR_NUM_ROWS, false, 0, false);
 #elif (MATRIX_TYPE == DIRECT)
-    // Direct pins: Each key has an independent GPIO input pin
-    for (uint32_t k = 0; k < CUR_NUM_KEYS; ++k) {
-        hal_gpio_init(direct_pins[k]);
-        hal_gpio_set_dir(direct_pins[k], false);
-#if defined(DIRECT_PINS_ACTIVE_HIGH)
-        hal_gpio_pull_down(direct_pins[k]);
-#else
-        hal_gpio_pull_up(direct_pins[k]);
-#endif
-    }
+    init_pins(direct_pins, CUR_NUM_KEYS, false, 0, DIRECT_PULL_UP);
 #endif
 }
 
@@ -243,61 +223,25 @@ static inline void matrix_update_direct_key(uint8_t key_idx, bool raw_state) {
 void matrix_scan(void) {
 #if (MATRIX_TYPE == ROW2COL)
     for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-        // Drive current row active
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_put(rows_gpios[j], 0); // drive low
-#else
-        hal_gpio_put(rows_gpios[j], 1); // drive high
-#endif
+        hal_gpio_put(rows_gpios[j], MATRIX_DRV_ACT);
 #if (MATRIX_IO_DELAY_US > 0)
         hal_sleep_us(MATRIX_IO_DELAY_US);
 #endif
-
-        // Read all columns for this row
         for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-#if defined(MATRIX_ACTIVE_LOW)
-            bool raw_state = !hal_gpio_get(columns_gpios[i]);
-#else
-            bool raw_state = hal_gpio_get(columns_gpios[i]);
-#endif
-            matrix_update_key((uint8_t)i, (uint8_t)j, raw_state);
+            matrix_update_key((uint8_t)i, (uint8_t)j, MATRIX_READ(columns_gpios[i]));
         }
-
-        // Return row to idle state
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_put(rows_gpios[j], 1); // restore idle high
-#else
-        hal_gpio_put(rows_gpios[j], 0); // restore idle low
-#endif
+        hal_gpio_put(rows_gpios[j], MATRIX_DRV_IDL);
     }
 #elif (MATRIX_TYPE == COL2ROW)
     for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-        // Drive current column active
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_put(columns_gpios[i], 0);
-#else
-        hal_gpio_put(columns_gpios[i], 1);
-#endif
+        hal_gpio_put(columns_gpios[i], MATRIX_DRV_ACT);
 #if (MATRIX_IO_DELAY_US > 0)
         hal_sleep_us(MATRIX_IO_DELAY_US);
 #endif
-
-        // Read all rows for this column
         for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-#if defined(MATRIX_ACTIVE_LOW)
-            bool raw_state = !hal_gpio_get(rows_gpios[j]);
-#else
-            bool raw_state = hal_gpio_get(rows_gpios[j]);
-#endif
-            matrix_update_key((uint8_t)i, (uint8_t)j, raw_state);
+            matrix_update_key((uint8_t)i, (uint8_t)j, MATRIX_READ(rows_gpios[j]));
         }
-
-        // Return column to idle state
-#if defined(MATRIX_ACTIVE_LOW)
-        hal_gpio_put(columns_gpios[i], 1);
-#else
-        hal_gpio_put(columns_gpios[i], 0);
-#endif
+        hal_gpio_put(columns_gpios[i], MATRIX_DRV_IDL);
     }
 #elif (MATRIX_TYPE == MH3SS2)
     for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
@@ -323,12 +267,7 @@ void matrix_scan(void) {
     }
 #elif (MATRIX_TYPE == DIRECT)
     for (uint32_t k = 0; k < CUR_NUM_KEYS; ++k) {
-#if defined(DIRECT_PINS_ACTIVE_HIGH)
-        bool raw_state = hal_gpio_get(direct_pins[k]);
-#else
-        bool raw_state = !hal_gpio_get(direct_pins[k]);
-#endif
-        matrix_update_direct_key((uint8_t)k, raw_state);
+        matrix_update_direct_key((uint8_t)k, DIRECT_READ(direct_pins[k]));
     }
 #endif
 }

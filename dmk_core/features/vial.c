@@ -104,280 +104,86 @@ enum {
 
 // Helper function to map DMK mouse keycodes to Vial Protocol v6 keycodes
 static uint8_t to_via_mouse_keycode(uint8_t dmk_kc) {
-    switch (dmk_kc) {
-    case HID_KEY_MOUSE_UP:       return 0xCD;
-    case HID_KEY_MOUSE_DOWN:     return 0xCE;
-    case HID_KEY_MOUSE_LEFT:     return 0xCF;
-    case HID_KEY_MOUSE_RIGHT:    return 0xD0;
-    case HID_KEY_MOUSE_BTN1:     return 0xD1;
-    case HID_KEY_MOUSE_BTN2:     return 0xD2;
-    case HID_KEY_MOUSE_BTN3:     return 0xD3;
-    case HID_KEY_MOUSE_BTN4:     return 0xD4;
-    case HID_KEY_MOUSE_BTN5:     return 0xD5;
-    case HID_KEY_MOUSE_WH_UP:    return 0xD9;
-    case HID_KEY_MOUSE_WH_DOWN:  return 0xDA;
-    case HID_KEY_MOUSE_WH_LEFT:  return 0xDB;
-    case HID_KEY_MOUSE_WH_RIGHT: return 0xDC;
-    case HID_KEY_MOUSE_ACCEL0:   return 0xDD;
-    case HID_KEY_MOUSE_ACCEL1:   return 0xDE;
-    case HID_KEY_MOUSE_ACCEL2:   return 0xDF;
-    default:                     return dmk_kc;
-    }
+    if (dmk_kc >= HID_KEY_MOUSE_UP && dmk_kc <= HID_KEY_MOUSE_BTN5) return 0xCD + (dmk_kc - HID_KEY_MOUSE_UP);
+    if (dmk_kc >= HID_KEY_MOUSE_WH_UP && dmk_kc <= HID_KEY_MOUSE_ACCEL2) return 0xD9 + (dmk_kc - HID_KEY_MOUSE_WH_UP);
+    return dmk_kc;
 }
 
 // Helper function to map Vial Protocol v6 mouse keycodes to DMK mouse keycodes
 static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
-    switch (via_kc) {
-    case 0xCD: return HID_KEY_MOUSE_UP;
-    case 0xCE: return HID_KEY_MOUSE_DOWN;
-    case 0xCF: return HID_KEY_MOUSE_LEFT;
-    case 0xD0: return HID_KEY_MOUSE_RIGHT;
-    case 0xD1: return HID_KEY_MOUSE_BTN1;
-    case 0xD2: return HID_KEY_MOUSE_BTN2;
-    case 0xD3: return HID_KEY_MOUSE_BTN3;
-    case 0xD4: return HID_KEY_MOUSE_BTN4;
-    case 0xD5: return HID_KEY_MOUSE_BTN5;
-    case 0xD9: return HID_KEY_MOUSE_WH_UP;
-    case 0xDA: return HID_KEY_MOUSE_WH_DOWN;
-    case 0xDB: return HID_KEY_MOUSE_WH_LEFT;
-    case 0xDC: return HID_KEY_MOUSE_WH_RIGHT;
-    case 0xDD: return HID_KEY_MOUSE_ACCEL0;
-    case 0xDE: return HID_KEY_MOUSE_ACCEL1;
-    case 0xDF: return HID_KEY_MOUSE_ACCEL2;
-    default:   return via_kc;
-    }
+    if (via_kc >= 0xCD && via_kc <= 0xD5) return HID_KEY_MOUSE_UP + (via_kc - 0xCD);
+    if (via_kc >= 0xD9 && via_kc <= 0xDF) return HID_KEY_MOUSE_WH_UP + (via_kc - 0xD9);
+    return via_kc;
+}
+
+static uint8_t to_via_mods(uint8_t dmk_mod) {
+    uint8_t via_mod = 0;
+    if (dmk_mod & MOD_LCTRL) via_mod |= 0x01;
+    if (dmk_mod & MOD_LSHIFT) via_mod |= 0x02;
+    if (dmk_mod & MOD_LALT) via_mod |= 0x04;
+    if (dmk_mod & MOD_LGUI) via_mod |= 0x08;
+    if (dmk_mod & MOD_RCTRL) via_mod |= 0x11;
+    if (dmk_mod & MOD_RSHIFT) via_mod |= 0x12;
+    if (dmk_mod & MOD_RALT) via_mod |= 0x14;
+    if (dmk_mod & MOD_RGUI) via_mod |= 0x18;
+    return via_mod;
+}
+
+static uint8_t from_via_mods(uint8_t via_mod) {
+    uint8_t dmk_mod = 0;
+    if (via_mod & 0x01) dmk_mod |= MOD_LCTRL;
+    if (via_mod & 0x02) dmk_mod |= MOD_LSHIFT;
+    if (via_mod & 0x04) dmk_mod |= MOD_LALT;
+    if (via_mod & 0x08) dmk_mod |= MOD_LGUI;
+    if (via_mod & 0x11) dmk_mod |= MOD_RCTRL;
+    if (via_mod & 0x12) dmk_mod |= MOD_RSHIFT;
+    if (via_mod & 0x14) dmk_mod |= MOD_RALT;
+    if (via_mod & 0x18) dmk_mod |= MOD_RGUI;
+    return dmk_mod;
 }
 
 // Helper function to map DMK 32-bit keycodes to VIA 16-bit keycodes
 uint16_t to_via_keycode(uint32_t dmk_key) {
-    if (dmk_key == K_TRNS) {
-        return 0x0001; // Transparent in VIA
-    }
+    if (dmk_key == K_TRNS) return 0x0001;
+    if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_SPD) return 0x7820 + (dmk_key - K_RGB_TOGG);
+    if (dmk_key == K_BOOTLOADER) return 0x7C00;
+    if (dmk_key >= 0xC0 && dmk_key <= 0xDF) return 0x7700 + (dmk_key - 0xC0);
+    if ((dmk_key & 0xFF000000) == DMK_MO) return 0x5220 | (dmk_key & 0xFF);
+    if ((dmk_key & 0xFF000000) == DMK_TG) return 0x5260 | (dmk_key & 0xFF);
 
-    // Map DMK internal RGB keycodes to standard QMK underglow keycodes (0x7820 - 0x782A)
-    if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_SPD) {
-        return 0x7820 + (dmk_key - K_RGB_TOGG);
-    }
-
-    // Map DMK bootloader keycode to standard QMK QK_BOOTLOADER (0x7C00)
-    if (dmk_key == K_BOOTLOADER) {
-        return 0x7C00;
-    }
-
-    // Map DMK internal Macro keycodes (0xC0 - 0xDF) to QMK standard macro keycodes (0x7700 - 0x771F)
-    if (dmk_key >= 0xC0 && dmk_key <= 0xDF) {
-        return 0x7700 + (dmk_key - 0xC0);
-    }
-
-    // Momentary layer: DMK_MO
-    if ((dmk_key & 0xFF000000) == DMK_MO) {
-        uint8_t layer = dmk_key & 0xFF;
-        return 0x5220 | layer;
-    }
-
-    // Toggle layer: DMK_TG
-    if ((dmk_key & 0xFF000000) == DMK_TG) {
-        uint8_t layer = dmk_key & 0xFF;
-        return 0x5260 | layer;
-    }
-
-    // Tap-Hold: DMK_HT
     if ((dmk_key & 0xFF000000) == DMK_HT) {
         uint8_t layer_or_mod = (dmk_key >> 8) & 0xFF;
         uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
-        if (layer_or_mod < 32) {
-            return 0x4000 | (layer_or_mod << 8) | kc;
-        } else {
-            // Tap-Hold Mod
-            uint8_t via_mod = 0;
-            if (layer_or_mod & MOD_LCTRL)
-                via_mod |= 0x01;
-            if (layer_or_mod & MOD_LSHIFT)
-                via_mod |= 0x02;
-            if (layer_or_mod & MOD_LALT)
-                via_mod |= 0x04;
-            if (layer_or_mod & MOD_LGUI)
-                via_mod |= 0x08;
-            if (layer_or_mod & MOD_RCTRL)
-                via_mod |= 0x11;
-            if (layer_or_mod & MOD_RSHIFT)
-                via_mod |= 0x12;
-            if (layer_or_mod & MOD_RALT)
-                via_mod |= 0x14;
-            if (layer_or_mod & MOD_RGUI)
-                via_mod |= 0x18;
-            return 0x2000 | (via_mod << 8) | kc;
-        }
+        return (layer_or_mod < 32) ? (0x4000 | (layer_or_mod << 8) | kc) : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
     }
-
-    // Key with Modifier: DMK_MK
     if ((dmk_key & 0xFF000000) == DMK_MK) {
-        uint8_t mod_mask = (dmk_key >> 8) & 0xFF;
-        uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
-        uint8_t via_mod = 0;
-        if (mod_mask & MOD_LCTRL)
-            via_mod |= 0x01;
-        if (mod_mask & MOD_LSHIFT)
-            via_mod |= 0x02;
-        if (mod_mask & MOD_LALT)
-            via_mod |= 0x04;
-        if (mod_mask & MOD_LGUI)
-            via_mod |= 0x08;
-        if (mod_mask & MOD_RCTRL)
-            via_mod |= 0x11;
-        if (mod_mask & MOD_RSHIFT)
-            via_mod |= 0x12;
-        if (mod_mask & MOD_RALT)
-            via_mod |= 0x14;
-        if (mod_mask & MOD_RGUI)
-            via_mod |= 0x18;
-        return 0x0100 | (via_mod << 8) | kc;
+        return 0x0100 | (to_via_mods((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
     }
-
-    // Raw momentary activation (L_0 <= dmk_key <= L_15)
-    if (dmk_key >= L_0 && dmk_key <= L_15) {
-        return 0x5220 | (dmk_key - L_0);
-    }
-
-    // MIDI keycodes range (0x7100 - 0x71FF)
-    if (dmk_key >= 0x7100 && dmk_key <= 0x71FF) {
-        return dmk_key;
-    }
-
-    // Custom CC fixed val / toggle range (0x7A00 - 0x7AFF)
-    if (dmk_key >= 0x7A00 && dmk_key <= 0x7AFF) {
-        return dmk_key;
-    }
-
-    // Custom CC keycodes range (0x7E00 - 0x7E3F)
-    if (dmk_key >= 0x7E00 && dmk_key <= 0x7E3F) {
-        return dmk_key;
-    }
-
-    // Custom CC keycodes range (0x7E40 - 0x7F3F)
-    if (dmk_key >= 0x7E40 && dmk_key <= 0x7F3F) {
-        return dmk_key;
-    }
-
-    // Map DMK internal Mouse keycodes (0xF0 - 0xFF) to Vial Protocol v6 mouse keycodes (0x00CD - 0x00DF)
-    if (dmk_key >= HID_KEY_MOUSE_UP && dmk_key <= HID_KEY_MOUSE_ACCEL2) {
-        return to_via_mouse_keycode((uint8_t)dmk_key);
-    }
-
-    // Normal standard keycode
-    if (dmk_key <= 0xFF) {
-        return dmk_key;
-    }
-
-    return 0x0000; // KC_NO
+    if (dmk_key >= L_0 && dmk_key <= L_15) return 0x5220 | (dmk_key - L_0);
+    if ((dmk_key >= 0x7100 && dmk_key <= 0x71FF) || (dmk_key >= 0x7A00 && dmk_key <= 0x7AFF) ||
+        (dmk_key >= 0x7E00 && dmk_key <= 0x7F3F)) return dmk_key;
+    if (dmk_key >= HID_KEY_MOUSE_UP && dmk_key <= HID_KEY_MOUSE_ACCEL2) return to_via_mouse_keycode((uint8_t)dmk_key);
+    return (dmk_key <= 0xFF) ? dmk_key : 0x0000;
 }
 
 // Helper function to map VIA 16-bit keycodes to DMK 32-bit keycodes
 uint32_t from_via_keycode(uint16_t via_key) {
-    if (via_key == 0x0000)
-        return K_NULL;
-    if (via_key == 0x0001)
-        return K_TRNS;
-
-    // MIDI keycodes range (0x7100 - 0x71FF)
-    if (via_key >= 0x7100 && via_key <= 0x71FF) {
-        return via_key;
-    }
-
-    // Custom CC fixed val / toggle range (0x7A00 - 0x7AFF)
-    if (via_key >= 0x7A00 && via_key <= 0x7AFF) {
-        return via_key;
-    }
-
-    // Custom CC keycodes range (0x7E00 - 0x7E3F)
-    if (via_key >= 0x7E00 && via_key <= 0x7E3F) {
-        return via_key;
-    }
-
-    // Custom CC keycodes range (0x7E40 - 0x7F3F)
-    if (via_key >= 0x7E40 && via_key <= 0x7F3F) {
-        return via_key;
-    }
-
-    // Map QMK standard underglow keycodes (0x7820 - 0x782A) to DMK internal RGB keycodes
-    if (via_key >= 0x7820 && via_key <= 0x782A) {
-        return K_RGB_TOGG + (via_key - 0x7820);
-    }
-
-    // Map QMK bootloader keycode (0x7C00 or legacy 0x5C00) to DMK bootloader keycode
-    if (via_key == 0x7C00 || via_key == 0x5C00) {
-        return K_BOOTLOADER;
-    }
-
-    // Map QMK standard macro keycodes (0x7700 - 0x771F) to DMK internal Macro keycodes
-    if (via_key >= 0x7700 && via_key <= 0x771F) {
-        return 0xC0 + (via_key - 0x7700);
-    }
-
-    // Map Vial Protocol v6 mouse keycodes (0x00CD - 0x00DF) to DMK internal Mouse keycodes
-    if ((via_key >= 0x00CD && via_key <= 0x00D5) || (via_key >= 0x00D9 && via_key <= 0x00DF)) {
+    if (via_key == 0x0000) return K_NULL;
+    if (via_key == 0x0001) return K_TRNS;
+    if ((via_key >= 0x7100 && via_key <= 0x71FF) || (via_key >= 0x7A00 && via_key <= 0x7AFF) ||
+        (via_key >= 0x7E00 && via_key <= 0x7F3F)) return via_key;
+    if (via_key >= 0x7820 && via_key <= 0x782A) return K_RGB_TOGG + (via_key - 0x7820);
+    if (via_key == 0x7C00 || via_key == 0x5C00) return K_BOOTLOADER;
+    if (via_key >= 0x7700 && via_key <= 0x771F) return 0xC0 + (via_key - 0x7700);
+    if ((via_key >= 0x00CD && via_key <= 0x00D5) || (via_key >= 0x00D9 && via_key <= 0x00DF))
         return from_via_mouse_keycode((uint8_t)via_key);
-    }
-
-    // Normal standard keycode
-    if (via_key >= 0x0002 && via_key <= 0x00FF) {
-        return via_key;
-    }
-
-    // Key with modifier
-    if (via_key >= 0x0100 && via_key <= 0x1FFF) {
-        uint8_t via_mod = (via_key >> 8) & 0xFF;
-        uint8_t kc = from_via_mouse_keycode(via_key & 0xFF);
-        uint8_t dmk_mod = 0;
-        if (via_mod & 0x01)
-            dmk_mod |= MOD_LCTRL;
-        if (via_mod & 0x02)
-            dmk_mod |= MOD_LSHIFT;
-        if (via_mod & 0x04)
-            dmk_mod |= MOD_LALT;
-        if (via_mod & 0x08)
-            dmk_mod |= MOD_LGUI;
-        if (via_mod & 0x11)
-            dmk_mod |= MOD_RCTRL;
-        if (via_mod & 0x12)
-            dmk_mod |= MOD_RSHIFT;
-        if (via_mod & 0x14)
-            dmk_mod |= MOD_RALT;
-        if (via_mod & 0x18)
-            dmk_mod |= MOD_RGUI;
-        return MK(dmk_mod, kc);
-    }
-
-    // Tap-Hold Mod
-    if (via_key >= 0x2000 && via_key <= 0x3FFF) {
-        uint8_t via_mod = (via_key >> 8) & 0x1F;
-        uint8_t kc = from_via_mouse_keycode(via_key & 0xFF);
-        uint8_t dmk_mod = 0;
-        if (via_mod & 0x01)
-            dmk_mod |= MOD_LCTRL;
-        if (via_mod & 0x02)
-            dmk_mod |= MOD_LSHIFT;
-        if (via_mod & 0x04)
-            dmk_mod |= MOD_LALT;
-        if (via_mod & 0x08)
-            dmk_mod |= MOD_LGUI;
-        if (via_mod & 0x11)
-            dmk_mod |= MOD_RCTRL;
-        if (via_mod & 0x12)
-            dmk_mod |= MOD_RSHIFT;
-        if (via_mod & 0x14)
-            dmk_mod |= MOD_RALT;
-        if (via_mod & 0x18)
-            dmk_mod |= MOD_RGUI;
-        return HT(dmk_mod, kc);
-    }
-
-    // Tap-Hold Layer
-    if (via_key >= 0x4000 && via_key <= 0x4FFF) {
-        uint8_t layer = (via_key >> 8) & 0x0F;
-        uint8_t kc = from_via_mouse_keycode(via_key & 0xFF);
-        return HT(layer, kc);
-    }
+    if (via_key >= 0x0002 && via_key <= 0x00FF) return via_key;
+    if (via_key >= 0x0100 && via_key <= 0x1FFF)
+        return MK(from_via_mods((via_key >> 8) & 0xFF), from_via_mouse_keycode(via_key & 0xFF));
+    if (via_key >= 0x2000 && via_key <= 0x3FFF)
+        return HT(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
+    if (via_key >= 0x4000 && via_key <= 0x4FFF)
+        return HT((via_key >> 8) & 0x0F, from_via_mouse_keycode(via_key & 0xFF));
 
     // Layer Toggle
     if (via_key >= 0x5260 && via_key <= 0x527F) {
@@ -391,156 +197,6 @@ uint32_t from_via_keycode(uint16_t via_key) {
 
     return K_NULL;
 }
-
-#ifdef MCU_milandr
-static void vial_eeprom_load(void) {
-    uint32_t magic = *(volatile uint32_t *)EEPROM_STORAGE_ADDR;
-    if (magic == VIAL_EEPROM_MAGIC) {
-        // Load keymap from EEPROM
-        uint32_t addr = EEPROM_STORAGE_ADDR + 4;
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t k = 0; k < NUM_KEYS; k++) {
-                dynamic_keymap[l][k] = *(volatile uint32_t *)addr;
-                addr += 4;
-            }
-        }
-        // Load encoder keymap from EEPROM
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t e = 0; e < 4; e++) {
-                for (size_t d = 0; d < 2; d++) {
-                    dynamic_encoder_keymap[l][e][d] = *(volatile uint32_t *)addr;
-                    addr += 4;
-                }
-            }
-        }
-        // Load RGB config from EEPROM
-        uint8_t rgb_cfg[8];
-        uint32_t w1 = *(volatile uint32_t *)addr;
-        addr += 4;
-        uint32_t w2 = *(volatile uint32_t *)addr;
-        addr += 4;
-        memcpy(&rgb_cfg[0], &w1, 4);
-        memcpy(&rgb_cfg[4], &w2, 4);
-        rgb_set_config(rgb_cfg);
-
-        // Load macro buffer
-        for (size_t i = 0; i < DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE; i += 4) {
-            uint32_t val = *(volatile uint32_t *)addr;
-            memcpy(&dynamic_macro_buffer[i], &val, 4);
-            addr += 4;
-        }
-
-        // Load combos
-        for (size_t i = 0; i < sizeof(vial_combos); i += 4) {
-            uint32_t val = *(volatile uint32_t *)addr;
-            memcpy(((uint8_t *)vial_combos) + i, &val, 4);
-            addr += 4;
-        }
-    } else {
-        // Initialize dynamic keymap from static keymap
-        size_t layers = keymap_layers;
-        if (layers > DYNAMIC_KEYMAP_MAX_LAYERS) {
-            layers = DYNAMIC_KEYMAP_MAX_LAYERS;
-        }
-        for (size_t l = 0; l < layers; l++) {
-            for (size_t k = 0; k < NUM_KEYS; k++) {
-                dynamic_keymap[l][k] = keymap[l][k];
-            }
-        }
-        // Initialize dynamic encoder keymap from static encoder keymap
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t e = 0; e < 4; e++) {
-                for (size_t d = 0; d < 2; d++) {
-#if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
-                    if (l < layers && e < encoder_get_count()) {
-                        dynamic_encoder_keymap[l][e][d] = encoder_keymap_get_static(l, e, d);
-                    } else {
-                        dynamic_encoder_keymap[l][e][d] = K_TRNS;
-                    }
-#else
-                    dynamic_encoder_keymap[l][e][d] = K_TRNS;
-#endif
-                }
-            }
-        }
-        memset(dynamic_macro_buffer, 0, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-        memset(vial_combos, 0, sizeof(vial_combos));
-    }
-}
-
-static __RAMFUNC void vial_eeprom_save(void) {
-    // 1. Get the RGB config and prepare data before entering critical section/flash access
-    uint8_t rgb_cfg[8];
-    rgb_get_config(rgb_cfg);
-    uint32_t w1 =
-        ((uint32_t)rgb_cfg[3] << 24) | ((uint32_t)rgb_cfg[2] << 16) | ((uint32_t)rgb_cfg[1] << 8) | rgb_cfg[0];
-    uint32_t w2 =
-        ((uint32_t)rgb_cfg[7] << 24) | ((uint32_t)rgb_cfg[6] << 16) | ((uint32_t)rgb_cfg[5] << 8) | rgb_cfg[4];
-
-    // 2. Enable EEPROM clock and latency before critical section (while executing from Flash is still okay)
-    RST_CLK_PCLKcmd(RST_CLK_PCLK_EEPROM, ENABLE);
-    EEPROM_SetLatency(EEPROM_Latency_3);
-
-    // 3. Enter critical section - disable interrupts completely using PRIMASK
-    __disable_irq();
-
-    // 4. Erase the page first (runs from RAM)
-    EEPROM_ErasePage(EEPROM_STORAGE_ADDR, EEPROM_Main_Bank_Select);
-
-    // 5. Program the magic word (runs from RAM)
-    EEPROM_ProgramWord(EEPROM_STORAGE_ADDR, EEPROM_Main_Bank_Select, VIAL_EEPROM_MAGIC);
-
-    // 6. Program the keymap (runs from RAM)
-    uint32_t addr = EEPROM_STORAGE_ADDR + 4;
-    for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-        for (size_t k = 0; k < NUM_KEYS; k++) {
-            EEPROM_ProgramWord(addr, EEPROM_Main_Bank_Select, dynamic_keymap[l][k]);
-            addr += 4;
-        }
-    }
-    // Program the encoder keymap (runs from RAM)
-    for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-        for (size_t e = 0; e < 4; e++) {
-            for (size_t d = 0; d < 2; d++) {
-                EEPROM_ProgramWord(addr, EEPROM_Main_Bank_Select, dynamic_encoder_keymap[l][e][d]);
-                addr += 4;
-            }
-        }
-    }
-
-    // 7. Program the RGB config (runs from RAM)
-    EEPROM_ProgramWord(addr, EEPROM_Main_Bank_Select, w1);
-    addr += 4;
-    EEPROM_ProgramWord(addr, EEPROM_Main_Bank_Select, w2);
-    addr += 4;
-
-    // 8. Program the macro buffer (runs from RAM)
-    for (size_t i = 0; i < DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE; i += 4) {
-        uint32_t val;
-        memcpy(&val, &dynamic_macro_buffer[i], 4);
-        EEPROM_ProgramWord(addr, EEPROM_Main_Bank_Select, val);
-        addr += 4;
-    }
-
-    // 9. Program combos
-    for (size_t i = 0; i < sizeof(vial_combos); i += 4) {
-        uint32_t val;
-        memcpy(&val, ((uint8_t *)vial_combos) + i, 4);
-        EEPROM_ProgramWord(addr, EEPROM_Main_Bank_Select, val);
-        addr += 4;
-    }
-
-    // 10. Update cache (runs from RAM)
-    EEPROM_UpdateDCache();
-
-    // 11. Re-enable interrupts
-    __enable_irq();
-}
-#endif
-
-#if defined(MCU_rp2040) || defined(MCU_rp2350)
-#include "hardware/flash.h"
-#include "hardware/sync.h"
 
 #pragma pack(push, 1)
 typedef struct {
@@ -558,92 +214,8 @@ typedef union {
     uint8_t padding[((sizeof(vial_storage_data_t) + 255) / 256) * 256];
 } vial_storage_t;
 
-#define FLASH_STORAGE_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
-
-static void vial_eeprom_load(void) {
-    const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
-    if (flash_storage->data.magic == VIAL_EEPROM_MAGIC) {
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t k = 0; k < NUM_KEYS; k++) {
-                dynamic_keymap[l][k] = flash_storage->data.keymap[l][k];
-            }
-        }
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t e = 0; e < 4; e++) {
-                for (size_t d = 0; d < 2; d++) {
-                    dynamic_encoder_keymap[l][e][d] = flash_storage->data.encoder_keymap[l][e][d];
-                }
-            }
-        }
-        rgb_set_config(flash_storage->data.rgb_cfg);
-        memcpy(dynamic_macro_buffer, flash_storage->data.macro_buffer, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-        memcpy(vial_combos, flash_storage->data.combos, sizeof(vial_combos));
-    } else {
-        size_t layers = keymap_layers;
-        if (layers > DYNAMIC_KEYMAP_MAX_LAYERS) {
-            layers = DYNAMIC_KEYMAP_MAX_LAYERS;
-        }
-        for (size_t l = 0; l < layers; l++) {
-            for (size_t k = 0; k < NUM_KEYS; k++) {
-                dynamic_keymap[l][k] = keymap[l][k];
-            }
-        }
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t e = 0; e < 4; e++) {
-                for (size_t d = 0; d < 2; d++) {
-#if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
-                    if (l < layers && e < encoder_get_count()) {
-                        dynamic_encoder_keymap[l][e][d] = encoder_keymap_get_static(l, e, d);
-                    } else {
-                        dynamic_encoder_keymap[l][e][d] = K_TRNS;
-                    }
-#else
-                    dynamic_encoder_keymap[l][e][d] = K_TRNS;
-#endif
-                }
-            }
-        }
-        memset(dynamic_macro_buffer, 0, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-        memset(vial_combos, 0, sizeof(vial_combos));
-    }
-}
-
-static void vial_eeprom_save(void) {
-    static vial_storage_t temp_buf;
-    memset(&temp_buf, 0, sizeof(temp_buf));
-
-    temp_buf.data.magic = VIAL_EEPROM_MAGIC;
-    for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-        for (size_t k = 0; k < NUM_KEYS; k++) {
-            temp_buf.data.keymap[l][k] = dynamic_keymap[l][k];
-        }
-    }
-    for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-        for (size_t e = 0; e < 4; e++) {
-            for (size_t d = 0; d < 2; d++) {
-                temp_buf.data.encoder_keymap[l][e][d] = dynamic_encoder_keymap[l][e][d];
-            }
-        }
-    }
-    rgb_get_config(temp_buf.data.rgb_cfg);
-    memcpy(temp_buf.data.macro_buffer, dynamic_macro_buffer, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-    memcpy(temp_buf.data.combos, vial_combos, sizeof(vial_combos));
-
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(FLASH_STORAGE_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_program(FLASH_STORAGE_OFFSET, (const uint8_t *)&temp_buf, sizeof(temp_buf));
-    restore_interrupts(ints);
-}
-#endif
-
-void vial_init(void) {
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
-    vial_eeprom_load();
-#else
-    size_t layers = keymap_layers;
-    if (layers > DYNAMIC_KEYMAP_MAX_LAYERS) {
-        layers = DYNAMIC_KEYMAP_MAX_LAYERS;
-    }
+static void vial_storage_init_default(void) {
+    size_t layers = keymap_layers > DYNAMIC_KEYMAP_MAX_LAYERS ? DYNAMIC_KEYMAP_MAX_LAYERS : keymap_layers;
     for (size_t l = 0; l < layers; l++) {
         for (size_t k = 0; k < NUM_KEYS; k++) {
             dynamic_keymap[l][k] = keymap[l][k];
@@ -653,18 +225,97 @@ void vial_init(void) {
         for (size_t e = 0; e < 4; e++) {
             for (size_t d = 0; d < 2; d++) {
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
-                if (l < layers && e < encoder_get_count()) {
-                    dynamic_encoder_keymap[l][e][d] = encoder_keymap_get_static(l, e, d);
-                } else {
-                    dynamic_encoder_keymap[l][e][d] = K_TRNS;
-                }
+                dynamic_encoder_keymap[l][e][d] = (l < layers && e < encoder_get_count()) ?
+                    encoder_keymap_get_static(l, e, d) : K_TRNS;
 #else
                 dynamic_encoder_keymap[l][e][d] = K_TRNS;
 #endif
             }
         }
     }
+    memset(dynamic_macro_buffer, 0, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
+    memset(vial_combos, 0, sizeof(vial_combos));
+}
+
+static void vial_storage_unpack(const vial_storage_data_t *src) {
+    memcpy(dynamic_keymap, src->keymap, sizeof(dynamic_keymap));
+    memcpy(dynamic_encoder_keymap, src->encoder_keymap, sizeof(dynamic_encoder_keymap));
+    rgb_set_config(src->rgb_cfg);
+    memcpy(dynamic_macro_buffer, src->macro_buffer, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
+    memcpy(vial_combos, src->combos, sizeof(vial_combos));
+}
+
+static void vial_storage_pack(vial_storage_data_t *dst) {
+    dst->magic = VIAL_EEPROM_MAGIC;
+    memcpy(dst->keymap, dynamic_keymap, sizeof(dynamic_keymap));
+    memcpy(dst->encoder_keymap, dynamic_encoder_keymap, sizeof(dynamic_encoder_keymap));
+    rgb_get_config(dst->rgb_cfg);
+    memcpy(dst->macro_buffer, dynamic_macro_buffer, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
+    memcpy(dst->combos, vial_combos, sizeof(vial_combos));
+}
+
+#ifdef MCU_milandr
+static void vial_eeprom_load(void) {
+    const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)EEPROM_STORAGE_ADDR;
+    if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
+        vial_storage_unpack(flash_storage);
+    } else {
+        vial_storage_init_default();
+    }
+}
+
+static __RAMFUNC void vial_eeprom_save(void) {
+    static vial_storage_t temp_buf;
+    vial_storage_pack(&temp_buf.data);
+
+    RST_CLK_PCLKcmd(RST_CLK_PCLK_EEPROM, ENABLE);
+    EEPROM_SetLatency(EEPROM_Latency_3);
+    __disable_irq();
+
+    EEPROM_ErasePage(EEPROM_STORAGE_ADDR, EEPROM_Main_Bank_Select);
+    const uint32_t *src_words = (const uint32_t *)&temp_buf.data;
+    for (size_t i = 0; i < sizeof(vial_storage_data_t) / 4; i++) {
+        EEPROM_ProgramWord(EEPROM_STORAGE_ADDR + (i * 4), EEPROM_Main_Bank_Select, src_words[i]);
+    }
+    EEPROM_UpdateDCache();
+    __enable_irq();
+}
 #endif
+
+#if defined(MCU_rp2040) || defined(MCU_rp2350)
+#include "hardware/flash.h"
+#include "hardware/sync.h"
+
+#define FLASH_STORAGE_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
+
+static void vial_eeprom_load(void) {
+    const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
+    if (flash_storage->data.magic == VIAL_EEPROM_MAGIC) {
+        vial_storage_unpack(&flash_storage->data);
+    } else {
+        vial_storage_init_default();
+    }
+}
+
+static void vial_eeprom_save(void) {
+    static vial_storage_t temp_buf;
+    memset(&temp_buf, 0, sizeof(temp_buf));
+    vial_storage_pack(&temp_buf.data);
+
+    uint32_t ints = save_and_disable_interrupts();
+    flash_range_erase(FLASH_STORAGE_OFFSET, FLASH_SECTOR_SIZE);
+    flash_range_program(FLASH_STORAGE_OFFSET, (const uint8_t *)&temp_buf, sizeof(temp_buf));
+    restore_interrupts(ints);
+}
+#endif
+
+#if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350)
+static inline void vial_eeprom_load(void) { vial_storage_init_default(); }
+static inline void vial_eeprom_save(void) {}
+#endif
+
+void vial_init(void) {
+    vial_eeprom_load();
 }
 
 void vial_process_packet(uint8_t const *request, uint8_t *response) {
@@ -753,9 +404,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         int16_t ki = keyboard_get_flat_key_index(row, col);
         if (ki >= 0 && layer < DYNAMIC_KEYMAP_MAX_LAYERS) {
             dynamic_keymap[layer][ki] = from_via_keycode(via_key);
-#ifdef MCU_milandr
             vial_eeprom_save();
-#endif
         }
         break;
     }
@@ -793,9 +442,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
                 dynamic_keymap[layer][key_idx] = from_via_keycode(via_key);
             }
         }
-#ifdef MCU_milandr
         vial_eeprom_save();
-#endif
         break;
     }
 
@@ -822,9 +469,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
         if (layer < DYNAMIC_KEYMAP_MAX_LAYERS && idx < encoder_get_count() && dir < 2) {
             dynamic_encoder_keymap[layer][idx][dir] = from_via_keycode(via_key);
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
             vial_eeprom_save();
-#endif
         }
 #endif
         break;
@@ -855,9 +500,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
                 }
             }
         }
-#ifdef MCU_milandr
         vial_eeprom_save();
-#endif
         break;
     }
 
@@ -910,9 +553,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     }
 
     case VIA_CUSTOM_SAVE: {
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
         vial_eeprom_save();
-#endif
         break;
     }
 
@@ -941,18 +582,14 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         uint8_t size = request[3];
         if (offset + size <= DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE) {
             memcpy(&dynamic_macro_buffer[offset], &request[4], size);
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
             vial_eeprom_save();
-#endif
         }
         break;
     }
 
     case VIA_DYNAMIC_KEYMAP_MACRO_RESET: {
         memset(dynamic_macro_buffer, 0, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
         vial_eeprom_save();
-#endif
         break;
     }
 
@@ -995,40 +632,22 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
             break;
         }
 
-        case VIAL_GET_UNLOCK_STATUS: {
-            memset(response, 0xFF, 32);
-            response[0] = 1; // 1 = Unlocked
-            response[1] = 0; // 0 = Unlock not in progress
-            break;
-        }
-
-        case VIAL_UNLOCK_START: {
-            memset(response, 0xFF, 32);
-            response[0] = 1; // Unlocked
-            response[1] = 0; // Not in progress
-            break;
-        }
-
-        case VIAL_UNLOCK_POLL: {
-            memset(response, 0xFF, 32);
-            response[0] = 1; // Unlocked
-            response[1] = 0; // Not in progress
-            response[2] = 0; // Success code
-            break;
-        }
-
-        case VIAL_LOCK: {
-            memset(response, 0xFF, 32);
-            break;
-        }
-
+        case VIAL_LOCK:
         case VIAL_QMK_SETTINGS_QUERY:
         case VIAL_QMK_SETTINGS_GET:
         case VIAL_QMK_SETTINGS_SET:
-        case VIAL_QMK_SETTINGS_RESET: {
+        case VIAL_QMK_SETTINGS_RESET:
             memset(response, 0xFF, 32);
             break;
-        }
+
+        case VIAL_GET_UNLOCK_STATUS:
+        case VIAL_UNLOCK_START:
+        case VIAL_UNLOCK_POLL:
+            memset(response, 0xFF, 32);
+            response[0] = 1;
+            response[1] = 0;
+            if (vial_cmd == VIAL_UNLOCK_POLL) response[2] = 0;
+            break;
 
         case VIAL_DYNAMIC_ENTRY_OP: {
             uint8_t op = request[2];
@@ -1055,9 +674,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
                     for (size_t i = 0; i < sizeof(vial_combo_entry_t); i++) {
                         dst[i] = request[4 + i];
                     }
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
                     vial_eeprom_save();
-#endif
                 }
             } else {
                 memset(response, 0xFF, 32);
@@ -1091,9 +708,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
             if (layer < DYNAMIC_KEYMAP_MAX_LAYERS && idx < encoder_get_count() && dir < 2) {
                 dynamic_encoder_keymap[layer][idx][dir] = from_via_keycode(via_key);
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350)
                 vial_eeprom_save();
-#endif
             }
 #endif
             break;
@@ -1115,82 +730,27 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
 
 static uint16_t ascii_to_keycode(char c, bool *shift) {
     *shift = false;
-    if (c >= 'a' && c <= 'z')
-        return (c - 'a' + 0x04);
-    if (c >= 'A' && c <= 'Z') {
-        *shift = true;
-        return (c - 'A' + 0x04);
-    }
-    if (c >= '1' && c <= '9')
-        return (c - '1' + 0x1E);
-    if (c == '0')
-        return 0x27;
+    if (c >= 'a' && c <= 'z') return (c - 'a' + 0x04);
+    if (c >= 'A' && c <= 'Z') { *shift = true; return (c - 'A' + 0x04); }
+    if (c >= '1' && c <= '9') return (c - '1' + 0x1E);
+    if (c == '0') return 0x27;
 
-    switch (c) {
-    case ' ':
-        return 0x2C;
-    case '\n':
-        return 0x28;
-    case '\t':
-        return 0x2B;
-    case '-':
-        return 0x2D;
-    case '_':
-        *shift = true;
-        return 0x2D;
-    case '=':
-        return 0x2E;
-    case '+':
-        *shift = true;
-        return 0x2E;
-    case '[':
-        return 0x2F;
-    case '{':
-        *shift = true;
-        return 0x2F;
-    case ']':
-        return 0x30;
-    case '}':
-        *shift = true;
-        return 0x30;
-    case '\\':
-        return 0x31;
-    case '|':
-        *shift = true;
-        return 0x31;
-    case ';':
-        return 0x33;
-    case ':':
-        *shift = true;
-        return 0x33;
-    case '\'':
-        return 0x34;
-    case '"':
-        *shift = true;
-        return 0x34;
-    case '`':
-        return 0x35;
-    case '~':
-        *shift = true;
-        return 0x35;
-    case ',':
-        return 0x36;
-    case '<':
-        *shift = true;
-        return 0x36;
-    case '.':
-        return 0x37;
-    case '>':
-        *shift = true;
-        return 0x37;
-    case '/':
-        return 0x38;
-    case '?':
-        *shift = true;
-        return 0x38;
-    default:
-        return 0;
+    static const struct { char c; uint8_t kc; bool s; } tbl[] = {
+        {' ', 0x2C, 0}, {'\n', 0x28, 0}, {'\t', 0x2B, 0},
+        {'-', 0x2D, 0}, {'_', 0x2D, 1},  {'=', 0x2E, 0}, {'+', 0x2E, 1},
+        {'[', 0x2F, 0}, {'{', 0x2F, 1},  {']', 0x30, 0}, {'}', 0x30, 1},
+        {'\\', 0x31, 0}, {'|', 0x31, 1}, {';', 0x33, 0}, {':', 0x33, 1},
+        {'\'', 0x34, 0}, {'"', 0x34, 1}, {'`', 0x35, 0}, {'~', 0x35, 1},
+        {',', 0x36, 0}, {'<', 0x36, 1},  {'.', 0x37, 0}, {'>', 0x37, 1},
+        {'/', 0x38, 0}, {'?', 0x38, 1}
+    };
+    for (size_t i = 0; i < sizeof(tbl)/sizeof(tbl[0]); i++) {
+        if (tbl[i].c == c) {
+            *shift = tbl[i].s;
+            return tbl[i].kc;
+        }
     }
+    return 0;
 }
 
 static void send_event(uint16_t kc, bool pressed) {

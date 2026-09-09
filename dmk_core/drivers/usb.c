@@ -116,23 +116,7 @@ void usb_process_key(uint16_t keycode, bool pressed) {
 #ifdef MIDI_USB
 #if defined(MCU_milandr)
 extern USB_Result USB_MIDI_SendPacket(const uint8_t *packet);
-void usb_send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {
-    uint8_t packet[4] = {0x09, 0x90 | (chan & 0x0F), note & 0x7F, vel & 0x7F};
-    USB_MIDI_SendPacket(packet);
-}
-void usb_send_midi_noteoff(uint8_t chan, uint8_t note, uint8_t vel) {
-    uint8_t packet[4] = {0x08, 0x80 | (chan & 0x0F), note & 0x7F, vel & 0x7F};
-    USB_MIDI_SendPacket(packet);
-}
-void usb_send_midi_cc(uint8_t chan, uint8_t cc, uint8_t val) {
-    uint8_t packet[4] = {0x0B, 0xB0 | (chan & 0x0F), cc & 0x7F, val & 0x7F};
-    USB_MIDI_SendPacket(packet);
-}
-void usb_send_midi_pitchbend(uint8_t chan, int16_t val) {
-    uint16_t pb = (uint16_t)(val + 8192);
-    uint8_t packet[4] = {0x0E, 0xE0 | (chan & 0x0F), pb & 0x7F, (pb >> 7) & 0x7F};
-    USB_MIDI_SendPacket(packet);
-}
+static inline void midi_write(const uint8_t *pkt) { USB_MIDI_SendPacket(pkt); }
 #else
 #undef KEYBOARD_MODIFIER_LEFTCTRL
 #undef KEYBOARD_MODIFIER_LEFTSHIFT
@@ -164,22 +148,24 @@ void usb_send_midi_pitchbend(uint8_t chan, int16_t val) {
 #undef HID_USAGE_CONSUMER_AC_REFRESH
 #undef HID_USAGE_CONSUMER_AC_BOOKMARKS
 #include "tusb.h"
+static inline void midi_write(const uint8_t *pkt) { tud_midi_packet_write(pkt); }
+#endif
+
 void usb_send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {
     uint8_t packet[4] = {0x09, 0x90 | (chan & 0x0F), note & 0x7F, vel & 0x7F};
-    tud_midi_packet_write(packet);
+    midi_write(packet);
 }
 void usb_send_midi_noteoff(uint8_t chan, uint8_t note, uint8_t vel) {
     uint8_t packet[4] = {0x08, 0x80 | (chan & 0x0F), note & 0x7F, vel & 0x7F};
-    tud_midi_packet_write(packet);
+    midi_write(packet);
 }
 void usb_send_midi_cc(uint8_t chan, uint8_t cc, uint8_t val) {
     uint8_t packet[4] = {0x0B, 0xB0 | (chan & 0x0F), cc & 0x7F, val & 0x7F};
-    tud_midi_packet_write(packet);
+    midi_write(packet);
 }
 void usb_send_midi_pitchbend(uint8_t chan, int16_t val) {
     uint16_t pb = (uint16_t)(val + 8192);
     uint8_t packet[4] = {0x0E, 0xE0 | (chan & 0x0F), pb & 0x7F, (pb >> 7) & 0x7F};
-    tud_midi_packet_write(packet);
+    midi_write(packet);
 }
-#endif
 #endif

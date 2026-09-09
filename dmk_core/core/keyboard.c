@@ -100,22 +100,11 @@ void keyboard_send_modifiers(uint8_t mod_mask, bool pressed) {
         mod_mask = 1 << (mod_mask - 0xE0);
     }
 
-    if (mod_mask & MOD_LCTRL)
-        keyboard_send_key(K_LCTL, pressed);
-    if (mod_mask & MOD_LSHIFT)
-        keyboard_send_key(K_LSFT, pressed);
-    if (mod_mask & MOD_LALT)
-        keyboard_send_key(K_LALT, pressed);
-    if (mod_mask & MOD_LGUI)
-        keyboard_send_key(K_LGUI, pressed);
-    if (mod_mask & MOD_RCTRL)
-        keyboard_send_key(K_RCTL, pressed);
-    if (mod_mask & MOD_RSHIFT)
-        keyboard_send_key(K_RSFT, pressed);
-    if (mod_mask & MOD_RALT)
-        keyboard_send_key(K_RALT, pressed);
-    if (mod_mask & MOD_RGUI)
-        keyboard_send_key(K_RGUI, pressed);
+    for (uint8_t i = 0; i < 8; i++) {
+        if (mod_mask & (1 << i)) {
+            keyboard_send_key(0xE0 + i, pressed);
+        }
+    }
 }
 
 /**
@@ -227,39 +216,17 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
             layers_off(layers_get_active());
             led_off();
         }
-    } else if (key == K_RGB_TOGG) {
-        if (pressed)
-            rgb_toggle();
-    } else if (key == K_RGB_NEXT) {
-        if (pressed)
-            rgb_next_theme();
-    } else if (key == K_RGB_PREV) {
-        if (pressed)
-            rgb_prev_theme();
-    } else if (key == K_RGB_HUI) {
-        if (pressed)
-            rgb_increase_hue();
-    } else if (key == K_RGB_HUD) {
-        if (pressed)
-            rgb_decrease_hue();
-    } else if (key == K_RGB_SAI) {
-        if (pressed)
-            rgb_increase_sat();
-    } else if (key == K_RGB_SAD) {
-        if (pressed)
-            rgb_decrease_sat();
-    } else if (key == K_RGB_VAI) {
-        if (pressed)
-            rgb_increase_val();
-    } else if (key == K_RGB_VAD) {
-        if (pressed)
-            rgb_decrease_val();
-    } else if (key == K_RGB_SPI) {
-        if (pressed)
-            rgb_increase_speed();
-    } else if (key == K_RGB_SPD) {
-        if (pressed)
-            rgb_decrease_speed();
+    } else if (key >= K_RGB_TOGG && key <= K_RGB_SPD) {
+        static void (* const rgb_actions[])(void) = {
+            rgb_toggle, rgb_next_theme, rgb_prev_theme,
+            rgb_increase_hue, rgb_decrease_hue,
+            rgb_increase_sat, rgb_decrease_sat,
+            rgb_increase_val, rgb_decrease_val,
+            rgb_increase_speed, rgb_decrease_speed,
+        };
+        if (pressed) {
+            rgb_actions[key - K_RGB_TOGG]();
+        }
     } else if (key == K_BOOTLOADER) {
         if (pressed)
             bootloader_jump();
@@ -279,22 +246,11 @@ void keyboard_check(void) {
 
     // 1. Process active timeouts and determine earliest wakeup deadline
     TickType_t next_deadline = portMAX_DELAY;
-
-    TickType_t ht_rem = hold_tap_check_timeouts(now);
-    if (ht_rem < next_deadline)
-        next_deadline = ht_rem;
-
-    TickType_t os_rem = oneshot_check_timeouts(now);
-    if (os_rem < next_deadline)
-        next_deadline = os_rem;
-
-    TickType_t combo_rem = combos_check_timeouts(now);
-    if (combo_rem < next_deadline)
-        next_deadline = combo_rem;
-
-    TickType_t mouse_rem = mouse_check_timeouts(now);
-    if (mouse_rem < next_deadline)
-        next_deadline = mouse_rem;
+    TickType_t r;
+    if ((r = hold_tap_check_timeouts(now)) < next_deadline) next_deadline = r;
+    if ((r = oneshot_check_timeouts(now)) < next_deadline) next_deadline = r;
+    if ((r = combos_check_timeouts(now)) < next_deadline) next_deadline = r;
+    if ((r = mouse_check_timeouts(now)) < next_deadline) next_deadline = r;
 
     led_update(now);
 

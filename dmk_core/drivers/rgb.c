@@ -10,17 +10,6 @@
 #include "task.h"
 #include <string.h>
 
-#ifdef POWER_PIN
-#if defined(MCU_nrf52840)
-#include "nrf_gpio.h"
-#elif defined(MCU_rp2040) || defined(MCU_rp2350)
-#include "hardware/gpio.h"
-#elif defined(MCU_milandr)
-#include "MDR32FxQI_port.h"
-#include "MDR32FxQI_rst_clk.h"
-#endif
-#endif
-
 #if defined(RGB_NUM) && (defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_nrf52840) || defined(MCU_milandr))
 
 // External declarations for the platform-specific WS2812 driver wrapper
@@ -30,78 +19,12 @@ extern void ws2812_show(void);
 
 #ifdef POWER_PIN
 static void power_pin_init(void) {
-#if defined(MCU_nrf52840)
-    nrf_gpio_cfg_output(POWER_PIN);
-#elif defined(MCU_rp2040) || defined(MCU_rp2350)
-    gpio_init(POWER_PIN);
-    gpio_set_dir(POWER_PIN, GPIO_OUT);
-#elif defined(MCU_milandr)
-    PORT_InitTypeDef port_init;
-    port_init.PORT_Pin = 1 << (POWER_PIN & 0x0F);
-    port_init.PORT_MODE = PORT_MODE_DIGITAL;
-    port_init.PORT_OE = PORT_OE_OUT;
-    port_init.PORT_FUNC = PORT_FUNC_PORT;
-    port_init.PORT_SPEED = PORT_SPEED_FAST;
-    port_init.PORT_PULL_UP = PORT_PULL_UP_OFF;
-    port_init.PORT_PULL_DOWN = PORT_PULL_DOWN_OFF;
-
-    MDR_PORT_TypeDef *port;
-    uint32_t port_idx = POWER_PIN / 16;
-    if (port_idx == 0) {
-        port = MDR_PORTA;
-        RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTA, ENABLE);
-    } else if (port_idx == 1) {
-        port = MDR_PORTB;
-        RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTB, ENABLE);
-    } else if (port_idx == 2) {
-        port = MDR_PORTC;
-        RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTC, ENABLE);
-    } else if (port_idx == 3) {
-        port = MDR_PORTD;
-        RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTD, ENABLE);
-    } else if (port_idx == 4) {
-        port = MDR_PORTE;
-        RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTE, ENABLE);
-    } else {
-        port = MDR_PORTF;
-        RST_CLK_PCLKcmd(RST_CLK_PCLK_PORTF, ENABLE);
-    }
-    PORT_Init(port, &port_init);
-#endif
+    hal_gpio_init(POWER_PIN);
+    hal_gpio_set_dir(POWER_PIN, true);
 }
 
 static void power_pin_set(bool on) {
-#if defined(MCU_nrf52840)
-    if (on) {
-        nrf_gpio_pin_set(POWER_PIN);
-    } else {
-        nrf_gpio_pin_clear(POWER_PIN);
-    }
-#elif defined(MCU_rp2040) || defined(MCU_rp2350)
-    gpio_put(POWER_PIN, on ? 1 : 0);
-#elif defined(MCU_milandr)
-    MDR_PORT_TypeDef *port;
-    uint32_t port_idx = POWER_PIN / 16;
-    if (port_idx == 0)
-        port = MDR_PORTA;
-    else if (port_idx == 1)
-        port = MDR_PORTB;
-    else if (port_idx == 2)
-        port = MDR_PORTC;
-    else if (port_idx == 3)
-        port = MDR_PORTD;
-    else if (port_idx == 4)
-        port = MDR_PORTE;
-    else
-        port = MDR_PORTF;
-
-    uint32_t pin_mask = 1 << (POWER_PIN & 0x0F);
-    if (on) {
-        PORT_SetBits(port, pin_mask);
-    } else {
-        PORT_ResetBits(port, pin_mask);
-    }
-#endif
+    hal_gpio_put(POWER_PIN, on);
 }
 #endif
 
@@ -180,6 +103,10 @@ static void set_led_color(uint32_t index, uint32_t color) {
 #endif
 }
 
+static void set_all_leds(uint32_t color) {
+    for (uint32_t i = 0; i < RGB_NUM; i++) set_led_color(i, color);
+}
+
 void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
     set_led_color(index, color);
 }
@@ -227,37 +154,21 @@ void rgb_task(void *pvParameters) {
             animation_tick += ticks_to_advance;
 
             switch (rgb_mode) {
-            case RGBLIGHT_MODE_STATIC_LIGHT: {
-                // Solid Color Mode
-                uint32_t color = hsv_to_rgb(rgb_hue, rgb_sat, rgb_brightness);
-                for (uint32_t i = 0; i < RGB_NUM; i++) {
-                    set_led_color(i, color);
-                }
+            case RGBLIGHT_MODE_STATIC_LIGHT:
+                set_all_leds(hsv_to_rgb(rgb_hue, rgb_sat, rgb_brightness));
                 break;
-            }
 
             case RGBLIGHT_MODE_BREATHING: {
-                // Breathing Mode
                 uint8_t breath_step = (animation_tick / 4) & 0xFF;
                 uint8_t duty = (breath_step < 128) ? (breath_step * 2) : ((255 - breath_step) * 2);
-                // Quadratic scaling for smoother human eye response
                 uint8_t breathing_brightness = ((uint32_t)duty * duty * rgb_brightness) >> 16;
-                uint32_t color = hsv_to_rgb(rgb_hue, rgb_sat, breathing_brightness);
-                for (uint32_t i = 0; i < RGB_NUM; i++) {
-                    set_led_color(i, color);
-                }
+                set_all_leds(hsv_to_rgb(rgb_hue, rgb_sat, breathing_brightness));
                 break;
             }
 
-            case RGBLIGHT_MODE_RAINBOW_MOOD: {
-                // Rainbow Mood Mode (all LEDs cycle hue uniformly)
-                uint8_t hue = (animation_tick / 8) & 0xFF;
-                uint32_t color = hsv_to_rgb(hue, rgb_sat, rgb_brightness);
-                for (uint32_t i = 0; i < RGB_NUM; i++) {
-                    set_led_color(i, color);
-                }
+            case RGBLIGHT_MODE_RAINBOW_MOOD:
+                set_all_leds(hsv_to_rgb((animation_tick / 8) & 0xFF, rgb_sat, rgb_brightness));
                 break;
-            }
 
             case RGBLIGHT_MODE_RAINBOW_SWIRL: {
                 // Rainbow Swirl Mode (gradient color wheel moving across the strip)
@@ -361,10 +272,7 @@ void rgb_task(void *pvParameters) {
             }
             ws2812_show();
         } else {
-            // Turn off all LEDs
-            for (uint32_t i = 0; i < RGB_NUM; i++) {
-                set_led_color(i, 0);
-            }
+            set_all_leds(0);
             ws2812_show();
         }
 
@@ -385,67 +293,26 @@ void rgb_toggle(void) {
     }
 }
 
-static uint8_t get_next_mode(uint8_t current_mode) {
-    switch (current_mode) {
-    case RGBLIGHT_MODE_STATIC_LIGHT:
-        return RGBLIGHT_MODE_BREATHING;
-    case RGBLIGHT_MODE_BREATHING:
-        return RGBLIGHT_MODE_RAINBOW_MOOD;
-    case RGBLIGHT_MODE_RAINBOW_MOOD:
-        return RGBLIGHT_MODE_RAINBOW_SWIRL;
-    case RGBLIGHT_MODE_RAINBOW_SWIRL:
-        return RGBLIGHT_MODE_SNAKE;
-    case RGBLIGHT_MODE_SNAKE:
-        return RGBLIGHT_MODE_KNIGHT;
-    case RGBLIGHT_MODE_KNIGHT:
-        return RGBLIGHT_MODE_CHRISTMAS;
-    case RGBLIGHT_MODE_CHRISTMAS:
-        return RGBLIGHT_MODE_STATIC_GRADIENT;
-    case RGBLIGHT_MODE_STATIC_GRADIENT:
+static const uint8_t rgb_modes[] = {
+    RGBLIGHT_MODE_STATIC_LIGHT, RGBLIGHT_MODE_BREATHING, RGBLIGHT_MODE_RAINBOW_MOOD,
+    RGBLIGHT_MODE_RAINBOW_SWIRL, RGBLIGHT_MODE_SNAKE, RGBLIGHT_MODE_KNIGHT,
+    RGBLIGHT_MODE_CHRISTMAS, RGBLIGHT_MODE_STATIC_GRADIENT
 #ifdef RGB_THEMES
-        return 100; // Theme Mode
-#else
-        return RGBLIGHT_MODE_STATIC_LIGHT;
+    , 100
 #endif
-#ifdef RGB_THEMES
-    case 100:
-        return RGBLIGHT_MODE_STATIC_LIGHT;
-#endif
-    default:
-        return RGBLIGHT_MODE_STATIC_LIGHT;
-    }
-}
+};
 
-static uint8_t get_prev_mode(uint8_t current_mode) {
-    switch (current_mode) {
-    case RGBLIGHT_MODE_STATIC_LIGHT:
-#ifdef RGB_THEMES
-        return 100; // Theme Mode
-#else
-        return RGBLIGHT_MODE_STATIC_GRADIENT;
-#endif
-#ifdef RGB_THEMES
-    case 100:
-        return RGBLIGHT_MODE_STATIC_GRADIENT;
-#endif
-    case RGBLIGHT_MODE_BREATHING:
-        return RGBLIGHT_MODE_STATIC_LIGHT;
-    case RGBLIGHT_MODE_RAINBOW_MOOD:
-        return RGBLIGHT_MODE_BREATHING;
-    case RGBLIGHT_MODE_RAINBOW_SWIRL:
-        return RGBLIGHT_MODE_RAINBOW_MOOD;
-    case RGBLIGHT_MODE_SNAKE:
-        return RGBLIGHT_MODE_RAINBOW_SWIRL;
-    case RGBLIGHT_MODE_KNIGHT:
-        return RGBLIGHT_MODE_SNAKE;
-    case RGBLIGHT_MODE_CHRISTMAS:
-        return RGBLIGHT_MODE_KNIGHT;
-    case RGBLIGHT_MODE_STATIC_GRADIENT:
-        return RGBLIGHT_MODE_CHRISTMAS;
-    default:
-        return RGBLIGHT_MODE_STATIC_LIGHT;
+static uint8_t step_rgb_mode(uint8_t cur, int8_t dir) {
+    size_t n = sizeof(rgb_modes) / sizeof(rgb_modes[0]);
+    for (size_t i = 0; i < n; i++) {
+        if (rgb_modes[i] == cur) {
+            return rgb_modes[(i + dir + n) % n];
+        }
     }
+    return rgb_modes[0];
 }
+#define get_next_mode(cur) step_rgb_mode(cur, 1)
+#define get_prev_mode(cur) step_rgb_mode(cur, -1)
 
 void rgb_next_theme(void) {
 #ifdef RGB_THEMES
