@@ -195,8 +195,8 @@ This document lists all the standard HID keycodes, consumer media keys, modifier
 
 ## Virtual Mousekeys
 
-> [!WARNING]
-> **Placeholder Stub**: Virtual mouse keycodes are defined for future implementation. The firmware currently does not transmit Mouse HID reports, and these keycodes are commented out in `keys.h`.
+> [!NOTE]
+> `dmk` provides native USB HID Mouse emulation out-of-the-box (cursor movements, vertical & horizontal wheel scrolling, 5 mouse buttons, and smooth acceleration physics with 3 selectable speed modes). These keycodes can be assigned in keymaps and intercepted via module hooks.
 
 | Virtual Keycode Reference | Short Name / Alias         | Description                   | Virtual Code (Hex) |
 | ------------------------- | -------------------------- | ----------------------------- | ------------------ |

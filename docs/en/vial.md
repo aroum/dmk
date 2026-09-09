@@ -90,6 +90,7 @@ Here is the current implementation status of various Vial / VIA features in `dmk
 | **RGB Lighting**           | 🟢 Supported     | Supports toggle, brightness, animation speed, and 8 standard QMK effects/animations.                        |
 | **Security (Lock/Unlock)** | 🟡 Simplified    | Keymap locking features are bypassed (the keyboard is always unlocked).                                     |
 | **Macros**                 | 🟢 Supported     | Dynamic Macro configuration (up to 16 macros, 2048 bytes buffer) supported via the Vial GUI.                |
+| **Mousekeys**              | 🟢 Supported     | Mouse buttons, cursor motion, and wheel assignable in Vial GUI (v6 protocol, `0xED01`–`0xED13` mapped to `dmk`).|
 | **Encoders**               | ❌ Not Supported | Stubbed out in the protocol. Physical encoders are not processed by Vial.                                   |
 | **Tap Dance**              | ❌ Not Supported | Dynamic Tap Dance configuration via the Vial GUI is disabled.                                               |
 | **Combos**                 | 🟢 Supported     | Dynamic Combo (chording) configuration (up to 8 combos, up to 4 keys per combo) supported via the Vial GUI. |
