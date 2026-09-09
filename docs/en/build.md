@@ -320,6 +320,48 @@ jobs:
 > [!TIP]
 > If a keyboard declares a default microcontroller in its `config.h` (e.g., `#define MCU rp2040`), passing `-DMCU` to CMake is optional — CMake will automatically detect and configure the target MCU.
 
+### Building from a Custom DMK Branch (e.g., `dev`)
+
+By default, `actions/checkout` pulls the default branch of the DMK repository (`main`). To build firmware against a specific development branch (such as `dev`) or a specific commit hash:
+
+1. **Static branch pinning**: Add the `ref: dev` property to the DMK checkout step:
+   ```yaml
+         - name: Checkout DMK Firmware Core
+           uses: actions/checkout@v4
+           with:
+             repository: aroum/dmk
+             ref: dev # Branch, tag, or commit SHA
+             submodules: recursive
+             path: dmk
+   ```
+
+2. **Interactive selection via GitHub UI (`workflow_dispatch`)**:
+   Enables selecting the target DMK branch manually when triggering **Run workflow** in GitHub Actions:
+   ```yaml
+   on:
+     push:
+       branches: [ main, master ]
+     pull_request:
+       branches: [ main, master ]
+     workflow_dispatch:
+       inputs:
+         dmk_ref:
+           description: 'DMK branch, tag, or commit SHA (default: dev)'
+           required: true
+           default: 'dev'
+           type: string
+   ```
+   And reference the input in the `actions/checkout` step:
+   ```yaml
+         - name: Checkout DMK Firmware Core
+           uses: actions/checkout@v4
+           with:
+             repository: aroum/dmk
+             ref: ${{ github.event.inputs.dmk_ref || 'dev' }}
+             submodules: recursive
+             path: dmk
+   ```
+
 A reference template repository is available at `https://github.com/aroum/dmk-config-template`.
 
 ## Unified uv Environment

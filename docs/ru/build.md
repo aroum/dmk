@@ -320,6 +320,48 @@ jobs:
 > [!TIP]
 > Если в `config.h` клавиатуры задан дефолтный микроконтроллер (например, `#define MCU rp2040`), передавать параметр `-DMCU` в CMake не обязательно — CMake автоматически определит и применит нужный контроллер.
 
+### Сборка с нестандартной ветки DMK (например, `dev`)
+
+По умолчанию `actions/checkout` клонирует основную ветку репозитория DMK (`main`). Если вам нужно собрать прошивку с ветки разработки (например, `dev`) или произвольного коммита:
+
+1. **Статическая фиксация ветки**: добавьте параметр `ref: dev` в шаг клонирования DMK:
+   ```yaml
+         - name: Checkout DMK Firmware Core
+           uses: actions/checkout@v4
+           with:
+             repository: aroum/dmk
+             ref: dev # Ветка, тег или SHA коммита
+             submodules: recursive
+             path: dmk
+   ```
+
+2. **Динамический выбор через интерфейс GitHub (`workflow_dispatch`)**:
+   Позволяет выбирать ветку DMK вручную при нажатии кнопки **Run workflow** в Actions:
+   ```yaml
+   on:
+     push:
+       branches: [ main, master ]
+     pull_request:
+       branches: [ main, master ]
+     workflow_dispatch:
+       inputs:
+         dmk_ref:
+           description: 'Ветка, тег или коммит DMK (по умолчанию dev)'
+           required: true
+           default: 'dev'
+           type: string
+   ```
+   И используйте эту переменную в шаге `actions/checkout`:
+   ```yaml
+         - name: Checkout DMK Firmware Core
+           uses: actions/checkout@v4
+           with:
+             repository: aroum/dmk
+             ref: ${{ github.event.inputs.dmk_ref || 'dev' }}
+             submodules: recursive
+             path: dmk
+   ```
+
 Пример шаблона пользовательского репозитория: `https://github.com/aroum/dmk-config-template`.
 
 ## Единое окружение uv
