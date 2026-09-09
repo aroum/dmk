@@ -4,7 +4,7 @@
 #include "pin_defs.h"
 
 #define VIAL
-#define MCU rp2040
+#define DEFAULT_MCU rp2350
 #define VIAL_KEYBOARD_NAME "Omsk MIDI"
 #define VIAL_VENDOR_ID 0xCAFE
 #define VIAL_PRODUCT_ID 0x4006

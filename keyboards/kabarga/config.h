@@ -5,6 +5,8 @@
 
 #include "pin_defs.h"
 
+#define DEFAULT_MCU nrf52840
+
 /* --- Matrix Settings --- */
 // Connection types: ROW2COL, COL2ROW, DIRECT
 #define MATRIX_TYPE COL2ROW

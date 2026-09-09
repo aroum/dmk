@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include "pin_defs.h"
+#define DEFAULT_MCU rp2040
 #define MATRIX_TYPE DIRECT
 /* --- Matrix Settings --- */
 

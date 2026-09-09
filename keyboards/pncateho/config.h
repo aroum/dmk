@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include "pin_defs.h"
+#define DEFAULT_MCU nrf52840
 #define MATRIX_TYPE DIRECT
 /* --- Matrix Settings --- */
 // #include "../../dmk_core/include/proMicro_pins.h"
@@ -10,12 +11,20 @@
 #define LED_PINS {PM_LED}
 #define LED_DEBUG 0
 
+#ifndef VIAL
 #define VIAL
+#endif
 
 /* --- RGB Settings --- */
 #define RGB_NUM 10
 #define POWER_PIN PM_VCC
+#if defined(MCU_nrf52840)
+#define RGB_PIN P0_06
+#elif defined(MCU_rp2040)
+#define RGB_PIN GPIO0
+#else
 #define RGB_PIN PF0
+#endif
 
 #define RGB_MAP { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
 #define RGB_THEME_DEFAULT { 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF, 0xFF00FF, 0xFFFF00, 0x00FFFF, 0x888888, 0x444444, 0x222222 }

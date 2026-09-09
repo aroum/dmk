@@ -5,6 +5,8 @@
 
 #include "pin_defs.h"
 
+#define DEFAULT_MCU milandr
+
 /* --- Matrix Settings --- */
 // Connection type: MATRIX_MH3SS2
 #define MATRIX_MH3SS2
