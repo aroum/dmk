@@ -135,6 +135,11 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
     if (key == 0 || key == K_NULL)
         return;
 
+    // 0. User module custom keycode interception hook
+    if (hook_process_key(key, pressed)) {
+        return;
+    }
+
     // 1. Process MIDI keycodes (notes, CC, pitch bend, octave changes)
     if (dmk_midi_process_keycode(key, pressed)) {
         return;

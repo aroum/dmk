@@ -87,7 +87,8 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 | :--- | :--- | :--- |
 | `void hook_early_init(void)` | В `main.c` перед запуском `vTaskStartScheduler()` | Инициализация GPIO/шин, создание фоновых FreeRTOS задач (`xTaskCreate`) |
 | `void hook_layer_change(uint8_t active_layer)` | При смене активного слоя клавиатуры (`layers.c`) | Индикация слоя на светодиодах/RGB, обновление слоя на экране |
-| `void hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | При каждом физическом изменении кнопки (`matrix.c`) | Отладочные светодиоды нажатий, тактильный отклик (haptic), зуммер |
+| `bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | При каждом физическом изменении кнопки (`matrix.c`) | Отладочные светодиоды нажатий, тактильный отклик (haptic), зуммер |
+| `bool hook_process_key(uint32_t keycode, bool pressed)` | Перед обработкой кейкода ядром (`keyboard.c`) | Кастомные кейкоды (анимации обычных LED, переключатели, триггеры). При возврате `true` событие поглощается |
 | `void hook_key_sent(uint16_t keycode, bool pressed)` | При отправке HID-кейкода хосту по USB (`keys.c`) | Расчет скорости печати WPM в реальном времени, кейлоггинг |
 | `void hook_hid_led_change(uint8_t led_mask)` | При обновлении хостом статуса Lock-клавиш (`led.c`) | Индикация CapsLock (`0x02`), NumLock (`0x01`), ScrollLock (`0x04`) |
 | `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Перед отправкой отчета движения курсора (`mouse.c`) | Перехват движения трекбола/мыши, drag-scroll (скролл колесом при зажатии слоя), масштабирование DPI |

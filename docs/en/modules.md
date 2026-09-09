@@ -87,7 +87,8 @@ Modules communicate with DMK through non-blocking weak hooks declared in `dmk_co
 | :--- | :--- | :--- |
 | `void hook_early_init(void)` | In `main.c` before `vTaskStartScheduler()` | Initializing custom GPIOs/buses, launching FreeRTOS background tasks |
 | `void hook_layer_change(uint8_t active_layer)` | On every active layer switch (`layers.c`) | Layer LED/RGB color switching, OLED/LCD status updates |
-| `void hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | On every physical switch state change (`matrix.c`) | Keypress debug LEDs, haptic clickers, audio buzzers |
+| `bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | On every physical switch state change (`matrix.c`) | Keypress debug LEDs, haptic clickers, audio buzzers |
+| `bool hook_process_key(uint32_t keycode, bool pressed)` | Before keycode is processed by core (`keyboard.c`) | Custom keycodes (LED animations, toggles, triggers). Event is consumed when returning `true` |
 | `void hook_key_sent(uint16_t keycode, bool pressed)` | When USB HID keycode is sent to host (`keys.c`) | Rolling WPM speed calculation, key logging, heatmaps |
 | `void hook_hid_led_change(uint8_t led_mask)` | When host updates Lock LEDs (`led.c`) | CapsLock (`0x02`), NumLock (`0x01`), ScrollLock (`0x04`) indicators |
 | `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Before sending cursor movement report (`mouse.c`) | Intercept trackball/mouse motion, drag-scroll (scroll wheel while holding layer/key), DPI scaling |

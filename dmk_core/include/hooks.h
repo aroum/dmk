@@ -12,6 +12,7 @@ extern "C" {
 void hook_early_init(void);
 void hook_layer_change(uint8_t active_layer);
 bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed);
+bool hook_process_key(uint32_t keycode, bool pressed);
 void hook_key_sent(uint16_t keycode, bool pressed);
 void hook_hid_led_change(uint8_t led_mask);
 
