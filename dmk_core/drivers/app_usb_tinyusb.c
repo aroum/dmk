@@ -39,15 +39,9 @@ USB_Result USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {
-#ifdef EXTRAKEY_ENABLE
             if (tud_hid_keyboard_report(1, report->Modifier, (uint8_t *)report->Keycodes)) {
                 return USB_SUCCESS;
             }
-#else
-            if (tud_hid_keyboard_report(0, report->Modifier, (uint8_t *)report->Keycodes)) {
-                return USB_SUCCESS;
-            }
-#endif
         }
         vTaskDelay(pdMS_TO_TICKS(1));
         timeout--;
@@ -56,11 +50,10 @@ USB_Result USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
 }
 
 USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
-#ifdef EXTRAKEY_ENABLE
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {
-            if (tud_hid_report(0, 2, &usage, sizeof(usage))) {
+            if (tud_hid_report(2, &usage, sizeof(usage))) {
                 return USB_SUCCESS;
             }
         }
@@ -68,10 +61,20 @@ USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
         timeout--;
     }
     return USB_ERR_BUSY;
-#else
-    (void)usage;
-    return USB_SUCCESS;
-#endif
+}
+
+USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
+    int timeout = 50; // 50ms timeout
+    while (timeout > 0) {
+        if (tud_hid_ready()) {
+            if (tud_hid_mouse_report(3, buttons, x, y, wheel, pan)) {
+                return USB_SUCCESS;
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1));
+        timeout--;
+    }
+    return USB_ERR_BUSY;
 }
 
 USB_Result USB_HID_Reset(void) {

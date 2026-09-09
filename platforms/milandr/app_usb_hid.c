@@ -32,8 +32,7 @@ static volatile USB_Result USB_HID_SendDataStatus = USB_SUCCESS;
 static uint8_t USB_HID_IdleRate = 0;
 static uint8_t USB_HID_Protocol = 1; /* 0 = Boot, 1 = Report */
 
-#ifdef EXTRAKEY_ENABLE
-static const uint8_t Usb_HID_Report_Descriptor[90] = {
+static const uint8_t Usb_HID_Report_Descriptor[] = {
     0x05, 0x01, /* USAGE_PAGE (Generic Desktop) */
     0x09, 0x06, /* USAGE (Keyboard) */
     0xA1, 0x01, /* COLLECTION (Application) */
@@ -79,44 +78,49 @@ static const uint8_t Usb_HID_Report_Descriptor[90] = {
     0x75, 0x10,       /*   REPORT_SIZE (16) */
     0x95, 0x01,       /*   REPORT_COUNT (1) */
     0x81, 0x00,       /*   INPUT (Data,Ary,Abs) */
+    0xC0,             /* END_COLLECTION */
+
+    0x05, 0x01,       /* USAGE_PAGE (Generic Desktop) */
+    0x09, 0x02,       /* USAGE (Mouse) */
+    0xA1, 0x01,       /* COLLECTION (Application) */
+    0x85, 0x03,       /*   REPORT_ID (3) */
+    0x09, 0x01,       /*   USAGE (Pointer) */
+    0xA1, 0x00,       /*   COLLECTION (Physical) */
+    0x05, 0x09,       /*     USAGE_PAGE (Button) */
+    0x19, 0x01,       /*     USAGE_MINIMUM (Button 1) */
+    0x29, 0x05,       /*     USAGE_MAXIMUM (Button 5) */
+    0x15, 0x00,       /*     LOGICAL_MINIMUM (0) */
+    0x25, 0x01,       /*     LOGICAL_MAXIMUM (1) */
+    0x75, 0x01,       /*     REPORT_SIZE (1) */
+    0x95, 0x05,       /*     REPORT_COUNT (5) */
+    0x81, 0x02,       /*     INPUT (Data,Var,Abs) - 5 buttons */
+    0x75, 0x03,       /*     REPORT_SIZE (3) */
+    0x95, 0x01,       /*     REPORT_COUNT (1) */
+    0x81, 0x03,       /*     INPUT (Constant) - Padding */
+    0x05, 0x01,       /*     USAGE_PAGE (Generic Desktop) */
+    0x09, 0x30,       /*     USAGE (X) */
+    0x09, 0x31,       /*     USAGE (Y) */
+    0x15, 0x81,       /*     LOGICAL_MINIMUM (-127) */
+    0x25, 0x7F,       /*     LOGICAL_MAXIMUM (127) */
+    0x75, 0x08,       /*     REPORT_SIZE (8) */
+    0x95, 0x02,       /*     REPORT_COUNT (2) */
+    0x81, 0x06,       /*     INPUT (Data,Var,Rel) */
+    0x09, 0x38,       /*     USAGE (Wheel) */
+    0x15, 0x81,       /*     LOGICAL_MINIMUM (-127) */
+    0x25, 0x7F,       /*     LOGICAL_MAXIMUM (127) */
+    0x75, 0x08,       /*     REPORT_SIZE (8) */
+    0x95, 0x01,       /*     REPORT_COUNT (1) */
+    0x81, 0x06,       /*     INPUT (Data,Var,Rel) */
+    0x05, 0x0C,       /*     USAGE_PAGE (Consumer) */
+    0x0A, 0x38, 0x02, /*     USAGE (AC Pan) */
+    0x15, 0x81,       /*     LOGICAL_MINIMUM (-127) */
+    0x25, 0x7F,       /*     LOGICAL_MAXIMUM (127) */
+    0x75, 0x08,       /*     REPORT_SIZE (8) */
+    0x95, 0x01,       /*     REPORT_COUNT (1) */
+    0x81, 0x06,       /*     INPUT (Data,Var,Rel) */
+    0xC0,             /*   END_COLLECTION */
     0xC0              /* END_COLLECTION */
 };
-#else
-static const uint8_t Usb_HID_Report_Descriptor[63] = {
-    0x05, 0x01, /* USAGE_PAGE (Generic Desktop) */
-    0x09, 0x06, /* USAGE (Keyboard) */
-    0xA1, 0x01, /* COLLECTION (Application) */
-    0x05, 0x07, /*   USAGE_PAGE (Keyboard) */
-    0x19, 0xE0, /*   USAGE_MINIMUM (224 / Left Control) */
-    0x29, 0xE7, /*   USAGE_MAXIMUM (231 / Right GUI) */
-    0x15, 0x00, /*   LOGICAL_MINIMUM (0) */
-    0x25, 0x01, /*   LOGICAL_MAXIMUM (1) */
-    0x75, 0x01, /*   REPORT_SIZE (1) */
-    0x95, 0x08, /*   REPORT_COUNT (8) */
-    0x81, 0x02, /*   INPUT (Data,Var,Abs) - Modifier byte */
-    0x95, 0x01, /*   REPORT_COUNT (1) */
-    0x75, 0x08, /*   REPORT_SIZE (8) */
-    0x81, 0x03, /*   INPUT (Constant) - Reserved byte */
-    0x95, 0x05, /*   REPORT_COUNT (5) */
-    0x75, 0x01, /*   REPORT_SIZE (1) */
-    0x05, 0x08, /*   USAGE_PAGE (LEDs) */
-    0x19, 0x01, /*   USAGE_MINIMUM (Num Lock) */
-    0x29, 0x05, /*   USAGE_MAXIMUM (Kana) */
-    0x91, 0x02, /*   OUTPUT (Data,Var,Abs) - LED report */
-    0x95, 0x01, /*   REPORT_COUNT (1) */
-    0x75, 0x03, /*   REPORT_SIZE (3) */
-    0x91, 0x03, /*   OUTPUT (Constant) - LED padding */
-    0x95, 0x06, /*   REPORT_COUNT (6) */
-    0x75, 0x08, /*   REPORT_SIZE (8) */
-    0x15, 0x00, /*   LOGICAL_MINIMUM (0) */
-    0x25, 0xFF, /*   LOGICAL_MAXIMUM (255) */
-    0x05, 0x07, /*   USAGE_PAGE (Keyboard) */
-    0x19, 0x00, /*   USAGE_MINIMUM (0) */
-    0x29, 0xFF, /*   USAGE_MAXIMUM (255) */
-    0x81, 0x00, /*   INPUT (Data,Ary,Abs) - 6 keycodes */
-    0xC0        /* END_COLLECTION */
-};
-#endif
 
 /* Standard Device Descriptor */
 static const uint8_t Usb_HID_Device_Descriptor[18] = {
@@ -206,7 +210,7 @@ static const uint8_t Usb_HID_Configuration_Descriptor[154] = {
     0x05,       /* bDescriptorType (Endpoint) */
     0x81,       /* bEndpointAddress (IN EP1) */
     0x03,       /* bmAttributes (Interrupt) */
-    0x08, 0x00, /* wMaxPacketSize (8 bytes) */
+    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
     10,         /* bInterval (10 ms) */
 
     /* Interface 1 Descriptor - Vial Raw HID (9 bytes) */
@@ -391,7 +395,7 @@ static const uint8_t Usb_HID_Configuration_Descriptor[66] = {
     0x05,       /* bDescriptorType (Endpoint) */
     0x81,       /* bEndpointAddress (IN EP1) */
     0x03,       /* bmAttributes (Interrupt) */
-    0x08, 0x00, /* wMaxPacketSize (8 bytes) */
+    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
     10,         /* bInterval (10 ms) */
 
     /* Interface 1 Descriptor - Vial Raw HID (9 bytes) */
@@ -472,7 +476,7 @@ static const uint8_t Usb_HID_Configuration_Descriptor[122] = {
     0x05,       /* bDescriptorType (Endpoint) */
     0x81,       /* bEndpointAddress (IN EP1) */
     0x03,       /* bmAttributes (Interrupt) */
-    0x08, 0x00, /* wMaxPacketSize (8 bytes) */
+    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
     10,         /* bInterval (10 ms) */
 
     /* Interface 1 Descriptor - Audio Control (9 bytes) */
@@ -620,7 +624,7 @@ static const uint8_t Usb_HID_Configuration_Descriptor[34] = {
     0x05,       /* bDescriptorType (Endpoint) */
     0x81,       /* bEndpointAddress (IN EP1) */
     0x03,       /* bmAttributes (Interrupt) */
-    0x08, 0x00, /* wMaxPacketSize (8 bytes) */
+    0x10, 0x00, /* wMaxPacketSize (16 bytes) */
     10          /* bInterval (10 ms) */
 };
 #endif
@@ -830,7 +834,6 @@ USB_Result USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
 }
 
 USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
-#ifdef EXTRAKEY_ENABLE
     static uint8_t consumer_report[3];
     consumer_report[0] = 2; // Report ID 2
     consumer_report[1] = usage & 0xFF;
@@ -845,10 +848,26 @@ USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
     }
 
     return result;
-#else
-    (void)usage;
-    return USB_SUCCESS;
-#endif
+}
+
+USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
+    static uint8_t mouse_report[6];
+    mouse_report[0] = 3; // Report ID 3
+    mouse_report[1] = buttons;
+    mouse_report[2] = (uint8_t)x;
+    mouse_report[3] = (uint8_t)y;
+    mouse_report[4] = (uint8_t)wheel;
+    mouse_report[5] = (uint8_t)pan;
+
+    USB_Result result = USB_HID_SendDataStatus;
+
+    /* Try to initiate transaction only if endpoint is idle */
+    if (result == USB_SUCCESS) {
+        USB_HID_SendDataStatus = USB_ERR_BUSY;
+        result = USB_EP_doDataIn(USB_HID_EP_SEND, mouse_report, sizeof(mouse_report), USB_HID_OnDataSent);
+    }
+
+    return result;
 }
 
 USB_Result USB_HID_GetDescriptor(uint16_t wVALUE, uint16_t wINDEX, uint16_t wLENGTH) {

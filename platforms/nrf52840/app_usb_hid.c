@@ -362,3 +362,12 @@ USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
     (void)usage;
     return USB_SUCCESS;
 }
+
+USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
+    (void)buttons;
+    (void)x;
+    (void)y;
+    (void)wheel;
+    (void)pan;
+    return USB_SUCCESS;
+}

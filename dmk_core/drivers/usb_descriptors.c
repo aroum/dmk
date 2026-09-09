@@ -14,13 +14,11 @@
 #define VIAL_KEYBOARD_NAME "Pncateho"
 #endif
 
-// HID Report Descriptor
+// HID Report Descriptor: Composite Keyboard (ID 1), Consumer (ID 2), Mouse (ID 3)
 uint8_t const desc_hid_report[] = {
-#ifdef EXTRAKEY_ENABLE
-    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)), TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2))
-#else
-    TUD_HID_REPORT_DESC_KEYBOARD()
-#endif
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
+    TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2)),
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3))
 };
 
 #ifdef VIAL
@@ -103,10 +101,10 @@ uint8_t const desc_configuration[] = {
                           0,                // Attributes (bus-powered)
                           100),             // Maximum power consumption in 2mA units (100 * 2mA = 200mA)
 
-    // Interface 0: Keyboard HID Descriptor
+    // Interface 0: Composite Keyboard/Consumer/Mouse HID Descriptor
     TUD_HID_DESCRIPTOR(0,                         // Interface number
                        0,                         // String index
-                       HID_ITF_PROTOCOL_KEYBOARD, // Protocol code
+                       HID_ITF_PROTOCOL_NONE,     // Protocol code (composite with Report IDs)
                        sizeof(desc_hid_report),   // HID report descriptor length
                        0x81,                      // Endpoint address (IN endpoint)
                        CFG_TUD_HID_EP_BUFSIZE,    // Endpoint size
