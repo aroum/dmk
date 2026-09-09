@@ -10,6 +10,8 @@ param(
     [Alias("p")][string]$Probe = "j-link",
     [string]$Memory = "",
     [string]$NrfPort = "",
+    [Alias("d")][string]$Define = "",
+    [Alias("m")][string]$Modules = "",
     [string]$Lang = ""
 )
 
@@ -172,6 +174,8 @@ function Show-Help {
         Write-Host "  -p, -Probe [PROBE]       Debugger selection (j-link, default: j-link)"
         Write-Host "  -Memory [SIZE]           Memory size selection (e.g., 256KB, 512KB, 2MB, 4MB, 16MB)"
         Write-Host "  -NrfPort [PORT]          Port for flashing nRF52840 (e.g., COM3)"
+        Write-Host "  -d, -Define [DEF]        Define custom macro during compilation (e.g. SPLIT_LEFT)"
+        Write-Host "  -m, -Modules [MODS]      Include user modules (semicolon-separated paths)"
         Write-Host "  -Lang [LANG]             Set script language (ru or en) and save it"
         Write-Host "`nCombined flags (use spaces in PS!):"
         Write-Host "  -c, -Clean               Perform a clean build"
@@ -191,6 +195,8 @@ function Show-Help {
         Write-Host "  -p, -Probe [PROBE]       Выбор отладчика (j-link, по умолчанию: j-link)"
         Write-Host "  -Memory [SIZE]           Выбор размера памяти (e.g., 256KB, 512KB, 2MB, 4MB, 16MB)"
         Write-Host "  -NrfPort [PORT]          Порт для прошивки nRF52840 (например COM3)"
+        Write-Host "  -d, -Define [DEF]        Определить пользовательский макрос при сборке (напр. SPLIT_LEFT)"
+        Write-Host "  -m, -Modules [MODS]      Подключить модули (пути, разделенные точкой с запятой)"
         Write-Host "  -Lang [LANG]             Установить язык скрипта (ru или en) и сохранить"
         Write-Host "`nКомбинированные флаги (в PS пишутся через пробел!):"
         Write-Host "  -c, -Clean               Выполнить чистую сборку"
@@ -220,7 +226,19 @@ if (-not (Test-Path $KeyboardDir)) {
 }
 
 # Настройка целевого имени
-$TargetName = "dmk_${Keyboard}_${Mcu}"
+$Suffix = ""
+if ($Define) {
+    $defLower = $Define.ToLower()
+    if ($defLower.Contains("left")) {
+        $Suffix = "_left"
+    } elseif ($defLower.Contains("right")) {
+        $Suffix = "_right"
+    } else {
+        $cleanDef = ($defLower -replace '[^a-z0-9_]', '')
+        if ($cleanDef) { $Suffix = "_$cleanDef" }
+    }
+}
+$TargetName = "dmk_${Keyboard}_${Mcu}${Suffix}"
 $BuildDir = Join-Path $ScriptDir "build"
 $HrdProbe = Join-Path $ScriptDir "platforms\milandr\dep\probe\jlink4swd.cfg"
 
@@ -234,7 +252,10 @@ if (-not (Test-Path $BuildDir)) {
     New-Item -ItemType Directory -Path $BuildDir | Out-Null
     
     $CmakeArgs = @("-S", $ScriptDir, "-B", $BuildDir, "-DKEYBOARD=$Keyboard", "-DMCU=$Mcu")
+    if ($Mcu -eq "rp2350") { $CmakeArgs += "-DPICO_PLATFORM=rp2350" }
     if ($Memory) { $CmakeArgs += "-DMEMORY=$Memory" }
+    if ($Define) { $CmakeArgs += "-DDEFINE=$Define" }
+    if ($Modules) { $CmakeArgs += "-DDMK_MODULES=$Modules" }
     if ($Mcu -eq "milandr" -and $UsbFlash) { $CmakeArgs += "-DBOOTLOADER=ON" }
     
     # В Windows CMake по умолчанию использует Visual Studio, если он установлен. 

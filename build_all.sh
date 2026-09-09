@@ -22,6 +22,7 @@ PROBE="j-link"
 MEMORY=""
 NRF_PORT=""
 DEFINE=""
+MODULES=""
 
 # --- LOCALIZATION STRINGS ---
 if [[ "$CURRENT_LANG" == "en" ]]; then
@@ -171,8 +172,9 @@ show_help() {
         echo "Main parameters:"
         echo "  -b, --keyboard [NAME]    Keyboard selection (default: corne)"
         echo "  --mcu [MCU]              MCU selection (milandr/rp2040/rp2350/nrf52840/baikal, default: milandr)"
-        echo "  -p, --probe [PROBE]      Debugger selection (j-link, default: j-link)"
-        echo "  --memory [SIZE]          Memory size selection (e.g., 256KB, 512KB, 2MB, 4MB, 16MB)"
+        echo "  -d, --define [DEF]       Define custom macro during compilation (e.g. SPLIT_LEFT)"
+        echo "  -m, --modules [MODS]     Include user modules (semicolon-separated paths)"
+        echo "  --memory [SIZE]          Override flash size for usage table (e.g. 512KB, 2MB, 4MB, 16MB)"
         echo "  --nrf-port [PORT]        Port for flashing nRF52840 (e.g., /dev/tty.usbmodemXXX)"
         echo "  --lang [LANG]            Set script language (ru or en) and save it"
         echo ""
@@ -194,8 +196,9 @@ show_help() {
         echo "Основные параметры:"
         echo "  -b, --keyboard [NAME]    Выбор клавиатуры (по умолчанию: corne)"
         echo "  --mcu [MCU]              Выбор микроконтроллера (milandr/rp2040/rp2350/nrf52840/baikal, по умолчанию: milandr)"
-        echo "  -p, --probe [PROBE]      Выбор отладчика (j-link, по умолчанию: j-link)"
-        echo "  --memory [SIZE]          Выбор размера памяти (e.g., 256KB, 512KB, 2MB, 4MB, 16MB)"
+        echo "  -d, --define [DEF]       Определить пользовательский макрос при сборке (напр. SPLIT_LEFT)"
+        echo "  -m, --modules [MODS]     Подключить модули (пути, разделенные точкой с запятой)"
+        echo "  --memory [SIZE]          Переопределить размер flash в таблице памяти (напр. 512KB, 2MB, 4MB, 16MB)"
         echo "  --nrf-port [PORT]        Порт для прошивки nRF52840 (например /dev/tty.usbmodemXXX)"
         echo "  --lang [LANG]            Установить язык скрипта (ru или en) и сохранить"
         echo ""
@@ -286,6 +289,10 @@ while [[ $# -gt 0 ]]; do
             DEFINE="$2"
             shift 2
             ;;
+        -m|--modules|--module)
+            MODULES="$2"
+            shift 2
+            ;;
         -?*)
             parse_short_opts "$1"
             shift
@@ -356,6 +363,7 @@ if [[ "$MCU" == "rp2350" ]]; then
 fi
 [[ -n "$MEMORY" ]] && CMAKE_ARGS+=(-DMEMORY="${MEMORY}")
 [[ -n "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE="${DEFINE}")
+[[ -n "$MODULES" ]] && CMAKE_ARGS+=(-DDMK_MODULES="${MODULES}")
 if [[ "$MCU" == "milandr" && "$USB_FLASH" == true ]]; then
     CMAKE_ARGS+=(-DBOOTLOADER=ON)
 fi
