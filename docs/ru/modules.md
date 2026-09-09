@@ -77,6 +77,9 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 | `void hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | При каждом физическом изменении кнопки (`matrix.c`) | Отладочные светодиоды нажатий, тактильный отклик (haptic), зуммер |
 | `void hook_key_sent(uint16_t keycode, bool pressed)` | При отправке HID-кейкода хосту по USB (`keys.c`) | Расчет скорости печати WPM в реальном времени, кейлоггинг |
 | `void hook_hid_led_change(uint8_t led_mask)` | При обновлении хостом статуса Lock-клавиш (`led.c`) | Индикация CapsLock (`0x02`), NumLock (`0x01`), ScrollLock (`0x04`) |
+| `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Перед отправкой отчета движения курсора (`mouse.c`) | Перехват движения трекбола/мыши, drag-scroll (скролл колесом при зажатии слоя), масштабирование DPI |
+| `bool hook_mouse_scroll(int8_t *wheel, int8_t *pan)` | Перед отправкой отчета прокрутки (`mouse.c`) | Инверсия или программная фильтрация вертикального и горизонтального скролла |
+| `void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan)` | Перед отправкой составного USB HID Mouse отчета | Аналитика, светодиодная индикация кликов или репликация на вторичные интерфейсы |
 
 ### Пример реализации хуков в модуле:
 ```c
@@ -138,6 +141,19 @@ void hook_early_init(void) {
 * `void rgb_show(void)` — Передает буфер кадров на физические светодиоды (WS2812 / SK6812).
 * `void rgb_set_color(uint8_t hue, uint8_t sat)` — Устанавливает глобальный цвет подсветки в пространстве HSV.
 * `void rgb_set_mode(uint8_t mode)` — Переключает режим анимации подсветки.
+
+### 4.4. Эмуляция мыши и прямое управление трекболом (`mouse.h`)
+DMK включает полноценную подсистему USB HID мыши с поддержкой одновременного движения, колесика прокрутки (вертикального и горизонтального через AC Pan) и 5 кнопок:
+* `void mouse_move(int8_t dx, int8_t dy)` — Относительное перемещение курсора мыши. Вызывает `hook_mouse_move(&dx, &dy)`, позволяя модулям перехватить смещение (например, перенаправить движение трекбола на скролл) или масштабировать чувствительность.
+* `void mouse_scroll(int8_t wheel, int8_t pan)` — Прокрутка колесиком (`wheel` — вертикальная, `pan` — горизонтальная). Вызывает `hook_mouse_scroll(&wheel, &pan)`.
+* `void mouse_button_set(uint8_t button_mask, bool pressed)` — Установка битовой маски кнопок (`MOUSE_BTN_LEFT`, `MOUSE_BTN_RIGHT`, `MOUSE_BTN_MIDDLE`, `MOUSE_BTN_BACK`, `MOUSE_BTN_FORWARD`).
+* `void mouse_button_press(uint8_t button_mask)` / `mouse_button_release(uint8_t button_mask)` — Мгновенное нажатие и отпускание кнопок мыши.
+
+**Клавиши управления мышью в раскладке (Mousekeys):**
+* **Кнопки:** `K_MS_BTN1`..`K_MS_BTN5` (псевдонимы `K_BTN1`..`K_BTN5`).
+* **Движение курсора:** `K_MS_UP`, `K_MS_DOWN`, `K_MS_LEFT`, `K_MS_RIGHT` (с плавной физикой разгона, настраиваемой параметрами `MOUSEKEY_BASE_SPEED`, `MOUSEKEY_MAX_SPEED`, `MOUSEKEY_TIME_TO_MAX`).
+* **Колесико:** `K_MS_WH_UP`, `K_MS_WH_DOWN`, `K_MS_WH_LEFT`, `K_MS_WH_RIGHT`.
+* **Режимы скорости:** `K_MS_ACCEL0` (Slow / прецизионный режим для пиксельной точности), `K_MS_ACCEL1` (Normal), `K_MS_ACCEL2` (Fast / турбо).
 
 ---
 
@@ -206,6 +222,7 @@ void hook_early_init(void) {
 | `tests/modules/hall_calibration` | Калибровка аналоговых датчиков Холла, Continuous Rapid Trigger и сохранение во Flash. |
 | `tests/modules/sharp_memory_lcd` | Панель приборов на экране Sharp Memory LCD с расчетом WPM, слоями и бейджами. |
 | `tests/modules/u8g2_display` | Универсальный графический движок вывода на экраны на базе библиотеки U8g2. |
+| `tests/modules/trackball_example` | Интеграция трекбола/оптического сенсора с хуком `hook_mouse_move` для drag-scroll на слое. |
 
 ## 9. Сборка модулей в изолированном репозитории и CI/CD
 

@@ -69,7 +69,7 @@ Below is our current development roadmap:
 - [ ] **OLED Display Support**
 - [ ] **E-Ink Display Support**
 - [ ] **Memory LCD Display Support**
-- [ ] **Implement mousekeys**
+- [x] **Implement mousekeys and trackball/mouse API**
 
 ### Bluetooth (BLE) Policy
 

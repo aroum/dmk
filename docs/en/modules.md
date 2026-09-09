@@ -77,6 +77,9 @@ Modules communicate with DMK through non-blocking weak hooks declared in `dmk_co
 | `void hook_matrix_change(uint8_t row, uint8_t col, bool pressed)` | On every physical switch state change (`matrix.c`) | Keypress debug LEDs, haptic clickers, audio buzzers |
 | `void hook_key_sent(uint16_t keycode, bool pressed)` | When USB HID keycode is sent to host (`keys.c`) | Rolling WPM speed calculation, key logging, heatmaps |
 | `void hook_hid_led_change(uint8_t led_mask)` | When host updates Lock LEDs (`led.c`) | CapsLock (`0x02`), NumLock (`0x01`), ScrollLock (`0x04`) indicators |
+| `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Before sending cursor movement report (`mouse.c`) | Intercept trackball/mouse motion, drag-scroll (scroll wheel while holding layer/key), DPI scaling |
+| `bool hook_mouse_scroll(int8_t *wheel, int8_t *pan)` | Before sending wheel scroll report (`mouse.c`) | Invert or programmatically filter vertical and horizontal scrolling |
+| `void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan)` | Before transmitting composite USB HID Mouse report | Analytics, click LED feedback, or mirroring to secondary interfaces |
 
 ### Hook Implementation Example:
 ```c
@@ -138,6 +141,19 @@ Low-level direct pixel manipulation without interfering with standard lighting a
 * `void rgb_show(void)` — Flushes buffer to hardware (WS2812 / SK6812).
 * `void rgb_set_color(uint8_t hue, uint8_t sat)` — Sets global color in HSV space.
 * `void rgb_set_mode(uint8_t mode)` — Selects lighting effect mode.
+
+### 4.4. Mouse Emulation & Direct Trackball API (`mouse.h`)
+DMK includes a native USB HID mouse subsystem supporting concurrent motion, wheel scrolling (vertical and horizontal via AC Pan), and 5 mouse buttons:
+* `void mouse_move(int8_t dx, int8_t dy)` — Relative mouse cursor movement. Invokes `hook_mouse_move(&dx, &dy)`, allowing modules to intercept motion (e.g. redirect trackball movement to scrolling) or scale sensitivity.
+* `void mouse_scroll(int8_t wheel, int8_t pan)` — Wheel scrolling (`wheel` for vertical, `pan` for horizontal). Invokes `hook_mouse_scroll(&wheel, &pan)`.
+* `void mouse_button_set(uint8_t button_mask, bool pressed)` — Sets button bitmask (`MOUSE_BTN_LEFT`, `MOUSE_BTN_RIGHT`, `MOUSE_BTN_MIDDLE`, `MOUSE_BTN_BACK`, `MOUSE_BTN_FORWARD`).
+* `void mouse_button_press(uint8_t button_mask)` / `mouse_button_release(uint8_t button_mask)` — Instant button press and release.
+
+**Keymap Mousekeys:**
+* **Buttons:** `K_MS_BTN1`..`K_MS_BTN5` (aliases `K_BTN1`..`K_BTN5`).
+* **Cursor Movement:** `K_MS_UP`, `K_MS_DOWN`, `K_MS_LEFT`, `K_MS_RIGHT` (smooth non-linear acceleration physics configurable via `MOUSEKEY_BASE_SPEED`, `MOUSEKEY_MAX_SPEED`, `MOUSEKEY_TIME_TO_MAX`).
+* **Wheel Scrolling:** `K_MS_WH_UP`, `K_MS_WH_DOWN`, `K_MS_WH_LEFT`, `K_MS_WH_RIGHT`.
+* **Speed Modes:** `K_MS_ACCEL0` (Slow / precision pixel mode), `K_MS_ACCEL1` (Normal), `K_MS_ACCEL2` (Fast / turbo mode).
 
 ---
 
@@ -206,6 +222,7 @@ The repository includes tested reference implementations in `tests/modules/`:
 | `tests/modules/hall_calibration` | Full Hall-effect analog calibration, continuous Rapid Trigger, and Flash storage. |
 | `tests/modules/sharp_memory_lcd` | Sharp MIP LCD dashboard with WPM calculator, layers, and status indicators. |
 | `tests/modules/u8g2_display` | Generic OLED/LCD display engine powered by U8g2. |
+| `tests/modules/trackball_example` | Trackball / optical sensor integration with `hook_mouse_move` for drag-scroll on layers. |
 
 ## 9. Building Modules in Isolated Repositories & CI/CD
 
