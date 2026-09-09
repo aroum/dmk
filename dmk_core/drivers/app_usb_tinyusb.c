@@ -22,6 +22,10 @@ static void usb_device_task(void *pvParameters) {
     (void)pvParameters;
     while (1) {
         tud_task();
+#ifdef VIAL
+        extern void vial_flush_pending_report(void);
+        vial_flush_pending_report();
+#endif
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }

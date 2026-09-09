@@ -195,6 +195,26 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 
 extern void led_set_hid_state(uint8_t state);
 
+#ifdef VIAL
+static uint8_t pending_vial_response[32];
+static volatile bool has_pending_vial_response = false;
+
+void vial_flush_pending_report(void) {
+    if (has_pending_vial_response && tud_hid_n_ready(1)) {
+        has_pending_vial_response = false;
+        tud_hid_n_report(1, 0, pending_vial_response, 32);
+    }
+}
+
+void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_t len) {
+    (void)report;
+    (void)len;
+    if (instance == 1) {
+        vial_flush_pending_report();
+    }
+}
+#endif
+
 // This callback is invoked when the host sends a SET_REPORT request.
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
                            uint16_t bufsize) {
@@ -204,7 +224,12 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
         if (bufsize >= 32) {
             uint8_t response[32];
             vial_process_packet(buffer, response);
-            tud_hid_n_report(1, 0, response, 32);
+            if (tud_hid_n_ready(1)) {
+                tud_hid_n_report(1, 0, response, 32);
+            } else {
+                memcpy(pending_vial_response, response, 32);
+                has_pending_vial_response = true;
+            }
         }
         return;
     }

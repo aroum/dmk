@@ -17,6 +17,7 @@ extern "C" {
 
 #ifdef VIAL
 extern uint32_t dynamic_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][NUM_KEYS];
+extern uint32_t dynamic_encoder_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][4][2];
 
 #define VIAL_COMBO_ENTRIES 8
 

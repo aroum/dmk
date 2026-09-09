@@ -3,8 +3,12 @@
 #include "hal_gpio.h"
 #include "keyboard.h"
 #include "keys.h"
+#include "layers.h"
 #include "matrix.h"
 #include "usb.h"
+#ifdef VIAL
+#include "vial.h"
+#endif
 
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
 
@@ -146,25 +150,32 @@ void encoder_process_event(uint8_t encoder_idx, bool direction) {
     }
 
     uint32_t key = 0;
+    uint8_t top_layer = layers_get_active();
+    uint16_t state = layers_get_state();
+    for (int l = top_layer; l >= 0; l--) {
+        if (!(state & (1U << l))) {
+            continue;
+        }
 #ifdef VIAL
-#include "vial.h"
-    extern uint32_t dynamic_encoder_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][4][2];
-    for (int l = layer; l >= 0; l--) {
         if (encoder_idx < 4) {
             key = dynamic_encoder_keymap[l][encoder_idx][direction ? 1 : 0];
-            if (key != 0) {
+            if (key != 0 && key != K_TRNS) {
                 break;
             }
+            key = 0;
         }
-    }
 #else
-    for (int l = layer; l >= 0; l--) {
-        key = encoder_keymap[l][encoder_idx][direction ? 1 : 0];
-        if (key != 0) {
-            break;
+        extern const uint32_t encoder_keymap[][4][2];
+        extern const size_t keymap_layers;
+        if ((size_t)l < keymap_layers && encoder_idx < 4) {
+            key = encoder_keymap[l][encoder_idx][direction ? 1 : 0];
+            if (key != 0 && key != K_TRNS) {
+                break;
+            }
+            key = 0;
         }
-    }
 #endif
+    }
 
     if (key != 0) {
         active_encoder_keys[encoder_idx] = key;
