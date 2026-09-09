@@ -6,7 +6,7 @@
 
 # DMK Firmware Keycodes
 
-This document lists all the standard HID keycodes, consumer media keys, modifiers, system controls, mousekeys, and custom layer keys defined in the project ([keys.h](../dmk_core/include/keys.h)).
+This document lists all the standard HID keycodes, consumer media keys, modifiers, system controls, mousekeys, and custom layer keys defined in the project ([keys.h](../../dmk_core/include/keys.h)).
 
 ## Alphanumeric (A-Z, 0-9)
 
@@ -223,8 +223,35 @@ This document lists all the standard HID keycodes, consumer media keys, modifier
 | -------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------- |
 | -                    | `K_LYRUP`                                                        | Switch to Next Layer (Layer Up)                                  | `0xA5`                |
 | -                    | `K_LYRDWN`                                                       | Switch to Previous Layer (Layer Down)                            | `0xA6`                |
-| `K_BOOTLOADER`       | `K_BOOT` / `QK_BOOTLOADER` / `QK_BOOT`                           | Reboot into Bootloader mode (DFU / UF2 / ROM)                    | `0xB2`                |
+| `K_BOOTLOADER`       | `K_BOOT` / `QK_BOOTLOADER` / `QK_BOOT` / `BOOTLOADER_KEY`       | Reboot into Bootloader mode (DFU / UF2 / ROM)                    | `0xB2`                |
 | `HID_KEY_NONE`       | `K_NULL`                                                         | Null / No action                                                 | `0x00`                |
 | `K_TRNS`             | `K_TRNS`                                                         | Transparent key (behaves as transparent in layer stack)          | `0x00000000`          |
 | `L_0` ... `L_15`     | -                                                                | Raw Layer Momentary Switch (Layer 0 ... 15)                      | `0x0100` ... `0x010F` |
 | `K_FN0` ... `K_FN15` | -                                                                | Fn Keys (Bound to momentary layer switches `MO(0)` ... `MO(15)`) | Encoded Layer         |
+
+## MIDI Keycodes and Helper Macros
+
+> [!NOTE]
+> For complete guides on MIDI setup, Vial CC integration, and hardware MIDI Jack interfaces, see the [MIDI Documentation](midi.md).
+
+| Keycode Symbol                                        | Short Name / Alias                             | Description                                                   | Code / Format         |
+| ----------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------- | --------------------- |
+| `MIDI_NOTE_C_0` ... `MIDI_NOTE_B_5`                   | -                                              | Play note (6 octaves, 72 notes)                               | `0x7100` ... `0x7147` |
+| `MIDI_OCTAVE_N2` ... `MIDI_OCTAVE_7`                  | -                                              | Set base octave (-2 to 7)                                     | `0x7148` ... `0x7151` |
+| `MIDI_OCTAVE_DOWN` / `MIDI_OCTAVE_UP`                 | -                                              | Shift octave down / up                                        | `0x7155` / `0x7156`   |
+| `MIDI_TRANSPOSE_N6` ... `MIDI_TRANSPOSE_6`            | -                                              | Set transpose (-6 to +6 semitones)                            | `0x7157` ... `0x7163` |
+| `MIDI_TRANSPOSE_DOWN` / `MIDI_TRANSPOSE_UP`           | -                                              | Shift transpose semitone down / up                            | `0x7164` / `0x7165`   |
+| `MIDI_VELOCITY_0` ... `MIDI_VELOCITY_10`              | -                                              | Set note velocity (0 to 127)                                  | `0x7166` ... `0x7170` |
+| `MIDI_VELOCITY_DOWN` / `MIDI_VELOCITY_UP`             | -                                              | Decrease / increase velocity                                  | `0x7171` / `0x7172`   |
+| `MIDI_CHANNEL_1` ... `MIDI_CHANNEL_16`                | -                                              | Set MIDI channel (1–16)                                       | `0x7173` ... `0x7182` |
+| `MIDI_CHANNEL_DOWN` / `MIDI_CHANNEL_UP`               | -                                              | Shift MIDI channel down / up                                  | `0x7183` / `0x7184`   |
+| `MIDI_ALL_NOTES_OFF`                                  | -                                              | Turn off all sounding notes (MIDI Panic)                      | `0x7185`              |
+| `MIDI_SUSTAIN` / `MIDI_PORTAMENTO` / `MIDI_SOSTENUTO` | -                                              | MIDI effects: Sustain, Portamento, Sostenuto                  | `0x7186` ... `0x7188` |
+| `MIDI_SOFT` / `MIDI_LEGATO` / `MIDI_MODULATION`       | -                                              | MIDI effects: Soft pedal, Legato, Modulation                  | `0x7189` ... `0x718B` |
+| `MIDI_PITCH_BEND_DOWN` / `MIDI_PITCH_BEND_UP`         | -                                              | Pitch Bend wheel down / up                                    | `0x718E` / `0x718F`   |
+| `MIDI_CC_INC(cc)`                                     | `MIDI_CC_X_INC(cc)`                            | Increment CC `cc` (0–15) by 1 (Vial / rotary encoder)         | `0x7E00 + cc`         |
+| `MIDI_CC_DEC(cc)`                                     | `MIDI_CC_X_DEC(cc)`                            | Decrement CC `cc` (0–15) by 1 (Vial / rotary encoder)         | `0x7E10 + cc`         |
+| `MIDI_CC_VAL_127(cc)`                                 | `MIDI_CC_X_VAL_127(cc)`                        | Send CC `cc` value 127 on press, 0 on release                 | `0x7E20 + cc`         |
+| `MIDI_CC_TOGGLE(cc)`                                  | `MIDI_CC_X_TOGGLE(cc)`                         | Toggle CC `cc` between 127 and 0 on press                     | `0x7E30 + cc`         |
+| `MIDI_CC(cc, val)`                                    | -                                              | Static keymap binding: `val` on press, 0 on release           | Encoded CC            |
+

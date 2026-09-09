@@ -77,33 +77,34 @@ For split keyboards, the communication line (`SERIAL_PIN`) works over a single-w
 
 ---
 
-### ProMicro
+### ProMicro Pin Mapping
 
-[dmk_core/include/proMicro_pins.h](../dmk_core/include/proMicro_pins.h)
+ProMicro alias pins (`PM_0`..`PM_21`) allow writing keyboards compatible with ProMicro footprints across all supported microcontroller platforms. They are automatically available when including `"pin_defs.h"`:
 
 ```c
-#include "../../dmk_core/include/proMicro_pins.h"
+#include "pin_defs.h"
 ```
 
 | proMicro | rp2040 | rp2350 | nRF52840 | milandr | baikal |
 | -------- | ------ | ------ | -------- | ------- | ------ |
-| PM_0     | —      | —      | P0_08    | —       | —      |
-| PM_1     | —      | —      | P0_06    | —       | —      |
-| PM_2     | —      | —      | P0_17    | —       | —      |
-| PM_3     | —      | —      | P0_20    | —       | —      |
-| PM_4     | —      | —      | P0_22    | —       | —      |
-| PM_5     | —      | —      | P0_24    | —       | —      |
-| PM_6     | —      | —      | P1_00    | —       | —      |
-| PM_7     | —      | —      | P0_11    | —       | —      |
-| PM_8     | —      | —      | P1_04    | —       | —      |
-| PM_9     | —      | —      | P1_06    | —       | —      |
-| PM_10    | —      | —      | P0_09    | —       | —      |
-| PM_14    | —      | —      | P1_11    | —       | —      |
-| PM_15    | —      | —      | P1_13    | —       | —      |
-| PM_16    | —      | —      | P0_10    | —       | —      |
-| PM_18    | —      | —      | P1_15    | —       | —      |
-| PM_19    | —      | —      | P0_02    | —       | —      |
-| PM_20    | —      | —      | P0_29    | —       | —      |
-| PM_21    | —      | —      | P0_31    | —       | —      |
-| PM_VCC   | —      | —      | P0_13    | —       | —      |
-| PM_LED   | —      | —      | P0_15    | —       | —      |
+| PM_0     | GPIO8  | GPIO8  | P0_08    | PB6     | P0_8   |
+| PM_1     | GPIO6  | GPIO6  | P0_06    | PB5     | P0_6   |
+| PM_2     | GPIO17 | GPIO17 | P0_17    | PB4     | P0_10  |
+| PM_3     | GPIO20 | GPIO20 | P0_20    | PB3     | P0_12  |
+| PM_4     | GPIO22 | GPIO22 | P0_22    | PB2     | P0_14  |
+| PM_5     | GPIO24 | GPIO24 | P0_24    | PB1     | P1_2   |
+| PM_6     | GPIO0  | GPIO0  | P1_00    | PB0     | P1_0   |
+| PM_7     | GPIO11 | GPIO11 | P0_11    | PC0     | P0_11  |
+| PM_8     | GPIO4  | GPIO4  | P1_04    | PC1     | P1_4   |
+| PM_9     | GPIO2  | GPIO2  | P1_06    | PC2     | P1_6   |
+| PM_10    | GPIO1  | GPIO1  | P0_09    | PD6     | P0_9   |
+| PM_14    | GPIO19 | GPIO19 | P1_11    | PD5     | P1_11  |
+| PM_15    | GPIO15 | GPIO15 | P1_13    | PD2     | P1_13  |
+| PM_16    | GPIO10 | GPIO10 | P0_10    | PD4     | P0_10  |
+| PM_18    | GPIO27 | GPIO27 | P1_15    | PD7     | P1_15  |
+| PM_19    | GPIO3  | GPIO3  | P0_02    | PE0     | P0_2   |
+| PM_20    | GPIO16 | GPIO16 | P0_29    | PB6     | P1_8   |
+| PM_21    | GPIO18 | GPIO18 | P0_31    | PE2     | P1_9   |
+| PM_VCC   | GPIO13 | GPIO13 | P0_13    | PB8     | P0_13  |
+| PM_LED   | GPIO9  | GPIO9  | P0_15    | PB7     | P0_15  |
+

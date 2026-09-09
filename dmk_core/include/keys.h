@@ -521,6 +521,7 @@
 #define K_BOOT K_BOOTLOADER
 #define QK_BOOTLOADER K_BOOTLOADER
 #define QK_BOOT K_BOOTLOADER
+#define BOOTLOADER_KEY K_BOOTLOADER
 
 // Media Keys Aliases (Requires Consumer Report)
 #define K_AUDIO_MUTE DMK_CONSUMER_MUTE
@@ -873,5 +874,10 @@ typedef struct {
 #define MIDI_CC_TOGGLE(cc) (MIDI_CC_TOGGLE_BASE + ((cc) & 0x0F))
 #define MIDI_CC_INC(cc) (MIDI_CC_INC_BASE + ((cc) & 0x0F))
 #define MIDI_CC_DEC(cc) (MIDI_CC_DEC_BASE + ((cc) & 0x0F))
+
+#define MIDI_CC_X_VAL_127(cc) MIDI_CC_VAL_127(cc)
+#define MIDI_CC_X_TOGGLE(cc) MIDI_CC_TOGGLE(cc)
+#define MIDI_CC_X_INC(cc) MIDI_CC_INC(cc)
+#define MIDI_CC_X_DEC(cc) MIDI_CC_DEC(cc)
 
 #endif

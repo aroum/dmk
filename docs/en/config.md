@@ -10,14 +10,14 @@ All hardware settings, keymaps, and macros are defined in `config.h` (e.g., `key
 
 ---
 
-## Custom USB Config
+## USB Device Configuration
 
-Appending MCU name to artifact:
+Customize the USB product name, VID, and PID in `config.h`:
 
 ```c
-#define VID      PA0
-#define PID      P0_00
-#define USB_NAME P0_00
+#define VIAL_KEYBOARD_NAME "MyKeyboard" // Product name displayed in the operating system
+#define VIAL_VENDOR_ID     0xCAFE       // USB Vendor ID (VID)
+#define VIAL_PRODUCT_ID    0x4010       // USB Product ID (PID)
 ```
 
 ## Multi-Platform Support
@@ -35,6 +35,30 @@ Configurations can dynamically target different microcontrollers using preproces
     #define SERIAL_PIN      GPIO0
 #endif
 ```
+
+### Default Microcontroller (`config.h`)
+
+You can set a default microcontroller for a keyboard directly in its `config.h`. Build scripts (`build_all.sh` / `build_all.ps1`) and `CMakeLists.txt` will automatically use this target MCU when the `--mcu` flag is omitted:
+
+```c
+// Setting default microcontroller for the keyboard:
+#define MCU nrf52840
+// Alternative macro forms supported:
+// #define DEFAULT_MCU nrf52840
+// #define MCU_DEFAULT nrf52840
+// #define MCU_NRF52840
+```
+
+Example build with the default microcontroller:
+```bash
+./build_all.sh -b dozateno
+```
+
+When building for an alternative controller, the command-line `--mcu` flag always takes precedence:
+```bash
+./build_all.sh -b dozateno --mcu rp2040
+```
+
 
 ---
 
@@ -490,19 +514,44 @@ For multiple encoders:
 #define ENCODER_RESOLUTIONS { 4, 2 }
 ```
 
-### 2. Layer Keymap Definition (`ENCODER_KEYMAP`)
+### 2. Layer Keymap Definition (`encoder_keymap`)
 
-Clockwise (CW) and Counter-Clockwise (CCW) rotation actions are defined per layer in `ENCODER_KEYMAP`:
+Clockwise (CW) and Counter-Clockwise (CCW) rotation actions are defined per layer in the `encoder_keymap` array inside `#ifdef DEFINE_KEYMAP`:
 
 ```c
-#define ENCODER_KEYMAP { \
-    [0] = { { K_VOLU, K_VOLD } }, \
-    [1] = { { K_PGUP, K_PGDN } }  \
-}
+#ifdef DEFINE_KEYMAP
+const uint32_t encoder_keymap[][NUM_ENCODERS][2] = {
+    [0] = { { K_VOLU, K_VOLD } }, // CW, CCW
+    [1] = { { K_PGUP, K_PGDN } }
+};
+#endif
 ```
 
-- When rotated, the firmware generates a synthetic pulse keypress (20 ms) and automatically releases it.
-- When `#define VIAL` is enabled, encoders can be remapped directly in the *Encoders* tab in Vial GUI in real time.
+- When rotated, the firmware dispatches the active layer's keycode as a debounced pulse (20 ms) and releases it.
+- Keycodes fall through transparently (`K_TRNS` / `0`) to lower active layers.
+- When `#define VIAL` is enabled, encoders can be dynamically remapped directly in the *Encoders* tab in Vial GUI and saved to persistent memory.
+
+---
+
+## Mousekeys Configuration
+
+DMK features virtual USB mouse emulation with configurable acceleration physics. Parameters can be tuned in `config.h`:
+
+```c
+#define MOUSEKEY_INTERVAL     16  // Polling/update interval in ms (~60 Hz)
+#define MOUSEKEY_DELAY        150 // Delay in ms before acceleration begins
+#define MOUSEKEY_BASE_SPEED   2   // Initial speed in pixels per tick
+#define MOUSEKEY_MAX_SPEED    10  // Maximum continuous cursor speed in pixels per tick
+#define MOUSEKEY_TIME_TO_MAX  600 // Acceleration ramp duration in ms to reach max speed
+#define MOUSEKEY_SCROLL_DELAY 90  // Milliseconds between repeated scroll wheel events
+```
+
+### Supported Mouse Keycodes
+
+- **Cursor Movement**: `K_MS_U`, `K_MS_D`, `K_MS_L`, `K_MS_R` (Up, Down, Left, Right).
+- **Buttons**: `K_BTN1`, `K_BTN2`, `K_BTN3`, `K_BTN4`, `K_BTN5` (Left, Right, Middle, Back, Forward).
+- **Wheel / Pan**: `K_WH_U`, `K_WH_D`, `K_WH_L`, `K_WH_R` (Vertical wheel and horizontal pan).
+- **Speed Profiles**: `K_ACL0` (slow), `K_ACL1` (medium), `K_ACL2` (fast).
 
 ---
 

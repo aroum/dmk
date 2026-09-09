@@ -41,7 +41,7 @@ const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 > [!NOTE]
 > For simple layer switching without modifiers, you can use the `L_0` to `L_15` keycodes directly (e.g. `L_1` to momentarily switch to layer 1). These are a lighter alternative to the `MO(layer)` macro and process instantly in the matrix loop.
 >
-> See [keycodes_en.md](keycodes_en.md) for a list of all keycodes.
+> See [keycodes.md](keycodes.md) for a list of all keycodes.
 
 ### Optional External Keymap
 
@@ -89,7 +89,7 @@ const MacroStep MACRO_ALT_TAB[] = {
 
 ### Registering Macros in config.h
 
-For the firmware to recognize your macros, they must be registered in the global `keyboard_macros` array in your keyboard's [config.h](config_en.md) file.
+For the firmware to recognize your macros, they must be registered in the global `keyboard_macros` array in your keyboard's [`config.h`](config.md) file.
 
 ```c
 // 1. Declare macro steps arrays
@@ -443,7 +443,7 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
 ### Consumer Media Keys
 
-To use Consumer Page media keys in your keymap (e.g., `K_MUTE`, `K_VOLU`, `K_VOLD`, `K_PLAY`, etc.), you must enable `EXTRAKEY_ENABLE` in your keyboard's config.h. See [config_en.md](config_en.md) and [keycodes_en.md](keycodes_en.md) for details.
+To use Consumer Page media keys in your keymap (e.g., `K_MUTE`, `K_VOLU`, `K_VOLD`, `K_PLAY`, etc.), you must enable `EXTRAKEY_ENABLE` in your keyboard's config.h. See [config.md](config.md) and [keycodes.md](keycodes.md) for details.
 
 ---
 
