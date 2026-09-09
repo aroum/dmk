@@ -102,6 +102,52 @@ enum {
     VIA_SUB_FIRMWARE_VERSION = 0x04
 };
 
+// Helper function to map DMK mouse keycodes to Vial Protocol v6 keycodes
+static uint8_t to_via_mouse_keycode(uint8_t dmk_kc) {
+    switch (dmk_kc) {
+    case HID_KEY_MOUSE_UP:       return 0xCD;
+    case HID_KEY_MOUSE_DOWN:     return 0xCE;
+    case HID_KEY_MOUSE_LEFT:     return 0xCF;
+    case HID_KEY_MOUSE_RIGHT:    return 0xD0;
+    case HID_KEY_MOUSE_BTN1:     return 0xD1;
+    case HID_KEY_MOUSE_BTN2:     return 0xD2;
+    case HID_KEY_MOUSE_BTN3:     return 0xD3;
+    case HID_KEY_MOUSE_BTN4:     return 0xD4;
+    case HID_KEY_MOUSE_BTN5:     return 0xD5;
+    case HID_KEY_MOUSE_WH_UP:    return 0xD9;
+    case HID_KEY_MOUSE_WH_DOWN:  return 0xDA;
+    case HID_KEY_MOUSE_WH_LEFT:  return 0xDB;
+    case HID_KEY_MOUSE_WH_RIGHT: return 0xDC;
+    case HID_KEY_MOUSE_ACCEL0:   return 0xDD;
+    case HID_KEY_MOUSE_ACCEL1:   return 0xDE;
+    case HID_KEY_MOUSE_ACCEL2:   return 0xDF;
+    default:                     return dmk_kc;
+    }
+}
+
+// Helper function to map Vial Protocol v6 mouse keycodes to DMK mouse keycodes
+static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
+    switch (via_kc) {
+    case 0xCD: return HID_KEY_MOUSE_UP;
+    case 0xCE: return HID_KEY_MOUSE_DOWN;
+    case 0xCF: return HID_KEY_MOUSE_LEFT;
+    case 0xD0: return HID_KEY_MOUSE_RIGHT;
+    case 0xD1: return HID_KEY_MOUSE_BTN1;
+    case 0xD2: return HID_KEY_MOUSE_BTN2;
+    case 0xD3: return HID_KEY_MOUSE_BTN3;
+    case 0xD4: return HID_KEY_MOUSE_BTN4;
+    case 0xD5: return HID_KEY_MOUSE_BTN5;
+    case 0xD9: return HID_KEY_MOUSE_WH_UP;
+    case 0xDA: return HID_KEY_MOUSE_WH_DOWN;
+    case 0xDB: return HID_KEY_MOUSE_WH_LEFT;
+    case 0xDC: return HID_KEY_MOUSE_WH_RIGHT;
+    case 0xDD: return HID_KEY_MOUSE_ACCEL0;
+    case 0xDE: return HID_KEY_MOUSE_ACCEL1;
+    case 0xDF: return HID_KEY_MOUSE_ACCEL2;
+    default:   return via_kc;
+    }
+}
+
 // Helper function to map DMK 32-bit keycodes to VIA 16-bit keycodes
 uint16_t to_via_keycode(uint32_t dmk_key) {
     if (dmk_key == K_TRNS) {
@@ -138,7 +184,7 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
     // Tap-Hold: DMK_HT
     if ((dmk_key & 0xFF000000) == DMK_HT) {
         uint8_t layer_or_mod = (dmk_key >> 8) & 0xFF;
-        uint8_t kc = dmk_key & 0xFF;
+        uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
         if (layer_or_mod < 32) {
             return 0x4000 | (layer_or_mod << 8) | kc;
         } else {
@@ -167,7 +213,7 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
     // Key with Modifier: DMK_MK
     if ((dmk_key & 0xFF000000) == DMK_MK) {
         uint8_t mod_mask = (dmk_key >> 8) & 0xFF;
-        uint8_t kc = dmk_key & 0xFF;
+        uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
         uint8_t via_mod = 0;
         if (mod_mask & MOD_LCTRL)
             via_mod |= 0x01;
@@ -211,6 +257,11 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
     // Custom CC keycodes range (0x7E40 - 0x7F3F)
     if (dmk_key >= 0x7E40 && dmk_key <= 0x7F3F) {
         return dmk_key;
+    }
+
+    // Map DMK internal Mouse keycodes (0xF0 - 0xFF) to Vial Protocol v6 mouse keycodes (0x00CD - 0x00DF)
+    if (dmk_key >= HID_KEY_MOUSE_UP && dmk_key <= HID_KEY_MOUSE_ACCEL2) {
+        return to_via_mouse_keycode((uint8_t)dmk_key);
     }
 
     // Normal standard keycode
@@ -263,6 +314,11 @@ uint32_t from_via_keycode(uint16_t via_key) {
         return 0xC0 + (via_key - 0x7700);
     }
 
+    // Map Vial Protocol v6 mouse keycodes (0x00CD - 0x00DF) to DMK internal Mouse keycodes
+    if ((via_key >= 0x00CD && via_key <= 0x00D5) || (via_key >= 0x00D9 && via_key <= 0x00DF)) {
+        return from_via_mouse_keycode((uint8_t)via_key);
+    }
+
     // Normal standard keycode
     if (via_key >= 0x0002 && via_key <= 0x00FF) {
         return via_key;
@@ -271,7 +327,7 @@ uint32_t from_via_keycode(uint16_t via_key) {
     // Key with modifier
     if (via_key >= 0x0100 && via_key <= 0x1FFF) {
         uint8_t via_mod = (via_key >> 8) & 0xFF;
-        uint8_t kc = via_key & 0xFF;
+        uint8_t kc = from_via_mouse_keycode(via_key & 0xFF);
         uint8_t dmk_mod = 0;
         if (via_mod & 0x01)
             dmk_mod |= MOD_LCTRL;
@@ -295,7 +351,7 @@ uint32_t from_via_keycode(uint16_t via_key) {
     // Tap-Hold Mod
     if (via_key >= 0x2000 && via_key <= 0x3FFF) {
         uint8_t via_mod = (via_key >> 8) & 0x1F;
-        uint8_t kc = via_key & 0xFF;
+        uint8_t kc = from_via_mouse_keycode(via_key & 0xFF);
         uint8_t dmk_mod = 0;
         if (via_mod & 0x01)
             dmk_mod |= MOD_LCTRL;
@@ -319,7 +375,7 @@ uint32_t from_via_keycode(uint16_t via_key) {
     // Tap-Hold Layer
     if (via_key >= 0x4000 && via_key <= 0x4FFF) {
         uint8_t layer = (via_key >> 8) & 0x0F;
-        uint8_t kc = via_key & 0xFF;
+        uint8_t kc = from_via_mouse_keycode(via_key & 0xFF);
         return HT(layer, kc);
     }
 
@@ -1138,9 +1194,7 @@ static uint16_t ascii_to_keycode(char c, bool *shift) {
 }
 
 static void send_event(uint16_t kc, bool pressed) {
-    extern QueueHandle_t usb_queue;
-    key_event_t event = {kc, pressed ? 1 : 0};
-    xQueueSend(usb_queue, &event, 0);
+    keyboard_send_key(kc, pressed);
 }
 
 static void tap_key(uint16_t kc) {
