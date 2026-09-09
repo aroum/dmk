@@ -6,7 +6,7 @@ param(
     [switch]$Uf2,
     [Alias("h")][switch]$Help,
     [Alias("b")][string]$Keyboard = "corne",
-    [string]$Mcu = "milandr",
+    [string]$Mcu = "",
     [Alias("p")][string]$Probe = "j-link",
     [string]$Memory = "",
     [string]$NrfPort = "",
@@ -170,7 +170,7 @@ function Show-Help {
         Write-Host "Usage: .\build_all.ps1 [OPTIONS]"
         Write-Host "`nMain parameters:"
         Write-Host "  -b, -Keyboard [NAME]     Keyboard selection (default: corne)"
-        Write-Host "  -Mcu [MCU]               MCU selection (milandr/rp2040/rp2350/nrf52840/baikal, default: milandr)"
+        Write-Host "  -Mcu [MCU]               MCU selection (milandr/rp2040/rp2350/nrf52840/baikal, default: from config.h or milandr)"
         Write-Host "  -p, -Probe [PROBE]       Debugger selection (j-link, default: j-link)"
         Write-Host "  -Memory [SIZE]           Memory size selection (e.g., 256KB, 512KB, 2MB, 4MB, 16MB)"
         Write-Host "  -NrfPort [PORT]          Port for flashing nRF52840 (e.g., COM3)"
@@ -191,7 +191,7 @@ function Show-Help {
         Write-Host "Usage: .\build_all.ps1 [OPTIONS]"
         Write-Host "`nОсновные параметры:"
         Write-Host "  -b, -Keyboard [NAME]     Выбор клавиатуры (по умолчанию: corne)"
-        Write-Host "  -Mcu [MCU]               Выбор микроконтроллера (milandr/rp2040/rp2350/nrf52840/baikal, по умолчанию: milandr)"
+        Write-Host "  -Mcu [MCU]               Выбор микроконтроллера (milandr/rp2040/rp2350/nrf52840/baikal, по умолчанию: из config.h или milandr)"
         Write-Host "  -p, -Probe [PROBE]       Выбор отладчика (j-link, по умолчанию: j-link)"
         Write-Host "  -Memory [SIZE]           Выбор размера памяти (e.g., 256KB, 512KB, 2MB, 4MB, 16MB)"
         Write-Host "  -NrfPort [PORT]          Порт для прошивки nRF52840 (например COM3)"
@@ -216,13 +216,45 @@ if ($Help) {
     exit 0
 }
 
-# Проверка существования клавиатуры
-$KeyboardDir = Join-Path $ScriptDir "keyboards" $Keyboard
-if (-not (Test-Path $KeyboardDir)) {
-    Write-Host "$MSG_ERR_KBD_NOT_FOUND $KeyboardDir" -ForegroundColor Red
+# Проверка существования клавиатуры (встроенной или по внешнему пути)
+$KeyboardDir = ""
+$KbdBase = ""
+
+if (Test-Path $Keyboard -PathType Container) {
+    $KeyboardDir = (Resolve-Path $Keyboard).Path
+    if (-not (Test-Path (Join-Path $KeyboardDir "config.h")) -and (Test-Path (Join-Path $KeyboardDir "keyboards"))) {
+        $subDirs = Get-ChildItem -Path (Join-Path $KeyboardDir "keyboards") -Directory
+        foreach ($sub in $subDirs) {
+            if (Test-Path (Join-Path $sub.FullName "config.h")) {
+                $KeyboardDir = $sub.FullName
+                break
+            }
+        }
+    }
+    $KbdBase = Split-Path -Leaf $KeyboardDir
+} elseif (Test-Path (Join-Path $ScriptDir "keyboards" $Keyboard)) {
+    $KeyboardDir = Join-Path $ScriptDir "keyboards" $Keyboard
+    $KbdBase = $Keyboard
+} else {
+    Write-Host "$MSG_ERR_KBD_NOT_FOUND $(Join-Path $ScriptDir "keyboards" $Keyboard)" -ForegroundColor Red
     Write-Host $MSG_AVAIL_KBD
     Get-ChildItem -Path (Join-Path $ScriptDir "keyboards") -Directory | Select-Object -ExpandProperty Name
     exit 1
+}
+
+# Определение целевого MCU (из config.h по умолчанию, либо переопределение через параметр -Mcu)
+if (-not $PSBoundParameters.ContainsKey('Mcu') -or [string]::IsNullOrWhiteSpace($Mcu)) {
+    if (Test-Path (Join-Path $KeyboardDir "config.h")) {
+        $cfgContent = Get-Content -Path (Join-Path $KeyboardDir "config.h") -Raw
+        if ($cfgContent -match '(?m)^\s*#\s*define\s+(?:DEFAULT_MCU|MCU_DEFAULT|MCU)\s+["'']?([a-zA-Z0-9_]+)["'']?') {
+            $Mcu = $Matches[1].ToLower()
+        } elseif ($cfgContent -match '(?m)^\s*#\s*define\s+MCU_(RP2040|RP2350|NRF52840|MILANDR|BAIKAL)\b') {
+            $Mcu = $Matches[1].ToLower()
+        }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($Mcu)) {
+    $Mcu = "milandr"
 }
 
 # Настройка целевого имени
@@ -238,7 +270,7 @@ if ($Define) {
         if ($cleanDef) { $Suffix = "_$cleanDef" }
     }
 }
-$TargetName = "dmk_${Keyboard}_${Mcu}${Suffix}"
+$TargetName = "dmk_${KbdBase}_${Mcu}${Suffix}"
 $BuildDir = Join-Path $ScriptDir "build"
 $HrdProbe = Join-Path $ScriptDir "platforms\milandr\dep\probe\jlink4swd.cfg"
 
@@ -251,7 +283,7 @@ if (-not (Test-Path $BuildDir)) {
     Write-Host $MSG_INIT_CMAKE -ForegroundColor Yellow
     New-Item -ItemType Directory -Path $BuildDir | Out-Null
     
-    $CmakeArgs = @("-S", $ScriptDir, "-B", $BuildDir, "-DKEYBOARD=$Keyboard", "-DMCU=$Mcu")
+    $CmakeArgs = @("-S", $ScriptDir, "-B", $BuildDir, "-DKEYBOARD=$KbdBase", "-DKEYBOARD_DIR=$KeyboardDir", "-DMCU=$Mcu")
     if ($Mcu -eq "rp2350") { $CmakeArgs += "-DPICO_PLATFORM=rp2350" }
     if ($Memory) { $CmakeArgs += "-DMEMORY=$Memory" }
     if ($Define) { $CmakeArgs += "-DDEFINE=$Define" }

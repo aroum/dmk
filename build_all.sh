@@ -17,7 +17,8 @@ FLASH=false
 UF2=false
 USB_FLASH=false
 KEYBOARD="corne"
-MCU="milandr"
+MCU=""
+MCU_EXPLICIT=false
 PROBE="j-link"
 MEMORY=""
 NRF_PORT=""
@@ -171,7 +172,7 @@ show_help() {
         echo ""
         echo "Main parameters:"
         echo "  -b, --keyboard [NAME]    Keyboard selection (default: corne)"
-        echo "  --mcu [MCU]              MCU selection (milandr/rp2040/rp2350/nrf52840/baikal, default: milandr)"
+        echo "  --mcu [MCU]              MCU selection (milandr/rp2040/rp2350/nrf52840/baikal, default: from config.h or milandr)"
         echo "  -d, --define [DEF]       Define custom macro during compilation (e.g. SPLIT_LEFT)"
         echo "  -m, --modules [MODS]     Include user modules (semicolon-separated paths)"
         echo "  --memory [SIZE]          Override flash size for usage table (e.g. 512KB, 2MB, 4MB, 16MB)"
@@ -195,7 +196,7 @@ show_help() {
         echo ""
         echo "Основные параметры:"
         echo "  -b, --keyboard [NAME]    Выбор клавиатуры (по умолчанию: corne)"
-        echo "  --mcu [MCU]              Выбор микроконтроллера (milandr/rp2040/rp2350/nrf52840/baikal, по умолчанию: milandr)"
+        echo "  --mcu [MCU]              Выбор микроконтроллера (milandr/rp2040/rp2350/nrf52840/baikal, по умолчанию: из config.h или milandr)"
         echo "  -d, --define [DEF]       Определить пользовательский макрос при сборке (напр. SPLIT_LEFT)"
         echo "  -m, --modules [MODS]     Подключить модули (пути, разделенные точкой с запятой)"
         echo "  --memory [SIZE]          Переопределить размер flash в таблице памяти (напр. 512KB, 2MB, 4MB, 16MB)"
@@ -271,6 +272,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --mcu)
             MCU="$2"
+            MCU_EXPLICIT=true
             shift 2
             ;;
         -p|--probe)
@@ -326,6 +328,18 @@ else
     ls -1 "${SCRIPT_DIR}/keyboards/"
     exit 1
 fi
+
+# Определение целевого MCU (из config.h по умолчанию, либо переопределение через --mcu)
+if [[ "$MCU_EXPLICIT" == false && -f "${KEYBOARD_DIR}/config.h" ]]; then
+    DETECTED_MCU=$(sed -nE "s/^[[:space:]]*#[[:space:]]*define[[:space:]]+(DEFAULT_MCU|MCU_DEFAULT|MCU)[[:space:]]+[\"']?([a-zA-Z0-9_]+)[\"']?.*/\2/p" "${KEYBOARD_DIR}/config.h" | head -n 1 | tr '[:upper:]' '[:lower:]' || true)
+    if [[ -z "$DETECTED_MCU" ]]; then
+        DETECTED_MCU=$(sed -nE "s/^[[:space:]]*#[[:space:]]*define[[:space:]]+MCU_(RP2040|RP2350|NRF52840|MILANDR|BAIKAL)([[:space:]]|$).*/\1/p" "${KEYBOARD_DIR}/config.h" | head -n 1 | tr '[:upper:]' '[:lower:]' || true)
+    fi
+    if [[ -n "$DETECTED_MCU" ]]; then
+        MCU="$DETECTED_MCU"
+    fi
+fi
+[[ -z "$MCU" ]] && MCU="milandr"
 
 # Настройка целевого имени
 SUFFIX=""

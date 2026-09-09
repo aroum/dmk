@@ -110,7 +110,7 @@ To run the build, use the `build_all.sh` script:
 
 - `--keyboard [NAME]` / `-b [NAME]` — Keyboard selection. `NAME` corresponds to the name of the subfolder in the `keyboards` directory.
 - `--probe [PROBE]` / `-p [PROBE]` — Debugger selection for flashing `milandr`. Default is `j-link`.
-- `--mcu [MCU]` — Target microcontroller selection (`milandr`, `rp2040`, `rp2350`, `nrf52840`, `baikal`). Default is `milandr`.
+- `--mcu [MCU]` — Target microcontroller selection (`milandr`, `rp2040`, `rp2350`, `nrf52840`, `baikal`). Default is taken from `#define MCU <mcu>` or `#define DEFAULT_MCU <mcu>` in the keyboard's `config.h`; if omitted, defaults to `milandr`. The explicit `--mcu` flag always takes highest precedence and overrides the default.
 - `--memory [SIZE]` — Flash memory size selection (e.g., `256KB`, `512KB`, `2MB`, `4MB`, `16MB`). Used for boards with external flash memory.
 - `--define [DEFS]` / `-d [DEFS]` — Compiler definitions, e.g., `-d LEFT, 6_COL_LAYOUT, KEEPER_KEYMAP`.
 - `--uf2` — Generate a UF2 file (for RP2040/RP2350/nRF52840).
@@ -316,6 +316,9 @@ jobs:
             build/dmk_*.uf2
           if-no-files-found: error
 ```
+
+> [!TIP]
+> If a keyboard declares a default microcontroller in its `config.h` (e.g., `#define MCU rp2040`), passing `-DMCU` to CMake is optional — CMake will automatically detect and configure the target MCU.
 
 A reference template repository is available at `https://github.com/aroum/dmk-config-template`.
 
