@@ -94,6 +94,7 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 | `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Перед отправкой отчета движения курсора (`mouse.c`) | Перехват движения трекбола/мыши, drag-scroll (скролл колесом при зажатии слоя), масштабирование DPI |
 | `bool hook_mouse_scroll(int8_t *wheel, int8_t *pan)` | Перед отправкой отчета прокрутки (`mouse.c`) | Инверсия или программная фильтрация вертикального и горизонтального скролла |
 | `void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan)` | Перед отправкой составного USB HID Mouse отчета | Аналитика, светодиодная индикация кликов или репликация на вторичные интерфейсы |
+| `void hook_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons)` | Перед отправкой отчета USB HID Gamepad хосту (`gamepad.c`) | Фильтрация мертвых зон стиков, маппинг кнопок, калибровка аналоговых осей |
 | `void hook_midi_send(const uint8_t *msg, uint8_t len)` | При отправке MIDI-сообщения (`midi.c`) | Вывод в аппаратный DIN-5 / TRS MIDI Jack по UART, передача по BLE MIDI или CV/Gate |
 
 ### Пример реализации хуков в модуле:
@@ -134,7 +135,27 @@ void hook_hid_led_change(uint8_t led_mask) {
 * `void hal_gpio_put(uint32_t pin, bool value)` — Устанавливает высокий (`true`) или низкий (`false`) уровень напряжения.
 * `bool hal_gpio_get(uint32_t pin)` — Считывает текущее логическое состояние пина.
 
-### 4.2. Фоновые задачи FreeRTOS (`task.h`, `queue.h`)
+### 4.2. Кроссплатформенный АЦП HAL (`hal_adc.h`)
+Единый аппаратно-независимый слой для работы с аналоговыми датчиками, датчиками Холла, джойстиками, стиками и слайдерами:
+* `void hal_adc_init(pin_t pin)` — Инициализирует пин как аналоговый вход АЦП.
+* `uint16_t hal_adc_read(pin_t pin)` — Считывает нормализованное 12-битное значение напряжения (`0..4095`).
+
+### 4.3. Кроссплатформенный I2C HAL (`hal_i2c.h`)
+Универсальный аппаратно-независимый слой для подключения датчиков (IMU, трекболы, гироскопы), внешних АЦП/ЦАП и OLED-дисплеев:
+* `bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz)` — Инициализирует шину I2C (частота `HAL_I2C_FREQ_STANDARD` 100 кГц или `HAL_I2C_FREQ_FAST` 400 кГц).
+* `bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len)` — Передача пакета данных ведомому устройству по 7-битному адресу.
+* `bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len)` — Чтение пакета данных с ведомого устройства.
+* `bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len)` — Запись одного или нескольких байт в указанный регистр устройства.
+* `bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len)` — Чтение данных из регистра с использованием повторного старта (repeated start).
+
+### 4.4. Кроссплатформенный SPI HAL (`hal_spi.h`)
+Аппаратный и побитовый (bit-bang) слой для скоростного обмена с дисплеями (Sharp Memory LCD, ST7789), датчиками и Flash-памятью:
+* `bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode)` — Инициализирует шину SPI в режимах `HAL_SPI_MODE_0` .. `HAL_SPI_MODE_3` с частотами до 10 МГц.
+* `bool hal_spi_write(const uint8_t *tx, size_t len)` — Передача данных без чтения.
+* `bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len)` — Чтение данных с отправкой байта-заполнителя.
+* `bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len)` — Полнодуплексный одновременный прием и передача данных.
+
+### 4.5. Фоновые задачи FreeRTOS (`task.h`, `queue.h`)
 Модуль может запускать собственные потоки обработки в `hook_early_init()`:
 ```c
 static void my_background_task(void *pvParameters) {
@@ -150,14 +171,14 @@ void hook_early_init(void) {
 }
 ```
 
-### 4.3. Прямое управление адресной RGB-подсветкой (`rgb.h`)
+### 4.6. Прямое управление адресной RGB-подсветкой (`rgb.h`)
 Низкоуровневые функции позволяют модулю управлять отдельными пикселями без сбоя стандартных эффектов подсветки:
 * `void rgb_set_pixel_raw(uint32_t index, uint32_t color_hex)` — Устанавливает цвет светодиода по индексу в формате `0xRRGGBB`.
 * `void rgb_show(void)` — Передает буфер кадров на физические светодиоды (WS2812 / SK6812).
 * `void rgb_set_color(uint8_t hue, uint8_t sat)` — Устанавливает глобальный цвет подсветки в пространстве HSV.
 * `void rgb_set_mode(uint8_t mode)` — Переключает режим анимации подсветки.
 
-### 4.4. Эмуляция мыши и прямое управление трекболом (`mouse.h`)
+### 4.7. Эмуляция мыши и прямое управление трекболом (`mouse.h`)
 DMK включает полноценную подсистему USB HID мыши с поддержкой одновременного движения, колесика прокрутки (вертикального и горизонтального через AC Pan) и 5 кнопок:
 * `void mouse_move(int8_t dx, int8_t dy)` — Относительное перемещение курсора мыши. Вызывает `hook_mouse_move(&dx, &dy)`, позволяя модулям перехватить смещение (например, перенаправить движение трекбола на скролл) или масштабировать чувствительность.
 * `void mouse_scroll(int8_t wheel, int8_t pan)` — Прокрутка колесиком (`wheel` — вертикальная, `pan` — горизонтальная). Вызывает `hook_mouse_scroll(&wheel, &pan)`.
@@ -169,6 +190,22 @@ DMK включает полноценную подсистему USB HID мыш�
 * **Движение курсора:** `K_MS_UP`, `K_MS_DOWN`, `K_MS_LEFT`, `K_MS_RIGHT` (с плавной физикой разгона, настраиваемой параметрами `MOUSEKEY_BASE_SPEED`, `MOUSEKEY_MAX_SPEED`, `MOUSEKEY_TIME_TO_MAX`).
 * **Колесико:** `K_MS_WH_UP`, `K_MS_WH_DOWN`, `K_MS_WH_LEFT`, `K_MS_WH_RIGHT`.
 * **Режимы скорости:** `K_MS_ACCEL0` (Slow / прецизионный режим для пиксельной точности), `K_MS_ACCEL1` (Normal), `K_MS_ACCEL2` (Fast / турбо).
+
+### 4.8. Стандартный USB HID Gamepad (DirectInput) (`gamepad.h`)
+DMK предоставляет полную поддержку стандартного контроллера DirectInput с 6 аналоговыми осями, 8-позиционным Hat Switch (D-Pad) и 32 физическими кнопками:
+* `void gamepad_set_axis_left(int8_t x, int8_t y)` — Установка положения левого аналогового стика (`-127..127`).
+* `void gamepad_set_axis_right(int8_t z, int8_t rz)` — Установка положения правого аналогового стика (`-127..127`).
+* `void gamepad_set_triggers(int8_t rx, int8_t ry)` — Установка аналоговых триггеров (`-127..127`).
+* `void gamepad_set_dpad(uint8_t hat)` — Установка положения D-Pad (`GAMEPAD_HAT_CENTER`, `UP`, `UP_RIGHT`, `RIGHT`, `DOWN_RIGHT`, `DOWN`, `DOWN_LEFT`, `LEFT`, `UP_LEFT`).
+* `void gamepad_set_button(uint8_t button_num, bool pressed)` — Установка состояния кнопки (1..32).
+* `void gamepad_press_button(uint8_t button_num)` / `gamepad_release_button(uint8_t button_num)` — Нажатие и отпускание кнопки.
+* `void gamepad_send(void)` — Принудительная отправка отчета геймпада хосту (вызывает `hook_gamepad_report(...)`).
+
+**Клавиши управления геймпадом в раскладке:**
+* **Кнопки:** `GP_BTN1`..`GP_BTN32`, стандартные псевдонимы `GP_A`, `GP_B`, `GP_X`, `GP_Y`, `GP_LB`, `GP_RB`, `GP_SELECT`, `GP_START`, `GP_L3`, `GP_R3`.
+* **D-Pad:** `GP_DPAD_UP`, `GP_DPAD_DOWN`, `GP_DPAD_LEFT`, `GP_DPAD_RIGHT` (автоматический расчет диагоналей).
+* **Стики (цифровая симуляция):** `GP_LX_UP`, `GP_LX_DOWN`, `GP_LX_LEFT`, `GP_LX_RIGHT`, `GP_LY_UP`, `GP_LY_DOWN`, `GP_LY_LEFT`, `GP_LY_RIGHT`, `GP_RX_*`, `GP_RY_*`.
+* **Триггеры:** `GP_LT`, `GP_RT`.
 
 ---
 
@@ -238,6 +275,7 @@ DMK включает полноценную подсистему USB HID мыш�
 | `tests/modules/sharp_memory_lcd` | Панель приборов на экране Sharp Memory LCD с расчетом WPM, слоями и бейджами. |
 | `tests/modules/u8g2_display` | Универсальный графический движок вывода на экраны на базе библиотеки U8g2. |
 | `tests/modules/trackball_example` | Интеграция трекбола/оптического сенсора с хуком `hook_mouse_move` для drag-scroll на слое. |
+| `tests/modules/bmi270_airmouse` | Аэромышь на базе 6-осевого IMU гироскопа BMI270 через универсальный `hal_i2c.h` и `mouse_move()`. |
 | `keyboards/omsk/modules/midi_jack` | Физический транспорт DIN-5 / TRS MIDI Jack через аппаратный UART (31250 бод) через хук `hook_midi_send`. |
 | `keyboards/magneteno/modules/matrix_magneteno` | Кастомный драйвер сканирования матрицы Hall-Effect через мультиплексор SN74LV4052A. |
 

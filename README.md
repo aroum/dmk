@@ -53,11 +53,11 @@ Below is a comparison of the codebase size of DMK and other firmwares. Measured 
 
 | Project                                                | Language | SLOC   | Relative to DMK |
 | :----------------------------------------------------- | :------- | :----- | :-------------- |
-| **DMK** (~5.4K core + ~1.6K platforms)                 | C        | ~7.0K  | 1×              |
-| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 3.5×            |
-| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 4.7×            |
-| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 7.7×            |
-| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 10.9×           |
+| **DMK** (~6.7K core + ~2.0K platforms)                 | C        | ~8.7K  | 1×              |
+| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 2.8×            |
+| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 3.8×            |
+| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 6.2×            |
+| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 8.7×            |
 
 ---
 
@@ -70,6 +70,7 @@ Below is our current development roadmap:
 - [ ] **E-Ink Display Support**
 - [ ] **Memory LCD Display Support**
 - [x] **Implement mousekeys and trackball/mouse API**
+- [x] **Standard HID Gamepad (DirectInput)**
 
 ### Bluetooth (BLE) Policy
 

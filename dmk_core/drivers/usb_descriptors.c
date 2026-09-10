@@ -14,11 +14,12 @@
 #define VIAL_KEYBOARD_NAME "Pncateho"
 #endif
 
-// HID Report Descriptor: Composite Keyboard (ID 1), Consumer (ID 2), Mouse (ID 3)
+// HID Report Descriptor: Composite Keyboard (ID 1), Consumer (ID 2), Mouse (ID 3), Gamepad (ID 4)
 uint8_t const desc_hid_report[] = {
     TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
     TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2)),
-    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3))
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3)),
+    TUD_HID_REPORT_DESC_GAMEPAD(HID_REPORT_ID(4))
 };
 
 #ifdef VIAL

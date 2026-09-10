@@ -90,6 +90,20 @@ USB_Result USB_HID_SendConsumerReport(uint16_t usage);
 USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan);
 
 /**
+ * @brief  Sends a standard DirectInput gamepad report to the host.
+ * @param  x: Left stick X axis (-127 to 127).
+ * @param  y: Left stick Y axis (-127 to 127).
+ * @param  z: Right stick X / Z axis (-127 to 127).
+ * @param  rz: Right stick Y / Rz axis (-127 to 127).
+ * @param  rx: Left trigger / Rx axis (-127 to 127).
+ * @param  ry: Right trigger / Ry axis (-127 to 127).
+ * @param  hat: 8-way hat switch / D-Pad (0 = center, 1 = Up, ... 8 = Up-Left).
+ * @param  buttons: 32-bit bitmask of buttons.
+ * @retval USB_Result.
+ */
+USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat, uint32_t buttons);
+
+/**
  * @brief  USB device reset handler to reconfigure HID endpoints.
  * @retval USB_Result.
  */

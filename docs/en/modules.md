@@ -94,6 +94,7 @@ Modules communicate with DMK through non-blocking weak hooks declared in `dmk_co
 | `bool hook_mouse_move(int8_t *dx, int8_t *dy)` | Before sending cursor movement report (`mouse.c`) | Intercept trackball/mouse motion, drag-scroll (scroll wheel while holding layer/key), DPI scaling |
 | `bool hook_mouse_scroll(int8_t *wheel, int8_t *pan)` | Before sending wheel scroll report (`mouse.c`) | Invert or programmatically filter vertical and horizontal scrolling |
 | `void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan)` | Before transmitting composite USB HID Mouse report | Analytics, click LED feedback, or mirroring to secondary interfaces |
+| `void hook_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons)` | Before transmitting USB HID Gamepad report to host (`gamepad.c`) | Stick deadzone filtering, button remapping, analog axis calibration |
 | `void hook_midi_send(const uint8_t *msg, uint8_t len)` | When MIDI message is dispatched (`midi.c`) | Physical DIN-5 / TRS MIDI Jack output via UART, BLE MIDI, CV/Gate |
 
 ### Hook Implementation Example:
@@ -134,7 +135,27 @@ Unified GPIO operations across all supported MCUs (Milandr, RP2040, RP2350, nRF5
 * `void hal_gpio_put(uint32_t pin, bool value)` — Drives pin high (`true`) or low (`false`).
 * `bool hal_gpio_get(uint32_t pin)` — Reads current logical state of pin.
 
-### 4.2. FreeRTOS Tasks and Synchronization
+### 4.2. Cross-Platform ADC HAL (`hal_adc.h`)
+Unified analog input interface for Hall effect sensors, analog joysticks, thumbsticks, and sliders:
+* `void hal_adc_init(pin_t pin)` — Configures pin as an analog ADC input.
+* `uint16_t hal_adc_read(pin_t pin)` — Reads normalized 12-bit analog voltage value (`0..4095`).
+
+### 4.3. Cross-Platform I2C HAL (`hal_i2c.h`)
+Universal hardware-independent bus abstraction for external sensors (IMUs, gyroscopes, trackballs), DACs, and OLEDs:
+* `bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz)` — Initializes I2C master bus at `HAL_I2C_FREQ_STANDARD` (100 kHz) or `HAL_I2C_FREQ_FAST` (400 kHz).
+* `bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len)` — Transmits data packet to a 7-bit slave address.
+* `bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len)` — Receives data packet from a slave address.
+* `bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len)` — Writes data into a specific register address.
+* `bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len)` — Reads data from a specific register address using repeated-start.
+
+### 4.4. Cross-Platform SPI HAL (`hal_spi.h`)
+High-speed hardware and bit-bang SPI master abstraction for displays (Sharp Memory LCD, ST7789), sensors, and Flash:
+* `bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode)` — Initializes SPI master bus in modes `HAL_SPI_MODE_0` .. `HAL_SPI_MODE_3` at speeds up to 10 MHz.
+* `bool hal_spi_write(const uint8_t *tx, size_t len)` — Transmits data buffer (MISO discarded).
+* `bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len)` — Receives data by sending fill dummy bytes.
+* `bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len)` — Full-duplex simultaneous transmit and receive.
+
+### 4.5. FreeRTOS Tasks and Synchronization
 Modules can spawn dedicated RTOS worker tasks in `hook_early_init()`:
 ```c
 static void my_display_task(void *pvParameters) {
@@ -150,14 +171,14 @@ void hook_early_init(void) {
 }
 ```
 
-### 4.3. Direct RGB LED Control (`rgb.h`)
+### 4.6. Direct RGB LED Control (`rgb.h`)
 Low-level direct pixel manipulation without interfering with standard lighting animations:
 * `void rgb_set_pixel_raw(uint32_t index, uint32_t color_hex)` — Sets color in `0xRRGGBB` format.
 * `void rgb_show(void)` — Flushes buffer to hardware (WS2812 / SK6812).
 * `void rgb_set_color(uint8_t hue, uint8_t sat)` — Sets global color in HSV space.
 * `void rgb_set_mode(uint8_t mode)` — Selects lighting effect mode.
 
-### 4.4. Mouse Emulation & Direct Trackball API (`mouse.h`)
+### 4.7. Mouse Emulation & Direct Trackball API (`mouse.h`)
 DMK includes a native USB HID mouse subsystem supporting concurrent motion, wheel scrolling (vertical and horizontal via AC Pan), and 5 mouse buttons:
 * `void mouse_move(int8_t dx, int8_t dy)` — Relative mouse cursor movement. Invokes `hook_mouse_move(&dx, &dy)`, allowing modules to intercept motion (e.g. redirect trackball movement to scrolling) or scale sensitivity.
 * `void mouse_scroll(int8_t wheel, int8_t pan)` — Wheel scrolling (`wheel` for vertical, `pan` for horizontal). Invokes `hook_mouse_scroll(&wheel, &pan)`.
@@ -169,6 +190,22 @@ DMK includes a native USB HID mouse subsystem supporting concurrent motion, whee
 * **Cursor Movement:** `K_MS_UP`, `K_MS_DOWN`, `K_MS_LEFT`, `K_MS_RIGHT` (smooth non-linear acceleration physics configurable via `MOUSEKEY_BASE_SPEED`, `MOUSEKEY_MAX_SPEED`, `MOUSEKEY_TIME_TO_MAX`).
 * **Wheel Scrolling:** `K_MS_WH_UP`, `K_MS_WH_DOWN`, `K_MS_WH_LEFT`, `K_MS_WH_RIGHT`.
 * **Speed Modes:** `K_MS_ACCEL0` (Slow / precision pixel mode), `K_MS_ACCEL1` (Normal), `K_MS_ACCEL2` (Fast / turbo mode).
+
+### 4.8. Standard USB HID Gamepad (DirectInput) (`gamepad.h`)
+DMK includes native DirectInput controller support featuring 6 analog axes, an 8-way Hat Switch (D-Pad), and 32 physical buttons:
+* `void gamepad_set_axis_left(int8_t x, int8_t y)` — Sets left analog stick position (`-127..127`).
+* `void gamepad_set_axis_right(int8_t z, int8_t rz)` — Sets right analog stick position (`-127..127`).
+* `void gamepad_set_triggers(int8_t rx, int8_t ry)` — Sets analog trigger positions (`-127..127`).
+* `void gamepad_set_dpad(uint8_t hat)` — Sets D-Pad direction (`GAMEPAD_HAT_CENTER`, `UP`, `UP_RIGHT`, `RIGHT`, `DOWN_RIGHT`, `DOWN`, `DOWN_LEFT`, `LEFT`, `UP_LEFT`).
+* `void gamepad_set_button(uint8_t button_num, bool pressed)` — Sets state of a button (1..32).
+* `void gamepad_press_button(uint8_t button_num)` / `gamepad_release_button(uint8_t button_num)` — Instant button press and release.
+* `void gamepad_send(void)` — Transmits current gamepad report to host (invokes `hook_gamepad_report(...)`).
+
+**Keymap Gamepad Keys:**
+* **Buttons:** `GP_BTN1`..`GP_BTN32`, controller aliases `GP_A`, `GP_B`, `GP_X`, `GP_Y`, `GP_LB`, `GP_RB`, `GP_SELECT`, `GP_START`, `GP_L3`, `GP_R3`.
+* **D-Pad:** `GP_DPAD_UP`, `GP_DPAD_DOWN`, `GP_DPAD_LEFT`, `GP_DPAD_RIGHT` (with automatic diagonal resolution).
+* **Stick Simulation:** `GP_LX_UP`, `GP_LX_DOWN`, `GP_LX_LEFT`, `GP_LX_RIGHT`, `GP_LY_UP`, `GP_LY_DOWN`, `GP_LY_LEFT`, `GP_LY_RIGHT`, `GP_RX_*`, `GP_RY_*`.
+* **Triggers:** `GP_LT`, `GP_RT`.
 
 ---
 
@@ -238,6 +275,7 @@ The repository includes tested reference implementations in `tests/modules/`:
 | `tests/modules/sharp_memory_lcd` | Sharp MIP LCD dashboard with WPM calculator, layers, and status indicators. |
 | `tests/modules/u8g2_display` | Generic OLED/LCD display engine powered by U8g2. |
 | `tests/modules/trackball_example` | Trackball/optical sensor integration with `hook_mouse_move` for drag-scroll. |
+| `tests/modules/bmi270_airmouse` | Air mouse powered by Bosch BMI270 6-DoF IMU gyroscope over universal `hal_i2c.h` and `mouse_move()`. |
 | `keyboards/omsk/modules/midi_jack` | Physical DIN-5 / TRS MIDI Jack transport over hardware UART (31250 baud) via `hook_midi_send`. |
 | `keyboards/magneteno/modules/matrix_magneteno` | Custom Hall-Effect matrix scanner using SN74LV4052A analog multiplexer. |
 

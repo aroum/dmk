@@ -17,6 +17,7 @@
 #include "macros.h"
 #include "midi.h"
 #include "mouse.h"
+#include "gamepad.h"
 #include "oneshot.h"
 
 // Project includes
@@ -117,6 +118,7 @@ void keyboard_init(void) {
     combos_init();
     dmk_midi_init();
     mouse_init();
+    gamepad_init();
     memset(pressed_keycodes, 0, sizeof(pressed_keycodes));
 
 #ifdef VIAL
@@ -207,6 +209,11 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
 
     // 9. Mouse keys (buttons, movement, wheel, acceleration)
     if (mouse_process_key(key, pressed)) {
+        return;
+    }
+
+    // 10. Gamepad keys (buttons, D-Pad, simulated analog sticks/triggers)
+    if (gamepad_process_key(key, pressed)) {
         return;
     }
 

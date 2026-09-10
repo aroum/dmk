@@ -880,4 +880,81 @@ typedef struct {
 #define MIDI_CC_X_INC(cc) MIDI_CC_INC(cc)
 #define MIDI_CC_X_DEC(cc) MIDI_CC_DEC(cc)
 
+// =============================================================================
+// Gamepad Keycodes (0x7200 to 0x723F)
+// =============================================================================
+#define GP_KEY_BASE 0x7200
+
+#define GP_BTN(n) (GP_KEY_BASE + (n) - 1) // n from 1 to 32
+
+#define GP_BTN1  (GP_KEY_BASE + 0)
+#define GP_BTN2  (GP_KEY_BASE + 1)
+#define GP_BTN3  (GP_KEY_BASE + 2)
+#define GP_BTN4  (GP_KEY_BASE + 3)
+#define GP_BTN5  (GP_KEY_BASE + 4)
+#define GP_BTN6  (GP_KEY_BASE + 5)
+#define GP_BTN7  (GP_KEY_BASE + 6)
+#define GP_BTN8  (GP_KEY_BASE + 7)
+#define GP_BTN9  (GP_KEY_BASE + 8)
+#define GP_BTN10 (GP_KEY_BASE + 9)
+#define GP_BTN11 (GP_KEY_BASE + 10)
+#define GP_BTN12 (GP_KEY_BASE + 11)
+#define GP_BTN13 (GP_KEY_BASE + 12)
+#define GP_BTN14 (GP_KEY_BASE + 13)
+#define GP_BTN15 (GP_KEY_BASE + 14)
+#define GP_BTN16 (GP_KEY_BASE + 15)
+#define GP_BTN17 (GP_KEY_BASE + 16)
+#define GP_BTN18 (GP_KEY_BASE + 17)
+#define GP_BTN19 (GP_KEY_BASE + 18)
+#define GP_BTN20 (GP_KEY_BASE + 19)
+#define GP_BTN21 (GP_KEY_BASE + 20)
+#define GP_BTN22 (GP_KEY_BASE + 21)
+#define GP_BTN23 (GP_KEY_BASE + 22)
+#define GP_BTN24 (GP_KEY_BASE + 23)
+#define GP_BTN25 (GP_KEY_BASE + 24)
+#define GP_BTN26 (GP_KEY_BASE + 25)
+#define GP_BTN27 (GP_KEY_BASE + 26)
+#define GP_BTN28 (GP_KEY_BASE + 27)
+#define GP_BTN29 (GP_KEY_BASE + 28)
+#define GP_BTN30 (GP_KEY_BASE + 29)
+#define GP_BTN31 (GP_KEY_BASE + 30)
+#define GP_BTN32 (GP_KEY_BASE + 31)
+
+// Standard Controller Aliases
+#define GP_A      GP_BTN1
+#define GP_B      GP_BTN2
+#define GP_X      GP_BTN3
+#define GP_Y      GP_BTN4
+#define GP_LB     GP_BTN5
+#define GP_RB     GP_BTN6
+#define GP_SELECT GP_BTN7
+#define GP_BACK   GP_BTN7
+#define GP_START  GP_BTN8
+#define GP_HOME   GP_BTN9
+#define GP_GUIDE  GP_BTN9
+#define GP_L3     GP_BTN10
+#define GP_THUMBL GP_BTN10
+#define GP_R3     GP_BTN11
+#define GP_THUMBR GP_BTN11
+
+// D-Pad Direction Keycodes
+#define GP_DPAD_UP    (GP_KEY_BASE + 32)
+#define GP_DPAD_DOWN  (GP_KEY_BASE + 33)
+#define GP_DPAD_LEFT  (GP_KEY_BASE + 34)
+#define GP_DPAD_RIGHT (GP_KEY_BASE + 35)
+
+// Analog Stick Simulation Keycodes (Digital Key to Axis)
+#define GP_LX_L (GP_KEY_BASE + 36) // Left Stick Left
+#define GP_LX_R (GP_KEY_BASE + 37) // Left Stick Right
+#define GP_LY_U (GP_KEY_BASE + 38) // Left Stick Up
+#define GP_LY_D (GP_KEY_BASE + 39) // Left Stick Down
+
+#define GP_RX_L (GP_KEY_BASE + 40) // Right Stick Left
+#define GP_RX_R (GP_KEY_BASE + 41) // Right Stick Right
+#define GP_RY_U (GP_KEY_BASE + 42) // Right Stick Up
+#define GP_RY_D (GP_KEY_BASE + 43) // Right Stick Down
+
+#define GP_LT   (GP_KEY_BASE + 44) // Left Trigger
+#define GP_RT   (GP_KEY_BASE + 45) // Right Trigger
+
 #endif

@@ -81,6 +81,20 @@ USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t w
     return USB_ERR_BUSY;
 }
 
+USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat, uint32_t buttons) {
+    int timeout = 50; // 50ms timeout
+    while (timeout > 0) {
+        if (tud_hid_ready()) {
+            if (tud_hid_gamepad_report(4, x, y, z, rz, rx, ry, hat, buttons)) {
+                return USB_SUCCESS;
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1));
+        timeout--;
+    }
+    return USB_ERR_BUSY;
+}
+
 USB_Result USB_HID_Reset(void) {
     return USB_SUCCESS;
 }

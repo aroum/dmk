@@ -21,6 +21,9 @@ bool hook_mouse_move(int8_t *dx, int8_t *dy);
 bool hook_mouse_scroll(int8_t *wheel, int8_t *pan);
 void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan);
 
+// Gamepad report interception and modification hook
+bool hook_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons);
+
 // MIDI output hook for external modules (DIN-5 Jack, BLE MIDI, CV/Gate)
 void hook_midi_send(const uint8_t *msg, uint8_t len);
 

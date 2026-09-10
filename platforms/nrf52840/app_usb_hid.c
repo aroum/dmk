@@ -371,3 +371,15 @@ USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t w
     (void)pan;
     return USB_SUCCESS;
 }
+
+USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat, uint32_t buttons) {
+    (void)x;
+    (void)y;
+    (void)z;
+    (void)rz;
+    (void)rx;
+    (void)ry;
+    (void)hat;
+    (void)buttons;
+    return USB_SUCCESS;
+}

@@ -119,6 +119,41 @@ static const uint8_t Usb_HID_Report_Descriptor[] = {
     0x95, 0x01,       /*     REPORT_COUNT (1) */
     0x81, 0x06,       /*     INPUT (Data,Var,Rel) */
     0xC0,             /*   END_COLLECTION */
+    0xC0,             /* END_COLLECTION */
+
+    0x05, 0x01,       /* USAGE_PAGE (Generic Desktop) */
+    0x09, 0x05,       /* USAGE (Gamepad) */
+    0xA1, 0x01,       /* COLLECTION (Application) */
+    0x85, 0x04,       /*   REPORT_ID (4) */
+    0x05, 0x01,       /*   USAGE_PAGE (Generic Desktop) */
+    0x09, 0x30,       /*   USAGE (X) */
+    0x09, 0x31,       /*   USAGE (Y) */
+    0x09, 0x32,       /*   USAGE (Z) */
+    0x09, 0x35,       /*   USAGE (Rz) */
+    0x09, 0x33,       /*   USAGE (Rx) */
+    0x09, 0x34,       /*   USAGE (Ry) */
+    0x15, 0x81,       /*   LOGICAL_MINIMUM (-127) */
+    0x25, 0x7F,       /*   LOGICAL_MAXIMUM (127) */
+    0x95, 0x06,       /*   REPORT_COUNT (6) */
+    0x75, 0x08,       /*   REPORT_SIZE (8) */
+    0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
+    0x05, 0x01,       /*   USAGE_PAGE (Generic Desktop) */
+    0x09, 0x39,       /*   USAGE (Hat Switch) */
+    0x15, 0x01,       /*   LOGICAL_MINIMUM (1) */
+    0x25, 0x08,       /*   LOGICAL_MAXIMUM (8) */
+    0x35, 0x00,       /*   PHYSICAL_MINIMUM (0) */
+    0x46, 0x3B, 0x01, /*   PHYSICAL_MAXIMUM (315) */
+    0x95, 0x01,       /*   REPORT_COUNT (1) */
+    0x75, 0x08,       /*   REPORT_SIZE (8) */
+    0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
+    0x05, 0x09,       /*   USAGE_PAGE (Button) */
+    0x19, 0x01,       /*   USAGE_MINIMUM (Button 1) */
+    0x29, 0x20,       /*   USAGE_MAXIMUM (Button 32) */
+    0x15, 0x00,       /*   LOGICAL_MINIMUM (0) */
+    0x25, 0x01,       /*   LOGICAL_MAXIMUM (1) */
+    0x95, 0x20,       /*   REPORT_COUNT (32) */
+    0x75, 0x01,       /*   REPORT_SIZE (1) */
+    0x81, 0x02,       /*   INPUT (Data,Var,Abs) */
     0xC0              /* END_COLLECTION */
 };
 
@@ -474,6 +509,32 @@ USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t w
     if (result == USB_SUCCESS) {
         USB_HID_SendDataStatus = USB_ERR_BUSY;
         result = USB_EP_doDataIn(USB_HID_EP_SEND, mouse_report, sizeof(mouse_report), USB_HID_OnDataSent);
+    }
+
+    return result;
+}
+
+USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat, uint32_t buttons) {
+    static uint8_t gamepad_report[12];
+    gamepad_report[0] = 4; // Report ID 4
+    gamepad_report[1] = (uint8_t)x;
+    gamepad_report[2] = (uint8_t)y;
+    gamepad_report[3] = (uint8_t)z;
+    gamepad_report[4] = (uint8_t)rz;
+    gamepad_report[5] = (uint8_t)rx;
+    gamepad_report[6] = (uint8_t)ry;
+    gamepad_report[7] = hat;
+    gamepad_report[8] = (uint8_t)(buttons & 0xFF);
+    gamepad_report[9] = (uint8_t)((buttons >> 8) & 0xFF);
+    gamepad_report[10] = (uint8_t)((buttons >> 16) & 0xFF);
+    gamepad_report[11] = (uint8_t)((buttons >> 24) & 0xFF);
+
+    USB_Result result = USB_HID_SendDataStatus;
+
+    /* Try to initiate transaction only if endpoint is idle */
+    if (result == USB_SUCCESS) {
+        USB_HID_SendDataStatus = USB_ERR_BUSY;
+        result = USB_EP_doDataIn(USB_HID_EP_SEND, gamepad_report, sizeof(gamepad_report), USB_HID_OnDataSent);
     }
 
     return result;

@@ -255,3 +255,21 @@ This document lists all the standard HID keycodes, consumer media keys, modifier
 | `MIDI_CC_TOGGLE(cc)`                                  | `MIDI_CC_X_TOGGLE(cc)`                         | Toggle CC `cc` between 127 and 0 on press                     | `0x7E30 + cc`         |
 | `MIDI_CC(cc, val)`                                    | -                                              | Static keymap binding: `val` on press, 0 on release           | Encoded CC            |
 
+## Gamepad / DirectInput Keycodes
+
+| Keycode Symbol                            | Short Name / Alias       | Description                                                   | Code / Format         |
+| ----------------------------------------- | ------------------------ | ------------------------------------------------------------- | --------------------- |
+| `GP_BTN1` ... `GP_BTN32`                  | -                        | Gamepad Buttons 1 ... 32                                      | `0x7200` ... `0x721F` |
+| `GP_BTN_A` / `GP_BTN_B`                   | `GP_A` / `GP_B`          | Button A (Btn 1) / Button B (Btn 2)                           | `0x7200` / `0x7201`   |
+| `GP_BTN_X` / `GP_BTN_Y`                   | `GP_X` / `GP_Y`          | Button X (Btn 3) / Button Y (Btn 4)                           | `0x7202` / `0x7203`   |
+| `GP_BTN_LB` / `GP_BTN_RB`                 | `GP_LB` / `GP_RB`        | Bumpers: Left Bumper (5) / Right Bumper (6)                   | `0x7204` / `0x7205`   |
+| `GP_BTN_SELECT` / `GP_BTN_START`          | `GP_SELECT` / `GP_START` | Buttons: Select/Back (7) / Start (8)                          | `0x7206` / `0x7207`   |
+| `GP_BTN_L3` / `GP_BTN_R3`                 | `GP_L3` / `GP_R3`        | Thumbsticks: Left Thumb (9) / Right Thumb (10)                | `0x7208` / `0x7209`   |
+| `GP_DPAD_UP` / `GP_DPAD_DOWN`             | -                        | D-Pad Up / Down                                               | `0x7220` / `0x7221`   |
+| `GP_DPAD_LEFT` / `GP_DPAD_RIGHT`           | -                        | D-Pad Left / Right                                            | `0x7222` / `0x7223`   |
+| `GP_LX_LEFT` / `GP_LX_RIGHT`              | -                        | Left Analog Stick X: Left (-127) / Right (+127)               | `0x7224` / `0x7225`   |
+| `GP_LY_UP` / `GP_LY_DOWN`                 | -                        | Left Analog Stick Y: Up (-127) / Down (+127)                 | `0x7226` / `0x7227`   |
+| `GP_RX_LEFT` / `GP_RX_RIGHT`              | -                        | Right Analog Stick X: Left (-127) / Right (+127)              | `0x7228` / `0x7229`   |
+| `GP_RY_UP` / `GP_RY_DOWN`                 | -                        | Right Analog Stick Y: Up (-127) / Down (+127)                | `0x722A` / `0x722B`   |
+| `GP_TRIGGER_L` / `GP_TRIGGER_R`           | `GP_LT` / `GP_RT`        | Analog triggers Left Trigger (Rx) / Right Trigger (Ry)        | `0x722C` / `0x722D`   |
+

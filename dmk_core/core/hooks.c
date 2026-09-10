@@ -86,6 +86,11 @@ __attribute__((weak)) void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t 
     (void)pan;
 }
 
+__attribute__((weak)) bool hook_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons) {
+    (void)x; (void)y; (void)z; (void)rz; (void)rx; (void)ry; (void)hat; (void)buttons;
+    return true;
+}
+
 __attribute__((weak)) void hook_midi_send(const uint8_t *msg, uint8_t len) {
     (void)msg;
     (void)len;

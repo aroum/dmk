@@ -22,6 +22,7 @@ set(DMK_CORE_BASE_SRC
     "${DMK_ROOT}/dmk_core/features/macros.c"
     "${DMK_ROOT}/dmk_core/features/midi.c"
     "${DMK_ROOT}/dmk_core/features/mouse.c"
+    "${DMK_ROOT}/dmk_core/features/gamepad.c"
     # Hardware subsystems & drivers
     "${DMK_ROOT}/dmk_core/drivers/split.c"
     "${DMK_ROOT}/dmk_core/drivers/encoder.c"
