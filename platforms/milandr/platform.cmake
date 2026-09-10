@@ -3,6 +3,15 @@ set(DEP_DIR "${PLATFORM_DIR}/dep")
 set(COMMON_DIR "${DEP_DIR}/common")
 set(CMAKE_DIR "${COMMON_DIR}/cmake")
 
+# TinyUSB root
+if(EXISTS "${DMK_ROOT}/platforms/raspberrypi/pico-sdk/lib/tinyusb/src/tusb.h")
+    set(TINYUSB_DIR "${DMK_ROOT}/platforms/raspberrypi/pico-sdk/lib/tinyusb")
+elseif(EXISTS "${DMK_ROOT}/lib/tinyusb/src/tusb.h")
+    set(TINYUSB_DIR "${DMK_ROOT}/lib/tinyusb")
+else()
+    message(FATAL_ERROR "TinyUSB not found")
+endif()
+
 # Default memory sizes
 if(NOT MEMORY)
     set(MEMORY "256KB")
@@ -36,18 +45,30 @@ set(PLATFORM_INC
     "${DMK_ROOT}/lib/freertos/include"
     "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM3"
     "${PLATFORM_DIR}/sdk"
-    "${PLATFORM_DIR}/sdk/USB_Library"
+    "${TINYUSB_DIR}/src"
+    "${TINYUSB_DIR}/hw"
 )
 
 # Platform sources
 set(PLATFORM_SRC
     "${COMMON_DIR}/src/clk.c"
-    "${COMMON_DIR}/src/board_usb.c"
     ${FREERTOS_COMMON_SRC}
     "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM3/port.c"
     "${COMMON_DIR}/Drivers/SPL/src/MDR32FxQI_adc.c"
     "${COMMON_DIR}/Drivers/SPL/src/MDR32FxQI_i2c.c"
-    "${PLATFORM_DIR}/app_usb_hid.c"
+    # Unified USB driver & descriptors
+    "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
+    "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
+    # Milandr TinyUSB DCD
+    "${PLATFORM_DIR}/dcd_milandr.c"
+    # TinyUSB stack
+    "${TINYUSB_DIR}/src/tusb.c"
+    "${TINYUSB_DIR}/src/common/tusb_fifo.c"
+    "${TINYUSB_DIR}/src/device/usbd_control.c"
+    "${TINYUSB_DIR}/src/device/usbd.c"
+    "${TINYUSB_DIR}/src/class/hid/hid_device.c"
+    "${TINYUSB_DIR}/src/class/midi/midi_device.c"
+    # Peripherals
     "${PLATFORM_DIR}/ws2812_ssp.c"
     "${PLATFORM_DIR}/split.c"
 )
@@ -58,8 +79,8 @@ set(PLATFORM_LIBS milandr_sdk)
 # Platform-specific post-build command
 function(platform_post_build TARGET_NAME)
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${TARGET_NAME}> ${TARGET_NAME}.hex
-        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${TARGET_NAME}.bin
+        COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hex
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
         COMMENT "Building ${TARGET_NAME}.hex and ${TARGET_NAME}.bin"
     )
 endfunction()

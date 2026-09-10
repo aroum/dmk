@@ -6,10 +6,6 @@
 
 // HAL includes
 #include "app_usb_hid.h"
-#if defined(MCU_milandr)
-#include "board_usb.h"
-#include "clk.h"
-#endif
 
 // General C includes
 #include "stdio.h"
@@ -30,9 +26,6 @@ static USB_HID_KeyboardReport_TypeDef current_report;
  */
 void usb_init(void) {
     USB_HID_Init();
-#if defined(MCU_milandr)
-    Board_USB_Init(true);
-#endif
 
     current_report.ReportID = 1;
     current_report.Modifier = 0;

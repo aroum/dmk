@@ -27,7 +27,6 @@ set(_milandr_sdk_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/SPL/src/MDR32FxQI_port.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SPL/src/MDR32FxQI_ssp.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SPL/src/MDR32FxQI_usb.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/SPL/src/USB_Library/MDR32FxQI_usb_device.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SPL/src/MDR32FxQI_uart.c"
 )
 

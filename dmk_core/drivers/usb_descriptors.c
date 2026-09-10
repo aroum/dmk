@@ -111,14 +111,21 @@ uint8_t const desc_configuration[] = {
                        CFG_TUD_HID_EP_BUFSIZE,    // Endpoint size
                        10),                       // Polling interval in milliseconds
 
+#ifndef EPNUM_VIAL_OUT
+#define EPNUM_VIAL_OUT 0x02
+#endif
+#ifndef EPNUM_VIAL_IN
+#define EPNUM_VIAL_IN 0x82
+#endif
+
 #ifdef VIAL
     // Interface 1: Vial Raw HID Descriptor (IN & OUT endpoints)
     TUD_HID_INOUT_DESCRIPTOR(1,                        // Interface number
                              0,                        // String index
                              HID_ITF_PROTOCOL_NONE,    // Protocol code
                              sizeof(desc_vial_report), // HID report descriptor length
-                             0x02,                     // Endpoint address (OUT endpoint)
-                             0x82,                     // Endpoint address (IN endpoint)
+                             EPNUM_VIAL_OUT,           // Endpoint address (OUT endpoint)
+                             EPNUM_VIAL_IN,            // Endpoint address (IN endpoint)
                              32,                       // Endpoint size (32 bytes)
                              1),                       // Polling interval in milliseconds
 #endif

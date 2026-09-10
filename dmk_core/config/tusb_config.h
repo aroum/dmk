@@ -7,6 +7,12 @@
 #elif defined(MCU_nrf52840)
 #define CFG_TUSB_MCU OPT_MCU_NRF5X
 #define CFG_TUD_NRF_NRFX_VERSION 1
+#elif defined(MCU_milandr)
+#define CFG_TUSB_MCU OPT_MCU_NONE
+#define TUP_DCD_ENDPOINT_MAX 4
+#define CFG_TUD_ENDPPOINT_MAX 4
+#define EPNUM_VIAL_OUT 0x02
+#define EPNUM_VIAL_IN 0x83
 #else
 #define CFG_TUSB_MCU OPT_MCU_RP2040
 #endif

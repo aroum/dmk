@@ -29,6 +29,12 @@ static void power_event_handler(nrfx_power_usb_evt_t event) {
     extern void tusb_hal_nrf_power_event(uint32_t event);
     tusb_hal_nrf_power_event((uint32_t)event);
 }
+#elif defined(MCU_milandr)
+#include "MDR32FxQI_config.h"
+
+void USB_IRQHandler(void) {
+    tud_int_handler(0);
+}
 #endif
 
 static void usb_device_task(void *pvParameters) {
@@ -74,6 +80,8 @@ USB_Result USB_HID_Init(void) {
     tusb_init();
 #if defined(MCU_rp2350)
     irq_set_priority(USBCTRL_IRQ, 0x80);
+#elif defined(MCU_milandr)
+    NVIC_SetPriority(USB_IRQn, 6);
 #endif
     xTaskCreate(usb_device_task, "usbd", 512, NULL, 3, NULL);
     return USB_SUCCESS;
