@@ -1002,6 +1002,14 @@
                 </div>
             </div>
 
+            <div id="pinConflictNotice" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 12px; font-size: 0.82rem; color: #fca5a5; flex-direction: column; gap: 4px;">
+                <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                    <span>⚠️</span>
+                    <span id="pinConflictTitle">Обнаружен конфликт пинов:</span>
+                </div>
+                <div id="pinConflictDetails"></div>
+            </div>
+
             <div class="nav-actions">
                 <button class="btn" onclick="gotoStep(1)">&larr; Назад</button>
                 <button class="btn btn-primary" onclick="gotoStep(3)">Далее: Матрица &rarr;</button>
@@ -1051,8 +1059,12 @@
                     <span data-i18n="layersLabel" style="font-weight: 600; font-size: 0.85rem;">Слои раскладки:</span>
                     <div id="layerBadgeList" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
                 </div>
-                <div style="display: flex; gap: 6px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                    <button class="btn btn-sm" onclick="undoKeymap()" id="btnUndo" title="Undo (Ctrl+Z)">↶ Undo</button>
+                    <button class="btn btn-sm" onclick="redoKeymap()" id="btnRedo" title="Redo (Ctrl+Y)">↷ Redo</button>
                     <button class="btn btn-sm" onclick="addCustomLayer()" id="btnAddLayer">+ Добавить</button>
+                    <button class="btn btn-sm" onclick="duplicateCurrentLayer()" id="btnDupLayer">Дублировать</button>
+                    <button class="btn btn-sm" onclick="clearCurrentLayer()" id="btnClearLayer">Очистить</button>
                     <button class="btn btn-sm" onclick="renameCurrentLayer()" id="btnRenameLayer">Переименовать</button>
                     <button class="btn btn-sm btn-danger" onclick="removeCurrentLayer()" id="btnRemoveLayer">Удалить</button>
                 </div>
@@ -1120,6 +1132,9 @@
                         <button class="btn btn-sm active" id="tab-pal-ALL" onclick="renderPalette('ALL')" data-i18n="tabPalAll">Все</button>
                         <button class="btn btn-sm" id="tab-pal-BASIC" onclick="renderPalette('BASIC')" data-i18n="tabPalBasic">Основные</button>
                         <button class="btn btn-sm" id="tab-pal-MODS" onclick="renderPalette('MODS')" data-i18n="tabPalMods">Модификаторы</button>
+                        <button class="btn btn-sm" id="tab-pal-MOUSE" onclick="renderPalette('MOUSE')" data-i18n="tabPalMouse">Мышь</button>
+                        <button class="btn btn-sm" id="tab-pal-GAMEPAD" onclick="renderPalette('GAMEPAD')" data-i18n="tabPalGamepad">Геймпад</button>
+                        <button class="btn btn-sm" id="tab-pal-MIDI" onclick="renderPalette('MIDI')" data-i18n="tabPalMidi">MIDI</button>
                         <button class="btn btn-sm" id="tab-pal-MEDIA" onclick="renderPalette('MEDIA')" data-i18n="tabPalMedia">Медиа</button>
                         <button class="btn btn-sm" id="tab-pal-LAYERS" onclick="renderPalette('LAYERS')" data-i18n="tabPalLayers">Слои</button>
                     </div>
@@ -1348,10 +1363,7 @@
             K_SCRL: "SCRLK",
             K_PAUS: "PAUSE",
             K_MENU: "MENU",
-            K_F1: "F1", K_F2: "F2", K_F3: "F3", K_F4: "F4", K_F5: "F5", K_F6: "F6",
-            K_F7: "F7", K_F8: "F8", K_F9: "F9", K_F10: "F10", K_F11: "F11", K_F12: "F12",
-            K_F13: "F13", K_F14: "F14", K_F15: "F15", K_F16: "F16", K_F17: "F17", K_F18: "F18",
-            K_F19: "F19", K_F20: "F20", K_F21: "F21", K_F22: "F22", K_F23: "F23", K_F24: "F24",
+            // F1 - F24 generated dynamically below
             K_EXECUTE: "EXEC",
             K_HELP: "HELP",
             K_MENU_KB: "MENU",
@@ -1371,8 +1383,7 @@
             K_KP_ENTER: "NUM ↵",
             K_KP_DOT: "NUM .",
             K_KP_EQUAL: "NUM =",
-            K_KP0: "N0", K_KP1: "N1", K_KP2: "N2", K_KP3: "N3", K_KP4: "N4",
-            K_KP5: "N5", K_KP6: "N6", K_KP7: "N7", K_KP8: "N8", K_KP9: "N9",
+            // K_KP0 - K_KP9 generated dynamically below
             K_MUTE: "MUTE",
             K_VOLU: "VOL+",
             K_VOLD: "VOL-",
@@ -1422,6 +1433,33 @@
             K_MS_WH_DOWN: "WH ↓",
             K_MS_WH_LEFT: "WH ←",
             K_MS_WH_RIGHT: "WH →",
+            K_MS_ACCEL0: "ACL 0",
+            K_MS_ACCEL1: "ACL 1",
+            K_MS_ACCEL2: "ACL 2",
+            // Gamepad Buttons (GP_BTN1 - GP_BTN32 generated dynamically below)
+            GP_A: "GP A", GP_B: "GP B", GP_X: "GP X", GP_Y: "GP Y",
+            GP_LB: "GP LB", GP_RB: "GP RB", GP_LT: "GP LT", GP_RT: "GP RT",
+            GP_SELECT: "SELECT", GP_START: "START",
+            GP_L3: "GP L3", GP_R3: "GP R3",
+            GP_DPAD_UP: "DPAD ↑", GP_DPAD_DOWN: "DPAD ↓", GP_DPAD_LEFT: "DPAD ←", GP_DPAD_RIGHT: "DPAD →",
+            GP_LX_LEFT: "LX ←", GP_LX_RIGHT: "LX →", GP_LY_UP: "LY ↑", GP_LY_DOWN: "LY ↓",
+            GP_RX_LEFT: "RX ←", GP_RX_RIGHT: "RX →", GP_RY_UP: "RY ↑", GP_RY_DOWN: "RY ↓",
+            // MIDI Controls
+            MIDI_OCTAVE_DOWN: "OCT -", MIDI_OCTAVE_UP: "OCT +",
+            MIDI_TRANSPOSE_DOWN: "TRN -", MIDI_TRANSPOSE_UP: "TRN +",
+            MIDI_VELOCITY_DOWN: "VEL -", MIDI_VELOCITY_UP: "VEL +",
+            MIDI_CHANNEL_DOWN: "CH -", MIDI_CHANNEL_UP: "CH +",
+            MIDI_ALL_NOTES_OFF: "PANIC",
+            MIDI_SUSTAIN: "SUSTAIN", MIDI_PORTAMENTO: "PORT", MIDI_SOSTENUTO: "SOST",
+            MIDI_SOFT: "SOFT", MIDI_LEGATO: "LEGATO", MIDI_MODULATION: "MOD",
+            MIDI_PITCH_BEND_DOWN: "PB -", MIDI_PITCH_BEND_UP: "PB +",
+            "CC X": "CC X",
+            "CC(...)": "CC X",
+            "CC_TOG(...)": "CC TOG",
+            "CC_VAL127(...)": "CC ON",
+            "CC_VAL0(...)": "CC OFF",
+            "CC_INC(...)": "CC +",
+            "CC_DEC(...)": "CC -",
             // International / ISO
             K_NONUS_HASH: "# ~",
             K_NONUS_BSLASH: "\\ |",
@@ -1430,16 +1468,26 @@
             K_LOCKING_CAPS: "LCAPS",
             K_LOCKING_NUM: "LNUM",
             K_LOCKING_SCROLL: "LSCRL",
-            K_INT1: "INT 1", K_INT2: "INT 2", K_INT3: "INT 3",
-            K_INT4: "INT 4", K_INT5: "INT 5", K_INT6: "INT 6",
-            K_INT7: "INT 7", K_INT8: "INT 8", K_INT9: "INT 9",
-            K_LANG1: "LANG1", K_LANG2: "LANG2", K_LANG3: "LANG3",
-            K_LANG4: "LANG4", K_LANG5: "LANG5", K_LANG6: "LANG6",
-            K_LANG7: "LANG7", K_LANG8: "LANG8", K_LANG9: "LANG9",
             K_LYRUP: "LAYER ▲",
             K_LYRDWN: "LAYER ▼",
             K_BOOTLOADER: "BOOT"
         };
+
+        // Generators for repetitive keycode labels (reducing dictionary bloat)
+        for (let i = 1; i <= 24; i++) DISPLAY_MAP[`K_F${i}`] = `F${i}`;
+        for (let i = 0; i <= 9; i++) DISPLAY_MAP[`K_KP${i}`] = `N${i}`;
+        for (let i = 1; i <= 32; i++) DISPLAY_MAP[`GP_BTN${i}`] = `GP ${i}`;
+        for (let i = 1; i <= 9; i++) {
+            DISPLAY_MAP[`K_INT${i}`] = `INT ${i}`;
+            DISPLAY_MAP[`K_LANG${i}`] = `LANG${i}`;
+        }
+        const MIDI_NOTE_NAMES_SHORT = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const MIDI_NOTE_NAMES_CODE = ["C", "C_SHARP", "D", "D_SHARP", "E", "F", "F_SHARP", "G", "G_SHARP", "A", "A_SHARP", "B"];
+        for (let oct = 0; oct <= 5; oct++) {
+            for (let n = 0; n < 12; n++) {
+                DISPLAY_MAP[`MIDI_NOTE_${MIDI_NOTE_NAMES_CODE[n]}_${oct}`] = `${MIDI_NOTE_NAMES_SHORT[n]}${oct}`;
+            }
+        }
         window.DISPLAY_MAP = DISPLAY_MAP;
 
         // State Model
@@ -1482,6 +1530,137 @@
             customMacros: [],
             customChords: []
         };
+
+        // History Stacks for Undo/Redo
+        const undoStack = [];
+        const redoStack = [];
+        const MAX_HISTORY_STATES = 30;
+
+        function saveUndoState() {
+            try {
+                const snapshot = {
+                    keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+                    encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
+                };
+                undoStack.push(snapshot);
+                if (undoStack.length > MAX_HISTORY_STATES) {
+                    undoStack.shift();
+                }
+                redoStack.length = 0; // Clear redo history on new action
+            } catch (e) {
+                console.error("Failed to save undo state", e);
+            }
+        }
+
+        function undoKeymap() {
+            if (undoStack.length === 0) return;
+            try {
+                const currentSnapshot = {
+                    keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+                    encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
+                };
+                redoStack.push(currentSnapshot);
+                const previous = undoStack.pop();
+                configState.keymaps = previous.keymaps;
+                configState.encoderKeymaps = previous.encoderKeymaps;
+                renderVisualKeymap();
+                renderLayerEncodersUI();
+            } catch (e) {
+                console.error("Failed to undo keymap", e);
+            }
+        }
+
+        function redoKeymap() {
+            if (redoStack.length === 0) return;
+            try {
+                const currentSnapshot = {
+                    keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+                    encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
+                };
+                undoStack.push(currentSnapshot);
+                const nextState = redoStack.pop();
+                configState.keymaps = nextState.keymaps;
+                configState.encoderKeymaps = nextState.encoderKeymaps;
+                renderVisualKeymap();
+                renderLayerEncodersUI();
+            } catch (e) {
+                console.error("Failed to redo keymap", e);
+            }
+        }
+
+        function checkPinConflicts() {
+            const noticeEl = document.getElementById('pinConflictNotice');
+            const detailsEl = document.getElementById('pinConflictDetails');
+            if (!noticeEl || !detailsEl) return false;
+
+            const pinUsage = {}; // pinName -> list of usages
+            const addUsage = (pin, label) => {
+                if (!pin) return;
+                const clean = pin.trim().toUpperCase();
+                if (!clean || clean === 'NONE' || clean === 'NO_PIN') return;
+                if (!pinUsage[clean]) pinUsage[clean] = [];
+                pinUsage[clean].push(label);
+            };
+
+            const t = I18N[currentLanguage] || I18N.ru;
+
+            if (configState.matrixType === 'DIRECT') {
+                const dPins = parsePins(document.getElementById('directPins')?.value);
+                dPins.forEach((p, idx) => addUsage(p, `${t.directPinsLabel || 'Direct Key'} #${idx + 1}`));
+            } else {
+                const rPins = parsePins(document.getElementById('rowPins')?.value);
+                const cPins = parsePins(document.getElementById('colPins')?.value);
+                rPins.forEach((p, idx) => addUsage(p, `${t.rowPinsLabel || 'Row'} #${idx + 1}`));
+                cPins.forEach((p, idx) => addUsage(p, `${t.colPinsLabel || 'Col'} #${idx + 1}`));
+            }
+
+            if (configState.isSplit) {
+                if (configState.mcu === 'all') {
+                    const txPin = document.getElementById('mcuSplitTxPin')?.value;
+                    const rxPin = document.getElementById('mcuSplitRxPin')?.value;
+                    addUsage(txPin, 'Split TX Pin');
+                    if (rxPin && rxPin !== txPin) addUsage(rxPin, 'Split RX Pin');
+                } else {
+                    const sPin = document.getElementById('serialPinRP')?.value;
+                    addUsage(sPin, 'Split Serial Pin');
+                }
+            }
+
+            const enableRgb = document.getElementById('enableRgb')?.checked;
+            if (enableRgb) {
+                const rgbPin = (configState.mcu === 'all')
+                    ? document.getElementById('mcuRgbPin')?.value
+                    : document.getElementById('rgbPin')?.value;
+                addUsage(rgbPin, 'RGB Data Pin');
+            }
+
+            const enableEnc = document.getElementById('enableEncoders')?.checked;
+            if (enableEnc) {
+                const encCount = parseInt(document.getElementById('encCount')?.value, 10) || 0;
+                for (let i = 0; i < encCount; i++) {
+                    const pA = document.getElementById(`enc_${i}_pinA`)?.value;
+                    const pB = document.getElementById(`enc_${i}_pinB`)?.value;
+                    addUsage(pA, `Encoder #${i + 1} Pin A`);
+                    addUsage(pB, `Encoder #${i + 1} Pin B`);
+                }
+            }
+
+            const conflicts = Object.keys(pinUsage).filter(p => pinUsage[p].length > 1);
+
+            if (conflicts.length > 0) {
+                noticeEl.style.display = 'flex';
+                detailsEl.innerHTML = conflicts.map(p => `• <strong>${p}</strong>: ${pinUsage[p].join(', ')}`).join('<br>');
+                return true;
+            } else {
+                noticeEl.style.display = 'none';
+                detailsEl.innerHTML = '';
+                return false;
+            }
+        }
+
+        function saveCurrentMcuPinState() {
+            checkPinConflicts();
+        }
 
         const parsePins = (str) => (str || '').split(',').map(s => s.trim()).filter(Boolean);
 
@@ -1829,15 +2008,16 @@
                 row.innerHTML = `
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinA || 'Encoder'} #${i+1} — ${t.encPinALabel || 'Pin A'}:</label>
-                        <input type="text" id="enc_${i}_pinA" value="${pinAVal}">
+                        <input type="text" id="enc_${i}_pinA" value="${pinAVal}" oninput="checkPinConflicts()">
                     </div>
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinB || 'Encoder'} #${i+1} — ${t.encPinBLabel || 'Pin B'}:</label>
-                        <input type="text" id="enc_${i}_pinB" value="${pinBVal}">
+                        <input type="text" id="enc_${i}_pinB" value="${pinBVal}" oninput="checkPinConflicts()">
                     </div>
                 `;
                 container.appendChild(row);
             }
+            checkPinConflicts();
             renderLayerEncodersUI();
         }
 
@@ -1986,11 +2166,12 @@
 
         function addCustomLayer() {
             const t = I18N[currentLanguage];
+            const isRu = (currentLanguage !== 'en');
             const defaultName = "LAYER_" + configState.layers.length;
 
             const contentHtml = `
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Имя нового слоя:</label>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Имя нового слоя:' : 'New Layer Name:'}</label>
                     <input type="text" id="modalLayerNameInput" value="${defaultName}" placeholder="NUMPAD, NAV, MEDIA, RU..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
                 </div>
             `;
@@ -2014,14 +2195,68 @@
             });
         }
 
+        function duplicateCurrentLayer() {
+            const t = I18N[currentLanguage];
+            const isRu = (currentLanguage !== 'en');
+            const srcName = configState.currentLayer || 'DEF';
+            const defaultName = srcName + "_COPY";
+
+            const contentHtml = `
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? `Имя копии слоя (${srcName}):` : `Layer Copy Name (${srcName}):`}</label>
+                    <input type="text" id="modalDupLayerNameInput" value="${defaultName}" placeholder="NUMPAD, NAV, MEDIA..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
+                </div>
+            `;
+
+            openAppModal(t.btnDupLayer || "Дублировать слой", contentHtml, () => {
+                const name = document.getElementById('modalDupLayerNameInput').value;
+                if (!name) return;
+                const cleanName = name.trim().toUpperCase().replace(/\s+/g, '_');
+                if (configState.layers.includes(cleanName)) {
+                    alert(t.alertLayerExists || "Слой с таким именем уже существует!");
+                    return;
+                }
+                saveUndoState();
+                configState.layers.push(cleanName);
+                configState.keymaps[cleanName] = [...(configState.keymaps[srcName] || [])];
+                if (configState.encoderKeymaps && configState.encoderKeymaps[srcName]) {
+                    if (!configState.encoderKeymaps) configState.encoderKeymaps = {};
+                    configState.encoderKeymaps[cleanName] = configState.encoderKeymaps[srcName].map(e => ({ ...e }));
+                }
+                selectLayer(cleanName);
+                renderPalette(currentPaletteCategory);
+            });
+        }
+
+        function clearCurrentLayer() {
+            const t = I18N[currentLanguage];
+            const curLayer = configState.currentLayer || 'DEF';
+            const msg = currentLanguage === 'en'
+                ? `Clear all keys on layer "${curLayer}" to transparent (K_TRNS)?`
+                : `Очистить все клавиши на слое "${curLayer}" в прозрачные (K_TRNS)?`;
+            if (!confirm(msg)) return;
+
+            saveUndoState();
+            const activeCount = getActiveLayoutPairs().length;
+            configState.keymaps[curLayer] = [];
+            for (let i = 0; i < activeCount; i++) {
+                configState.keymaps[curLayer].push("K_TRNS");
+            }
+            if (configState.encoderKeymaps && configState.encoderKeymaps[curLayer]) {
+                configState.encoderKeymaps[curLayer] = configState.encoderKeymaps[curLayer].map(() => ({ cw: "K_TRNS", ccw: "K_TRNS" }));
+            }
+            renderVisualKeymap();
+        }
+
         function renameCurrentLayer() {
             const t = I18N[currentLanguage];
+            const isRu = (currentLanguage !== 'en');
             const oldName = configState.currentLayer;
             const curIdx = configState.layers.indexOf(oldName);
 
             const contentHtml = `
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Новое имя для слоя ${curIdx} (${oldName}):</label>
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? `Новое имя для слоя ${curIdx} (${oldName}):` : `New Name for Layer ${curIdx} (${oldName}):`}</label>
                     <input type="text" id="modalLayerRenameInput" value="${oldName}" placeholder="BASE, DEF, NUMPAD, RU..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
                 </div>
             `;
@@ -2131,6 +2366,12 @@
         let appModalCallback = null;
 
         function openAppModal(title, contentHtml, onConfirm) {
+            const isRu = (currentLanguage !== 'en');
+            const cancelBtn = document.getElementById('btnAppModalCancel');
+            const confirmBtn = document.getElementById('btnAppModalConfirm');
+            if (cancelBtn) cancelBtn.textContent = isRu ? 'Отмена' : 'Cancel';
+            if (confirmBtn) confirmBtn.textContent = isRu ? 'Применить' : 'Apply';
+
             document.getElementById('appModalTitle').textContent = title;
             document.getElementById('appModalContent').innerHTML = contentHtml;
             appModalCallback = onConfirm;
@@ -2152,29 +2393,29 @@
         }
 
         function promptLayerModifierChoice(modifierType, callback) {
-            const t = I18N[currentLanguage];
+            const isRu = (currentLanguage !== 'en');
             const layers = configState.layers;
             const defaultTarget = layers[1] || layers[0];
 
-            let optionsHtml = layers.map((l, idx) => `<option value="${l}">${l} (Слой ${idx})</option>`).join('');
-            optionsHtml += `<option value="__custom__">+ Другой / новый слой...</option>`;
+            let optionsHtml = layers.map((l, idx) => `<option value="${l}">${l} (${isRu ? 'Слой' : 'Layer'} ${idx})</option>`).join('');
+            optionsHtml += `<option value="__custom__">${isRu ? '+ Другой / новый слой...' : '+ Other / new layer...'}</option>`;
 
             const contentHtml = `
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Слой для ${modifierType}:</label>
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? `Слой для ${modifierType}:` : `Target Layer for ${modifierType}:`}</label>
                         <select id="modalLayerSelect" onchange="toggleCustomLayerField(this.value)" style="padding: 8px 10px; font-size: 0.9rem;">
                             ${optionsHtml}
                         </select>
                     </div>
                     <div id="modalCustomLayerGroup" style="display: none; flex-direction: column; gap: 4px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Имя слоя:</label>
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Имя слоя:' : 'Layer Name:'}</label>
                         <input type="text" id="modalLayerInput" placeholder="NUMPAD, NAV, MEDIA..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
                     </div>
                 </div>
             `;
 
-            openAppModal(`Настройка ${modifierType}`, contentHtml, () => {
+            openAppModal(isRu ? `Настройка ${modifierType}` : `Configure ${modifierType}`, contentHtml, () => {
                 const selectVal = document.getElementById('modalLayerSelect').value;
                 let target = selectVal;
                 if (selectVal === '__custom__') {
@@ -2206,60 +2447,60 @@
         }
 
         function promptOneShotChoice(callback) {
-            const t = I18N[currentLanguage];
+            const isRu = (currentLanguage !== 'en');
             const layers = configState.layers;
             const defaultLayer = layers[1] || layers[0];
 
-            let layerOptionsHtml = layers.map((l, idx) => `<option value="${l}">${l} (Слой ${idx})</option>`).join('');
+            let layerOptionsHtml = layers.map((l, idx) => `<option value="${l}">${l} (${isRu ? 'Слой' : 'Layer'} ${idx})</option>`).join('');
 
             const contentHtml = `
                 <div style="display: flex; flex-direction: column; gap: 14px;">
                     <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Тип One-Shot (залипание на 1 нажатие):</label>
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Тип One-Shot (залипание на 1 нажатие):' : 'One-Shot Type (sticky on 1 tap):'}</label>
                         <select id="modalOsTypeSelect" onchange="toggleModalOsFields(this.value)" style="padding: 8px 10px; font-size: 0.9rem;">
-                            <optgroup label="Левые модификаторы (Left OSM)">
+                            <optgroup label="${isRu ? 'Левые модификаторы (Left OSM)' : 'Left Modifiers (Left OSM)'}">
                                 <option value="MOD_LSHIFT">Left Shift — OS(MOD_LSHIFT)</option>
                                 <option value="MOD_LCTRL">Left Ctrl — OS(MOD_LCTRL)</option>
                                 <option value="MOD_LALT">Left Alt — OS(MOD_LALT)</option>
                                 <option value="MOD_LGUI">Left Win / Cmd — OS(MOD_LGUI)</option>
                             </optgroup>
-                            <optgroup label="Правые модификаторы (Right OSM)">
+                            <optgroup label="${isRu ? 'Правые модификаторы (Right OSM)' : 'Right Modifiers (Right OSM)'}">
                                 <option value="MOD_RSHIFT">Right Shift — OS(MOD_RSHIFT)</option>
                                 <option value="MOD_RCTRL">Right Ctrl — OS(MOD_RCTRL)</option>
                                 <option value="MOD_RALT">Right Alt — OS(MOD_RALT)</option>
                                 <option value="MOD_RGUI">Right Win / Cmd — OS(MOD_RGUI)</option>
                             </optgroup>
-                            <optgroup label="Комбинации">
+                            <optgroup label="${isRu ? 'Комбинации' : 'Combinations'}">
                                 <option value="MOD_HYPER">Hyper (Ctrl+Shift+Alt+Cmd) — OS(MOD_HYPER)</option>
                                 <option value="MOD_MEH">Meh (Ctrl+Shift+Alt) — OS(MOD_LCTRL | MOD_LSHIFT | MOD_LALT)</option>
                             </optgroup>
-                            <optgroup label="Слой (One-Shot Layer)">
-                                <option value="LAYER">Выбрать слой...</option>
+                            <optgroup label="${isRu ? 'Слой (One-Shot Layer)' : 'Layer (One-Shot Layer)'}">
+                                <option value="LAYER">${isRu ? 'Выбрать слой...' : 'Select layer...'}</option>
                             </optgroup>
                         </select>
                     </div>
 
                     <div id="modalOsLayerGroup" style="display: none; flex-direction: column; gap: 6px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Целевой слой для One-Shot:</label>
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Целевой слой для One-Shot:' : 'Target Layer for One-Shot:'}</label>
                         <select id="modalOsLayerSelect" onchange="toggleCustomOsLayerField(this.value)" style="padding: 8px 10px; font-size: 0.9rem;">
                             ${layerOptionsHtml}
-                            <option value="__custom__">+ Другой / новый слой...</option>
+                            <option value="__custom__">${isRu ? '+ Другой / новый слой...' : '+ Other / new layer...'}</option>
                         </select>
                     </div>
                     <div id="modalCustomOsLayerGroup" style="display: none; flex-direction: column; gap: 4px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Имя нового слоя:</label>
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Имя нового слоя:' : 'New Layer Name:'}</label>
                         <input type="text" id="modalOsLayerInput" placeholder="NUMPAD, NAV, MEDIA..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
                     </div>
 
                     <!-- Live Generated Code Preview -->
                     <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">Итоговый кейкод:</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">${isRu ? 'Итоговый кейкод:' : 'Resulting keycode:'}</span>
                         <span id="modalOsPreview" style="font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem; color: var(--accent);">OS(MOD_LSHIFT)</span>
                     </div>
                 </div>
             `;
 
-            openAppModal("Настройка One-Shot (OS)", contentHtml, () => {
+            openAppModal(isRu ? "Настройка One-Shot (OS)" : "Configure One-Shot (OS)", contentHtml, () => {
                 const type = document.getElementById('modalOsTypeSelect').value;
                 if (type === 'LAYER') {
                     const selVal = document.getElementById('modalOsLayerSelect').value;
@@ -2331,6 +2572,130 @@
             }
         }
 
+        function promptMidiCcChoice(initialMode, callback) {
+            if (typeof initialMode === 'function') {
+                callback = initialMode;
+                initialMode = 'STATIC';
+            }
+            const isRu = (currentLanguage !== 'en');
+
+            let defaultAction = 'STATIC';
+            let defaultVal = 127;
+            if (initialMode === 'CC_TOG(...)') defaultAction = 'TOGGLE';
+            else if (initialMode === 'CC_VAL127(...)') { defaultAction = 'STATIC'; defaultVal = 127; }
+            else if (initialMode === 'CC_VAL0(...)') { defaultAction = 'STATIC'; defaultVal = 0; }
+            else if (initialMode === 'CC_INC(...)') defaultAction = 'INC';
+            else if (initialMode === 'CC_DEC(...)') defaultAction = 'DEC';
+
+            const COMMON_CC_LIST = [
+                { num: 1, name: isRu ? "Модуляция (Modulation Wheel)" : "Modulation Wheel" },
+                { num: 2, name: isRu ? "Дыхательный контроллер (Breath)" : "Breath Controller" },
+                { num: 7, name: isRu ? "Громкость канала (Channel Volume)" : "Channel Volume" },
+                { num: 10, name: isRu ? "Панорама (Pan)" : "Pan" },
+                { num: 11, name: isRu ? "Экспрессия (Expression)" : "Expression" },
+                { num: 64, name: isRu ? "Сустейн педаль (Sustain Pedal)" : "Sustain Pedal" },
+                { num: 65, name: isRu ? "Портаменто (Portamento)" : "Portamento" },
+                { num: 66, name: isRu ? "Состенуто (Sostenuto)" : "Sostenuto" },
+                { num: 67, name: isRu ? "Мягкая педаль (Soft Pedal)" : "Soft Pedal" },
+                { num: 71, name: isRu ? "Резонанс фильтра (Filter Resonance / Q)" : "Filter Resonance" },
+                { num: 74, name: isRu ? "Частота среза фильтра (Cutoff Frequency)" : "Filter Cutoff" },
+                { num: 91, name: isRu ? "Реверберация (Reverb Send)" : "Reverb Send" },
+                { num: 93, name: isRu ? "Хорус (Chorus Send)" : "Chorus Send" },
+                { num: 120, name: isRu ? "Выключить все звуки (All Sound Off)" : "All Sound Off" },
+                { num: 123, name: isRu ? "Все ноты выкл (All Notes Off)" : "All Notes Off" }
+            ];
+
+            let ccOptionsHtml = COMMON_CC_LIST.map(item => `<option value="${item.num}">CC ${item.num} — ${item.name}</option>`).join('');
+
+            const contentHtml = `
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <!-- Controller number selection with presets + custom input -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">
+                            ${isRu ? 'Контроллер CC (номер 0–127):' : 'CC Controller (number 0–127):'}
+                        </label>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px;">
+                            <input type="number" id="modalCcNumberInput" min="0" max="127" value="1" list="modalCcCommonDatalist" oninput="updateMidiCcPreview()" style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
+                            <select onchange="document.getElementById('modalCcNumberInput').value = this.value; updateMidiCcPreview();" style="padding: 8px 10px; font-size: 0.85rem; max-width: 220px;">
+                                <option value="">${isRu ? '— Пресеты CC —' : '— Common CC —'}</option>
+                                ${ccOptionsHtml}
+                            </select>
+                        </div>
+                        <datalist id="modalCcCommonDatalist">
+                            ${ccOptionsHtml}
+                        </datalist>
+                    </div>
+
+                    <!-- Action Type & Value (Velocity / Value) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">
+                                ${isRu ? 'Режим отправки:' : 'Trigger Mode:'}
+                            </label>
+                            <select id="modalCcActionSelect" onchange="updateMidiCcModalUI()" style="padding: 8px 10px; font-size: 0.85rem;">
+                                <option value="STATIC" ${defaultAction === 'STATIC' ? 'selected' : ''}>${isRu ? 'Фиксированное значение' : 'Fixed Value (MIDI_CC)'}</option>
+                                <option value="TOGGLE" ${defaultAction === 'TOGGLE' ? 'selected' : ''}>${isRu ? 'Переключатель (0 ↔ 127)' : 'Toggle (0 ↔ 127)'}</option>
+                                <option value="VAL127" ${defaultAction === 'VAL127' ? 'selected' : ''}>${isRu ? 'Статичный On (127)' : 'Static On (127)'}</option>
+                                <option value="INC" ${defaultAction === 'INC' ? 'selected' : ''}>${isRu ? 'Инкремент +1 (Inc)' : 'Increment +1 (Inc)'}</option>
+                                <option value="DEC" ${defaultAction === 'DEC' ? 'selected' : ''}>${isRu ? 'Декремент -1 (Dec)' : 'Decrement -1 (Dec)'}</option>
+                            </select>
+                        </div>
+                        <div id="modalCcValueGroup" style="display: ${defaultAction === 'STATIC' ? 'flex' : 'none'}; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">
+                                ${isRu ? 'Значение / Сила нажатия (0–127):' : 'Value / Velocity (0–127):'}
+                            </label>
+                            <input type="number" id="modalCcValueInput" min="0" max="127" value="${defaultVal}" oninput="updateMidiCcPreview()" style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);">
+                        </div>
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">${isRu ? 'Итоговый кейкод:' : 'Resulting keycode:'}</span>
+                        <span id="modalMidiCcPreview" style="font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem; color: var(--accent);">MIDI_CC(1, ${defaultVal})</span>
+                    </div>
+                </div>
+            `;
+
+            openAppModal(isRu ? "Настройка MIDI CC" : "Configure MIDI CC", contentHtml, () => {
+                const act = document.getElementById('modalCcActionSelect').value;
+                const ccNum = Math.max(0, Math.min(127, parseInt(document.getElementById('modalCcNumberInput').value, 10) || 0));
+                const ccVal = Math.max(0, Math.min(127, parseInt(document.getElementById('modalCcValueInput').value, 10) || 0));
+
+                let finalKeycode = `MIDI_CC(${ccNum}, ${ccVal})`;
+                if (act === 'VAL127') finalKeycode = `MIDI_CC_VAL_127(${ccNum & 0x0F})`;
+                else if (act === 'TOGGLE') finalKeycode = `MIDI_CC_TOGGLE(${ccNum & 0x0F})`;
+                else if (act === 'INC') finalKeycode = `MIDI_CC_INC(${ccNum & 0x0F})`;
+                else if (act === 'DEC') finalKeycode = `MIDI_CC_DEC(${ccNum & 0x0F})`;
+                else finalKeycode = `MIDI_CC(${ccNum}, ${ccVal})`;
+
+                callback(finalKeycode);
+            });
+
+            window.updateMidiCcModalUI = function() {
+                const act = document.getElementById('modalCcActionSelect').value;
+                const valGrp = document.getElementById('modalCcValueGroup');
+                if (valGrp) {
+                    valGrp.style.display = (act === 'STATIC') ? 'flex' : 'none';
+                }
+                updateMidiCcPreview();
+            };
+
+            window.updateMidiCcPreview = function() {
+                const act = document.getElementById('modalCcActionSelect')?.value || 'STATIC';
+                const ccNum = Math.max(0, parseInt(document.getElementById('modalCcNumberInput')?.value, 10) || 0);
+                const ccVal = Math.max(0, parseInt(document.getElementById('modalCcValueInput')?.value, 10) || 0);
+                const prev = document.getElementById('modalMidiCcPreview');
+                if (!prev) return;
+
+                if (act === 'VAL127') prev.textContent = `MIDI_CC_VAL_127(${ccNum & 0x0F})`;
+                else if (act === 'TOGGLE') prev.textContent = `MIDI_CC_TOGGLE(${ccNum & 0x0F})`;
+                else if (act === 'INC') prev.textContent = `MIDI_CC_INC(${ccNum & 0x0F})`;
+                else if (act === 'DEC') prev.textContent = `MIDI_CC_DEC(${ccNum & 0x0F})`;
+                else prev.textContent = `MIDI_CC(${ccNum & 0x7F}, ${ccVal & 0x7F})`;
+            };
+            setTimeout(updateMidiCcPreview, 0);
+        }
+
         // Multi-Modifier Builder State
         let activeModalModifiers = [];
 
@@ -2356,39 +2721,40 @@
         }
 
         function renderModalKeyChoiceContent(callback) {
+            const isRu = (currentLanguage !== 'en');
             const sampleKeys = ALL_PALETTE_CODES.BASIC;
             let optionsHtml = sampleKeys.map(k => {
                 const label = (window.DISPLAY_MAP && window.DISPLAY_MAP[k]) ? window.DISPLAY_MAP[k] : k.replace(/^K_/, '');
                 return `<option value="${k}">${label} (${k})</option>`;
             }).join('');
 
-            let title = "Настройка модификаторов и клавиши";
+            let title = isRu ? "Настройка модификаторов и клавиши" : "Configure Modifiers & Key";
 
             const contentHtml = `
                 <div style="display: flex; flex-direction: column; gap: 14px;">
                     <!-- Modifiers List with + and delete -->
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Активные модификаторы:</label>
+                            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Активные модификаторы:' : 'Active Modifiers:'}</label>
                             <div style="display: flex; gap: 6px; align-items: center;">
                                 <select id="modalAddModSelect" style="padding: 5px 8px; font-size: 0.8rem; min-width: 170px;">
-                                    <optgroup label="Левые модификаторы">
+                                    <optgroup label="${isRu ? 'Левые модификаторы' : 'Left Modifiers'}">
                                         <option value="LS">Left Shift (LS)</option>
                                         <option value="LC">Left Ctrl (LC)</option>
                                         <option value="LA">Left Alt (LA)</option>
                                         <option value="LG">Left Win/Cmd (LG)</option>
                                     </optgroup>
-                                    <optgroup label="Правые модификаторы">
+                                    <optgroup label="${isRu ? 'Правые модификаторы' : 'Right Modifiers'}">
                                         <option value="RS">Right Shift (RS)</option>
                                         <option value="RC">Right Ctrl (RC)</option>
                                         <option value="RA">Right Alt (RA)</option>
                                         <option value="RG">Right Win/Cmd (RG)</option>
                                     </optgroup>
-                                    <optgroup label="Комбинации">
+                                    <optgroup label="${isRu ? 'Комбинации' : 'Combinations'}">
                                         <option value="HYPER">Hyper (Ctrl+Shift+Alt+Cmd)</option>
                                         <option value="MEH">Meh (Ctrl+Shift+Alt)</option>
                                     </optgroup>
-                                    <optgroup label="Удержание-Тап (Hold-Tap)">
+                                    <optgroup label="${isRu ? 'Удержание-Тап (Hold-Tap)' : 'Hold-Tap'}">
                                         <option value="HT_LSHIFT">Hold Shift / Tap Key</option>
                                         <option value="HT_RSHIFT">Hold R-Shift / Tap Key</option>
                                         <option value="HT_LCTRL">Hold Ctrl / Tap Key</option>
@@ -2396,7 +2762,7 @@
                                         <option value="HT_LGUI">Hold Win / Tap Key</option>
                                     </optgroup>
                                 </select>
-                                <button class="btn btn-sm" onclick="addModalModifier()" style="padding: 5px 10px; white-space: nowrap;">+ Добавить</button>
+                                <button class="btn btn-sm" onclick="addModalModifier()" style="padding: 5px 10px; white-space: nowrap;">${isRu ? '+ Добавить' : '+ Add'}</button>
                             </div>
                         </div>
                         <div id="modalModifiersTags" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; align-items: center; background: var(--bg); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);">
@@ -2406,7 +2772,7 @@
 
                     <!-- Single Input with Suggestions -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">Клавиша (введите имя или выберите из подсказок):</label>
+                        <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Клавиша (введите имя или выберите из подсказок):' : 'Keycode (type name or select from suggestions):'}</label>
                         <input type="text" id="modalKeySingleInput" list="modalKeyCodesDatalist" value="K_9" placeholder="K_9, K_A, K_ENT, K_SPC..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);" oninput="updateModalKeyPreview()">
                         <datalist id="modalKeyCodesDatalist">
                             ${optionsHtml}
@@ -2415,7 +2781,7 @@
 
                     <!-- Live Generated Code Preview -->
                     <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">Итоговый кейкод:</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">${isRu ? 'Итоговый кейкод:' : 'Resulting keycode:'}</span>
                         <span id="modalKeycodePreview" style="font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem; color: var(--accent);">LS(K_9)</span>
                     </div>
                 </div>
@@ -2431,12 +2797,13 @@
         }
 
         function renderModalModifiersTags() {
+            const isRu = (currentLanguage !== 'en');
             const container = document.getElementById('modalModifiersTags');
             if (!container) return;
             container.innerHTML = '';
 
             if (activeModalModifiers.length === 0) {
-                container.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-muted); padding: 2px;">Без модификаторов (прямое нажатие)</span>`;
+                container.innerHTML = `<span style="font-size: 0.75rem; color: var(--text-muted); padding: 2px;">${isRu ? 'Без модификаторов (прямое нажатие)' : 'No modifiers (direct press)'}</span>`;
                 return;
             }
 
@@ -2532,12 +2899,15 @@
             if (en) renderCustomMacrosUI();
         }
 
-        const MACRO_ACTION_TYPES = [
-            { label: "Нажать", value: "TAP" },
-            { label: "Зажать", value: "DN" },
-            { label: "Отпустить", value: "UP" },
-            { label: "Задержка (мс)", value: "DELAY" }
-        ];
+        function getMacroActionTypes() {
+            const isRu = (currentLanguage !== 'en');
+            return [
+                { label: isRu ? "Нажать (Tap)" : "Tap Key", value: "TAP" },
+                { label: isRu ? "Зажать (Down)" : "Press (Down)", value: "DN" },
+                { label: isRu ? "Отпустить (Up)" : "Release (Up)", value: "UP" },
+                { label: isRu ? "Задержка (мс)" : "Delay (ms)", value: "DELAY" }
+            ];
+        }
 
         // Track collapsed states for macros
         const collapsedMacros = new Set();
@@ -2620,7 +2990,8 @@
         }
 
         function renderMacroStepRowHtml(step, sIdx, onActionChange, onKeyChange, onRemove) {
-            const actionOptions = MACRO_ACTION_TYPES.map(a => `<option value="${a.value}" ${step.type === a.value ? 'selected' : ''}>${a.label}</option>`).join('');
+            const isRu = (currentLanguage !== 'en');
+            const actionOptions = getMacroActionTypes().map(a => `<option value="${a.value}" ${step.type === a.value ? 'selected' : ''}>${a.label}</option>`).join('');
             const isDelay = step.type === 'DELAY';
 
             return `
@@ -2629,13 +3000,14 @@
                     <select onchange="${onActionChange}" style="padding: 4px 8px; font-size: 0.8rem;">
                         ${actionOptions}
                     </select>
-                    <input type="${isDelay ? 'number' : 'text'}" ${isDelay ? 'placeholder="50"' : 'list="allKeycodesList" placeholder="Поиск кнопки (Enter, Dot, [, Shift...)"'} value="${step.key}" oninput="${onKeyChange}" style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
-                    <button onclick="${onRemove}" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 2px; font-weight: 700; font-size: 0.9rem;" title="Удалить шаг">✕</button>
+                    <input type="${isDelay ? 'number' : 'text'}" ${isDelay ? 'placeholder="50"' : `list="allKeycodesList" placeholder="${isRu ? 'Поиск кнопки (Enter, Dot, [, Shift...)' : 'Search key (Enter, Dot, [, Shift...)'}"`} value="${step.key}" oninput="${onKeyChange}" style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
+                    <button onclick="${onRemove}" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 2px; font-weight: 700; font-size: 0.9rem;" title="${isRu ? 'Удалить шаг' : 'Delete step'}">✕</button>
                 </div>
             `;
         }
 
         function renderCustomMacrosUI() {
+            const isRu = (currentLanguage !== 'en');
             const container = document.getElementById('customMacrosList');
             if (!container) return;
             container.innerHTML = '';
@@ -2674,7 +3046,7 @@
                             <button class="btn btn-sm" onclick="toggleMacroCollapse(${mIdx})" style="padding: 2px 6px; font-size: 0.75rem; line-height: 1;">${isCollapsed ? '►' : '▼'}</button>
                             <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem; color: var(--accent); background: var(--bg); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);">M(${mIdx})</span>
                             <input type="text" placeholder="MC_NAME" value="${macro.name || 'MC_MACRO_' + mIdx}" oninput="configState.customMacros[${mIdx}].name = this.value" style="width: 140px; padding: 4px 8px; font-size: 0.85rem; font-weight: 600;">
-                            <input type="text" placeholder="Описание макроса" value="${macro.desc || ''}" oninput="configState.customMacros[${mIdx}].desc = this.value" style="flex: 1; min-width: 160px; padding: 4px 8px; font-size: 0.8rem;">
+                            <input type="text" placeholder="${isRu ? 'Описание макроса' : 'Macro description'}" value="${macro.desc || ''}" oninput="configState.customMacros[${mIdx}].desc = this.value" style="flex: 1; min-width: 160px; padding: 4px 8px; font-size: 0.8rem;">
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <button class="btn btn-sm btn-danger" onclick="removeCustomMacro(${mIdx})">${ICONS.trash}</button>
@@ -2685,15 +3057,15 @@
                     <div style="display: ${isCollapsed ? 'none' : 'flex'}; flex-direction: column; gap: 6px; margin-top: 4px;">
                         <div style="display: grid; grid-template-columns: 32px 140px 1fr 32px; gap: 8px; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
                             <span style="text-align: center;">#</span>
-                            <span>Действие</span>
-                            <span>Кнопка или задержка</span>
+                            <span>${isRu ? 'Действие' : 'Action'}</span>
+                            <span>${isRu ? 'Кнопка или задержка' : 'Key or delay'}</span>
                             <span></span>
                         </div>
                         <div id="macro_steps_container_${mIdx}" style="display: flex; flex-direction: column; gap: 6px;">
-                            ${stepsRowsHtml || '<div style="font-size: 0.8rem; color: var(--text-muted); padding: 8px; text-align: center;">Нет шагов. Нажмите «+ Добавить».</div>'}
+                            ${stepsRowsHtml || `<div style="font-size: 0.8rem; color: var(--text-muted); padding: 8px; text-align: center;">${isRu ? 'Нет шагов. Нажмите «+ Добавить».' : 'No steps. Click "+ Add".'}</div>`}
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-                            <button class="btn btn-sm" onclick="addMacroStep(${mIdx})" style="padding: 4px 10px; font-size: 0.8rem;">+ Добавить</button>
+                            <button class="btn btn-sm" onclick="addMacroStep(${mIdx})" style="padding: 4px 10px; font-size: 0.8rem;">${isRu ? '+ Добавить' : '+ Add'}</button>
                             <span style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono); max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${macro.steps || ''}</span>
                         </div>
                     </div>
@@ -2861,6 +3233,7 @@
         }
 
         function renderChordsUI() {
+            const isRu = (currentLanguage !== 'en');
             const container = document.getElementById('chordsList');
             if (!container) return;
             container.innerHTML = '';
@@ -2904,9 +3277,9 @@
                         keysRowsHtml += `
                             <div style="display: grid; grid-template-columns: 28px 1fr auto 32px; gap: 8px; align-items: center; background: var(--bg); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);">
                                 <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-align: center;">${kIdx + 1}</span>
-                                <input type="text" placeholder="1, 11 (или 1.11, 1 11...)" value="${valStr}" onblur="onChordKeyBlur(${cIdx}, ${kIdx}, this.value)" oninput="onChordKeyInput(${cIdx}, ${kIdx}, this.value)" style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
-                                <button class="btn btn-sm" onclick="pickChordKeyFromLayout(${cIdx}, ${kIdx})" style="padding: 4px 8px; font-size: 0.75rem; white-space: nowrap;">Выбрать из раскладки</button>
-                                <button onclick="removeChordKey(${cIdx}, ${kIdx})" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 2px; font-weight: 700; font-size: 0.9rem;" title="Удалить кнопку">✕</button>
+                                <input type="text" placeholder="${isRu ? '1, 11 (или 1.11, 1 11...)' : '1, 11 (or 1.11, 1 11...)'}" value="${valStr}" onblur="onChordKeyBlur(${cIdx}, ${kIdx}, this.value)" oninput="onChordKeyInput(${cIdx}, ${kIdx}, this.value)" style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
+                                <button class="btn btn-sm" onclick="pickChordKeyFromLayout(${cIdx}, ${kIdx})" style="padding: 4px 8px; font-size: 0.75rem; white-space: nowrap;">${isRu ? 'Выбрать из раскладки' : 'Pick from layout'}</button>
+                                <button onclick="removeChordKey(${cIdx}, ${kIdx})" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 2px; font-weight: 700; font-size: 0.9rem;" title="${isRu ? 'Удалить кнопку' : 'Delete key'}">✕</button>
                             </div>
                         `;
                     });
@@ -2916,9 +3289,9 @@
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;">
                             <button class="btn btn-sm" onclick="toggleChordCollapse(${cIdx})" style="padding: 2px 6px; font-size: 0.75rem; line-height: 1;">${isCollapsed ? '►' : '▼'}</button>
-                            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem; color: var(--accent); background: var(--bg); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);">Аккорд #${cIdx + 1}</span>
+                            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem; color: var(--accent); background: var(--bg); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);">${isRu ? 'Аккорд' : 'Chord'} #${cIdx + 1}</span>
                             <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 280px;">
-                                <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">Действие:</label>
+                                <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">${isRu ? 'Действие:' : 'Action:'}</label>
                                 <input type="text" list="allKeycodesList" placeholder="K_ESC, LC(K_C), MO(1), do_custom..." value="${chord.action || ''}" oninput="configState.customChords[${cIdx}].action = this.value" style="flex: 1; padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
                             </div>
                         </div>
@@ -2932,10 +3305,10 @@
                         <!-- Multi-Layer Checkbox Selector -->
                         <div style="display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border);">
                             <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Активен на слоях:</span>
+                                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">${isRu ? 'Активен на слоях:' : 'Active on layers:'}</span>
                                 <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; cursor: pointer; color: var(--accent); font-weight: 600;">
                                     <input type="checkbox" ${allLayersSelected ? 'checked' : ''} onchange="toggleChordAllLayers(${cIdx}, this.checked)">
-                                    <span>Все слои</span>
+                                    <span>${isRu ? 'Все слои' : 'All layers'}</span>
                                 </label>
                             </div>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -2947,15 +3320,15 @@
                         <div style="display: flex; flex-direction: column; gap: 6px;">
                             <div style="display: grid; grid-template-columns: 28px 1fr auto 32px; gap: 8px; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
                                 <span style="text-align: center;">#</span>
-                                <span>Координаты строки и колонки (Row, Col)</span>
+                                <span>${isRu ? 'Координаты строки и колонки (Row, Col)' : 'Row and Col Coordinates (Row, Col)'}</span>
                                 <span></span>
                                 <span></span>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 6px;">
-                                ${keysRowsHtml || '<div style="font-size: 0.8rem; color: var(--text-muted); padding: 6px; text-align: center;">Нет клавиш. Нажмите «+ Добавить».</div>'}
+                                ${keysRowsHtml || `<div style="font-size: 0.8rem; color: var(--text-muted); padding: 6px; text-align: center;">${isRu ? 'Нет клавиш. Нажмите «+ Добавить».' : 'No keys. Click "+ Add".'}</div>`}
                             </div>
                             <div>
-                                <button class="btn btn-sm" onclick="addChordKey(${cIdx})" style="padding: 4px 10px; font-size: 0.8rem;">+ Добавить</button>
+                                <button class="btn btn-sm" onclick="addChordKey(${cIdx})" style="padding: 4px 10px; font-size: 0.8rem;">${isRu ? '+ Добавить' : '+ Add'}</button>
                             </div>
                         </div>
                     </div>
@@ -3122,6 +3495,7 @@
         }
 
         function renderLayerHotkeysUI() {
+            const isRu = (currentLanguage !== 'en');
             const container = document.getElementById('layerHotkeysContainer');
             if (!container) return;
             container.innerHTML = '';
@@ -3166,15 +3540,15 @@
                     <div style="display: ${isCollapsed ? 'none' : 'flex'}; flex-direction: column; gap: 6px;">
                         <div style="display: grid; grid-template-columns: 28px 130px 1fr 32px; gap: 8px; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
                             <span style="text-align: center;">#</span>
-                            <span>Действие</span>
-                            <span>Кнопка / Значение</span>
+                            <span>${isRu ? 'Действие' : 'Action'}</span>
+                            <span>${isRu ? 'Кнопка / Значение' : 'Key / Value'}</span>
                             <span></span>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            ${stepsRowsHtml || '<div style="font-size: 0.8rem; color: var(--text-muted); padding: 6px; text-align: center;">Нет действий. Нажмите «+ Добавить».</div>'}
+                            ${stepsRowsHtml || `<div style="font-size: 0.8rem; color: var(--text-muted); padding: 6px; text-align: center;">${isRu ? 'Нет действий. Нажмите «+ Добавить».' : 'No actions. Click "+ Add".'}</div>`}
                         </div>
                         <div>
-                            <button class="btn btn-sm" onclick="addLayerMacroStep('${l}')" style="padding: 4px 10px; font-size: 0.8rem;">+ Добавить</button>
+                            <button class="btn btn-sm" onclick="addLayerMacroStep('${l}')" style="padding: 4px 10px; font-size: 0.8rem;">${isRu ? '+ Добавить' : '+ Add'}</button>
                         </div>
                     </div>
                 `;
@@ -3418,7 +3792,9 @@ visualElements.push({
             check: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
             arrowRight: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
             arrowLeft: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
-            edit: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+            edit: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+            undo: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>`,
+            redo: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>`
         };
 
         let currentLanguage = 'ru';
@@ -3435,6 +3811,8 @@ visualElements.push({
                 step4: 'Vial & Раскладка',
                 step5: 'Экстра',
                 step6: 'Экспорт',
+                btnUndo: 'Отмена',
+                btnRedo: 'Повтор',
                 
                 // Step 1
                 s1Title: 'Основные параметры и Архитектура',
@@ -3506,6 +3884,8 @@ visualElements.push({
                 s4Desc: 'Настройте слои клавиш и визуальное отображение.',
                 layersLabel: 'Слои раскладки:',
                 btnAddLayer: 'Добавить',
+                btnDupLayer: 'Дублировать',
+                btnClearLayer: 'Очистить',
                 btnRenameLayer: 'Переименовать',
                 btnRemoveLayer: 'Удалить',
                 currentLayerPrefix: 'Текущий слой:',
@@ -3522,6 +3902,9 @@ visualElements.push({
                 tabPalAll: 'Все',
                 tabPalBasic: 'Основные',
                 tabPalMods: 'Модификаторы',
+                tabPalMouse: 'Мышь',
+                tabPalGamepad: 'Геймпад',
+                tabPalMidi: 'MIDI',
                 tabPalMedia: 'Медиа',
                 tabPalLayers: 'Слои',
                 layerEncodersTitle: 'Действия энкодеров для текущего слоя:',
@@ -3530,6 +3913,8 @@ visualElements.push({
                 encDirCcw: 'Влево',
                 encDirCw: 'Вправо',
                 btnNextLighting: 'Далее: Экстра',
+                btnCancel: 'Отмена',
+                btnApply: 'Применить',
 
                 // Dynamic & Prompts (RU)
                 promptNewLayer: 'Введите имя нового слоя (например: NUMPAD, NAV, RU):',
@@ -3603,6 +3988,8 @@ visualElements.push({
                 step4: 'Vial & Layout',
                 step5: 'Extras',
                 step6: 'Export',
+                btnUndo: 'Undo',
+                btnRedo: 'Redo',
 
                 // Step 1
                 s1Title: 'General Settings & Architecture',
@@ -3681,6 +4068,16 @@ visualElements.push({
                 inspectorTitle: 'Selected Key Properties:',
                 inspectorKeyPrompt: '[Click on a key]',
                 inspectorDesc: 'Configure physical key width, height, and visual offsets in Vial GUI',
+                btnAddLayer: 'Add Layer',
+                btnDupLayer: 'Duplicate',
+                btnClearLayer: 'Clear',
+                btnRenameLayer: 'Rename',
+                btnRemoveLayer: 'Delete',
+                currentLayerPrefix: 'Current Layer:',
+                currentLayerHint: 'Click on a key to assign a keycode from the palette below.',
+                inspectorTitle: 'Selected Key Properties:',
+                inspectorKeyPrompt: '[Click a key]',
+                inspectorDesc: 'Adjust physical dimension and position',
                 keyWidthLabel: 'Key Width:',
                 keyHeightLabel: 'Key Height:',
                 keyXLabel: 'Offset X:',
@@ -3690,6 +4087,9 @@ visualElements.push({
                 tabPalAll: 'All',
                 tabPalBasic: 'Basic',
                 tabPalMods: 'Modifiers',
+                tabPalMouse: 'Mouse',
+                tabPalGamepad: 'Gamepad',
+                tabPalMidi: 'MIDI',
                 tabPalMedia: 'Media',
                 tabPalLayers: 'Layers',
                 layerEncodersTitle: 'Rotary Encoder Actions for Current Layer:',
@@ -3698,6 +4098,8 @@ visualElements.push({
                 encDirCcw: 'Left / CCW',
                 encDirCw: 'Right / CW',
                 btnNextLighting: 'Next: Extras',
+                btnCancel: 'Cancel',
+                btnApply: 'Apply',
 
                 // Dynamic & Prompts (EN)
                 promptNewLayer: 'Enter new layer name (e.g. NUMPAD, NAV, MEDIA, RU):',
@@ -3842,8 +4244,17 @@ visualElements.push({
             const btnClrAll = document.querySelector('#step-3 button[onclick="selectAllGridKeys(false)"]');
             if (btnClrAll) btnClrAll.innerHTML = `${ICONS.trash} ${t.btnClearAll}`;
 
+            const btnUndoEl = document.getElementById('btnUndo');
+            if (btnUndoEl) btnUndoEl.innerHTML = `${ICONS.undo} ${t.btnUndo || 'Undo'}`;
+            const btnRedoEl = document.getElementById('btnRedo');
+            if (btnRedoEl) btnRedoEl.innerHTML = `${ICONS.redo} ${t.btnRedo || 'Redo'}`;
+
             const btnAddL = document.querySelector('#step-4 button[onclick="addCustomLayer()"]');
             if (btnAddL) btnAddL.innerHTML = `${ICONS.plus} ${t.btnAddLayer}`;
+            const btnDupL = document.querySelector('#step-4 button[onclick="duplicateCurrentLayer()"]');
+            if (btnDupL) btnDupL.innerHTML = `${ICONS.copy} ${t.btnDupLayer}`;
+            const btnClrL = document.querySelector('#step-4 button[onclick="clearCurrentLayer()"]');
+            if (btnClrL) btnClrL.innerHTML = `${ICONS.trash} ${t.btnClearLayer}`;
             const btnRenL = document.querySelector('#step-4 button[onclick="renameCurrentLayer()"]');
             if (btnRenL) btnRenL.innerHTML = `${ICONS.edit} ${t.btnRenameLayer}`;
             const btnRemL = document.querySelector('#step-4 button[onclick="removeCurrentLayer()"]');
@@ -3873,9 +4284,21 @@ visualElements.push({
                 }
             }
 
-            // Refresh Encoders hardware inputs and layer actions labels
-            if (document.getElementById('enableEncoders')?.checked) {
-                updateEncoderInputs();
+            // Modal buttons
+            const modalCancelBtn = document.getElementById('btnAppModalCancel');
+            if (modalCancelBtn) modalCancelBtn.textContent = t.btnCancel || (currentLanguage === 'en' ? 'Cancel' : 'Отмена');
+            const modalConfirmBtn = document.getElementById('btnAppModalConfirm');
+            if (modalConfirmBtn) modalConfirmBtn.textContent = t.btnApply || (currentLanguage === 'en' ? 'Apply' : 'Применить');
+
+            // Re-render dynamic sub-panels if visible
+            if (document.getElementById('enableCustomMacros')?.checked) {
+                renderCustomMacrosUI();
+            }
+            if (document.getElementById('enableChords')?.checked) {
+                renderChordsUI();
+            }
+            if (document.getElementById('enableLayerHotkeys')?.checked) {
+                renderLayerHotkeysUI();
             }
         }
 
@@ -4198,13 +4621,12 @@ visualElements.push({
                 "K_ENT","K_ESC","K_BSPC","K_TAB","K_SPC","K_MINS","K_EQL","K_LBRC","K_RBRC",
                 "K_BSLS","K_SCLN","K_QUOT","K_GRV","K_COMM","K_DOT","K_SLSH","K_CAPS",
                 "K_NONUS_HASH","K_NONUS_BSLASH",
-                "K_F1","K_F2","K_F3","K_F4","K_F5","K_F6","K_F7","K_F8","K_F9","K_F10","K_F11","K_F12",
-                "K_F13","K_F14","K_F15","K_F16","K_F17","K_F18","K_F19","K_F20","K_F21","K_F22","K_F23","K_F24"
+                ...Array.from({length: 24}, (_, i) => `K_F${i + 1}`)
             ],
             NUMPAD: [
                 "K_NLCK","K_KP_SLASH","K_KP_ASTERISK","K_KP_MINUS","K_KP_PLUS","K_KP_ENTER","K_KP_DOT","K_KP_EQUAL",
                 "K_KP_COMMA","K_KP_EQUAL_AS400",
-                "K_KP0","K_KP1","K_KP2","K_KP3","K_KP4","K_KP5","K_KP6","K_KP7","K_KP8","K_KP9"
+                ...Array.from({length: 10}, (_, i) => `K_KP${i}`)
             ],
             MODS: [
                 // Modified Keys & Wrappers
@@ -4226,16 +4648,51 @@ visualElements.push({
                 "K_MAIL","K_WSCH","K_WHOM","K_WBAK","K_WFWD","K_WSTP","K_WREF","K_WFAV",
                 "K_EXECUTE","K_HELP","K_MENU_KB","K_SELECT","K_STOP_KB","K_AGAIN","K_UNDO","K_CUT","K_COPY","K_PASTE","K_FIND",
                 // RGB Backlight
-                "RGB_TOGG","RGB_NEXT","RGB_PREV","RGB_HUI","RGB_HUD","RGB_SAI","RGB_SAD","RGB_VAI","RGB_VAD","RGB_SPI","RGB_SPD",
-                // Mouse Keys
-                "K_MS_UP","K_MS_DOWN","K_MS_LEFT","K_MS_RIGHT","K_MS_BTN1","K_MS_BTN2","K_MS_BTN3","K_MS_BTN4","K_MS_BTN5",
-                "K_MS_WH_UP","K_MS_WH_DOWN","K_MS_WH_LEFT","K_MS_WH_RIGHT"
+                "RGB_TOGG","RGB_NEXT","RGB_PREV","RGB_HUI","RGB_HUD","RGB_SAI","RGB_SAD","RGB_VAI","RGB_VAD","RGB_SPI","RGB_SPD"
+            ],
+            MOUSE: [
+                "K_MS_UP","K_MS_DOWN","K_MS_LEFT","K_MS_RIGHT",
+                "K_MS_BTN1","K_MS_BTN2","K_MS_BTN3","K_MS_BTN4","K_MS_BTN5",
+                "K_MS_WH_UP","K_MS_WH_DOWN","K_MS_WH_LEFT","K_MS_WH_RIGHT",
+                "K_MS_ACCEL0","K_MS_ACCEL1","K_MS_ACCEL2"
+            ],
+            GAMEPAD: [
+                "GP_A","GP_B","GP_X","GP_Y",
+                "GP_LB","GP_RB","GP_LT","GP_RT",
+                "GP_SELECT","GP_START","GP_L3","GP_R3",
+                "GP_DPAD_UP","GP_DPAD_DOWN","GP_DPAD_LEFT","GP_DPAD_RIGHT",
+                "GP_LX_LEFT","GP_LX_RIGHT","GP_LY_UP","GP_LY_DOWN",
+                "GP_RX_LEFT","GP_RX_RIGHT","GP_RY_UP","GP_RY_DOWN",
+                ...Array.from({length: 32}, (_, i) => `GP_BTN${i + 1}`)
+            ],
+            MIDI: [
+                // Interactive CC modal configurators
+                "CC X",
+                "CC_TOG(...)",
+                "CC_VAL127(...)",
+                "CC_VAL0(...)",
+                "CC_INC(...)",
+                "CC_DEC(...)",
+                // Transport, Octave, Transpose & Velocity
+                "MIDI_OCTAVE_DOWN","MIDI_OCTAVE_UP",
+                "MIDI_TRANSPOSE_DOWN","MIDI_TRANSPOSE_UP",
+                "MIDI_VELOCITY_DOWN","MIDI_VELOCITY_UP",
+                "MIDI_CHANNEL_DOWN","MIDI_CHANNEL_UP",
+                "MIDI_ALL_NOTES_OFF",
+                "MIDI_SUSTAIN","MIDI_PORTAMENTO","MIDI_SOSTENUTO",
+                "MIDI_SOFT","MIDI_LEGATO","MIDI_MODULATION",
+                "MIDI_PITCH_BEND_DOWN","MIDI_PITCH_BEND_UP",
+                // Chromatic Notes C1-B5 generated dynamically
+                ...[1, 2, 3, 4, 5].flatMap(oct => 
+                    ["C", "C_SHARP", "D", "D_SHARP", "E", "F", "F_SHARP", "G", "G_SHARP", "A", "A_SHARP", "B"]
+                        .map(n => `MIDI_NOTE_${n}_${oct}`)
+                )
             ],
             LAYERS: [
                 "MO(...)", "TG(...)", "OS(...)", "TO(...)",
                 "K_LYRUP","K_LYRDWN",
-                "K_INT1","K_INT2","K_INT3","K_INT4","K_INT5","K_INT6","K_INT7","K_INT8","K_INT9",
-                "K_LANG1","K_LANG2","K_LANG3","K_LANG4","K_LANG5","K_LANG6","K_LANG7","K_LANG8","K_LANG9",
+                ...Array.from({length: 9}, (_, i) => `K_INT${i + 1}`),
+                ...Array.from({length: 9}, (_, i) => `K_LANG${i + 1}`),
                 "K_TRNS","K_NO","K_BOOTLOADER"
             ]
         };
@@ -4378,7 +4835,7 @@ visualElements.push({
 
         function renderPalette(category, filterText) {
             currentPaletteCategory = category || 'ALL';
-            ['ALL', 'BASIC', 'NUMPAD', 'MODS', 'MEDIA', 'LAYERS'].forEach(cat => {
+            ['ALL', 'BASIC', 'NUMPAD', 'MODS', 'MOUSE', 'GAMEPAD', 'MIDI', 'MEDIA', 'LAYERS'].forEach(cat => {
                 const tab = document.getElementById(`tab-pal-${cat}`);
                 if (tab) tab.classList.toggle('active', cat === currentPaletteCategory);
             });
@@ -4401,6 +4858,9 @@ visualElements.push({
                     ...ALL_PALETTE_CODES.BASIC,
                     ...ALL_PALETTE_CODES.NUMPAD,
                     ...ALL_PALETTE_CODES.MODS,
+                    ...ALL_PALETTE_CODES.MOUSE,
+                    ...ALL_PALETTE_CODES.GAMEPAD,
+                    ...ALL_PALETTE_CODES.MIDI,
                     ...ALL_PALETTE_CODES.MEDIA,
                     ...ALL_PALETTE_CODES.LAYERS
                 ];
@@ -4448,7 +4908,7 @@ visualElements.push({
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-sm';
                 let label = (window.DISPLAY_MAP && window.DISPLAY_MAP[code]) ? window.DISPLAY_MAP[code] : code.replace(/^K_/, '');
-                if (code.includes('(...)')) {
+                if (code.includes('(...)') || code === 'CC X' || code.startsWith('CC_')) {
                     btn.style.borderColor = 'var(--accent)';
                     btn.style.color = 'var(--accent)';
                 }
@@ -4482,7 +4942,15 @@ visualElements.push({
                 return;
             }
 
-            // 3. Check if this is an interactive compound modifier: LS(...), LC(...), LA(...), LG(...), HYPER(...), MEH(...), HT(...)
+            // 3. Check if this is an interactive MIDI CC trigger: CC X, CC(...), CC, CC_TOG(...), etc.
+            if (code === 'CC X' || code === 'CC(...)' || code === 'CC' || code.startsWith('CC_')) {
+                promptMidiCcChoice(code, (chosenCode) => {
+                    executeAssignKeycode(chosenCode);
+                });
+                return;
+            }
+
+            // 4. Check if this is an interactive compound modifier: LS(...), LC(...), LA(...), LG(...), HYPER(...), MEH(...), HT(...)
             if (code.includes('(...)')) {
                 promptKeyChoice(code, (chosenCode) => {
                     executeAssignKeycode(chosenCode);
@@ -4496,6 +4964,8 @@ visualElements.push({
         function executeAssignKeycode(code) {
             const t = I18N[currentLanguage];
             const curLayer = configState.currentLayer || 'DEF';
+
+            saveUndoState();
 
             if (configState.selectedEncoder) {
                 const { idx, dir } = configState.selectedEncoder;
@@ -4656,7 +5126,9 @@ visualElements.push({
                 if (document.getElementById('enableEncoders')?.checked) {
                     updateEncoderInputs();
                 }
+                checkPinConflicts();
             } else if (stepNum === 3) {
+                checkPinConflicts();
                 initMatrixGrid(configState.activeKeys);
             } else if (stepNum === 4) {
                 renderLayersUI();
@@ -4819,6 +5291,11 @@ visualElements.push({
             const numKeys = layoutPairs.length;
 
             let out = `#ifndef CONFIG_H\n#define CONFIG_H\n\n`;
+
+            if (configState.mcu && configState.mcu !== 'all') {
+                out += `// Default target microcontroller for DMK build system\n`;
+                out += `#define DEFAULT_MCU ${configState.mcu}\n\n`;
+            }
 
             if (enableVial) {
                 out += `// === Vial / VIA GUI Configuration ===\n`;
@@ -5609,13 +6086,29 @@ visualElements.push({
             alert(currentLanguage === 'en' ? `Successfully loaded Vial layout from ${filename}!` : `Файл ${filename} успешно загружен! Геометрия и матрица Vial применены.`);
         }
 
-        // Arrow key listener to move selected keys/encoders
+        // Arrow key listener to move selected keys/encoders and Ctrl+Z / Ctrl+Y for Undo/Redo
         window.addEventListener('keydown', (e) => {
             const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
             if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
 
             const step4 = document.getElementById('step-4');
             if (!step4 || step4.style.display === 'none') return;
+
+            // Ctrl+Z / Cmd+Z (Undo) and Ctrl+Y / Cmd+Y / Ctrl+Shift+Z (Redo)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    redoKeymap();
+                } else {
+                    undoKeymap();
+                }
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redoKeymap();
+                return;
+            }
 
             const step = e.shiftKey ? 1.0 : 0.25;
 
