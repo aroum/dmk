@@ -16,6 +16,19 @@
 
 #if defined(MCU_rp2350)
 #include "hardware/irq.h"
+#elif defined(MCU_nrf52840)
+#include "nrf.h"
+#include "nrf_drv_clock.h"
+#include "nrfx_power.h"
+
+void USBD_IRQHandler(void) {
+    tud_int_handler(0);
+}
+
+static void power_event_handler(nrfx_power_usb_evt_t event) {
+    extern void tusb_hal_nrf_power_event(uint32_t event);
+    tusb_hal_nrf_power_event((uint32_t)event);
+}
 #endif
 
 static void usb_device_task(void *pvParameters) {
@@ -31,6 +44,33 @@ static void usb_device_task(void *pvParameters) {
 }
 
 USB_Result USB_HID_Init(void) {
+#if defined(MCU_nrf52840)
+    NVIC_SetPriority(USBD_IRQn, 2);
+
+    ret_code_t clk_ret = nrf_drv_clock_init();
+    if (clk_ret == NRF_SUCCESS || clk_ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED) {
+        nrf_drv_clock_lfclk_request(NULL);
+    }
+
+    const nrfx_power_config_t pwr_cfg = {0};
+    nrfx_power_init(&pwr_cfg);
+
+    const nrfx_power_usbevt_config_t usbevt_cfg = {
+        .handler = power_event_handler
+    };
+    nrfx_power_usbevt_init(&usbevt_cfg);
+    nrfx_power_usbevt_enable();
+
+    extern void tusb_hal_nrf_power_event(uint32_t event);
+    uint32_t usb_reg = NRF_POWER->USBREGSTATUS;
+    if (usb_reg & POWER_USBREGSTATUS_VBUSDETECT_Msk) {
+        tusb_hal_nrf_power_event(0); // USB_EVT_DETECTED
+    }
+    if (usb_reg & POWER_USBREGSTATUS_OUTPUTRDY_Msk) {
+        tusb_hal_nrf_power_event(2); // USB_EVT_READY
+    }
+#endif
+
     tusb_init();
 #if defined(MCU_rp2350)
     irq_set_priority(USBCTRL_IRQ, 0x80);

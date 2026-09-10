@@ -6,6 +6,7 @@
 #define CFG_TUSB_MCU OPT_MCU_BMCU
 #elif defined(MCU_nrf52840)
 #define CFG_TUSB_MCU OPT_MCU_NRF5X
+#define CFG_TUD_NRF_NRFX_VERSION 1
 #else
 #define CFG_TUSB_MCU OPT_MCU_RP2040
 #endif
