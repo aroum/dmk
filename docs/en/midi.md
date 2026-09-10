@@ -12,7 +12,7 @@ The firmware supports sending MIDI messages (Notes, Control Change, Pitch Bend, 
 
 MIDI support is flexible and can be customized in the keyboard's `config.h` using the following definitions:
 
-- `#define MIDI_USB`: Enables USB MIDI class support (via TinyUSB on RP2040/RP2350 or native USB driver on Milandr).
+- `#define MIDI_USB`: Enables USB MIDI class support (via unified TinyUSB across all microcontrollers: RP2040, RP2350, nRF52840, Milandr K1986BE92FI/QI, Baikal).
 - **MIDI Jack Module (`keyboards/omsk/modules/midi_jack`)**: Modular physical MIDI port (DIN-5 / TRS Jack) support over hardware UART (31250 baud). Automatically included when building `omsk` or manually via `-m midi_jack`.
 - `#define MIDI_THRU`: (When using the MIDI Jack module) automatically forwards incoming MIDI bytes from the input port to the output port.
 

@@ -37,6 +37,8 @@ A lightweight, modern, and highly modular keyboard firmware designed for cross-p
 | **Physical Chords**       | `my_chords[]`             | Triggers custom macros/actions when multiple keys are pressed together                               |
 | **Multi-Step Macros**     | `M(index)`                | Executes sequences of key-down, key-up, and precise millisecond delays                               |
 | **Layer & Language Sync** | `M(index)` + `TG(layer)`  | Macros can trigger OS language hotkeys (`Shift+Alt`) and toggle layers for separate language keymaps |
+| **Mouse Keys**            | `MS_UP`, `MS_BTN1`..      | Full mouse cursor movement, button clicks, and scrolling from keys or modules                        |
+| **DirectInput Gamepad**   | `GP_A`, `GP_UP`, `GP_BTN` | 32 buttons, 8-directional D-Pad, and 6 analog axes mapped to keys or modules                         |
 | **Vial / VIA GUI**        | `#define VIAL`            | Real-time layout editing, dynamic macros, and key remaps via Vial GUI                                |
 
 ---
@@ -53,11 +55,11 @@ Below is a comparison of the codebase size of DMK and other firmwares. Measured 
 
 | Project                                                | Language | SLOC   | Relative to DMK |
 | :----------------------------------------------------- | :------- | :----- | :-------------- |
-| **DMK** (~6.7K core + ~2.0K platforms)                 | C        | ~8.7K  | 1×              |
-| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 2.8×            |
-| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 3.8×            |
-| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 6.2×            |
-| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 8.7×            |
+| **DMK** (~6.8K core + ~1.4K platforms)                 | C        | ~8.1K  | 1×              |
+| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 3.0×            |
+| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 4.1×            |
+| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 6.7×            |
+| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 9.4×            |
 
 ---
 
