@@ -10,7 +10,7 @@
 #include "task.h"
 #include <string.h>
 
-#if defined(RGB_NUM) && (defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_nrf52840) || defined(MCU_milandr))
+#if defined(RGB_NUM)
 
 // External declarations for the platform-specific WS2812 driver wrapper
 extern void ws2812_init(uint32_t pin, uint32_t length);
@@ -530,5 +530,4 @@ void rgb_get_config(uint8_t *dest) {
 }
 void rgb_set_config(const uint8_t *src) {}
 
-#endif // defined(RGB_NUM) && (defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_nrf52840) ||
-       // defined(MCU_milandr))
+#endif // defined(RGB_NUM)

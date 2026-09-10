@@ -28,6 +28,10 @@ set(DMK_CORE_BASE_SRC
     "${DMK_ROOT}/dmk_core/drivers/led.c"
     "${DMK_ROOT}/dmk_core/drivers/rgb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb.c"
+    "${DMK_ROOT}/dmk_core/drivers/adc.c"
+    "${DMK_ROOT}/dmk_core/drivers/gpio.c"
+    "${DMK_ROOT}/dmk_core/drivers/i2c.c"
+    "${DMK_ROOT}/dmk_core/drivers/spi.c"
 )
 
 # Function to build keyboard firmware

@@ -11,6 +11,10 @@ if(NOT EXISTS "${PICO_SDK_PATH}")
     message(FATAL_ERROR "Pico SDK not found at ${PICO_SDK_PATH}. Please make sure it is cloned there.")
 endif()
 
+if(MCU STREQUAL "rp2350")
+    set(PICO_PLATFORM "rp2350" CACHE STRING "Platform for Pico SDK" FORCE)
+endif()
+
 # Include Pico SDK init file
 include("${PICO_SDK_PATH}/pico_sdk_init.cmake")
 
@@ -60,16 +64,8 @@ set(PLATFORM_INC
 
 # Platform sources
 set(PLATFORM_SRC
-    "${DMK_ROOT}/lib/freertos/croutine.c"
-    "${DMK_ROOT}/lib/freertos/event_groups.c"
-    "${DMK_ROOT}/lib/freertos/list.c"
-    "${DMK_ROOT}/lib/freertos/queue.c"
-    "${DMK_ROOT}/lib/freertos/stream_buffer.c"
-    "${DMK_ROOT}/lib/freertos/tasks.c"
-    "${DMK_ROOT}/lib/freertos/timers.c"
+    ${FREERTOS_COMMON_SRC}
     ${FREERTOS_PORT_SRC}
-    "${DMK_ROOT}/lib/freertos/heap_4.c"
-    "${PLATFORM_DIR}/hal_gpio.c"
     "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     "${PLATFORM_DIR}/pio/WS2812.cpp"
@@ -82,6 +78,8 @@ set(PLATFORM_LIBS
     hardware_exception
     hardware_clocks
     hardware_adc
+    hardware_i2c
+    hardware_spi
     pico_multicore
     tinyusb_device
     tinyusb_board

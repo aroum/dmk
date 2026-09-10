@@ -87,24 +87,16 @@ set(PLATFORM_INC
 
 # Platform sources
 set(PLATFORM_SRC
-    "${DMK_ROOT}/lib/freertos/croutine.c"
-    "${DMK_ROOT}/lib/freertos/event_groups.c"
-    "${DMK_ROOT}/lib/freertos/list.c"
-    "${DMK_ROOT}/lib/freertos/queue.c"
-    "${DMK_ROOT}/lib/freertos/stream_buffer.c"
-    "${DMK_ROOT}/lib/freertos/tasks.c"
-    "${DMK_ROOT}/lib/freertos/timers.c"
+    ${FREERTOS_COMMON_SRC}
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/RISC-V_Baikal_SimpleDemo_GCC/startup.S"
-    "${DMK_ROOT}/lib/freertos/heap_4.c"
-    "${PLATFORM_DIR}/hal_gpio.c"
-    "${PLATFORM_DIR}/split.c"
     "${PLATFORM_DIR}/ws2812.c"
     "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_gpio.c"
     "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_cru.c"
+    "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_adc.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/tusb.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/common/tusb_fifo.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/device/usbd_control.c"

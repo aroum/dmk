@@ -29,21 +29,7 @@
 #endif
 #endif
 
-bool is_master(void) {
-    return tud_mounted();
-}
-
-#if (SPLIT_CONNECTION_TYPE == SOFT)
-
-void split_send_event(matrix_event_t *event) {
-    split_soft_send_event(event);
-}
-
-void split_init(void) {
-    split_soft_init();
-}
-
-#else // PIO Hardware Half-Duplex Mode (HW_HALF_DUPLEX / HW_FULL_DUPLEX)
+#if (SPLIT_CONNECTION_TYPE != SOFT) // PIO Hardware Half-Duplex Mode (HW_HALF_DUPLEX / HW_FULL_DUPLEX)
 
 static PIO split_pio = pio0;
 static uint split_sm = 0;
@@ -112,10 +98,7 @@ static void configure_split_role(bool master) {
 
 void split_send_event(matrix_event_t *event) {
     split_packet_t pkt;
-    pkt.header = 0xA5;
-    pkt.row = event->row;
-    pkt.col = event->col;
-    pkt.pressed = event->pressed;
+    split_make_packet(&pkt, event);
 
     uint8_t *pkt_ptr = (uint8_t *)&pkt;
     for (size_t i = 0; i < sizeof(split_packet_t); i++) {
@@ -168,6 +151,6 @@ void split_init(void) {
     xTaskCreate(split_task, "split", 1024, NULL, TASK_PRIO_DEF, NULL);
 }
 
-#endif // SOFT / PIO
+#endif // SPLIT_CONNECTION_TYPE != SOFT
 
 #endif // defined(NUM_ROWS_SPLIT) && defined(NUM_COLS_SPLIT)

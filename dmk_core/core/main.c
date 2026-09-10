@@ -58,7 +58,7 @@ int main(void) {
         status = pdFAIL;
     }
 
-#if defined(RGB_NUM) && (defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_nrf52840) || defined(MCU_milandr))
+#if defined(RGB_NUM)
     // RGB animations task
     if (xTaskCreate(rgb_task, "rgb", TASK_STACK_RGB, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
         status = pdFAIL;
@@ -79,7 +79,7 @@ int main(void) {
     // Initialize split interconnect (UART / PIO / Software bit-bang)
     split_init();
 
-#if defined(RGB_NUM) && (defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_nrf52840) || defined(MCU_milandr))
+#if defined(RGB_NUM)
     // Initialize WS2812 hardware drivers before scheduler starts
     rgb_init();
 #endif

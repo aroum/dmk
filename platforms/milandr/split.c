@@ -16,11 +16,6 @@
 #endif
 #endif
 
-extern volatile bool usb_mounted;
-
-bool is_master(void) {
-    return usb_mounted;
-}
 
 #if (SPLIT_CONNECTION_TYPE == HW_HALF_DUPLEX)
 #error                                                                                                                 \
@@ -90,10 +85,7 @@ bool is_master(void) {
 
 void split_send_event(matrix_event_t *event) {
     split_packet_t pkt;
-    pkt.header = 0xA5;
-    pkt.row = event->row;
-    pkt.col = event->col;
-    pkt.pressed = event->pressed;
+    split_make_packet(&pkt, event);
 
     uint8_t *pkt_ptr = (uint8_t *)&pkt;
     for (size_t i = 0; i < sizeof(split_packet_t); i++) {
@@ -177,16 +169,6 @@ void split_init(void) {
     xTaskCreate(split_task, "split", 512, NULL, configMAX_PRIORITIES - 1, NULL);
 }
 
-#else // Bit-bang (Software UART) mode (SOFT)
-
-void split_send_event(matrix_event_t *event) {
-    split_soft_send_event(event);
-}
-
-void split_init(void) {
-    split_soft_init();
-}
-
-#endif // SOFT
+#endif // HW_FULL_DUPLEX
 
 #endif // defined(NUM_ROWS_SPLIT) && defined(NUM_COLS_SPLIT)

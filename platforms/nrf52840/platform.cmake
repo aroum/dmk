@@ -89,16 +89,8 @@ set(PLATFORM_SRC
     # nRF5 MDK startup and system init
     "${NRF5_SDK_DIR}/modules/nrfx/mdk/gcc_startup_nrf52840.S"
     "${NRF5_SDK_DIR}/modules/nrfx/mdk/system_nrf52840.c"
-    "${DMK_ROOT}/lib/freertos/croutine.c"
-    "${DMK_ROOT}/lib/freertos/event_groups.c"
-    "${DMK_ROOT}/lib/freertos/list.c"
-    "${DMK_ROOT}/lib/freertos/queue.c"
-    "${DMK_ROOT}/lib/freertos/stream_buffer.c"
-    "${DMK_ROOT}/lib/freertos/tasks.c"
-    "${DMK_ROOT}/lib/freertos/timers.c"
+    ${FREERTOS_COMMON_SRC}
     "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM4F/port.c"
-    "${DMK_ROOT}/lib/freertos/heap_4.c"
-    "${PLATFORM_DIR}/hal_gpio.c"
     "${PLATFORM_DIR}/app_usb_hid.c"
     # nRF5 SDK – clock driver
     "${NRF5_SDK_DIR}/modules/nrfx/drivers/src/nrfx_clock.c"

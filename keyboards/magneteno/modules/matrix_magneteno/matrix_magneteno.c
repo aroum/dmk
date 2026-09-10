@@ -1,5 +1,6 @@
 #include "FreeRTOS.h"
 #include "config.h"
+#include "hal_adc.h"
 #include "hal_gpio.h"
 #include "hall_calibration.h"
 #include "matrix.h"
@@ -8,11 +9,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-#if defined(MCU_rp2040) || defined(MCU_rp2350)
-#include "hardware/adc.h"
-#include "hardware/gpio.h"
-#endif
 
 extern QueueHandle_t matrix_queue;
 
@@ -56,46 +52,13 @@ static void magneteno_matrix_init(void) {
     hal_gpio_set_dir(MUX_PIN_INH, true);
     hal_gpio_put(MUX_PIN_INH, 0); // Active low
 
-#if defined(MCU_rp2040) || defined(MCU_rp2350)
-    // 2. Initialize RP2350 ADC hardware
-    adc_init();
-
-    // MUX output -> ADC3 (GPIO29)
-    adc_gpio_init(MUX_ADC_PIN);
-
-    // Key 9 direct -> ADC2 (GPIO28)
-    adc_gpio_init(DIRECT_KEY9_PIN);
-
-    // Key 10 direct -> ADC1 (GPIO27)
-    adc_gpio_init(DIRECT_KEY10_PIN);
-#elif defined(MCU_milandr)
-    hal_gpio_init(MUX_ADC_PIN);
-    hal_gpio_set_dir(MUX_ADC_PIN, false);
-    hal_gpio_init(DIRECT_KEY9_PIN);
-    hal_gpio_set_dir(DIRECT_KEY9_PIN, false);
-    hal_gpio_init(DIRECT_KEY10_PIN);
-    hal_gpio_set_dir(DIRECT_KEY10_PIN, false);
-#endif
+    // 2. Initialize ADC inputs via universal HAL ADC
+    hal_adc_init(MUX_ADC_PIN);
+    hal_adc_init(DIRECT_KEY9_PIN);
+    hal_adc_init(DIRECT_KEY10_PIN);
 
     // 3. Initialize Hall Calibration and Rapid Trigger engine
     hall_calibration_init(NUM_KEYS);
-}
-
-/**
- * @brief Read analog value from ADC channel
- */
-static inline uint16_t read_adc_input(uint8_t adc_channel) {
-#if defined(MCU_rp2040) || defined(MCU_rp2350)
-    adc_select_input(adc_channel);
-    return adc_read();
-#elif defined(MCU_milandr)
-    // Fallback simulation for non-RP2350 test builds
-    (void)adc_channel;
-    return HE_DEFAULT_REST_ADC;
-#else
-    (void)adc_channel;
-    return 0;
-#endif
 }
 
 /**
@@ -121,19 +84,19 @@ static inline void update_key_state(uint8_t key_idx, uint16_t adc_val) {
  * @brief Scan all 10 Hall sensors (8 via MUX + 2 direct)
  */
 static void magneteno_matrix_scan(void) {
-    // 1. Scan 8 keys connected via SN74LV4052A Multiplexer -> ADC3 (GPIO29)
+    // 1. Scan 8 keys connected via SN74LV4052A Multiplexer -> MUX_ADC_PIN
     for (uint8_t i = 0; i < 8; ++i) {
         sn74lv4052a_select_channel(mux_channel_lut[i]);
-        uint16_t val = read_adc_input(3); // ADC3 is GPIO29
+        uint16_t val = hal_adc_read(MUX_ADC_PIN);
         update_key_state(i, val);
     }
 
-    // 2. Scan Key 9 directly on ADC2 (GPIO28)
-    uint16_t val_key9 = read_adc_input(2);
+    // 2. Scan Key 9 directly on DIRECT_KEY9_PIN
+    uint16_t val_key9 = hal_adc_read(DIRECT_KEY9_PIN);
     update_key_state(8, val_key9);
 
-    // 3. Scan Key 10 directly on ADC1 (GPIO27)
-    uint16_t val_key10 = read_adc_input(1);
+    // 3. Scan Key 10 directly on DIRECT_KEY10_PIN
+    uint16_t val_key10 = hal_adc_read(DIRECT_KEY10_PIN);
     update_key_state(9, val_key10);
 }
 

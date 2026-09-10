@@ -53,6 +53,13 @@ typedef struct {
     uint8_t pressed;
 } split_packet_t;
 
+static inline void split_make_packet(split_packet_t *pkt, const matrix_event_t *event) {
+    pkt->header = 0xA5;
+    pkt->row = event->row;
+    pkt->col = event->col;
+    pkt->pressed = event->pressed;
+}
+
 // Standard Pin & Connection Type Fallbacks
 #ifndef SPLIT_TX_PIN
 #ifdef SERIAL_PIN

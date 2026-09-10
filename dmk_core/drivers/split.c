@@ -58,10 +58,7 @@ static void soft_uart_send_byte(uint8_t byte) {
  */
 void split_soft_send_event(matrix_event_t *event) {
     split_packet_t pkt;
-    pkt.header = 0xA5;
-    pkt.row = event->row;
-    pkt.col = event->col;
-    pkt.pressed = event->pressed;
+    split_make_packet(&pkt, event);
 
     // Emulate open-drain high/idle
     hal_gpio_set_dir(SPLIT_TX_PIN, false);
@@ -224,6 +221,24 @@ void split_process_received_byte(uint8_t byte) {
             s_byte_count = 0;
         }
     }
+}
+
+__attribute__((weak)) bool is_master(void) {
+#if defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_baikal)
+    extern bool tud_mounted(void);
+    return tud_mounted();
+#else
+    extern volatile bool usb_mounted;
+    return usb_mounted;
+#endif
+}
+
+__attribute__((weak)) void split_send_event(matrix_event_t *event) {
+    split_soft_send_event(event);
+}
+
+__attribute__((weak)) void split_init(void) {
+    split_soft_init();
 }
 
 #endif

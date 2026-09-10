@@ -8,16 +8,6 @@
 #include "usb.h"
 #include <string.h>
 
-#include "combos.h"
-#include "FreeRTOS.h"
-#include "config.h"
-#include "keys.h"
-#include "layers.h"
-#include "queue.h"
-#include "task.h"
-#include "usb.h"
-#include <string.h>
-
 #if defined(VIAL) || defined(CHORDS_COUNT)
 
 #define MAX_BUFFERED_KEYS 8

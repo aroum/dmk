@@ -62,6 +62,18 @@ endif()
 
 set(CMAKE_PROJECT_NAME dmk_firmware)
 
+# Common FreeRTOS kernel source files
+set(FREERTOS_COMMON_SRC
+    "${DMK_ROOT}/lib/freertos/croutine.c"
+    "${DMK_ROOT}/lib/freertos/event_groups.c"
+    "${DMK_ROOT}/lib/freertos/list.c"
+    "${DMK_ROOT}/lib/freertos/queue.c"
+    "${DMK_ROOT}/lib/freertos/stream_buffer.c"
+    "${DMK_ROOT}/lib/freertos/tasks.c"
+    "${DMK_ROOT}/lib/freertos/timers.c"
+    "${DMK_ROOT}/lib/freertos/heap_4.c"
+)
+
 # Platform-specific CMake configuration
 include("${PLATFORM_DIR}/platform.cmake" OPTIONAL)
 
