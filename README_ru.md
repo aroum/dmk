@@ -8,7 +8,7 @@
 
 Легковесная, современная и высокомодульная прошивка для клавиатур, разработанная для кроссплатформенной совместимости с микроконтроллерами.
 
-**Документация:** [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [Коды клавиш](docs/ru/keycodes.md) • [Раскладка](docs/ru/keymap.md) • [Пины](docs/ru/pins.md) • [Vial](docs/ru/vial.md) • [Модули](docs/ru/modules.md) • [MIDI](docs/ru/midi.md)
+**Документация:** [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [Коды клавиш](docs/ru/keycodes.md) • [Раскладка](docs/ru/keymap.md) • [Пины](docs/ru/pins.md) • [Vial](docs/ru/vial.md) • [Модули](docs/ru/modules.md) • [MIDI](docs/ru/midi.md) • [Конфигуратор](editor/wizard.html)
 
 ## Возможности
 

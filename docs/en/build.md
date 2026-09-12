@@ -98,10 +98,14 @@ Building the firmware requires the `ARM GCC` toolchain and `uv`.
 
 ## Usage
 
-To run the build, use the `build_all.sh` script:
+To run the build, use the `build_all.sh` script (or `build_all.ps1` on Windows with PowerShell):
 
-```
+```bash
+# Linux / macOS (bash)
 ./build_all.sh [FLAGS]
+
+# Windows (PowerShell)
+.\build_all.ps1 [FLAGS]
 ```
 
 ## Description of Arguments and Flags
@@ -113,7 +117,7 @@ To run the build, use the `build_all.sh` script:
 - `--mcu [MCU]` — Target microcontroller selection (`milandr`, `rp2040`, `rp2350`, `nrf52840`, `baikal`). Default is taken from `#define MCU <mcu>` or `#define DEFAULT_MCU <mcu>` in the keyboard's `config.h`; if omitted, defaults to `milandr`. The explicit `--mcu` flag always takes highest precedence and overrides the default.
 - `--memory [SIZE]` — Flash memory size selection (e.g., `256KB`, `512KB`, `2MB`, `4MB`, `16MB`). Used for boards with external flash memory.
 - `--define [DEFS]` / `-d [DEFS]` — Compiler definitions, e.g., `-d LEFT, 6_COL_LAYOUT, KEEPER_KEYMAP`.
-- `--uf2` — Generate a UF2 file (for RP2040/RP2350/nRF52840).
+- `--uf2` — Force generate UF2 file (note: `.bin` and `.uf2` are generated automatically whenever supported by the target platform).
 - `--lang [LANG]` — Set script language (`ru` or `en`).
 
 ### Combined Flags
