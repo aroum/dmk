@@ -78,9 +78,13 @@ void chords_flush(void) {
 
 TickType_t combos_check_timeouts(TickType_t now) {
     TickType_t min_remaining = portMAX_DELAY;
-#ifdef CHORDS_COUNT
+#if defined(CHORDS_COUNT) || defined(VIAL)
     if (s_keys_count > 0) {
+#ifdef CHORDS_COUNT
         const TickType_t timeout_ticks = pdMS_TO_TICKS(CHORD_TIMEOUT_MS);
+#else
+        const TickType_t timeout_ticks = pdMS_TO_TICKS(COMBO_TERM_MS);
+#endif
         TickType_t elapsed = now - s_last_press_time;
         if (elapsed >= timeout_ticks) {
             chords_flush();
@@ -96,21 +100,7 @@ TickType_t combos_check_timeouts(TickType_t now) {
 }
 
 #ifdef VIAL
-static bool process_vial_press(uint8_t row, uint8_t col, TickType_t now) {
-    int16_t ki = keyboard_get_flat_key_index(row, col);
-    if (ki < 0) return false;
-
-    uint32_t dmk_key = dynamic_keymap[0][ki];
-    uint16_t via_kc = to_via_keycode(dmk_key);
-
-    if (s_keys_count < MAX_BUFFERED_KEYS) {
-        s_keys[s_keys_count] = (combo_key_t){
-            .row = row, .col = col, .layer = layers_get_active(),
-            .via_kc = via_kc, .press_time = now, .sent = false, .consumed = false
-        };
-        s_keys_count++;
-    }
-
+static bool check_vial_combos(uint8_t row, uint8_t col) {
     for (int i = 0; i < VIAL_COMBO_ENTRIES; i++) {
         vial_combo_entry_t *c = &vial_combos[i];
         if (c->output == 0) continue;
@@ -168,15 +158,6 @@ static bool process_vial_release(uint8_t row, uint8_t col) {
         if (found_idx >= 0) break;
     }
 
-    // Remove from buffer
-    for (int p = 0; p < s_keys_count; p++) {
-        if (s_keys[p].row == row && s_keys[p].col == col) {
-            memmove(&s_keys[p], &s_keys[p + 1], (s_keys_count - 1 - p) * sizeof(combo_key_t));
-            s_keys_count--;
-            break;
-        }
-    }
-
     if (found_idx >= 0) {
         active_combo_t *ac = &s_active[found_idx];
         bool still_pressed = false;
@@ -201,19 +182,35 @@ static bool process_vial_release(uint8_t row, uint8_t col) {
 
 bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now) {
 #ifdef VIAL
-    if (pressed ? process_vial_press(row, col, now) : process_vial_release(row, col)) {
-        return true;
+    if (!pressed) {
+        if (process_vial_release(row, col)) {
+            return true;
+        }
     }
 #endif
 
-#ifdef CHORDS_COUNT
     if (pressed) {
         if (s_keys_count < MAX_BUFFERED_KEYS) {
+            uint16_t via_kc = 0;
+#ifdef VIAL
+            int16_t ki = keyboard_get_flat_key_index(row, col);
+            if (ki >= 0) {
+                via_kc = to_via_keycode(dynamic_keymap[0][ki]);
+            }
+#endif
             s_keys[s_keys_count++] = (combo_key_t){
-                .row = row, .col = col, .layer = layers_get_active(), .press_time = now
+                .row = row, .col = col, .layer = layers_get_active(),
+                .via_kc = via_kc, .press_time = now, .sent = false, .consumed = false
             };
             s_last_press_time = now;
 
+#ifdef VIAL
+            if (check_vial_combos(row, col)) {
+                return true;
+            }
+#endif
+
+#ifdef CHORDS_COUNT
             for (uint8_t c = 0; c < CHORDS_COUNT; ++c) {
                 const Chord *chord = &my_chords[c];
                 if (chord->key_count == s_keys_count) {
@@ -237,20 +234,27 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
                     }
                 }
             }
+#endif
             return true;
         }
         chords_flush();
     } else {
+#ifdef CHORDS_COUNT
         for (uint8_t b = 0; b < s_keys_count; ++b) {
             if (s_keys[b].row == row && s_keys[b].col == col) {
                 chords_flush();
                 break;
             }
         }
-    }
-#else
-    (void)row; (void)col; (void)pressed; (void)now;
 #endif
+        for (int p = 0; p < s_keys_count; p++) {
+            if (s_keys[p].row == row && s_keys[p].col == col) {
+                memmove(&s_keys[p], &s_keys[p + 1], (s_keys_count - 1 - p) * sizeof(combo_key_t));
+                s_keys_count--;
+                break;
+            }
+        }
+    }
     return false;
 }
 
