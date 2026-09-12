@@ -13,20 +13,20 @@
 #define VIAL_VENDOR_ID 0xCafe
 #define VIAL_PRODUCT_ID 0x4012
 
-/* --- Custom Hall-Effect Matrix & SN74LV4052A Multiplexer --- */
+/* --- Custom Hall-Effect Matrix & SN74LV4051A Multiplexer --- */
 #ifndef CUSTOM_MATRIX
 #define CUSTOM_MATRIX 1
 #endif
 
-// SN74LV4052A Multiplexer Control Pins
+// SN74LV4051A Multiplexer Control Pins (8:1 analog MUX)
 #if defined(MCU_rp2040) || defined(MCU_rp2350)
 #define MUX_PIN_S0 GPIO15
 #define MUX_PIN_S1 GPIO14
-#define MUX_PIN_INH GPIO13
+#define MUX_PIN_S2 GPIO13
 
 // Analog ADC Inputs (RP2040/RP2350 ADC0=GPIO26, ADC1=GPIO27, ADC2=GPIO28, ADC3=GPIO29)
-#define MUX_ADC_PIN GPIO29     // Output of MUX connected to ADC3
-#define DIRECT_KEY9_PIN GPIO28 // Key 9 direct Hall ADC2
+#define MUX_ADC_PIN GPIO29      // Output of MUX connected to ADC3
+#define DIRECT_KEY9_PIN GPIO28  // Key 9 direct Hall ADC2
 #define DIRECT_KEY10_PIN GPIO27 // Key 10 direct Hall ADC1
 
 /* --- RGB Settings --- */
@@ -34,16 +34,16 @@
 #define RGB_PIN GPIO12
 
 /* --- Sharp Memory LCD (LS011B7DH03 160x68) Settings --- */
-#define SHARP_LCD_PIN_MOSI GPIO11 // TX
-#define SHARP_LCD_PIN_SCK GPIO10  // SCK
-#define SHARP_LCD_PIN_CS GPIO9    // CSN
-#define SHARP_LCD_PIN_DISP GPIO8  // DISP (optional)
+#define SHARP_LCD_PIN_MOSI GPIO11    // TX
+#define SHARP_LCD_PIN_SCK GPIO10     // SCK
+#define SHARP_LCD_PIN_CS GPIO9       // CSN
+#define SHARP_LCD_PIN_DISP GPIO8     // DISP (optional)
 #define SHARP_LCD_PIN_EXTCOMIN GPIO7 // EXTCOMIN (optional)
 
 #elif defined(MCU_milandr)
 #define MUX_PIN_S0 PA0
 #define MUX_PIN_S1 PA1
-#define MUX_PIN_INH PA2
+#define MUX_PIN_S2 PA2
 #define MUX_ADC_PIN PA3
 #define DIRECT_KEY9_PIN PA4
 #define DIRECT_KEY10_PIN PA5
@@ -56,13 +56,15 @@
 #define SHARP_LCD_PIN_EXTCOMIN PB8
 #endif
 
-// Multiplexer channel mapping for keys 1..8 (hardware channels 2, 4, 3, 1, 7, 6, 8, 5; 0-indexed: 1, 3, 2, 0, 6, 5, 7, 4)
-#define MUX_CHANNEL_MAP { 1, 3, 2, 0, 6, 5, 7, 4 }
+// Multiplexer channel mapping for keys 1..8 (hardware channels 2, 4, 3, 1, 7, 6, 8, 5; 0-indexed: 1, 3, 2, 0, 6, 5, 7,
+// 4)
+#define MUX_CHANNEL_MAP {1, 3, 2, 0, 6, 5, 7, 4}
 
 // Default Hall ADC trigger thresholds (12-bit ADC 0..4095)
 #define HALL_ACTUATION_THRESHOLD 2600
 #define HALL_RELEASE_THRESHOLD 2300
-#define MUX_SETTLE_US 3
+#define MUX_SETTLE_US 50
+#define DIRECT_ADC_SETTLE_US 20
 
 // clang-format off
 #define RGB_MAP { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
@@ -85,6 +87,7 @@
 }
 #define LAYOUT_DEFAULT LAYOUT
 
+// Visual editor layout grid: 3 rows, key 9 under 4 and 8, key 10 to its right
 #define LAYOUT_EDITOR { \
     {0, 0}, {0, 1}, {0, 2}, {0, 3}, \
     {1, 0}, {1, 1}, {1, 2}, {1, 3}, \
@@ -100,6 +103,9 @@
 #include "keymap_external.h"
 #else
 // Flat keymap: one entry per key in LAYOUT order
+// Row 1: 1, 2, 3, 4
+// Row 2: 5, 6, 7, 8
+// Row 3: _, _, _, 9, 10
 // clang-format off
 const uint32_t keymap[][NUM_KEYS] = {
     [DEF] = {

@@ -17,12 +17,12 @@ extern "C" {
 
 #pragma pack(push, 1)
 typedef struct {
-    uint16_t rest_adc;           // Resting Top ADC deadzone
-    uint16_t bottom_adc;         // Maximum bottom-out ADC
-    uint8_t  actuation_percent;  // Initial actuation point (5%..95%)
-    uint8_t  rapid_trigger_down; // Delta ADC required for repeat actuation
-    uint8_t  rapid_trigger_up;   // Delta ADC required for release
-    uint8_t  continuous_mode;    // 1 = Rapid Trigger enabled, 0 = Static threshold
+    uint16_t rest_adc;          // Resting Top ADC deadzone
+    uint16_t bottom_adc;        // Maximum bottom-out ADC
+    uint8_t actuation_percent;  // Initial actuation point (5%..95%)
+    uint8_t rapid_trigger_down; // Delta ADC required for repeat actuation
+    uint8_t rapid_trigger_up;   // Delta ADC required for release
+    uint8_t continuous_mode;    // 1 = Rapid Trigger enabled, 0 = Static threshold
 } hall_key_calib_t;
 
 typedef struct {
@@ -38,7 +38,7 @@ typedef struct {
     uint16_t current_adc;
     uint16_t min_seen_adc;
     uint16_t max_seen_adc;
-    bool     is_pressed;
+    bool is_pressed;
 } hall_key_runtime_t;
 
 void hall_calibration_init(uint8_t key_count);

@@ -1,0 +1,47 @@
+.program mux_ctrl
+
+; PIO program to drive 8:1 analog multiplexer select lines (3 pins).
+; Expects 3-bit channel/pin pattern in the lowest bits of each word pushed to TX FIFO.
+; Clock divider should be configured such that 1 PIO cycle = 1 us.
+
+.wrap_target
+    pull block          ; Wait for channel word from CPU/FIFO into OSR
+    out pins, 3         ; Output 3 bits to GPIOs (base pin .. base pin + 2)
+    set x, 31       [1] ; 50 us settle delay: 32 iterations of 1 cycle + overhead
+delay_loop:
+    jmp x-- delay_loop  ; 32 us
+    nop             [15]; + 16 us = ~49-50 us total settle time
+    irq set 0           ; Signal CPU / interrupt that MUX has settled and ADC is ready
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+
+static inline void mux_ctrl_program_init(PIO pio, uint sm, uint offset, uint pin_base) {
+    pio_sm_config c = mux_ctrl_program_get_default_config(offset);
+
+    // Map the 3 pins starting at pin_base to OUT
+    sm_config_set_out_pins(&c, pin_base, 3);
+
+    // Connect GPIOs to this PIO block
+    for (uint i = 0; i < 3; i++) {
+        pio_gpio_init(pio, pin_base + i);
+    }
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_base, 3, true);
+
+    // Out shift: shift right, no autopull, threshold 32
+    sm_config_set_out_shift(&c, true, false, 32);
+
+    // 1 PIO clock cycle = 1 microsecond (1 MHz)
+    float div = (float)clock_get_hz(clk_sys) / 1000000.0f;
+    sm_config_set_clkdiv(&c, div);
+
+    // Clear IRQ 0
+    pio_interrupt_clear(pio, 0);
+
+    // Load configuration and start SM
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
+

@@ -47,7 +47,7 @@ void hall_calibration_set_defaults(void) {
  */
 void hall_calibration_load(void) {
 #if defined(MCU_rp2040) || defined(MCU_rp2350)
-    const hall_calibration_storage_t *flash_ptr = 
+    const hall_calibration_storage_t *flash_ptr =
         (const hall_calibration_storage_t *)(XIP_BASE + HE_FLASH_STORAGE_OFFSET);
 
     if (flash_ptr->magic == HE_CALIB_MAGIC && flash_ptr->version == 1) {
@@ -174,7 +174,7 @@ bool hall_process_sample(uint8_t key_idx, uint16_t raw_adc) {
 
         if (cal->continuous_mode) {
             // Rapid Trigger: Instant release upon detecting upward stroke of RT_UP threshold
-            if (raw_adc <= rest_deadzone || 
+            if (raw_adc <= rest_deadzone ||
                 (rt->max_seen_adc > cal->rapid_trigger_up && raw_adc <= (rt->max_seen_adc - cal->rapid_trigger_up))) {
                 rt->is_pressed = false;
                 rt->min_seen_adc = raw_adc;
