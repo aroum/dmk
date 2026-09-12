@@ -407,36 +407,36 @@ ELF_FILE="${BUILD_DIR}/${TARGET_NAME}"
 BIN_FILE="${BUILD_DIR}/${TARGET_NAME}.bin"
 UF2_FILE="${BUILD_DIR}/${TARGET_NAME}.uf2"
 
-# Генерация UF2-файла, если требуется
-if [[ "$UF2" == true ]]; then
-    case "$MCU" in
-        rp2040|rp2350)
-            if [[ -f "$UF2_FILE" ]]; then
-                echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
-            elif ! command -v elf2uf2 &> /dev/null; then
+# Проверка и генерация UF2-файла
+case "$MCU" in
+    rp2040|rp2350)
+        if [[ -f "$UF2_FILE" ]]; then
+            echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
+        elif command -v elf2uf2 &> /dev/null && [[ -f "$ELF_FILE" ]]; then
+            echo -e "${YELLOW}${MSG_GEN_UF2}${NC}"
+            elf2uf2 "$ELF_FILE" "$UF2_FILE"
+            echo -e "${GREEN}${MSG_UF2_READY} ${UF2_FILE}${NC}"
+        elif [[ "$UF2" == true ]]; then
+            if ! command -v elf2uf2 &> /dev/null; then
                 echo -e "${RED}${MSG_ERR_ELF2UF2}${NC}"
-            else
-                if [[ ! -f "$ELF_FILE" ]]; then
-                    echo -e "${RED}${MSG_ERR_ELF_NOT_FOUND} ${ELF_FILE}${NC}"
-                else
-                    echo -e "${YELLOW}${MSG_GEN_UF2}${NC}"
-                    elf2uf2 "$ELF_FILE" "$UF2_FILE"
-                    echo -e "${GREEN}${MSG_UF2_READY} ${UF2_FILE}${NC}"
-                fi
+            elif [[ ! -f "$ELF_FILE" ]]; then
+                echo -e "${RED}${MSG_ERR_ELF_NOT_FOUND} ${ELF_FILE}${NC}"
             fi
-            ;;
-        nrf52840)
-            if [[ -f "$UF2_FILE" ]]; then
-                echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
-            else
-                echo -e "${RED}${MSG_ERR_UF2_NOT_FOUND} ${UF2_FILE}${NC}"
-            fi
-            ;;
-        *)
+        fi
+        ;;
+    nrf52840)
+        if [[ -f "$UF2_FILE" ]]; then
+            echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
+        elif [[ "$UF2" == true ]]; then
+            echo -e "${RED}${MSG_ERR_UF2_NOT_FOUND} ${UF2_FILE}${NC}"
+        fi
+        ;;
+    *)
+        if [[ "$UF2" == true ]]; then
             echo -e "${YELLOW}${MSG_UF2_UNSUPPORTED} ${MCU}.${NC}"
-            ;;
-    esac
-fi
+        fi
+        ;;
+esac
 
 # Прошивка через отладчик (OpenOCD)
 if [[ "$FLASH" == true ]]; then

@@ -322,32 +322,32 @@ if (-not (Test-Path $ElfFile)) { $ElfFile = Join-Path $BuildDir "${TargetName}.e
 $BinFile = Join-Path $BuildDir "${TargetName}.bin"
 $Uf2File = Join-Path $BuildDir "${TargetName}.uf2"
 
-# Генерация UF2-файла, если требуется
-if ($Uf2) {
-    switch ($Mcu) {
-        { $_ -in "rp2040", "rp2350" } {
-            if (Test-Path $Uf2File) {
-                Write-Host "$MSG_UF2_READY_CMAKE $Uf2File" -ForegroundColor Green
-            } elseif (-not (Get-Command elf2uf2 -ErrorAction SilentlyContinue)) {
+# Проверка и генерация UF2-файла
+switch ($Mcu) {
+    { $_ -in "rp2040", "rp2350" } {
+        if (Test-Path $Uf2File) {
+            Write-Host "$MSG_UF2_READY_CMAKE $Uf2File" -ForegroundColor Green
+        } elseif ((Get-Command elf2uf2 -ErrorAction SilentlyContinue) -and (Test-Path $ElfFile)) {
+            Write-Host $MSG_GEN_UF2 -ForegroundColor Yellow
+            & elf2uf2 $ElfFile $Uf2File
+            Write-Host "$MSG_UF2_READY $Uf2File" -ForegroundColor Green
+        } elseif ($Uf2) {
+            if (-not (Get-Command elf2uf2 -ErrorAction SilentlyContinue)) {
                 Write-Host $MSG_ERR_ELF2UF2 -ForegroundColor Red
-            } else {
-                if (-not (Test-Path $ElfFile)) {
-                    Write-Host "$MSG_ERR_ELF_NOT_FOUND $ElfFile" -ForegroundColor Red
-                } else {
-                    Write-Host $MSG_GEN_UF2 -ForegroundColor Yellow
-                    & elf2uf2 $ElfFile $Uf2File
-                    Write-Host "$MSG_UF2_READY $Uf2File" -ForegroundColor Green
-                }
+            } elseif (-not (Test-Path $ElfFile)) {
+                Write-Host "$MSG_ERR_ELF_NOT_FOUND $ElfFile" -ForegroundColor Red
             }
         }
-        "nrf52840" {
-            if (Test-Path $Uf2File) {
-                Write-Host "$MSG_UF2_READY_CMAKE $Uf2File" -ForegroundColor Green
-            } else {
-                Write-Host "$MSG_ERR_UF2_NOT_FOUND $Uf2File" -ForegroundColor Red
-            }
+    }
+    "nrf52840" {
+        if (Test-Path $Uf2File) {
+            Write-Host "$MSG_UF2_READY_CMAKE $Uf2File" -ForegroundColor Green
+        } elseif ($Uf2) {
+            Write-Host "$MSG_ERR_UF2_NOT_FOUND $Uf2File" -ForegroundColor Red
         }
-        default {
+    }
+    default {
+        if ($Uf2) {
             Write-Host "$MSG_UF2_UNSUPPORTED ${Mcu}." -ForegroundColor Yellow
         }
     }
