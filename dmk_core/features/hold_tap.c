@@ -23,8 +23,10 @@ void hold_tap_init(void) {
 static void activate_hold(HTTracker *tracker) {
     tracker->state = HT_STATE_HOLD;
     uint8_t target = (tracker->keycode >> 8) & 0xFF;
-    if (target < 16) layers_on(target);
-    else keyboard_send_modifiers(target, true);
+    if (target < 16)
+        layers_on(target);
+    else
+        keyboard_send_modifiers(target, true);
 }
 
 void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
@@ -45,7 +47,8 @@ TickType_t hold_tap_check_timeouts(TickType_t now) {
                 activate_hold(&ht_trackers[i]);
             } else {
                 TickType_t rem = ht_trackers[i].timeout_ticks - elapsed;
-                if (rem < min_remaining) min_remaining = rem;
+                if (rem < min_remaining)
+                    min_remaining = rem;
             }
         }
     }
@@ -53,18 +56,19 @@ TickType_t hold_tap_check_timeouts(TickType_t now) {
 }
 
 bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
-    if ((key & 0xFF000000) != DMK_HT) return false;
+    if ((key & 0xFF000000) != DMK_HT)
+        return false;
 
     if (pressed) {
         for (int i = 0; i < MAX_HT_TRACKERS; i++) {
             if (ht_trackers[i].state == HT_STATE_IDLE) {
                 uint32_t ms = (key >> 16) & 0xFF;
-                ht_trackers[i] = (HTTracker){
-                    .row = row, .col = col, .keycode = key,
-                    .press_time = xTaskGetTickCount(),
-                    .timeout_ticks = pdMS_TO_TICKS(ms ? ms : TAPPING_TERM_DEFAULT),
-                    .state = HT_STATE_PRESSED
-                };
+                ht_trackers[i] = (HTTracker){.row = row,
+                                             .col = col,
+                                             .keycode = key,
+                                             .press_time = xTaskGetTickCount(),
+                                             .timeout_ticks = pdMS_TO_TICKS(ms ? ms : TAPPING_TERM_DEFAULT),
+                                             .state = HT_STATE_PRESSED};
                 break;
             }
         }
@@ -80,8 +84,10 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                     keyboard_send_key(kc, false);
                     oneshot_on_tap_key();
                 } else if (ht_trackers[i].state == HT_STATE_HOLD) {
-                    if (target < 16) layers_off(target);
-                    else keyboard_send_modifiers(target, false);
+                    if (target < 16)
+                        layers_off(target);
+                    else
+                        keyboard_send_modifiers(target, false);
                 }
                 ht_trackers[i].state = HT_STATE_IDLE;
                 break;

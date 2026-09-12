@@ -16,7 +16,6 @@
 #endif
 #endif
 
-
 #if (SPLIT_CONNECTION_TYPE == HW_HALF_DUPLEX)
 #error                                                                                                                 \
     "DMK Milandr Error: Milandr hardware UART does not support 1-wire HW_HALF_DUPLEX! Use SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX with 2 pins (TX+RX) or SPLIT_CONNECTION_TYPE SOFT for 1-wire."

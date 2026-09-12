@@ -26,8 +26,10 @@
 #define ROW_PINS {PB0, PB1, PB2, PB3}
 #define COL_PINS {PA0, PA1, PA2, PA3, PA4, PA5}
 #elif defined(MCU_rp2040) || defined(MCU_rp2350)
-#define ROW_PINS {GPIO4, GPIO5, GPIO6, GPIO7}                         // D4, C6, D7, E6 -> GPIO4, GPIO5, GPIO6, GPIO7
-#define COL_PINS {GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20}      // F4, F5, F6, F7, B1, B3 -> GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20
+#define ROW_PINS {GPIO4, GPIO5, GPIO6, GPIO7} // D4, C6, D7, E6 -> GPIO4, GPIO5, GPIO6, GPIO7
+#define COL_PINS                                                                                                       \
+    {GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20}
+    // F4, F5, F6, F7, B1, B3 -> GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20
 #elif defined(MCU_nrf52840)
 #define ROW_PINS {P0_00, P0_01, P0_02, P0_03}
 #define COL_PINS {P0_04, P0_05, P0_06, P0_07, P0_08, P0_09}

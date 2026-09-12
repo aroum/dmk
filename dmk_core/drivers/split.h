@@ -98,11 +98,19 @@ void split_process_received_byte(uint8_t byte);
 #else
 
 static inline void split_init(void) {}
-static inline bool is_master(void) { return true; }
-static inline void split_send_event(matrix_event_t *event) { (void)event; }
+static inline bool is_master(void) {
+    return true;
+}
+static inline void split_send_event(matrix_event_t *event) {
+    (void)event;
+}
 static inline void split_soft_init(void) {}
-static inline void split_soft_send_event(matrix_event_t *event) { (void)event; }
-static inline void split_process_received_byte(uint8_t byte) { (void)byte; }
+static inline void split_soft_send_event(matrix_event_t *event) {
+    (void)event;
+}
+static inline void split_process_received_byte(uint8_t byte) {
+    (void)byte;
+}
 
 #endif
 

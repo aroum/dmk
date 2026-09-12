@@ -38,7 +38,9 @@ typedef struct {
     uint8_t combo_idx;
     uint16_t output;
     uint8_t count;
-    struct { uint8_t row, col; } triggers[4];
+    struct {
+        uint8_t row, col;
+    } triggers[4];
 } active_combo_t;
 
 static active_combo_t s_active[COMBO_MAX_ACTIVE];
@@ -90,7 +92,8 @@ TickType_t combos_check_timeouts(TickType_t now) {
             chords_flush();
         } else {
             TickType_t remaining = timeout_ticks - elapsed;
-            if (remaining < min_remaining) min_remaining = remaining;
+            if (remaining < min_remaining)
+                min_remaining = remaining;
         }
     }
 #else
@@ -103,19 +106,23 @@ TickType_t combos_check_timeouts(TickType_t now) {
 static bool check_vial_combos(uint8_t row, uint8_t col) {
     for (int i = 0; i < VIAL_COMBO_ENTRIES; i++) {
         vial_combo_entry_t *c = &vial_combos[i];
-        if (c->output == 0) continue;
+        if (c->output == 0)
+            continue;
 
         int input_count = 0, match_count = 0, match_indices[4];
         TickType_t min_t = 0xFFFFFFFF, max_t = 0;
 
         for (int k = 0; k < 4; k++) {
-            if (c->input[k] == 0) continue;
+            if (c->input[k] == 0)
+                continue;
             input_count++;
             for (int p = 0; p < s_keys_count; p++) {
                 if (s_keys[p].via_kc == c->input[k] && !s_keys[p].consumed) {
                     match_indices[match_count++] = p;
-                    if (s_keys[p].press_time < min_t) min_t = s_keys[p].press_time;
-                    if (s_keys[p].press_time > max_t) max_t = s_keys[p].press_time;
+                    if (s_keys[p].press_time < min_t)
+                        min_t = s_keys[p].press_time;
+                    if (s_keys[p].press_time > max_t)
+                        max_t = s_keys[p].press_time;
                     break;
                 }
             }
@@ -126,7 +133,8 @@ static bool check_vial_combos(uint8_t row, uint8_t col) {
                 int idx = match_indices[k];
                 s_keys[idx].consumed = true;
                 if (s_keys[idx].sent) {
-                    process_key_event(s_keys[idx].row, s_keys[idx].col, layers_lookup_key(s_keys[idx].row, s_keys[idx].col), false);
+                    process_key_event(s_keys[idx].row, s_keys[idx].col,
+                                      layers_lookup_key(s_keys[idx].row, s_keys[idx].col), false);
                 }
             }
             if (s_active_count < COMBO_MAX_ACTIVE) {
@@ -155,7 +163,8 @@ static bool process_vial_release(uint8_t row, uint8_t col) {
                 break;
             }
         }
-        if (found_idx >= 0) break;
+        if (found_idx >= 0)
+            break;
     }
 
     if (found_idx >= 0) {
@@ -171,7 +180,8 @@ static bool process_vial_release(uint8_t row, uint8_t col) {
         }
         if (!still_pressed) {
             process_key_event(row, col, from_via_keycode(ac->output), false);
-            memmove(&s_active[found_idx], &s_active[found_idx + 1], (s_active_count - 1 - found_idx) * sizeof(active_combo_t));
+            memmove(&s_active[found_idx], &s_active[found_idx + 1],
+                    (s_active_count - 1 - found_idx) * sizeof(active_combo_t));
             s_active_count--;
         }
         return true;
@@ -198,10 +208,13 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
                 via_kc = to_via_keycode(dynamic_keymap[0][ki]);
             }
 #endif
-            s_keys[s_keys_count++] = (combo_key_t){
-                .row = row, .col = col, .layer = layers_get_active(),
-                .via_kc = via_kc, .press_time = now, .sent = false, .consumed = false
-            };
+            s_keys[s_keys_count++] = (combo_key_t){.row = row,
+                                                   .col = col,
+                                                   .layer = layers_get_active(),
+                                                   .via_kc = via_kc,
+                                                   .press_time = now,
+                                                   .sent = false,
+                                                   .consumed = false};
             s_last_press_time = now;
 
 #ifdef VIAL
@@ -218,17 +231,18 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
                     for (uint8_t k = 0; k < chord->key_count && match; ++k) {
                         bool found = false;
                         for (uint8_t b = 0; b < s_keys_count; ++b) {
-                            if (s_keys[b].row == chord->keys[k].row &&
-                                s_keys[b].col == chord->keys[k].col &&
+                            if (s_keys[b].row == chord->keys[k].row && s_keys[b].col == chord->keys[k].col &&
                                 s_keys[b].layer == chord->keys[k].layer) {
                                 found = true;
                                 break;
                             }
                         }
-                        if (!found) match = false;
+                        if (!found)
+                            match = false;
                     }
                     if (match) {
-                        if (chord->action) chord->action();
+                        if (chord->action)
+                            chord->action();
                         s_keys_count = 0;
                         return true;
                     }
@@ -262,8 +276,16 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
 
 void combos_init(void) {}
 void chords_flush(void) {}
-TickType_t combos_check_timeouts(TickType_t now) { (void)now; return portMAX_DELAY; }
-bool combos_process_event(uint8_t r, uint8_t c, bool p, TickType_t now) { (void)r; (void)c; (void)p; (void)now; return false; }
+TickType_t combos_check_timeouts(TickType_t now) {
+    (void)now;
+    return portMAX_DELAY;
+}
+bool combos_process_event(uint8_t r, uint8_t c, bool p, TickType_t now) {
+    (void)r;
+    (void)c;
+    (void)p;
+    (void)now;
+    return false;
+}
 
 #endif
-

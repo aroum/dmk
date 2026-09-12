@@ -326,13 +326,13 @@ jobs:
 
 1. **Статическая фиксация ветки**: добавьте параметр `ref: dev` в шаг клонирования DMK:
    ```yaml
-         - name: Checkout DMK Firmware Core
-           uses: actions/checkout@v4
-           with:
-             repository: aroum/dmk
-             ref: dev # Ветка, тег или SHA коммита
-             submodules: recursive
-             path: dmk
+   - name: Checkout DMK Firmware Core
+     uses: actions/checkout@v4
+     with:
+       repository: aroum/dmk
+       ref: dev # Ветка, тег или SHA коммита
+       submodules: recursive
+       path: dmk
    ```
 
 2. **Динамический выбор через интерфейс GitHub (`workflow_dispatch`)**:
@@ -353,13 +353,13 @@ jobs:
    ```
    И используйте эту переменную в шаге `actions/checkout`:
    ```yaml
-         - name: Checkout DMK Firmware Core
-           uses: actions/checkout@v4
-           with:
-             repository: aroum/dmk
-             ref: ${{ github.event.inputs.dmk_ref || 'dev' }}
-             submodules: recursive
-             path: dmk
+   - name: Checkout DMK Firmware Core
+     uses: actions/checkout@v4
+     with:
+       repository: aroum/dmk
+       ref: ${{ github.event.inputs.dmk_ref || 'dev' }}
+       submodules: recursive
+       path: dmk
    ```
 
 Пример шаблона пользовательского репозитория: `https://github.com/aroum/dmk-config-template`.

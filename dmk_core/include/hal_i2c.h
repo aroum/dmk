@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #define HAL_I2C_FREQ_STANDARD 100000U
-#define HAL_I2C_FREQ_FAST     400000U
+#define HAL_I2C_FREQ_FAST 400000U
 
 /**
  * @brief Initialize I2C master bus with specified SDA and SCL pins.

@@ -1,19 +1,19 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
+#include "FreeRTOS.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "FreeRTOS.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Standard USB HID Mouse Button Bitmasks (Up to 5 buttons) */
-#define MOUSE_BTN_LEFT    (1 << 0)
-#define MOUSE_BTN_RIGHT   (1 << 1)
-#define MOUSE_BTN_MIDDLE  (1 << 2)
-#define MOUSE_BTN_BACK    (1 << 3)
+#define MOUSE_BTN_LEFT (1 << 0)
+#define MOUSE_BTN_RIGHT (1 << 1)
+#define MOUSE_BTN_MIDDLE (1 << 2)
+#define MOUSE_BTN_BACK (1 << 3)
 #define MOUSE_BTN_FORWARD (1 << 4)
 
 /**

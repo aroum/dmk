@@ -30,19 +30,19 @@
 #define MOUSEKEY_SCROLL_DELAY 90 // ms between repeated scroll ticks
 #endif
 
-#define MOVE_UP    (1 << 0)
-#define MOVE_DOWN  (1 << 1)
-#define MOVE_LEFT  (1 << 2)
+#define MOVE_UP (1 << 0)
+#define MOVE_DOWN (1 << 1)
+#define MOVE_LEFT (1 << 2)
 #define MOVE_RIGHT (1 << 3)
 
-#define SCROLL_UP    (1 << 0)
-#define SCROLL_DOWN  (1 << 1)
-#define SCROLL_LEFT  (1 << 2)
+#define SCROLL_UP (1 << 0)
+#define SCROLL_DOWN (1 << 1)
+#define SCROLL_LEFT (1 << 2)
 #define SCROLL_RIGHT (1 << 3)
 
-#define ACCEL_MODE_SLOW   1
+#define ACCEL_MODE_SLOW 1
 #define ACCEL_MODE_NORMAL 0
-#define ACCEL_MODE_FAST   2
+#define ACCEL_MODE_FAST 2
 
 typedef struct {
     uint8_t buttons;
@@ -144,20 +144,28 @@ bool mouse_process_key(uint32_t key, bool pressed) {
     // 2. Cursor Directions
     switch (kc) {
     case HID_KEY_MOUSE_UP:
-        if (pressed) s_mouse.move_keys |= MOVE_UP;
-        else s_mouse.move_keys &= ~MOVE_UP;
+        if (pressed)
+            s_mouse.move_keys |= MOVE_UP;
+        else
+            s_mouse.move_keys &= ~MOVE_UP;
         break;
     case HID_KEY_MOUSE_DOWN:
-        if (pressed) s_mouse.move_keys |= MOVE_DOWN;
-        else s_mouse.move_keys &= ~MOVE_DOWN;
+        if (pressed)
+            s_mouse.move_keys |= MOVE_DOWN;
+        else
+            s_mouse.move_keys &= ~MOVE_DOWN;
         break;
     case HID_KEY_MOUSE_LEFT:
-        if (pressed) s_mouse.move_keys |= MOVE_LEFT;
-        else s_mouse.move_keys &= ~MOVE_LEFT;
+        if (pressed)
+            s_mouse.move_keys |= MOVE_LEFT;
+        else
+            s_mouse.move_keys &= ~MOVE_LEFT;
         break;
     case HID_KEY_MOUSE_RIGHT:
-        if (pressed) s_mouse.move_keys |= MOVE_RIGHT;
-        else s_mouse.move_keys &= ~MOVE_RIGHT;
+        if (pressed)
+            s_mouse.move_keys |= MOVE_RIGHT;
+        else
+            s_mouse.move_keys &= ~MOVE_RIGHT;
         break;
 
     // 3. Scroll Wheel
@@ -239,7 +247,8 @@ static int16_t calculate_speed(uint32_t elapsed_ms) {
         active_ms = MOUSEKEY_TIME_TO_MAX;
     }
 
-    int16_t speed = MOUSEKEY_BASE_SPEED + (int16_t)(((MOUSEKEY_MAX_SPEED - MOUSEKEY_BASE_SPEED) * active_ms) / MOUSEKEY_TIME_TO_MAX);
+    int16_t speed = MOUSEKEY_BASE_SPEED +
+                    (int16_t)(((MOUSEKEY_MAX_SPEED - MOUSEKEY_BASE_SPEED) * active_ms) / MOUSEKEY_TIME_TO_MAX);
 
     // Apply speed modifiers
     if (s_mouse.accel_mode == ACCEL_MODE_SLOW) {
@@ -267,10 +276,14 @@ TickType_t mouse_check_timeouts(TickType_t now) {
         int8_t dx = 0;
         int8_t dy = 0;
 
-        if (s_mouse.move_keys & MOVE_RIGHT) dx += (int8_t)speed;
-        if (s_mouse.move_keys & MOVE_LEFT)  dx -= (int8_t)speed;
-        if (s_mouse.move_keys & MOVE_DOWN)  dy += (int8_t)speed;
-        if (s_mouse.move_keys & MOVE_UP)    dy -= (int8_t)speed;
+        if (s_mouse.move_keys & MOVE_RIGHT)
+            dx += (int8_t)speed;
+        if (s_mouse.move_keys & MOVE_LEFT)
+            dx -= (int8_t)speed;
+        if (s_mouse.move_keys & MOVE_DOWN)
+            dy += (int8_t)speed;
+        if (s_mouse.move_keys & MOVE_UP)
+            dy -= (int8_t)speed;
 
         mouse_move(dx, dy);
         s_mouse.last_move_tick = now;
@@ -281,10 +294,14 @@ TickType_t mouse_check_timeouts(TickType_t now) {
         int8_t wheel = 0;
         int8_t pan = 0;
 
-        if (s_mouse.scroll_keys & SCROLL_UP)    wheel += 1;
-        if (s_mouse.scroll_keys & SCROLL_DOWN)  wheel -= 1;
-        if (s_mouse.scroll_keys & SCROLL_RIGHT) pan += 1;
-        if (s_mouse.scroll_keys & SCROLL_LEFT)  pan -= 1;
+        if (s_mouse.scroll_keys & SCROLL_UP)
+            wheel += 1;
+        if (s_mouse.scroll_keys & SCROLL_DOWN)
+            wheel -= 1;
+        if (s_mouse.scroll_keys & SCROLL_RIGHT)
+            pan += 1;
+        if (s_mouse.scroll_keys & SCROLL_LEFT)
+            pan -= 1;
 
         mouse_scroll(wheel, pan);
         s_mouse.last_scroll_tick = now;

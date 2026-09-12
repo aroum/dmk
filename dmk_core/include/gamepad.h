@@ -9,26 +9,26 @@ extern "C" {
 #endif
 
 // D-Pad / Hat switch directions (1-based, 0 = released/centered)
-#define GAMEPAD_DPAD_CENTER     0
-#define GAMEPAD_DPAD_UP         1
-#define GAMEPAD_DPAD_UP_RIGHT   2
-#define GAMEPAD_DPAD_RIGHT      3
+#define GAMEPAD_DPAD_CENTER 0
+#define GAMEPAD_DPAD_UP 1
+#define GAMEPAD_DPAD_UP_RIGHT 2
+#define GAMEPAD_DPAD_RIGHT 3
 #define GAMEPAD_DPAD_DOWN_RIGHT 4
-#define GAMEPAD_DPAD_DOWN       5
-#define GAMEPAD_DPAD_DOWN_LEFT  6
-#define GAMEPAD_DPAD_LEFT       7
-#define GAMEPAD_DPAD_UP_LEFT    8
+#define GAMEPAD_DPAD_DOWN 5
+#define GAMEPAD_DPAD_DOWN_LEFT 6
+#define GAMEPAD_DPAD_LEFT 7
+#define GAMEPAD_DPAD_UP_LEFT 8
 
 // Button bitmasks (1-32)
-#define GAMEPAD_BUTTON_1  (1UL << 0)
-#define GAMEPAD_BUTTON_2  (1UL << 1)
-#define GAMEPAD_BUTTON_3  (1UL << 2)
-#define GAMEPAD_BUTTON_4  (1UL << 3)
-#define GAMEPAD_BUTTON_5  (1UL << 4)
-#define GAMEPAD_BUTTON_6  (1UL << 5)
-#define GAMEPAD_BUTTON_7  (1UL << 6)
-#define GAMEPAD_BUTTON_8  (1UL << 7)
-#define GAMEPAD_BUTTON_9  (1UL << 8)
+#define GAMEPAD_BUTTON_1 (1UL << 0)
+#define GAMEPAD_BUTTON_2 (1UL << 1)
+#define GAMEPAD_BUTTON_3 (1UL << 2)
+#define GAMEPAD_BUTTON_4 (1UL << 3)
+#define GAMEPAD_BUTTON_5 (1UL << 4)
+#define GAMEPAD_BUTTON_6 (1UL << 5)
+#define GAMEPAD_BUTTON_7 (1UL << 6)
+#define GAMEPAD_BUTTON_8 (1UL << 7)
+#define GAMEPAD_BUTTON_9 (1UL << 8)
 #define GAMEPAD_BUTTON_10 (1UL << 9)
 #define GAMEPAD_BUTTON_11 (1UL << 10)
 #define GAMEPAD_BUTTON_12 (1UL << 11)
@@ -54,29 +54,29 @@ extern "C" {
 #define GAMEPAD_BUTTON_32 (1UL << 31)
 
 // Standard controller alias mapping
-#define GAMEPAD_BUTTON_A      GAMEPAD_BUTTON_1
-#define GAMEPAD_BUTTON_B      GAMEPAD_BUTTON_2
-#define GAMEPAD_BUTTON_X      GAMEPAD_BUTTON_3
-#define GAMEPAD_BUTTON_Y      GAMEPAD_BUTTON_4
-#define GAMEPAD_BUTTON_LB     GAMEPAD_BUTTON_5
-#define GAMEPAD_BUTTON_RB     GAMEPAD_BUTTON_6
+#define GAMEPAD_BUTTON_A GAMEPAD_BUTTON_1
+#define GAMEPAD_BUTTON_B GAMEPAD_BUTTON_2
+#define GAMEPAD_BUTTON_X GAMEPAD_BUTTON_3
+#define GAMEPAD_BUTTON_Y GAMEPAD_BUTTON_4
+#define GAMEPAD_BUTTON_LB GAMEPAD_BUTTON_5
+#define GAMEPAD_BUTTON_RB GAMEPAD_BUTTON_6
 #define GAMEPAD_BUTTON_SELECT GAMEPAD_BUTTON_7
-#define GAMEPAD_BUTTON_START  GAMEPAD_BUTTON_8
-#define GAMEPAD_BUTTON_HOME   GAMEPAD_BUTTON_9
-#define GAMEPAD_BUTTON_L3     GAMEPAD_BUTTON_10
-#define GAMEPAD_BUTTON_R3     GAMEPAD_BUTTON_11
+#define GAMEPAD_BUTTON_START GAMEPAD_BUTTON_8
+#define GAMEPAD_BUTTON_HOME GAMEPAD_BUTTON_9
+#define GAMEPAD_BUTTON_L3 GAMEPAD_BUTTON_10
+#define GAMEPAD_BUTTON_R3 GAMEPAD_BUTTON_11
 
 /**
  * @brief Current state of the gamepad subsystem
  */
 typedef struct {
-    int8_t   x;       // Left Stick X (-127..127)
-    int8_t   y;       // Left Stick Y (-127..127)
-    int8_t   z;       // Right Stick X (-127..127)
-    int8_t   rz;      // Right Stick Y (-127..127)
-    int8_t   rx;      // Analog Left Trigger (-127..127)
-    int8_t   ry;      // Analog Right Trigger (-127..127)
-    uint8_t  dpad;    // Hat Switch (0 = center, 1..8 = direction)
+    int8_t x;         // Left Stick X (-127..127)
+    int8_t y;         // Left Stick Y (-127..127)
+    int8_t z;         // Right Stick X (-127..127)
+    int8_t rz;        // Right Stick Y (-127..127)
+    int8_t rx;        // Analog Left Trigger (-127..127)
+    int8_t ry;        // Analog Right Trigger (-127..127)
+    uint8_t dpad;     // Hat Switch (0 = center, 1..8 = direction)
     uint32_t buttons; // Bitmask of buttons 1..32
 } gamepad_state_t;
 

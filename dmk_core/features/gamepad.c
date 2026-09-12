@@ -20,15 +20,23 @@ static bool s_ry_u = false, s_ry_d = false;
 static bool s_lt = false, s_rt = false;
 
 static uint8_t compute_dpad_state(void) {
-    if (s_dpad_up && s_dpad_right) return GAMEPAD_DPAD_UP_RIGHT;
-    if (s_dpad_down && s_dpad_right) return GAMEPAD_DPAD_DOWN_RIGHT;
-    if (s_dpad_down && s_dpad_left) return GAMEPAD_DPAD_DOWN_LEFT;
-    if (s_dpad_up && s_dpad_left) return GAMEPAD_DPAD_UP_LEFT;
+    if (s_dpad_up && s_dpad_right)
+        return GAMEPAD_DPAD_UP_RIGHT;
+    if (s_dpad_down && s_dpad_right)
+        return GAMEPAD_DPAD_DOWN_RIGHT;
+    if (s_dpad_down && s_dpad_left)
+        return GAMEPAD_DPAD_DOWN_LEFT;
+    if (s_dpad_up && s_dpad_left)
+        return GAMEPAD_DPAD_UP_LEFT;
 
-    if (s_dpad_up) return GAMEPAD_DPAD_UP;
-    if (s_dpad_right) return GAMEPAD_DPAD_RIGHT;
-    if (s_dpad_down) return GAMEPAD_DPAD_DOWN;
-    if (s_dpad_left) return GAMEPAD_DPAD_LEFT;
+    if (s_dpad_up)
+        return GAMEPAD_DPAD_UP;
+    if (s_dpad_right)
+        return GAMEPAD_DPAD_RIGHT;
+    if (s_dpad_down)
+        return GAMEPAD_DPAD_DOWN;
+    if (s_dpad_left)
+        return GAMEPAD_DPAD_LEFT;
 
     return GAMEPAD_DPAD_CENTER;
 }
@@ -65,7 +73,8 @@ void gamepad_set_dpad(uint8_t dpad) {
 }
 
 void gamepad_set_button(uint8_t button, bool pressed) {
-    if (button < 1 || button > 32) return;
+    if (button < 1 || button > 32)
+        return;
     uint32_t mask = (1UL << (button - 1));
     if (pressed) {
         s_gamepad.buttons |= mask;
@@ -113,80 +122,80 @@ bool gamepad_process_key(uint16_t key, bool pressed) {
 
     // 2. D-Pad Direction Keys
     switch (key) {
-        case GP_DPAD_UP:
-            s_dpad_up = pressed;
-            s_gamepad.dpad = compute_dpad_state();
-            gamepad_send();
-            return true;
-        case GP_DPAD_DOWN:
-            s_dpad_down = pressed;
-            s_gamepad.dpad = compute_dpad_state();
-            gamepad_send();
-            return true;
-        case GP_DPAD_LEFT:
-            s_dpad_left = pressed;
-            s_gamepad.dpad = compute_dpad_state();
-            gamepad_send();
-            return true;
-        case GP_DPAD_RIGHT:
-            s_dpad_right = pressed;
-            s_gamepad.dpad = compute_dpad_state();
-            gamepad_send();
-            return true;
-        default:
-            break;
+    case GP_DPAD_UP:
+        s_dpad_up = pressed;
+        s_gamepad.dpad = compute_dpad_state();
+        gamepad_send();
+        return true;
+    case GP_DPAD_DOWN:
+        s_dpad_down = pressed;
+        s_gamepad.dpad = compute_dpad_state();
+        gamepad_send();
+        return true;
+    case GP_DPAD_LEFT:
+        s_dpad_left = pressed;
+        s_gamepad.dpad = compute_dpad_state();
+        gamepad_send();
+        return true;
+    case GP_DPAD_RIGHT:
+        s_dpad_right = pressed;
+        s_gamepad.dpad = compute_dpad_state();
+        gamepad_send();
+        return true;
+    default:
+        break;
     }
 
     // 3. Digital to Left Analog Stick
     switch (key) {
-        case GP_LX_L:
-            s_lx_l = pressed;
-            s_gamepad.x = (s_lx_l && !s_lx_r) ? -127 : (s_lx_r ? 127 : 0);
-            gamepad_send();
-            return true;
-        case GP_LX_R:
-            s_lx_r = pressed;
-            s_gamepad.x = (s_lx_r && !s_lx_l) ? 127 : (s_lx_l ? -127 : 0);
-            gamepad_send();
-            return true;
-        case GP_LY_U:
-            s_ly_u = pressed;
-            s_gamepad.y = (s_ly_u && !s_ly_d) ? -127 : (s_ly_d ? 127 : 0);
-            gamepad_send();
-            return true;
-        case GP_LY_D:
-            s_ly_d = pressed;
-            s_gamepad.y = (s_ly_d && !s_ly_u) ? 127 : (s_ly_u ? -127 : 0);
-            gamepad_send();
-            return true;
-        default:
-            break;
+    case GP_LX_L:
+        s_lx_l = pressed;
+        s_gamepad.x = (s_lx_l && !s_lx_r) ? -127 : (s_lx_r ? 127 : 0);
+        gamepad_send();
+        return true;
+    case GP_LX_R:
+        s_lx_r = pressed;
+        s_gamepad.x = (s_lx_r && !s_lx_l) ? 127 : (s_lx_l ? -127 : 0);
+        gamepad_send();
+        return true;
+    case GP_LY_U:
+        s_ly_u = pressed;
+        s_gamepad.y = (s_ly_u && !s_ly_d) ? -127 : (s_ly_d ? 127 : 0);
+        gamepad_send();
+        return true;
+    case GP_LY_D:
+        s_ly_d = pressed;
+        s_gamepad.y = (s_ly_d && !s_ly_u) ? 127 : (s_ly_u ? -127 : 0);
+        gamepad_send();
+        return true;
+    default:
+        break;
     }
 
     // 4. Digital to Right Analog Stick
     switch (key) {
-        case GP_RX_L:
-            s_rx_l = pressed;
-            s_gamepad.z = (s_rx_l && !s_rx_r) ? -127 : (s_rx_r ? 127 : 0);
-            gamepad_send();
-            return true;
-        case GP_RX_R:
-            s_rx_r = pressed;
-            s_gamepad.z = (s_rx_r && !s_rx_l) ? 127 : (s_rx_l ? -127 : 0);
-            gamepad_send();
-            return true;
-        case GP_RY_U:
-            s_ry_u = pressed;
-            s_gamepad.rz = (s_ry_u && !s_ry_d) ? -127 : (s_ry_d ? 127 : 0);
-            gamepad_send();
-            return true;
-        case GP_RY_D:
-            s_ry_d = pressed;
-            s_gamepad.rz = (s_ry_d && !s_ry_u) ? 127 : (s_ry_u ? -127 : 0);
-            gamepad_send();
-            return true;
-        default:
-            break;
+    case GP_RX_L:
+        s_rx_l = pressed;
+        s_gamepad.z = (s_rx_l && !s_rx_r) ? -127 : (s_rx_r ? 127 : 0);
+        gamepad_send();
+        return true;
+    case GP_RX_R:
+        s_rx_r = pressed;
+        s_gamepad.z = (s_rx_r && !s_rx_l) ? 127 : (s_rx_l ? -127 : 0);
+        gamepad_send();
+        return true;
+    case GP_RY_U:
+        s_ry_u = pressed;
+        s_gamepad.rz = (s_ry_u && !s_ry_d) ? -127 : (s_ry_d ? 127 : 0);
+        gamepad_send();
+        return true;
+    case GP_RY_D:
+        s_ry_d = pressed;
+        s_gamepad.rz = (s_ry_d && !s_ry_u) ? 127 : (s_ry_u ? -127 : 0);
+        gamepad_send();
+        return true;
+    default:
+        break;
     }
 
     // 5. Analog Triggers

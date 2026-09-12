@@ -1,9 +1,9 @@
 #ifndef LED_H
 #define LED_H
 
+#include "FreeRTOS.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "FreeRTOS.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -54,7 +54,7 @@
 /* --- MIDI Jack (UART) --- */
 #if defined(MCU_rp2040) || defined(MCU_rp2350)
 #define PIN_MIDI_JACK_OUT GPIO0
-#define PIN_MIDI_JACK_IN  GPIO1
+#define PIN_MIDI_JACK_IN GPIO1
 #endif
 
 /* --- Keymap --- */

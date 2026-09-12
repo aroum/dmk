@@ -16,7 +16,6 @@
 #endif
 #endif
 
-
 #if (SPLIT_CONNECTION_TYPE == HW_HALF_DUPLEX) || (SPLIT_CONNECTION_TYPE == HW_FULL_DUPLEX)
 
 #include "nrf_gpio.h"

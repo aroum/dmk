@@ -98,9 +98,15 @@ static inline void hal_midi_jack_putc(uint8_t byte) {
 #else
 // Generic fallback stub for platforms without dedicated hardware UART implementation
 static void hal_midi_jack_hw_init(void) {}
-static inline bool hal_midi_jack_readable(void) { return false; }
-static inline uint8_t hal_midi_jack_getc(void) { return 0; }
-static inline void hal_midi_jack_putc(uint8_t byte) { (void)byte; }
+static inline bool hal_midi_jack_readable(void) {
+    return false;
+}
+static inline uint8_t hal_midi_jack_getc(void) {
+    return 0;
+}
+static inline void hal_midi_jack_putc(uint8_t byte) {
+    (void)byte;
+}
 #endif
 
 static bool s_initialized = false;

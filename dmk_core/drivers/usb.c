@@ -109,7 +109,9 @@ void usb_process_key(uint16_t keycode, bool pressed) {
 #ifdef MIDI_USB
 #if defined(MCU_milandr)
 extern USB_Result USB_MIDI_SendPacket(const uint8_t *packet);
-static inline void midi_write(const uint8_t *pkt) { USB_MIDI_SendPacket(pkt); }
+static inline void midi_write(const uint8_t *pkt) {
+    USB_MIDI_SendPacket(pkt);
+}
 #else
 #undef KEYBOARD_MODIFIER_LEFTCTRL
 #undef KEYBOARD_MODIFIER_LEFTSHIFT
@@ -141,7 +143,9 @@ static inline void midi_write(const uint8_t *pkt) { USB_MIDI_SendPacket(pkt); }
 #undef HID_USAGE_CONSUMER_AC_REFRESH
 #undef HID_USAGE_CONSUMER_AC_BOOKMARKS
 #include "tusb.h"
-static inline void midi_write(const uint8_t *pkt) { tud_midi_packet_write(pkt); }
+static inline void midi_write(const uint8_t *pkt) {
+    tud_midi_packet_write(pkt);
+}
 #endif
 
 void usb_send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {

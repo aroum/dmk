@@ -26,9 +26,11 @@ void oneshot_init(void) {
 }
 
 bool oneshot_should_consume(uint32_t key) {
-    if (key == 0 || (key >= L_0 && key <= L_15) || (key >= 0xE0 && key <= 0xE7)) return false;
+    if (key == 0 || (key >= L_0 && key <= L_15) || (key >= 0xE0 && key <= 0xE7))
+        return false;
     uint32_t pfx = key & 0xFF000000;
-    if (pfx == DMK_MO || pfx == DMK_TG || pfx == DMK_OS || pfx == DMK_HT) return false;
+    if (pfx == DMK_MO || pfx == DMK_TG || pfx == DMK_OS || pfx == DMK_HT)
+        return false;
     return !(key == K_LYRUP || key == K_LYRDWN || key == K_NULL);
 }
 
@@ -41,8 +43,10 @@ void oneshot_send_lazy_mods(void) {
 }
 
 static void deactivate_os(OneShotState *os) {
-    if (os->is_mod) keyboard_send_modifiers(os->mod_mask, false);
-    else layers_off(os->layer);
+    if (os->is_mod)
+        keyboard_send_modifiers(os->mod_mask, false);
+    else
+        layers_off(os->layer);
     memset(os, 0, sizeof(OneShotState));
 }
 
@@ -50,21 +54,25 @@ void oneshot_on_tap_key(void) {
     for (int i = 0; i < MAX_OS_TRACKERS; i++) {
         if (os_trackers[i].active) {
             os_trackers[i].key_pressed = true;
-            if (os_trackers[i].pending_release) deactivate_os(&os_trackers[i]);
+            if (os_trackers[i].pending_release)
+                deactivate_os(&os_trackers[i]);
         }
     }
 }
 
 void oneshot_on_key_press(uint32_t key) {
-    if (!oneshot_should_consume(key)) return;
+    if (!oneshot_should_consume(key))
+        return;
     oneshot_send_lazy_mods();
 
     for (int i = 0; i < MAX_OS_TRACKERS; i++) {
         if (os_trackers[i].active) {
             os_trackers[i].key_pressed = true;
             if (os_trackers[i].pending_release) {
-                if (os_trackers[i].is_mod && ONESHOT_QUICK_RELEASE) deactivate_os(&os_trackers[i]);
-                else os_trackers[i].active = false;
+                if (os_trackers[i].is_mod && ONESHOT_QUICK_RELEASE)
+                    deactivate_os(&os_trackers[i]);
+                else
+                    os_trackers[i].active = false;
             }
         }
     }
@@ -73,7 +81,8 @@ void oneshot_on_key_press(uint32_t key) {
 void oneshot_on_key_release(void) {
     for (int i = 0; i < MAX_OS_TRACKERS; i++) {
         if (os_trackers[i].pending_release && !os_trackers[i].active) {
-            if (!os_trackers[i].is_mod || !ONESHOT_QUICK_RELEASE) deactivate_os(&os_trackers[i]);
+            if (!os_trackers[i].is_mod || !ONESHOT_QUICK_RELEASE)
+                deactivate_os(&os_trackers[i]);
         }
     }
 }
@@ -89,7 +98,8 @@ TickType_t oneshot_check_timeouts(TickType_t now) {
                 deactivate_os(&os_trackers[i]);
             } else {
                 TickType_t rem = timeout_ticks - elapsed;
-                if (rem < min_remaining) min_remaining = rem;
+                if (rem < min_remaining)
+                    min_remaining = rem;
             }
         }
     }
@@ -107,7 +117,8 @@ static int find_os_slot(bool is_mod, uint8_t target) {
 }
 
 bool oneshot_process_event(uint32_t key, bool pressed) {
-    if ((key & 0xFF000000) != DMK_OS) return false;
+    if ((key & 0xFF000000) != DMK_OS)
+        return false;
 
     bool is_mod = (key & 0x10000) != 0;
     uint8_t target = is_mod ? ((key >> 8) & 0xFF) : (key & 0xFF);
@@ -116,16 +127,23 @@ bool oneshot_process_event(uint32_t key, bool pressed) {
     if (pressed) {
         if (idx == -1) {
             for (int i = 0; i < MAX_OS_TRACKERS; i++) {
-                if (!os_trackers[i].active && !os_trackers[i].pending_release) { idx = i; break; }
+                if (!os_trackers[i].active && !os_trackers[i].pending_release) {
+                    idx = i;
+                    break;
+                }
             }
         }
         if (idx != -1) {
-            os_trackers[idx] = (OneShotState){
-                .activate_time = xTaskGetTickCount(), .active = true, .pending_release = false,
-                .is_mod = is_mod, .key_pressed = false, .mod_mask = target, .layer = target
-            };
+            os_trackers[idx] = (OneShotState){.activate_time = xTaskGetTickCount(),
+                                              .active = true,
+                                              .pending_release = false,
+                                              .is_mod = is_mod,
+                                              .key_pressed = false,
+                                              .mod_mask = target,
+                                              .layer = target};
             if (is_mod) {
-                if (!ONESHOT_LAZY) keyboard_send_modifiers(target, true);
+                if (!ONESHOT_LAZY)
+                    keyboard_send_modifiers(target, true);
             } else {
                 layers_on(target);
             }

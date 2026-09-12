@@ -50,15 +50,16 @@ You can set a default microcontroller for a keyboard directly in its `config.h`.
 ```
 
 Example build with the default microcontroller:
+
 ```bash
 ./build_all.sh -b dozateno
 ```
 
 When building for an alternative controller, the command-line `--mcu` flag always takes precedence:
+
 ```bash
 ./build_all.sh -b dozateno --mcu rp2040
 ```
-
 
 ---
 
@@ -508,6 +509,7 @@ In `config.h`, define the channel A and channel B pin arrays for all connected e
 ```
 
 For multiple encoders:
+
 ```c
 #define ENCODER_PINS_A { GPIO14, GPIO16 }
 #define ENCODER_PINS_B { GPIO15, GPIO17 }
@@ -529,7 +531,7 @@ const uint32_t encoder_keymap[][NUM_ENCODERS][2] = {
 
 - When rotated, the firmware dispatches the active layer's keycode as a debounced pulse (20 ms) and releases it.
 - Keycodes fall through transparently (`K_TRNS` / `0`) to lower active layers.
-- When `#define VIAL` is enabled, encoders can be dynamically remapped directly in the *Encoders* tab in Vial GUI and saved to persistent memory.
+- When `#define VIAL` is enabled, encoders can be dynamically remapped directly in the _Encoders_ tab in Vial GUI and saved to persistent memory.
 
 ---
 
@@ -560,6 +562,7 @@ DMK features virtual USB mouse emulation with configurable acceleration physics.
 You can manage all your keyboards, keymaps, and custom modules in an isolated standalone Git repository (e.g. `my-dmk-config` similar to `zmk-config`), while GitHub Actions automatically builds firmware binaries upon each commit.
 
 ### 1. Recommended User Repository Structure
+
 ```text
 my-dmk-config/
 ├── .github/
@@ -578,6 +581,7 @@ my-dmk-config/
 ```
 
 ### 2. GitHub Actions Workflow Template (`.github/workflows/build.yml`)
+
 ```yaml
 name: Build DMK Firmware
 
@@ -665,4 +669,3 @@ jobs:
             build/dmk_*.uf2
           if-no-files-found: error
 ```
-

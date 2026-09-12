@@ -567,56 +567,55 @@
 #define K_WFAV DMK_CONSUMER_AC_BOOKMARKS
 
 // Mousekeys (Virtual USB HID Mouse Emulation)
-#define HID_KEY_MOUSE_UP           0xF0
-#define HID_KEY_MOUSE_DOWN         0xF1
-#define HID_KEY_MOUSE_LEFT         0xF2
-#define HID_KEY_MOUSE_RIGHT        0xF3
-#define HID_KEY_MOUSE_BTN1         0xF4
-#define HID_KEY_MOUSE_BTN2         0xF5
-#define HID_KEY_MOUSE_BTN3         0xF6
-#define HID_KEY_MOUSE_BTN4         0xF7
-#define HID_KEY_MOUSE_BTN5         0xF8
-#define HID_KEY_MOUSE_WH_UP        0xF9
-#define HID_KEY_MOUSE_WH_DOWN      0xFA
-#define HID_KEY_MOUSE_WH_LEFT      0xFB
-#define HID_KEY_MOUSE_WH_RIGHT     0xFC
-#define HID_KEY_MOUSE_ACCEL0       0xFD
-#define HID_KEY_MOUSE_ACCEL1       0xFE
-#define HID_KEY_MOUSE_ACCEL2       0xFF
+#define HID_KEY_MOUSE_UP 0xF0
+#define HID_KEY_MOUSE_DOWN 0xF1
+#define HID_KEY_MOUSE_LEFT 0xF2
+#define HID_KEY_MOUSE_RIGHT 0xF3
+#define HID_KEY_MOUSE_BTN1 0xF4
+#define HID_KEY_MOUSE_BTN2 0xF5
+#define HID_KEY_MOUSE_BTN3 0xF6
+#define HID_KEY_MOUSE_BTN4 0xF7
+#define HID_KEY_MOUSE_BTN5 0xF8
+#define HID_KEY_MOUSE_WH_UP 0xF9
+#define HID_KEY_MOUSE_WH_DOWN 0xFA
+#define HID_KEY_MOUSE_WH_LEFT 0xFB
+#define HID_KEY_MOUSE_WH_RIGHT 0xFC
+#define HID_KEY_MOUSE_ACCEL0 0xFD
+#define HID_KEY_MOUSE_ACCEL1 0xFE
+#define HID_KEY_MOUSE_ACCEL2 0xFF
 
-#define K_MS_UP                    HID_KEY_MOUSE_UP
-#define K_MS_U                     HID_KEY_MOUSE_UP
-#define K_MS_DOWN                  HID_KEY_MOUSE_DOWN
-#define K_MS_D                     HID_KEY_MOUSE_DOWN
-#define K_MS_LEFT                  HID_KEY_MOUSE_LEFT
-#define K_MS_L                     HID_KEY_MOUSE_LEFT
-#define K_MS_RIGHT                 HID_KEY_MOUSE_RIGHT
-#define K_MS_R                     HID_KEY_MOUSE_RIGHT
-#define K_MS_BTN1                  HID_KEY_MOUSE_BTN1
-#define K_BTN1                     HID_KEY_MOUSE_BTN1
-#define K_MS_BTN2                  HID_KEY_MOUSE_BTN2
-#define K_BTN2                     HID_KEY_MOUSE_BTN2
-#define K_MS_BTN3                  HID_KEY_MOUSE_BTN3
-#define K_BTN3                     HID_KEY_MOUSE_BTN3
-#define K_MS_BTN4                  HID_KEY_MOUSE_BTN4
-#define K_BTN4                     HID_KEY_MOUSE_BTN4
-#define K_MS_BTN5                  HID_KEY_MOUSE_BTN5
-#define K_BTN5                     HID_KEY_MOUSE_BTN5
-#define K_MS_WH_UP                 HID_KEY_MOUSE_WH_UP
-#define K_WH_U                     HID_KEY_MOUSE_WH_UP
-#define K_MS_WH_DOWN               HID_KEY_MOUSE_WH_DOWN
-#define K_WH_D                     HID_KEY_MOUSE_WH_DOWN
-#define K_MS_WH_LEFT               HID_KEY_MOUSE_WH_LEFT
-#define K_WH_L                     HID_KEY_MOUSE_WH_LEFT
-#define K_MS_WH_RIGHT              HID_KEY_MOUSE_WH_RIGHT
-#define K_WH_R                     HID_KEY_MOUSE_WH_RIGHT
-#define K_MS_ACCEL0                HID_KEY_MOUSE_ACCEL0
-#define K_ACL0                     HID_KEY_MOUSE_ACCEL0
-#define K_MS_ACCEL1                HID_KEY_MOUSE_ACCEL1
-#define K_ACL1                     HID_KEY_MOUSE_ACCEL1
-#define K_MS_ACCEL2                HID_KEY_MOUSE_ACCEL2
-#define K_ACL2                     HID_KEY_MOUSE_ACCEL2
-
+#define K_MS_UP HID_KEY_MOUSE_UP
+#define K_MS_U HID_KEY_MOUSE_UP
+#define K_MS_DOWN HID_KEY_MOUSE_DOWN
+#define K_MS_D HID_KEY_MOUSE_DOWN
+#define K_MS_LEFT HID_KEY_MOUSE_LEFT
+#define K_MS_L HID_KEY_MOUSE_LEFT
+#define K_MS_RIGHT HID_KEY_MOUSE_RIGHT
+#define K_MS_R HID_KEY_MOUSE_RIGHT
+#define K_MS_BTN1 HID_KEY_MOUSE_BTN1
+#define K_BTN1 HID_KEY_MOUSE_BTN1
+#define K_MS_BTN2 HID_KEY_MOUSE_BTN2
+#define K_BTN2 HID_KEY_MOUSE_BTN2
+#define K_MS_BTN3 HID_KEY_MOUSE_BTN3
+#define K_BTN3 HID_KEY_MOUSE_BTN3
+#define K_MS_BTN4 HID_KEY_MOUSE_BTN4
+#define K_BTN4 HID_KEY_MOUSE_BTN4
+#define K_MS_BTN5 HID_KEY_MOUSE_BTN5
+#define K_BTN5 HID_KEY_MOUSE_BTN5
+#define K_MS_WH_UP HID_KEY_MOUSE_WH_UP
+#define K_WH_U HID_KEY_MOUSE_WH_UP
+#define K_MS_WH_DOWN HID_KEY_MOUSE_WH_DOWN
+#define K_WH_D HID_KEY_MOUSE_WH_DOWN
+#define K_MS_WH_LEFT HID_KEY_MOUSE_WH_LEFT
+#define K_WH_L HID_KEY_MOUSE_WH_LEFT
+#define K_MS_WH_RIGHT HID_KEY_MOUSE_WH_RIGHT
+#define K_WH_R HID_KEY_MOUSE_WH_RIGHT
+#define K_MS_ACCEL0 HID_KEY_MOUSE_ACCEL0
+#define K_ACL0 HID_KEY_MOUSE_ACCEL0
+#define K_MS_ACCEL1 HID_KEY_MOUSE_ACCEL1
+#define K_ACL1 HID_KEY_MOUSE_ACCEL1
+#define K_MS_ACCEL2 HID_KEY_MOUSE_ACCEL2
+#define K_ACL2 HID_KEY_MOUSE_ACCEL2
 
 // Fn Keys Aliases (Momentary Layer Switches)
 #define K_FN0 MO(0)
@@ -887,15 +886,15 @@ typedef struct {
 
 #define GP_BTN(n) (GP_KEY_BASE + (n) - 1) // n from 1 to 32
 
-#define GP_BTN1  (GP_KEY_BASE + 0)
-#define GP_BTN2  (GP_KEY_BASE + 1)
-#define GP_BTN3  (GP_KEY_BASE + 2)
-#define GP_BTN4  (GP_KEY_BASE + 3)
-#define GP_BTN5  (GP_KEY_BASE + 4)
-#define GP_BTN6  (GP_KEY_BASE + 5)
-#define GP_BTN7  (GP_KEY_BASE + 6)
-#define GP_BTN8  (GP_KEY_BASE + 7)
-#define GP_BTN9  (GP_KEY_BASE + 8)
+#define GP_BTN1 (GP_KEY_BASE + 0)
+#define GP_BTN2 (GP_KEY_BASE + 1)
+#define GP_BTN3 (GP_KEY_BASE + 2)
+#define GP_BTN4 (GP_KEY_BASE + 3)
+#define GP_BTN5 (GP_KEY_BASE + 4)
+#define GP_BTN6 (GP_KEY_BASE + 5)
+#define GP_BTN7 (GP_KEY_BASE + 6)
+#define GP_BTN8 (GP_KEY_BASE + 7)
+#define GP_BTN9 (GP_KEY_BASE + 8)
 #define GP_BTN10 (GP_KEY_BASE + 9)
 #define GP_BTN11 (GP_KEY_BASE + 10)
 #define GP_BTN12 (GP_KEY_BASE + 11)
@@ -921,26 +920,26 @@ typedef struct {
 #define GP_BTN32 (GP_KEY_BASE + 31)
 
 // Standard Controller Aliases
-#define GP_A      GP_BTN1
-#define GP_B      GP_BTN2
-#define GP_X      GP_BTN3
-#define GP_Y      GP_BTN4
-#define GP_LB     GP_BTN5
-#define GP_RB     GP_BTN6
+#define GP_A GP_BTN1
+#define GP_B GP_BTN2
+#define GP_X GP_BTN3
+#define GP_Y GP_BTN4
+#define GP_LB GP_BTN5
+#define GP_RB GP_BTN6
 #define GP_SELECT GP_BTN7
-#define GP_BACK   GP_BTN7
-#define GP_START  GP_BTN8
-#define GP_HOME   GP_BTN9
-#define GP_GUIDE  GP_BTN9
-#define GP_L3     GP_BTN10
+#define GP_BACK GP_BTN7
+#define GP_START GP_BTN8
+#define GP_HOME GP_BTN9
+#define GP_GUIDE GP_BTN9
+#define GP_L3 GP_BTN10
 #define GP_THUMBL GP_BTN10
-#define GP_R3     GP_BTN11
+#define GP_R3 GP_BTN11
 #define GP_THUMBR GP_BTN11
 
 // D-Pad Direction Keycodes
-#define GP_DPAD_UP    (GP_KEY_BASE + 32)
-#define GP_DPAD_DOWN  (GP_KEY_BASE + 33)
-#define GP_DPAD_LEFT  (GP_KEY_BASE + 34)
+#define GP_DPAD_UP (GP_KEY_BASE + 32)
+#define GP_DPAD_DOWN (GP_KEY_BASE + 33)
+#define GP_DPAD_LEFT (GP_KEY_BASE + 34)
 #define GP_DPAD_RIGHT (GP_KEY_BASE + 35)
 
 // Analog Stick Simulation Keycodes (Digital Key to Axis)
@@ -954,7 +953,7 @@ typedef struct {
 #define GP_RY_U (GP_KEY_BASE + 42) // Right Stick Up
 #define GP_RY_D (GP_KEY_BASE + 43) // Right Stick Down
 
-#define GP_LT   (GP_KEY_BASE + 44) // Left Trigger
-#define GP_RT   (GP_KEY_BASE + 45) // Right Trigger
+#define GP_LT (GP_KEY_BASE + 44) // Left Trigger
+#define GP_RT (GP_KEY_BASE + 45) // Right Trigger
 
 #endif

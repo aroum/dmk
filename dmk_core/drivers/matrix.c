@@ -118,16 +118,16 @@ static const pin_t rows_gpios[] = ROW_PINS;
 
 // Unified drive and sense pin abstractions to deduplicate ROW2COL and COL2ROW logic
 #if (MATRIX_TYPE == ROW2COL)
-#define MATRIX_DRV_PINS     rows_gpios
-#define MATRIX_NUM_DRV      CUR_NUM_ROWS
-#define MATRIX_SENSE_PINS   columns_gpios
-#define MATRIX_NUM_SENSE    CUR_NUM_COLS
+#define MATRIX_DRV_PINS rows_gpios
+#define MATRIX_NUM_DRV CUR_NUM_ROWS
+#define MATRIX_SENSE_PINS columns_gpios
+#define MATRIX_NUM_SENSE CUR_NUM_COLS
 #define MATRIX_DISPATCH_KEY(drv, sense, state) matrix_update_key((uint8_t)(sense), (uint8_t)(drv), state)
 #elif (MATRIX_TYPE == COL2ROW)
-#define MATRIX_DRV_PINS     columns_gpios
-#define MATRIX_NUM_DRV      CUR_NUM_COLS
-#define MATRIX_SENSE_PINS   rows_gpios
-#define MATRIX_NUM_SENSE    CUR_NUM_ROWS
+#define MATRIX_DRV_PINS columns_gpios
+#define MATRIX_NUM_DRV CUR_NUM_COLS
+#define MATRIX_SENSE_PINS rows_gpios
+#define MATRIX_NUM_SENSE CUR_NUM_ROWS
 #define MATRIX_DISPATCH_KEY(drv, sense, state) matrix_update_key((uint8_t)(drv), (uint8_t)(sense), state)
 #endif
 

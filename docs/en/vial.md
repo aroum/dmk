@@ -85,19 +85,19 @@ While the Vial interface shows a full list of QMK animations, `dmk` implements a
 
 Here is the current implementation status of various Vial / VIA features in `dmk`:
 
-| Vial / VIA Feature         | Status in dmk   | Description / Limitations                                                                                        |
-| -------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Dynamic Keymap**         | 🟢 Supported     | Configurable in real-time. Changes persist in EEPROM (currently supported on Milandr MCUs) when saved.           |
-| **Layers**                 | 🟢 Supported     | Up to 16 independent layers are supported.                                                                       |
-| **Matrix Tester**          | 🟢 Supported     | Works out of the box using the standard VIA/Vial protocol.                                                       |
-| **RGB Lighting**           | 🟢 Supported     | Supports toggle, brightness, animation speed, and 8 standard QMK effects/animations.                             |
-| **Security (Lock/Unlock)** | 🟡 Simplified    | Keymap locking features are bypassed (the keyboard is always unlocked).                                          |
-| **Macros**                 | 🟢 Supported     | Dynamic Macro configuration (up to 16 macros, 2048 bytes buffer) supported via the Vial GUI.                     |
+| Vial / VIA Feature         | Status in dmk    | Description / Limitations                                                                                                                                                                    |
+| -------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dynamic Keymap**         | 🟢 Supported     | Configurable in real-time. Changes persist in EEPROM (currently supported on Milandr MCUs) when saved.                                                                                       |
+| **Layers**                 | 🟢 Supported     | Up to 16 independent layers are supported.                                                                                                                                                   |
+| **Matrix Tester**          | 🟢 Supported     | Works out of the box using the standard VIA/Vial protocol.                                                                                                                                   |
+| **RGB Lighting**           | 🟢 Supported     | Supports toggle, brightness, animation speed, and 8 standard QMK effects/animations.                                                                                                         |
+| **Security (Lock/Unlock)** | 🟡 Simplified    | Keymap locking features are bypassed (the keyboard is always unlocked).                                                                                                                      |
+| **Macros**                 | 🟢 Supported     | Dynamic Macro configuration (up to 16 macros, 2048 bytes buffer) supported via the Vial GUI.                                                                                                 |
 | **Mousekeys**              | 🟢 Supported     | Mouse buttons, 2D cursor motion (with smooth acceleration physics), and wheel scrolling (vertical & horizontal pan) assignable in Vial GUI (v6 protocol, `0xED01`–`0xED13` mapped to `dmk`). |
-| **Encoders**               | 🟢 Supported     | Rotary encoders (clockwise & counter-clockwise actions per layer) configurable in Vial GUI via `vial_get_encoder` and `vial_set_encoder` with EEPROM persistence. |
-| **Tap Dance**              | ❌ Not Supported | Dynamic Tap Dance configuration via the Vial GUI is disabled.                                                    |
-| **Combos**                 | 🟢 Supported     | Dynamic Combo (chording) configuration (up to 8 combos, up to 4 keys per combo) supported via the Vial GUI.      |
-| **Key Overrides**          | ❌ Not Supported | Key override features are disabled.                                                                              |
+| **Encoders**               | 🟢 Supported     | Rotary encoders (clockwise & counter-clockwise actions per layer) configurable in Vial GUI via `vial_get_encoder` and `vial_set_encoder` with EEPROM persistence.                            |
+| **Tap Dance**              | ❌ Not Supported | Dynamic Tap Dance configuration via the Vial GUI is disabled.                                                                                                                                |
+| **Combos**                 | 🟢 Supported     | Dynamic Combo (chording) configuration (up to 8 combos, up to 4 keys per combo) supported via the Vial GUI.                                                                                  |
+| **Key Overrides**          | ❌ Not Supported | Key override features are disabled.                                                                                                                                                          |
 
 ---
 

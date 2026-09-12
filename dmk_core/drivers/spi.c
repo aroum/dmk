@@ -1,5 +1,5 @@
-#include "hal_spi.h"
 #include "hal_gpio.h"
+#include "hal_spi.h"
 #include <string.h>
 
 // =============================================================================
@@ -30,19 +30,22 @@ bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t m
 }
 
 bool hal_spi_write(const uint8_t *tx, size_t len) {
-    if (!s_spi || !tx || len == 0) return false;
+    if (!s_spi || !tx || len == 0)
+        return false;
     int res = spi_write_blocking(s_spi, tx, len);
     return (res == (int)len);
 }
 
 bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len) {
-    if (!s_spi || !rx || len == 0) return false;
+    if (!s_spi || !rx || len == 0)
+        return false;
     int res = spi_read_blocking(s_spi, rx_fill, rx, len);
     return (res == (int)len);
 }
 
 bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
-    if (!s_spi || len == 0) return false;
+    if (!s_spi || len == 0)
+        return false;
     if (tx && rx) {
         int res = spi_write_read_blocking(s_spi, tx, rx, len);
         return (res == (int)len);
@@ -74,10 +77,18 @@ bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t m
 
     nrf_spim_mode_t spim_mode;
     switch (mode) {
-        case HAL_SPI_MODE_1: spim_mode = NRF_SPIM_MODE_1; break;
-        case HAL_SPI_MODE_2: spim_mode = NRF_SPIM_MODE_2; break;
-        case HAL_SPI_MODE_3: spim_mode = NRF_SPIM_MODE_3; break;
-        default:             spim_mode = NRF_SPIM_MODE_0; break;
+    case HAL_SPI_MODE_1:
+        spim_mode = NRF_SPIM_MODE_1;
+        break;
+    case HAL_SPI_MODE_2:
+        spim_mode = NRF_SPIM_MODE_2;
+        break;
+    case HAL_SPI_MODE_3:
+        spim_mode = NRF_SPIM_MODE_3;
+        break;
+    default:
+        spim_mode = NRF_SPIM_MODE_0;
+        break;
     }
     nrf_spim_configure(NRF_SPIM2, spim_mode, NRF_SPIM_BIT_ORDER_MSB_FIRST);
 
@@ -98,8 +109,10 @@ bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t m
 }
 
 bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
-    if (!s_spim_inited || len == 0) return false;
-    if (len > sizeof(s_spim_tx_buf)) len = sizeof(s_spim_tx_buf);
+    if (!s_spim_inited || len == 0)
+        return false;
+    if (len > sizeof(s_spim_tx_buf))
+        len = sizeof(s_spim_tx_buf);
 
     if (tx) {
         memcpy(s_spim_tx_buf, tx, len);
@@ -171,7 +184,8 @@ bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t m
 }
 
 bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
-    if (s_sck == 0xFF || len == 0) return false;
+    if (s_sck == 0xFF || len == 0)
+        return false;
     bool cpol = (s_mode == HAL_SPI_MODE_2 || s_mode == HAL_SPI_MODE_3);
     bool cpha = (s_mode == HAL_SPI_MODE_1 || s_mode == HAL_SPI_MODE_3);
 
@@ -184,7 +198,8 @@ bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
 
             if (!cpha) {
                 // CPOL: setup data before first edge
-                if (s_mosi != 0xFF && s_mosi != 255) hal_gpio_put(s_mosi, out_bit);
+                if (s_mosi != 0xFF && s_mosi != 255)
+                    hal_gpio_put(s_mosi, out_bit);
                 hal_sleep_us(s_spi_dly_us);
                 hal_gpio_put(s_sck, !cpol); // Leading edge
                 hal_sleep_us(s_spi_dly_us);
@@ -195,7 +210,8 @@ bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
             } else {
                 // CPHA=1: leading edge first, then data setup, sample on trailing edge
                 hal_gpio_put(s_sck, !cpol);
-                if (s_mosi != 0xFF && s_mosi != 255) hal_gpio_put(s_mosi, out_bit);
+                if (s_mosi != 0xFF && s_mosi != 255)
+                    hal_gpio_put(s_mosi, out_bit);
                 hal_sleep_us(s_spi_dly_us);
                 hal_gpio_put(s_sck, cpol);
                 hal_sleep_us(s_spi_dly_us);
@@ -204,7 +220,8 @@ bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
                 }
             }
         }
-        if (rx) rx[i] = rxb;
+        if (rx)
+            rx[i] = rxb;
     }
     return true;
 }
@@ -222,8 +239,29 @@ bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len) {
 // 4. Mock / Host build
 // =============================================================================
 #else
-bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode) { (void)sck; (void)mosi; (void)miso; (void)freq_hz; (void)mode; return true; }
-bool hal_spi_write(const uint8_t *tx, size_t len) { (void)tx; (void)len; return true; }
-bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len) { (void)rx_fill; (void)rx; (void)len; return true; }
-bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) { (void)tx; (void)rx; (void)len; return true; }
+bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode) {
+    (void)sck;
+    (void)mosi;
+    (void)miso;
+    (void)freq_hz;
+    (void)mode;
+    return true;
+}
+bool hal_spi_write(const uint8_t *tx, size_t len) {
+    (void)tx;
+    (void)len;
+    return true;
+}
+bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len) {
+    (void)rx_fill;
+    (void)rx;
+    (void)len;
+    return true;
+}
+bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
+    (void)tx;
+    (void)rx;
+    (void)len;
+    return true;
+}
 #endif

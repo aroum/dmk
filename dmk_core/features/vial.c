@@ -104,80 +104,117 @@ enum {
 
 // Helper function to map DMK mouse keycodes to Vial Protocol v6 keycodes
 static uint8_t to_via_mouse_keycode(uint8_t dmk_kc) {
-    if (dmk_kc >= HID_KEY_MOUSE_UP && dmk_kc <= HID_KEY_MOUSE_BTN5) return 0xCD + (dmk_kc - HID_KEY_MOUSE_UP);
-    if (dmk_kc >= HID_KEY_MOUSE_WH_UP && dmk_kc <= HID_KEY_MOUSE_ACCEL2) return 0xD9 + (dmk_kc - HID_KEY_MOUSE_WH_UP);
+    if (dmk_kc >= HID_KEY_MOUSE_UP && dmk_kc <= HID_KEY_MOUSE_BTN5)
+        return 0xCD + (dmk_kc - HID_KEY_MOUSE_UP);
+    if (dmk_kc >= HID_KEY_MOUSE_WH_UP && dmk_kc <= HID_KEY_MOUSE_ACCEL2)
+        return 0xD9 + (dmk_kc - HID_KEY_MOUSE_WH_UP);
     return dmk_kc;
 }
 
 // Helper function to map Vial Protocol v6 mouse keycodes to DMK mouse keycodes
 static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
-    if (via_kc >= 0xCD && via_kc <= 0xD5) return HID_KEY_MOUSE_UP + (via_kc - 0xCD);
-    if (via_kc >= 0xD9 && via_kc <= 0xDF) return HID_KEY_MOUSE_WH_UP + (via_kc - 0xD9);
+    if (via_kc >= 0xCD && via_kc <= 0xD5)
+        return HID_KEY_MOUSE_UP + (via_kc - 0xCD);
+    if (via_kc >= 0xD9 && via_kc <= 0xDF)
+        return HID_KEY_MOUSE_WH_UP + (via_kc - 0xD9);
     return via_kc;
 }
 
 static uint8_t to_via_mods(uint8_t dmk_mod) {
     uint8_t via_mod = 0;
-    if (dmk_mod & MOD_LCTRL) via_mod |= 0x01;
-    if (dmk_mod & MOD_LSHIFT) via_mod |= 0x02;
-    if (dmk_mod & MOD_LALT) via_mod |= 0x04;
-    if (dmk_mod & MOD_LGUI) via_mod |= 0x08;
-    if (dmk_mod & MOD_RCTRL) via_mod |= 0x11;
-    if (dmk_mod & MOD_RSHIFT) via_mod |= 0x12;
-    if (dmk_mod & MOD_RALT) via_mod |= 0x14;
-    if (dmk_mod & MOD_RGUI) via_mod |= 0x18;
+    if (dmk_mod & MOD_LCTRL)
+        via_mod |= 0x01;
+    if (dmk_mod & MOD_LSHIFT)
+        via_mod |= 0x02;
+    if (dmk_mod & MOD_LALT)
+        via_mod |= 0x04;
+    if (dmk_mod & MOD_LGUI)
+        via_mod |= 0x08;
+    if (dmk_mod & MOD_RCTRL)
+        via_mod |= 0x11;
+    if (dmk_mod & MOD_RSHIFT)
+        via_mod |= 0x12;
+    if (dmk_mod & MOD_RALT)
+        via_mod |= 0x14;
+    if (dmk_mod & MOD_RGUI)
+        via_mod |= 0x18;
     return via_mod;
 }
 
 static uint8_t from_via_mods(uint8_t via_mod) {
     uint8_t dmk_mod = 0;
-    if (via_mod & 0x01) dmk_mod |= MOD_LCTRL;
-    if (via_mod & 0x02) dmk_mod |= MOD_LSHIFT;
-    if (via_mod & 0x04) dmk_mod |= MOD_LALT;
-    if (via_mod & 0x08) dmk_mod |= MOD_LGUI;
-    if (via_mod & 0x11) dmk_mod |= MOD_RCTRL;
-    if (via_mod & 0x12) dmk_mod |= MOD_RSHIFT;
-    if (via_mod & 0x14) dmk_mod |= MOD_RALT;
-    if (via_mod & 0x18) dmk_mod |= MOD_RGUI;
+    if (via_mod & 0x01)
+        dmk_mod |= MOD_LCTRL;
+    if (via_mod & 0x02)
+        dmk_mod |= MOD_LSHIFT;
+    if (via_mod & 0x04)
+        dmk_mod |= MOD_LALT;
+    if (via_mod & 0x08)
+        dmk_mod |= MOD_LGUI;
+    if (via_mod & 0x11)
+        dmk_mod |= MOD_RCTRL;
+    if (via_mod & 0x12)
+        dmk_mod |= MOD_RSHIFT;
+    if (via_mod & 0x14)
+        dmk_mod |= MOD_RALT;
+    if (via_mod & 0x18)
+        dmk_mod |= MOD_RGUI;
     return dmk_mod;
 }
 
 // Helper function to map DMK 32-bit keycodes to VIA 16-bit keycodes
 uint16_t to_via_keycode(uint32_t dmk_key) {
-    if (dmk_key == K_TRNS) return 0x0001;
-    if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_SPD) return 0x7820 + (dmk_key - K_RGB_TOGG);
-    if (dmk_key == K_BOOTLOADER) return 0x7C00;
-    if (dmk_key >= 0xC0 && dmk_key <= 0xDF) return 0x7700 + (dmk_key - 0xC0);
-    if ((dmk_key & 0xFF000000) == DMK_MO) return 0x5220 | (dmk_key & 0xFF);
-    if ((dmk_key & 0xFF000000) == DMK_TG) return 0x5260 | (dmk_key & 0xFF);
+    if (dmk_key == K_TRNS)
+        return 0x0001;
+    if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_SPD)
+        return 0x7820 + (dmk_key - K_RGB_TOGG);
+    if (dmk_key == K_BOOTLOADER)
+        return 0x7C00;
+    if (dmk_key >= 0xC0 && dmk_key <= 0xDF)
+        return 0x7700 + (dmk_key - 0xC0);
+    if ((dmk_key & 0xFF000000) == DMK_MO)
+        return 0x5220 | (dmk_key & 0xFF);
+    if ((dmk_key & 0xFF000000) == DMK_TG)
+        return 0x5260 | (dmk_key & 0xFF);
 
     if ((dmk_key & 0xFF000000) == DMK_HT) {
         uint8_t layer_or_mod = (dmk_key >> 8) & 0xFF;
         uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
-        return (layer_or_mod < 32) ? (0x4000 | (layer_or_mod << 8) | kc) : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
+        return (layer_or_mod < 32) ? (0x4000 | (layer_or_mod << 8) | kc)
+                                   : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
     }
     if ((dmk_key & 0xFF000000) == DMK_MK) {
         return 0x0100 | (to_via_mods((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
     }
-    if (dmk_key >= L_0 && dmk_key <= L_15) return 0x5220 | (dmk_key - L_0);
+    if (dmk_key >= L_0 && dmk_key <= L_15)
+        return 0x5220 | (dmk_key - L_0);
     if ((dmk_key >= 0x7100 && dmk_key <= 0x71FF) || (dmk_key >= 0x7A00 && dmk_key <= 0x7AFF) ||
-        (dmk_key >= 0x7E00 && dmk_key <= 0x7F3F)) return dmk_key;
-    if (dmk_key >= HID_KEY_MOUSE_UP && dmk_key <= HID_KEY_MOUSE_ACCEL2) return to_via_mouse_keycode((uint8_t)dmk_key);
+        (dmk_key >= 0x7E00 && dmk_key <= 0x7F3F))
+        return dmk_key;
+    if (dmk_key >= HID_KEY_MOUSE_UP && dmk_key <= HID_KEY_MOUSE_ACCEL2)
+        return to_via_mouse_keycode((uint8_t)dmk_key);
     return (dmk_key <= 0xFF) ? dmk_key : 0x0000;
 }
 
 // Helper function to map VIA 16-bit keycodes to DMK 32-bit keycodes
 uint32_t from_via_keycode(uint16_t via_key) {
-    if (via_key == 0x0000) return K_NULL;
-    if (via_key == 0x0001) return K_TRNS;
+    if (via_key == 0x0000)
+        return K_NULL;
+    if (via_key == 0x0001)
+        return K_TRNS;
     if ((via_key >= 0x7100 && via_key <= 0x71FF) || (via_key >= 0x7A00 && via_key <= 0x7AFF) ||
-        (via_key >= 0x7E00 && via_key <= 0x7F3F)) return via_key;
-    if (via_key >= 0x7820 && via_key <= 0x782A) return K_RGB_TOGG + (via_key - 0x7820);
-    if (via_key == 0x7C00 || via_key == 0x5C00) return K_BOOTLOADER;
-    if (via_key >= 0x7700 && via_key <= 0x771F) return 0xC0 + (via_key - 0x7700);
+        (via_key >= 0x7E00 && via_key <= 0x7F3F))
+        return via_key;
+    if (via_key >= 0x7820 && via_key <= 0x782A)
+        return K_RGB_TOGG + (via_key - 0x7820);
+    if (via_key == 0x7C00 || via_key == 0x5C00)
+        return K_BOOTLOADER;
+    if (via_key >= 0x7700 && via_key <= 0x771F)
+        return 0xC0 + (via_key - 0x7700);
     if ((via_key >= 0x00CD && via_key <= 0x00D5) || (via_key >= 0x00D9 && via_key <= 0x00DF))
         return from_via_mouse_keycode((uint8_t)via_key);
-    if (via_key >= 0x0002 && via_key <= 0x00FF) return via_key;
+    if (via_key >= 0x0002 && via_key <= 0x00FF)
+        return via_key;
     if (via_key >= 0x0100 && via_key <= 0x1FFF)
         return MK(from_via_mods((via_key >> 8) & 0xFF), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x2000 && via_key <= 0x3FFF)
@@ -225,8 +262,8 @@ static void vial_storage_init_default(void) {
         for (size_t e = 0; e < 4; e++) {
             for (size_t d = 0; d < 2; d++) {
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
-                dynamic_encoder_keymap[l][e][d] = (l < layers && e < encoder_get_count()) ?
-                    encoder_keymap_get_static(l, e, d) : K_TRNS;
+                dynamic_encoder_keymap[l][e][d] =
+                    (l < layers && e < encoder_get_count()) ? encoder_keymap_get_static(l, e, d) : K_TRNS;
 #else
                 dynamic_encoder_keymap[l][e][d] = K_TRNS;
 #endif
@@ -310,7 +347,9 @@ static void vial_eeprom_save(void) {
 #endif
 
 #if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350)
-static inline void vial_eeprom_load(void) { vial_storage_init_default(); }
+static inline void vial_eeprom_load(void) {
+    vial_storage_init_default();
+}
 static inline void vial_eeprom_save(void) {}
 #endif
 
@@ -646,7 +685,8 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
             memset(response, 0xFF, 32);
             response[0] = 1;
             response[1] = 0;
-            if (vial_cmd == VIAL_UNLOCK_POLL) response[2] = 0;
+            if (vial_cmd == VIAL_UNLOCK_POLL)
+                response[2] = 0;
             break;
 
         case VIAL_DYNAMIC_ENTRY_OP: {
@@ -730,21 +770,27 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
 
 static uint16_t ascii_to_keycode(char c, bool *shift) {
     *shift = false;
-    if (c >= 'a' && c <= 'z') return (c - 'a' + 0x04);
-    if (c >= 'A' && c <= 'Z') { *shift = true; return (c - 'A' + 0x04); }
-    if (c >= '1' && c <= '9') return (c - '1' + 0x1E);
-    if (c == '0') return 0x27;
+    if (c >= 'a' && c <= 'z')
+        return (c - 'a' + 0x04);
+    if (c >= 'A' && c <= 'Z') {
+        *shift = true;
+        return (c - 'A' + 0x04);
+    }
+    if (c >= '1' && c <= '9')
+        return (c - '1' + 0x1E);
+    if (c == '0')
+        return 0x27;
 
-    static const struct { char c; uint8_t kc; bool s; } tbl[] = {
-        {' ', 0x2C, 0}, {'\n', 0x28, 0}, {'\t', 0x2B, 0},
-        {'-', 0x2D, 0}, {'_', 0x2D, 1},  {'=', 0x2E, 0}, {'+', 0x2E, 1},
-        {'[', 0x2F, 0}, {'{', 0x2F, 1},  {']', 0x30, 0}, {'}', 0x30, 1},
-        {'\\', 0x31, 0}, {'|', 0x31, 1}, {';', 0x33, 0}, {':', 0x33, 1},
-        {'\'', 0x34, 0}, {'"', 0x34, 1}, {'`', 0x35, 0}, {'~', 0x35, 1},
-        {',', 0x36, 0}, {'<', 0x36, 1},  {'.', 0x37, 0}, {'>', 0x37, 1},
-        {'/', 0x38, 0}, {'?', 0x38, 1}
-    };
-    for (size_t i = 0; i < sizeof(tbl)/sizeof(tbl[0]); i++) {
+    static const struct {
+        char c;
+        uint8_t kc;
+        bool s;
+    } tbl[] = {{' ', 0x2C, 0},  {'\n', 0x28, 0}, {'\t', 0x2B, 0}, {'-', 0x2D, 0}, {'_', 0x2D, 1},
+               {'=', 0x2E, 0},  {'+', 0x2E, 1},  {'[', 0x2F, 0},  {'{', 0x2F, 1}, {']', 0x30, 0},
+               {'}', 0x30, 1},  {'\\', 0x31, 0}, {'|', 0x31, 1},  {';', 0x33, 0}, {':', 0x33, 1},
+               {'\'', 0x34, 0}, {'"', 0x34, 1},  {'`', 0x35, 0},  {'~', 0x35, 1}, {',', 0x36, 0},
+               {'<', 0x36, 1},  {'.', 0x37, 0},  {'>', 0x37, 1},  {'/', 0x38, 0}, {'?', 0x38, 1}};
+    for (size_t i = 0; i < sizeof(tbl) / sizeof(tbl[0]); i++) {
         if (tbl[i].c == c) {
             *shift = tbl[i].s;
             return tbl[i].kc;

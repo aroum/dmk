@@ -107,4 +107,3 @@ ProMicro alias pins (`PM_0`..`PM_21`) allow writing keyboards compatible with Pr
 | PM_21    | GPIO18 | GPIO18 | P0_31    | PE2     | P1_9   |
 | PM_VCC   | GPIO13 | GPIO13 | P0_13    | PB8     | P0_13  |
 | PM_LED   | GPIO9  | GPIO9  | P0_15    | PB7     | P0_15  |
-

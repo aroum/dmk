@@ -46,8 +46,7 @@ void hal_sleep_us(uint32_t us) {
     sleep_us(us);
 }
 
-void platform_init(void) {
-}
+void platform_init(void) {}
 
 #elif defined(MCU_nrf52840)
 #include "nrf_delay.h"
@@ -98,8 +97,7 @@ void hal_sleep_us(uint32_t us) {
     nrf_delay_us(us);
 }
 
-void platform_init(void) {
-}
+void platform_init(void) {}
 
 #elif defined(MCU_baikal)
 #include "bmcu_cru.h"
@@ -176,8 +174,7 @@ void hal_sleep_us(uint32_t us) {
     __delay_us(us);
 }
 
-void platform_init(void) {
-}
+void platform_init(void) {}
 
 #elif defined(MCU_milandr)
 #include "MDR32FxQI_port.h"
@@ -186,27 +183,34 @@ void platform_init(void) {
 #include "clk.h"
 #include <stddef.h>
 
-static MDR_PORT_TypeDef * const ports[] = { MDR_PORTA, MDR_PORTB, MDR_PORTC, MDR_PORTD, MDR_PORTE, MDR_PORTF };
-static const uint32_t pclks[] = { RST_CLK_PCLK_PORTA, RST_CLK_PCLK_PORTB, RST_CLK_PCLK_PORTC, RST_CLK_PCLK_PORTD, RST_CLK_PCLK_PORTE, RST_CLK_PCLK_PORTF };
+static MDR_PORT_TypeDef *const ports[] = {MDR_PORTA, MDR_PORTB, MDR_PORTC, MDR_PORTD, MDR_PORTE, MDR_PORTF};
+static const uint32_t pclks[] = {RST_CLK_PCLK_PORTA, RST_CLK_PCLK_PORTB, RST_CLK_PCLK_PORTC,
+                                 RST_CLK_PCLK_PORTD, RST_CLK_PCLK_PORTE, RST_CLK_PCLK_PORTF};
 
 static inline bool get_gpio_port(uint8_t gpio, MDR_PORT_TypeDef **port, uint16_t *pin, uint32_t *pclk) {
     uint8_t idx = gpio / 16;
-    if (idx >= sizeof(ports) / sizeof(ports[0])) return false;
-    if (port) *port = ports[idx];
-    if (pin) *pin = (1 << (gpio & 0x0F));
-    if (pclk) *pclk = pclks[idx];
+    if (idx >= sizeof(ports) / sizeof(ports[0]))
+        return false;
+    if (port)
+        *port = ports[idx];
+    if (pin)
+        *pin = (1 << (gpio & 0x0F));
+    if (pclk)
+        *pclk = pclks[idx];
     return true;
 }
 
 void hal_gpio_init(uint8_t gpio) {
     uint32_t pclk;
-    if (get_gpio_port(gpio, NULL, NULL, &pclk)) RST_CLK_PCLKcmd(pclk, ENABLE);
+    if (get_gpio_port(gpio, NULL, NULL, &pclk))
+        RST_CLK_PCLKcmd(pclk, ENABLE);
 }
 
 static void configure_port(uint8_t gpio, uint8_t oe, uint8_t pull_up, uint8_t pull_down) {
     MDR_PORT_TypeDef *port;
     uint16_t pin;
-    if (!get_gpio_port(gpio, &port, &pin, NULL)) return;
+    if (!get_gpio_port(gpio, &port, &pin, NULL))
+        return;
     PORT_InitTypeDef init;
     PORT_StructInit(&init);
     init.PORT_Pin = pin;
@@ -226,25 +230,36 @@ void hal_gpio_set_dir(uint8_t gpio, bool is_output) {
 void hal_gpio_put(uint8_t gpio, bool value) {
     MDR_PORT_TypeDef *port;
     uint16_t pin;
-    if (!get_gpio_port(gpio, &port, &pin, NULL)) return;
-    if (value) PORT_SetBits(port, pin); else PORT_ResetBits(port, pin);
+    if (!get_gpio_port(gpio, &port, &pin, NULL))
+        return;
+    if (value)
+        PORT_SetBits(port, pin);
+    else
+        PORT_ResetBits(port, pin);
 }
 
 bool hal_gpio_get(uint8_t gpio) {
     MDR_PORT_TypeDef *port;
     uint16_t pin;
-    if (!get_gpio_port(gpio, &port, &pin, NULL)) return false;
+    if (!get_gpio_port(gpio, &port, &pin, NULL))
+        return false;
     return PORT_ReadInputDataBit(port, pin) != RESET;
 }
 
 hal_gpio_snapshot_t hal_gpio_snapshot(void) {
     hal_gpio_snapshot_t s = {0};
-    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTA) s.p0 |= (uint32_t)PORT_ReadInputData(MDR_PORTA);
-    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTB) s.p0 |= ((uint32_t)PORT_ReadInputData(MDR_PORTB) << 16);
-    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTC) s.p1 |= (uint32_t)PORT_ReadInputData(MDR_PORTC);
-    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTD) s.p1 |= ((uint32_t)PORT_ReadInputData(MDR_PORTD) << 16);
-    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTE) s.p2 |= (uint32_t)PORT_ReadInputData(MDR_PORTE);
-    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTF) s.p2 |= ((uint32_t)PORT_ReadInputData(MDR_PORTF) << 16);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTA)
+        s.p0 |= (uint32_t)PORT_ReadInputData(MDR_PORTA);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTB)
+        s.p0 |= ((uint32_t)PORT_ReadInputData(MDR_PORTB) << 16);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTC)
+        s.p1 |= (uint32_t)PORT_ReadInputData(MDR_PORTC);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTD)
+        s.p1 |= ((uint32_t)PORT_ReadInputData(MDR_PORTD) << 16);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTE)
+        s.p2 |= (uint32_t)PORT_ReadInputData(MDR_PORTE);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTF)
+        s.p2 |= ((uint32_t)PORT_ReadInputData(MDR_PORTF) << 16);
     return s;
 }
 

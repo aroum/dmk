@@ -326,13 +326,13 @@ By default, `actions/checkout` pulls the default branch of the DMK repository (`
 
 1. **Static branch pinning**: Add the `ref: dev` property to the DMK checkout step:
    ```yaml
-         - name: Checkout DMK Firmware Core
-           uses: actions/checkout@v4
-           with:
-             repository: aroum/dmk
-             ref: dev # Branch, tag, or commit SHA
-             submodules: recursive
-             path: dmk
+   - name: Checkout DMK Firmware Core
+     uses: actions/checkout@v4
+     with:
+       repository: aroum/dmk
+       ref: dev # Branch, tag, or commit SHA
+       submodules: recursive
+       path: dmk
    ```
 
 2. **Interactive selection via GitHub UI (`workflow_dispatch`)**:
@@ -353,13 +353,13 @@ By default, `actions/checkout` pulls the default branch of the DMK repository (`
    ```
    And reference the input in the `actions/checkout` step:
    ```yaml
-         - name: Checkout DMK Firmware Core
-           uses: actions/checkout@v4
-           with:
-             repository: aroum/dmk
-             ref: ${{ github.event.inputs.dmk_ref || 'dev' }}
-             submodules: recursive
-             path: dmk
+   - name: Checkout DMK Firmware Core
+     uses: actions/checkout@v4
+     with:
+       repository: aroum/dmk
+       ref: ${{ github.event.inputs.dmk_ref || 'dev' }}
+       submodules: recursive
+       path: dmk
    ```
 
 A reference template repository is available at `https://github.com/aroum/dmk-config-template`.

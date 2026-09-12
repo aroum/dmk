@@ -1,13 +1,13 @@
-#include "hal_i2c.h"
 #include "hal_gpio.h"
+#include "hal_i2c.h"
 #include <string.h>
 
 // =============================================================================
 // 1. Raspberry Pi RP2040 / RP2350 (Hardware I2C)
 // =============================================================================
 #if defined(MCU_rp2040) || defined(MCU_rp2350)
-#include "hardware/i2c.h"
 #include "hardware/gpio.h"
+#include "hardware/i2c.h"
 
 static i2c_inst_t *s_i2c = NULL;
 
@@ -22,19 +22,22 @@ bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz) {
 }
 
 bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
-    if (!s_i2c || !data || len == 0) return false;
+    if (!s_i2c || !data || len == 0)
+        return false;
     int res = i2c_write_blocking(s_i2c, addr, data, len, false);
     return (res == (int)len);
 }
 
 bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
-    if (!s_i2c || !data || len == 0) return false;
+    if (!s_i2c || !data || len == 0)
+        return false;
     int res = i2c_read_blocking(s_i2c, addr, data, len, false);
     return (res == (int)len);
 }
 
 bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
-    if (!s_i2c) return false;
+    if (!s_i2c)
+        return false;
     if (len == 0 || !data) {
         return hal_i2c_write(addr, &reg, 1);
     }
@@ -46,16 +49,19 @@ bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t le
         return (res == (int)(len + 1));
     } else {
         int res = i2c_write_blocking(s_i2c, addr, &reg, 1, true);
-        if (res != 1) return false;
+        if (res != 1)
+            return false;
         res = i2c_write_blocking(s_i2c, addr, data, len, false);
         return (res == (int)len);
     }
 }
 
 bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
-    if (!s_i2c || !data || len == 0) return false;
+    if (!s_i2c || !data || len == 0)
+        return false;
     int res = i2c_write_blocking(s_i2c, addr, &reg, 1, true);
-    if (res != 1) return false;
+    if (res != 1)
+        return false;
     res = i2c_read_blocking(s_i2c, addr, data, len, false);
     return (res == (int)len);
 }
@@ -88,8 +94,10 @@ bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz) {
 }
 
 bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
-    if (!s_twim_inited || !data || len == 0) return false;
-    if (len > sizeof(s_twim_ram_buf)) len = sizeof(s_twim_ram_buf);
+    if (!s_twim_inited || !data || len == 0)
+        return false;
+    if (len > sizeof(s_twim_ram_buf))
+        len = sizeof(s_twim_ram_buf);
     memcpy(s_twim_ram_buf, data, len);
 
     nrf_twim_address_set(NRF_TWIM0, addr);
@@ -115,7 +123,8 @@ bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
 }
 
 bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
-    if (!s_twim_inited || !data || len == 0) return false;
+    if (!s_twim_inited || !data || len == 0)
+        return false;
     nrf_twim_address_set(NRF_TWIM0, addr);
     nrf_twim_rx_buffer_set(NRF_TWIM0, data, len);
     nrf_twim_event_clear(NRF_TWIM0, NRF_TWIM_EVENT_STOPPED);
@@ -139,7 +148,8 @@ bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
 }
 
 bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
-    if (len + 1 > sizeof(s_twim_ram_buf)) return false;
+    if (len + 1 > sizeof(s_twim_ram_buf))
+        return false;
     s_twim_ram_buf[0] = reg;
     if (len > 0 && data) {
         memcpy(&s_twim_ram_buf[1], data, len);
@@ -148,7 +158,8 @@ bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t le
 }
 
 bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
-    if (!s_twim_inited || !data || len == 0) return false;
+    if (!s_twim_inited || !data || len == 0)
+        return false;
     s_twim_ram_buf[0] = reg;
 
     nrf_twim_address_set(NRF_TWIM0, addr);
@@ -281,7 +292,8 @@ bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz) {
 }
 
 bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
-    if (s_bb_sda == 0xFF || !data || len == 0) return false;
+    if (s_bb_sda == 0xFF || !data || len == 0)
+        return false;
     i2c_bb_start();
     if (!i2c_bb_write_byte((addr << 1) | 0)) {
         i2c_bb_stop();
@@ -298,7 +310,8 @@ bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
 }
 
 bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
-    if (s_bb_sda == 0xFF || !data || len == 0) return false;
+    if (s_bb_sda == 0xFF || !data || len == 0)
+        return false;
     i2c_bb_start();
     if (!i2c_bb_write_byte((addr << 1) | 1)) {
         i2c_bb_stop();
@@ -313,7 +326,8 @@ bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
 }
 
 bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
-    if (s_bb_sda == 0xFF) return false;
+    if (s_bb_sda == 0xFF)
+        return false;
     i2c_bb_start();
     if (!i2c_bb_write_byte((addr << 1) | 0)) {
         i2c_bb_stop();
@@ -334,7 +348,8 @@ bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t le
 }
 
 bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
-    if (s_bb_sda == 0xFF || !data || len == 0) return false;
+    if (s_bb_sda == 0xFF || !data || len == 0)
+        return false;
     i2c_bb_start();
     if (!i2c_bb_write_byte((addr << 1) | 0)) {
         i2c_bb_stop();
@@ -362,9 +377,36 @@ bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
 // 4. Mock / Host build
 // =============================================================================
 #else
-bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz) { (void)sda; (void)scl; (void)freq_hz; return true; }
-bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) { (void)addr; (void)data; (void)len; return true; }
-bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) { (void)addr; (void)data; (void)len; return true; }
-bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) { (void)addr; (void)reg; (void)data; (void)len; return true; }
-bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) { (void)addr; (void)reg; (void)data; (void)len; return true; }
+bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz) {
+    (void)sda;
+    (void)scl;
+    (void)freq_hz;
+    return true;
+}
+bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
+    (void)addr;
+    (void)data;
+    (void)len;
+    return true;
+}
+bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
+    (void)addr;
+    (void)data;
+    (void)len;
+    return true;
+}
+bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
+    (void)addr;
+    (void)reg;
+    (void)data;
+    (void)len;
+    return true;
+}
+bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
+    (void)addr;
+    (void)reg;
+    (void)data;
+    (void)len;
+    return true;
+}
 #endif

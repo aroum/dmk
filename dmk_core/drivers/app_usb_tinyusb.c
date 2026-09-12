@@ -61,9 +61,7 @@ USB_Result USB_HID_Init(void) {
     const nrfx_power_config_t pwr_cfg = {0};
     nrfx_power_init(&pwr_cfg);
 
-    const nrfx_power_usbevt_config_t usbevt_cfg = {
-        .handler = power_event_handler
-    };
+    const nrfx_power_usbevt_config_t usbevt_cfg = {.handler = power_event_handler};
     nrfx_power_usbevt_init(&usbevt_cfg);
     nrfx_power_usbevt_enable();
 
@@ -129,7 +127,8 @@ USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t w
     return USB_ERR_BUSY;
 }
 
-USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat, uint32_t buttons) {
+USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat,
+                                     uint32_t buttons) {
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {

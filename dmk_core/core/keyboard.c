@@ -10,6 +10,7 @@
 
 // Core modules
 #include "combos.h"
+#include "gamepad.h"
 #include "hold_tap.h"
 #include "hooks.h"
 #include "keyboard.h"
@@ -17,7 +18,6 @@
 #include "macros.h"
 #include "midi.h"
 #include "mouse.h"
-#include "gamepad.h"
 #include "oneshot.h"
 
 // Project includes
@@ -40,8 +40,8 @@
 #include "nrf.h"
 #include "nrf_nvic.h"
 #elif defined(MCU_milandr)
-#include "MDR32FxQI_rst_clk.h"
 #include "MDR32FxQI_bkp.h"
+#include "MDR32FxQI_rst_clk.h"
 #elif defined(MCU_baikal)
 #include "bsp/board_api.h"
 #endif
@@ -229,12 +229,10 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
             led_off();
         }
     } else if (key >= K_RGB_TOGG && key <= K_RGB_SPD) {
-        static void (* const rgb_actions[])(void) = {
-            rgb_toggle, rgb_next_theme, rgb_prev_theme,
-            rgb_increase_hue, rgb_decrease_hue,
-            rgb_increase_sat, rgb_decrease_sat,
-            rgb_increase_val, rgb_decrease_val,
-            rgb_increase_speed, rgb_decrease_speed,
+        static void (*const rgb_actions[])(void) = {
+            rgb_toggle,       rgb_next_theme,     rgb_prev_theme,     rgb_increase_hue,
+            rgb_decrease_hue, rgb_increase_sat,   rgb_decrease_sat,   rgb_increase_val,
+            rgb_decrease_val, rgb_increase_speed, rgb_decrease_speed,
         };
         if (pressed) {
             rgb_actions[key - K_RGB_TOGG]();
@@ -259,10 +257,14 @@ void keyboard_check(void) {
     // 1. Process active timeouts and determine earliest wakeup deadline
     TickType_t next_deadline = portMAX_DELAY;
     TickType_t r;
-    if ((r = hold_tap_check_timeouts(now)) < next_deadline) next_deadline = r;
-    if ((r = oneshot_check_timeouts(now)) < next_deadline) next_deadline = r;
-    if ((r = combos_check_timeouts(now)) < next_deadline) next_deadline = r;
-    if ((r = mouse_check_timeouts(now)) < next_deadline) next_deadline = r;
+    if ((r = hold_tap_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
+    if ((r = oneshot_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
+    if ((r = combos_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
+    if ((r = mouse_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
 
     led_update(now);
 

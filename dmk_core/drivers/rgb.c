@@ -104,7 +104,8 @@ static void set_led_color(uint32_t index, uint32_t color) {
 }
 
 static void set_all_leds(uint32_t color) {
-    for (uint32_t i = 0; i < RGB_NUM; i++) set_led_color(i, color);
+    for (uint32_t i = 0; i < RGB_NUM; i++)
+        set_led_color(i, color);
 }
 
 void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
@@ -293,12 +294,17 @@ void rgb_toggle(void) {
     }
 }
 
-static const uint8_t rgb_modes[] = {
-    RGBLIGHT_MODE_STATIC_LIGHT, RGBLIGHT_MODE_BREATHING, RGBLIGHT_MODE_RAINBOW_MOOD,
-    RGBLIGHT_MODE_RAINBOW_SWIRL, RGBLIGHT_MODE_SNAKE, RGBLIGHT_MODE_KNIGHT,
-    RGBLIGHT_MODE_CHRISTMAS, RGBLIGHT_MODE_STATIC_GRADIENT
+static const uint8_t rgb_modes[] = {RGBLIGHT_MODE_STATIC_LIGHT,
+                                    RGBLIGHT_MODE_BREATHING,
+                                    RGBLIGHT_MODE_RAINBOW_MOOD,
+                                    RGBLIGHT_MODE_RAINBOW_SWIRL,
+                                    RGBLIGHT_MODE_SNAKE,
+                                    RGBLIGHT_MODE_KNIGHT,
+                                    RGBLIGHT_MODE_CHRISTMAS,
+                                    RGBLIGHT_MODE_STATIC_GRADIENT
 #ifdef RGB_THEMES
-    , 100
+                                    ,
+                                    100
 #endif
 };
 

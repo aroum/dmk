@@ -16,11 +16,8 @@
 
 // HID Report Descriptor: Composite Keyboard (ID 1), Consumer (ID 2), Mouse (ID 3), Gamepad (ID 4)
 uint8_t const desc_hid_report[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
-    TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2)),
-    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3)),
-    TUD_HID_REPORT_DESC_GAMEPAD(HID_REPORT_ID(4))
-};
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)), TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2)),
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3)), TUD_HID_REPORT_DESC_GAMEPAD(HID_REPORT_ID(4))};
 
 #ifdef VIAL
 // 32-byte Raw HID / Vial descriptor
@@ -103,13 +100,13 @@ uint8_t const desc_configuration[] = {
                           100),             // Maximum power consumption in 2mA units (100 * 2mA = 200mA)
 
     // Interface 0: Composite Keyboard/Consumer/Mouse HID Descriptor
-    TUD_HID_DESCRIPTOR(0,                         // Interface number
-                       0,                         // String index
-                       HID_ITF_PROTOCOL_NONE,     // Protocol code (composite with Report IDs)
-                       sizeof(desc_hid_report),   // HID report descriptor length
-                       0x81,                      // Endpoint address (IN endpoint)
-                       CFG_TUD_HID_EP_BUFSIZE,    // Endpoint size
-                       10),                       // Polling interval in milliseconds
+    TUD_HID_DESCRIPTOR(0,                       // Interface number
+                       0,                       // String index
+                       HID_ITF_PROTOCOL_NONE,   // Protocol code (composite with Report IDs)
+                       sizeof(desc_hid_report), // HID report descriptor length
+                       0x81,                    // Endpoint address (IN endpoint)
+                       CFG_TUD_HID_EP_BUFSIZE,  // Endpoint size
+                       10),                     // Polling interval in milliseconds
 
 #ifndef EPNUM_VIAL_OUT
 #define EPNUM_VIAL_OUT 0x02

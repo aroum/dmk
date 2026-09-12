@@ -7,10 +7,10 @@
 
 #if CFG_TUD_ENABLED && defined(MCU_milandr)
 
-#include "device/dcd.h"
 #include "MDR32FxQI_config.h"
 #include "MDR32FxQI_rst_clk.h"
 #include "MDR32FxQI_usb.h"
+#include "device/dcd.h"
 #include <string.h>
 
 #define MILANDR_NUM_EP 4
@@ -31,7 +31,7 @@ static milandr_ep_t ep_state[MILANDR_NUM_EP];
 // Controller API
 //--------------------------------------------------------------------+
 
-bool dcd_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
+bool dcd_init(uint8_t rhport, const tusb_rhport_init_t *rh_init) {
     (void)rhport;
     (void)rh_init;
 
@@ -68,9 +68,7 @@ bool dcd_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
     USB_SetSA(0);
 
     // Configure interrupt mask
-    USB_SetSIM(USB_SIM_SCTDONEIE_Set   |
-               USB_SIM_SCRESETEVIE_Set  |
-               USB_SIM_SCRESUMEIE_Set);
+    USB_SetSIM(USB_SIM_SCTDONEIE_Set | USB_SIM_SCRESETEVIE_Set | USB_SIM_SCRESUMEIE_Set);
 
     // Clear any pending interrupt status flags
     USB_SetSIS(USB_SIS_Msk);
@@ -109,7 +107,7 @@ void dcd_set_address(uint8_t rhport, uint8_t dev_addr) {
     dcd_edpt_xfer(rhport, 0x80, NULL, 0);
 }
 
-void dcd_edpt0_status_complete(uint8_t rhport, tusb_control_request_t const * request) {
+void dcd_edpt0_status_complete(uint8_t rhport, tusb_control_request_t const *request) {
     (void)rhport;
     if (request->bRequest == TUSB_REQ_SET_ADDRESS) {
         uint8_t const dev_addr = (uint8_t)request->wValue;
@@ -140,13 +138,14 @@ void dcd_sof_enable(uint8_t rhport, bool en) {
 // Endpoint API
 //--------------------------------------------------------------------+
 
-bool dcd_edpt_open(uint8_t rhport, tusb_desc_endpoint_t const * desc_ep) {
+bool dcd_edpt_open(uint8_t rhport, tusb_desc_endpoint_t const *desc_ep) {
     (void)rhport;
     uint8_t const ep_addr = desc_ep->bEndpointAddress;
     uint8_t const epnum = tu_edpt_number(ep_addr);
     bool const is_in = tu_edpt_dir(ep_addr) == TUSB_DIR_IN;
 
-    if (epnum >= MILANDR_NUM_EP) return false;
+    if (epnum >= MILANDR_NUM_EP)
+        return false;
 
     milandr_ep_t *ep = &ep_state[epnum];
     ep->max_packet_size = tu_edpt_packet_size(desc_ep);
@@ -162,9 +161,7 @@ bool dcd_edpt_open(uint8_t rhport, tusb_desc_endpoint_t const * desc_ep) {
     USB_SetSEPxTXFDC((USB_EP_TypeDef)epnum, 1);
 
     // Configure and enable endpoint
-    uint32_t ctrl = USB_SEPx_CTRL_EPEN_Enable |
-                    USB_SEPx_CTRL_EPRDY_NotReady |
-                    USB_SEPx_CTRL_EPDATASEQ_Data0 |
+    uint32_t ctrl = USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPRDY_NotReady | USB_SEPx_CTRL_EPDATASEQ_Data0 |
                     USB_SEPx_CTRL_EPSSTALL_NotReply;
 
     USB_SetSEPxCTRL((USB_EP_TypeDef)epnum, ctrl);
@@ -182,12 +179,13 @@ void dcd_edpt_close_all(uint8_t rhport) {
     }
 }
 
-bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes) {
+bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t *buffer, uint16_t total_bytes) {
     (void)rhport;
     uint8_t const epnum = tu_edpt_number(ep_addr);
     bool const is_in = tu_edpt_dir(ep_addr) == TUSB_DIR_IN;
 
-    if (epnum >= MILANDR_NUM_EP) return false;
+    if (epnum >= MILANDR_NUM_EP)
+        return false;
 
     milandr_ep_t *ep = &ep_state[epnum];
     ep->buffer = buffer;
@@ -265,9 +263,7 @@ void dcd_int_handler(uint8_t rhport) {
 
         // Reset and prepare EP0 for incoming SETUP packet
         USB_SetSEPxRXFC(USB_EP0, 1);
-        USB_SetSEPxCTRL(USB_EP0, USB_SEPx_CTRL_EPEN_Enable |
-                                 USB_SEPx_CTRL_EPDATASEQ_Data0 |
-                                 USB_SEPx_CTRL_EPRDY_Ready);
+        USB_SetSEPxCTRL(USB_EP0, USB_SEPx_CTRL_EPEN_Enable | USB_SEPx_CTRL_EPDATASEQ_Data0 | USB_SEPx_CTRL_EPRDY_Ready);
 
         dcd_event_bus_reset(rhport, TUSB_SPEED_FULL, true);
         return;
@@ -317,7 +313,8 @@ void dcd_int_handler(uint8_t rhport) {
                     for (uint16_t i = 0; i < next_size; i++) {
                         USB_SetSEPxTXFD(USB_EP0, ep->buffer[ep->transferred_len + i]);
                     }
-                    uint32_t data_seq = (ep->data_toggle == 1) ? USB_SEPx_CTRL_EPDATASEQ_Data1 : USB_SEPx_CTRL_EPDATASEQ_Data0;
+                    uint32_t data_seq =
+                        (ep->data_toggle == 1) ? USB_SEPx_CTRL_EPDATASEQ_Data1 : USB_SEPx_CTRL_EPDATASEQ_Data0;
                     USB_SetSEPxCTRL(USB_EP0, USB_SEPx_CTRL_EPEN_Enable | data_seq | USB_SEPx_CTRL_EPRDY_Ready);
                 } else {
                     dcd_event_xfer_complete(rhport, 0x80, ep->transferred_len, XFER_RESULT_SUCCESS, true);
@@ -344,7 +341,8 @@ void dcd_int_handler(uint8_t rhport) {
         // --- Handle Non-Control Endpoints EP1..EP3 ---
         for (uint8_t epnum = 1; epnum < MILANDR_NUM_EP; epnum++) {
             milandr_ep_t *ep = &ep_state[epnum];
-            if (!ep->is_open) continue;
+            if (!ep->is_open)
+                continue;
 
             uint32_t ctrl = USB_GetSEPxCTRL((USB_EP_TypeDef)epnum);
             if (!(ctrl & USB_SEP_CTRL_EPRDY)) {
@@ -364,11 +362,14 @@ void dcd_int_handler(uint8_t rhport) {
                         for (uint16_t i = 0; i < next_size; i++) {
                             USB_SetSEPxTXFD((USB_EP_TypeDef)epnum, ep->buffer[ep->transferred_len + i]);
                         }
-                        uint32_t data_seq = (ep->data_toggle == 1) ? USB_SEPx_CTRL_EPDATASEQ_Data1 : USB_SEPx_CTRL_EPDATASEQ_Data0;
-                        USB_SetSEPxCTRL((USB_EP_TypeDef)epnum, USB_SEPx_CTRL_EPEN_Enable | data_seq | USB_SEPx_CTRL_EPRDY_Ready);
+                        uint32_t data_seq =
+                            (ep->data_toggle == 1) ? USB_SEPx_CTRL_EPDATASEQ_Data1 : USB_SEPx_CTRL_EPDATASEQ_Data0;
+                        USB_SetSEPxCTRL((USB_EP_TypeDef)epnum,
+                                        USB_SEPx_CTRL_EPEN_Enable | data_seq | USB_SEPx_CTRL_EPRDY_Ready);
                     } else {
                         // All requested bytes transmitted
-                        dcd_event_xfer_complete(rhport, (uint8_t)(epnum | 0x80), ep->transferred_len, XFER_RESULT_SUCCESS, true);
+                        dcd_event_xfer_complete(rhport, (uint8_t)(epnum | 0x80), ep->transferred_len,
+                                                XFER_RESULT_SUCCESS, true);
                     }
                 } else if (!ep->is_in && ts == USB_SEPx_TS_SCTTYPE_Outdata) {
                     // OUT packet was received from host
