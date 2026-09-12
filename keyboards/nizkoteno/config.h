@@ -52,8 +52,7 @@
 }
 #define LAYOUT_DEFAULT LAYOUT
 
-// Optional editor layout positioning grid coordinates
-// Renders the 10 keys visually as two rows of 5 keys in the editor
+// Visual editor layout grid: 3 rows, key 9 under 4 and 8, key 10 to its right
 #define LAYOUT_EDITOR { \
     {0, 0}, {0, 1}, {0, 2}, {0, 3}, \
     {1, 0}, {1, 1}, {1, 2}, {1, 3}, \
@@ -93,6 +92,9 @@ const Chord my_chords[] = {
 #define CHORDS_COUNT (sizeof(my_chords) / sizeof(my_chords[0]))
 
 // Flat keymap: one entry per key in LAYOUT order
+// Row 1: 1, 2, 3, 4
+// Row 2: 5, 6, 7, 8
+// Row 3: _, _, _, 9, 10
 const uint32_t keymap[][NUM_KEYS] = {
     [DEF] = {
         RGB_TOGG, RGB_NEXT, K_D,    K_F, \
