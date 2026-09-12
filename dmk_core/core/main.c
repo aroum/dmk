@@ -54,19 +54,19 @@ int main(void) {
 #endif
 
     // Keyboard state machine, layer stack, and tap engine task
-    if (xTaskCreate(keyboard_task, "keyboard", TASK_STACK_KEYBOARD, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
+    if (xTaskCreate(keyboard_task, "keyboard", TASK_STACK_KEYBOARD, NULL, TASK_PRIO_KEYBOARD, NULL) != pdPASS) {
         status = pdFAIL;
     }
 
 #if defined(RGB_NUM)
     // RGB animations task
-    if (xTaskCreate(rgb_task, "rgb", TASK_STACK_RGB, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
+    if (xTaskCreate(rgb_task, "rgb", TASK_STACK_RGB, NULL, TASK_PRIO_RGB, NULL) != pdPASS) {
         status = pdFAIL;
     }
 #endif
 
     // Matrix switch scanner task
-    if (xTaskCreate(matrix_task, "matrix", TASK_STACK_MATRIX, NULL, TASK_PRIO_DEF, NULL) != pdPASS) {
+    if (xTaskCreate(matrix_task, "matrix", TASK_STACK_MATRIX, NULL, TASK_PRIO_MATRIX, NULL) != pdPASS) {
         status = pdFAIL;
     }
 

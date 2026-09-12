@@ -80,8 +80,10 @@ void encoder_init(void) {
  * @brief Poll quadrature encoder pins, compute Gray code transitions, and enqueue rotation events.
  */
 void encoder_scan(void) {
+    hal_gpio_snapshot_t snapshot = hal_gpio_snapshot();
     for (int i = 0; i < NUM_ENCODERS; i++) {
-        uint8_t current_state = (hal_gpio_get(encoder_pins_a[i]) << 1) | hal_gpio_get(encoder_pins_b[i]);
+        uint8_t current_state = (hal_gpio_snapshot_get(snapshot, encoder_pins_a[i]) << 1) |
+                                hal_gpio_snapshot_get(snapshot, encoder_pins_b[i]);
         if (current_state != prev_states[i]) {
             uint8_t state_idx = (prev_states[i] << 2) | current_state;
             int8_t movement = encoder_states[state_idx & 0x0F];

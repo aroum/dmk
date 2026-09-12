@@ -56,10 +56,21 @@
 #define MH3SS2_ROW_PINS_PER_KEY 1
 #endif
 
-// Settling delay in microseconds (default 1us for matrix capacitance settling without CPU waste)
+// Settling delay in microseconds (default 1us: fast inline NOP delay without timer peripheral spinlock)
 #ifndef MATRIX_IO_DELAY_US
 #define MATRIX_IO_DELAY_US 1
 #endif
+
+static inline void matrix_settle_delay(void) {
+#if (MATRIX_IO_DELAY_US > 1)
+    hal_sleep_us(MATRIX_IO_DELAY_US);
+#elif (MATRIX_IO_DELAY_US == 1)
+    // Ultra-fast ~150-200ns settling pause (enough for PCB capacitance without peripheral timer spinlock)
+    for (volatile int d = 0; d < 20; ++d) {
+        __asm__ volatile("nop");
+    }
+#endif
+}
 
 // Debounce timing configuration (default: 5ms integrator filter)
 #ifndef DEBOUNCE
@@ -78,20 +89,24 @@
 #define MATRIX_DRV_ACT 0
 #define MATRIX_DRV_IDL 1
 #define MATRIX_READ(pin) (!hal_gpio_get(pin))
+#define MATRIX_READ_SNAPSHOT(snap, pin) (!hal_gpio_snapshot_get(snap, pin))
 #define MATRIX_PULL_UP true
 #else
 #define MATRIX_DRV_ACT 1
 #define MATRIX_DRV_IDL 0
 #define MATRIX_READ(pin) (hal_gpio_get(pin))
+#define MATRIX_READ_SNAPSHOT(snap, pin) (hal_gpio_snapshot_get(snap, pin))
 #define MATRIX_PULL_UP false
 #endif
 
 #if defined(DIRECT_PINS_ACTIVE_HIGH)
 #define DIRECT_PULL_UP false
 #define DIRECT_READ(pin) (hal_gpio_get(pin))
+#define DIRECT_READ_SNAPSHOT(snap, pin) (hal_gpio_snapshot_get(snap, pin))
 #else
 #define DIRECT_PULL_UP true
 #define DIRECT_READ(pin) (!hal_gpio_get(pin))
+#define DIRECT_READ_SNAPSHOT(snap, pin) (!hal_gpio_snapshot_get(snap, pin))
 #endif
 
 // Physical pin mapping arrays derived from config.h
@@ -100,6 +115,22 @@ static const pin_t columns_gpios[] = COL_PINS;
 static const pin_t rows_gpios[] = ROW_PINS;
 #define CUR_NUM_COLS (sizeof(columns_gpios) / sizeof(columns_gpios[0]))
 #define CUR_NUM_ROWS (sizeof(rows_gpios) / sizeof(rows_gpios[0]))
+
+// Unified drive and sense pin abstractions to deduplicate ROW2COL and COL2ROW logic
+#if (MATRIX_TYPE == ROW2COL)
+#define MATRIX_DRV_PINS     rows_gpios
+#define MATRIX_NUM_DRV      CUR_NUM_ROWS
+#define MATRIX_SENSE_PINS   columns_gpios
+#define MATRIX_NUM_SENSE    CUR_NUM_COLS
+#define MATRIX_DISPATCH_KEY(drv, sense, state) matrix_update_key((uint8_t)(sense), (uint8_t)(drv), state)
+#elif (MATRIX_TYPE == COL2ROW)
+#define MATRIX_DRV_PINS     columns_gpios
+#define MATRIX_NUM_DRV      CUR_NUM_COLS
+#define MATRIX_SENSE_PINS   rows_gpios
+#define MATRIX_NUM_SENSE    CUR_NUM_ROWS
+#define MATRIX_DISPATCH_KEY(drv, sense, state) matrix_update_key((uint8_t)(drv), (uint8_t)(sense), state)
+#endif
+
 #elif defined(DIRECT_PINS)
 static const pin_t direct_pins[] = DIRECT_PINS;
 #define CUR_NUM_KEYS (sizeof(direct_pins) / sizeof(direct_pins[0]))
@@ -139,12 +170,9 @@ static void init_pins(const pin_t *pins, size_t count, bool is_output, bool idle
  * @brief Initialize matrix GPIO pins and default electrical states (pull-ups/pull-downs).
  */
 void matrix_init(void) {
-#if (MATRIX_TYPE == ROW2COL)
-    init_pins(rows_gpios, CUR_NUM_ROWS, true, MATRIX_DRV_IDL, false);
-    init_pins(columns_gpios, CUR_NUM_COLS, false, 0, MATRIX_PULL_UP);
-#elif (MATRIX_TYPE == COL2ROW)
-    init_pins(columns_gpios, CUR_NUM_COLS, true, MATRIX_DRV_IDL, false);
-    init_pins(rows_gpios, CUR_NUM_ROWS, false, 0, MATRIX_PULL_UP);
+#if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW)
+    init_pins(MATRIX_DRV_PINS, MATRIX_NUM_DRV, true, MATRIX_DRV_IDL, false);
+    init_pins(MATRIX_SENSE_PINS, MATRIX_NUM_SENSE, false, 0, MATRIX_PULL_UP);
 #elif (MATRIX_TYPE == MH3SS2)
     init_pins(columns_gpios, CUR_NUM_COLS, true, 0, false);
     init_pins(rows_gpios, CUR_NUM_ROWS, false, 0, false);
@@ -176,86 +204,62 @@ void matrix_send_event(matrix_event_t *matrix_event) {
 #endif
 }
 
-#if (MATRIX_TYPE != DIRECT)
 /**
- * @brief Eager debounce filter for 2D matrix switches.
+ * @brief Unified eager debounce filter for both matrix switches and direct pins.
  * Immediately dispatches switch state transitions on contact (0ms latency),
  * then locks out physical chatter for DEBOUNCE_TICKS.
- * @param col Column index
- * @param row Row index
- * @param raw_state Raw electrical reading (true = closed/pressed)
  */
-static inline void matrix_update_key(uint8_t col, uint8_t row, bool raw_state) {
-    if (debounce_counters[col][row] > 0) {
-        debounce_counters[col][row]--;
-    } else if (raw_state != debounced_state[col][row]) {
-        debounced_state[col][row] = raw_state;
-        debounce_counters[col][row] = DEBOUNCE_TICKS;
+static inline void debounce_filter(uint8_t *counter, bool *debounced, uint8_t col, uint8_t row, bool raw_state) {
+    if (*counter > 0) {
+        (*counter)--;
+    } else if (raw_state != *debounced) {
+        *debounced = raw_state;
+        *counter = DEBOUNCE_TICKS;
         matrix_event_t event = {.split = 0, .col = col, .row = row, .pressed = raw_state ? 1 : 0};
         matrix_send_event(&event);
     }
 }
+
+#if (MATRIX_TYPE != DIRECT)
+static inline void matrix_update_key(uint8_t col, uint8_t row, bool raw_state) {
+    debounce_filter(&debounce_counters[col][row], &debounced_state[col][row], col, row, raw_state);
+}
 #endif
 
 #if (MATRIX_TYPE == DIRECT)
-/**
- * @brief Eager debounce filter for direct-pin switches.
- * Immediately dispatches switch state transitions on contact (0ms latency),
- * then locks out physical chatter for DEBOUNCE_TICKS.
- * @param key_idx Key index in direct_pins array
- * @param raw_state Raw electrical reading (true = closed/pressed)
- */
 static inline void matrix_update_direct_key(uint8_t key_idx, bool raw_state) {
-    if (debounce_counters[key_idx] > 0) {
-        debounce_counters[key_idx]--;
-    } else if (raw_state != debounced_state[key_idx]) {
-        debounced_state[key_idx] = raw_state;
-        debounce_counters[key_idx] = DEBOUNCE_TICKS;
-        matrix_event_t event = {.split = 0, .col = key_idx, .row = 0, .pressed = raw_state ? 1 : 0};
-        matrix_send_event(&event);
-    }
+    debounce_filter(&debounce_counters[key_idx], &debounced_state[key_idx], key_idx, 0, raw_state);
 }
 #endif
 
 /**
  * @brief Performs a full scan of the keyboard matrix or direct pins.
+ * Uses 1-cycle port snapshot to sample all sense pins simultaneously without bus overhead.
  */
 void matrix_scan(void) {
-#if (MATRIX_TYPE == ROW2COL)
-    for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-        hal_gpio_put(rows_gpios[j], MATRIX_DRV_ACT);
-#if (MATRIX_IO_DELAY_US > 0)
-        hal_sleep_us(MATRIX_IO_DELAY_US);
-#endif
-        for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-            matrix_update_key((uint8_t)i, (uint8_t)j, MATRIX_READ(columns_gpios[i]));
+#if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW)
+    for (uint32_t d = 0; d < MATRIX_NUM_DRV; ++d) {
+        hal_gpio_put(MATRIX_DRV_PINS[d], MATRIX_DRV_ACT);
+        matrix_settle_delay();
+        hal_gpio_snapshot_t snapshot = hal_gpio_snapshot();
+        for (uint32_t s = 0; s < MATRIX_NUM_SENSE; ++s) {
+            bool raw = MATRIX_READ_SNAPSHOT(snapshot, MATRIX_SENSE_PINS[s]);
+            MATRIX_DISPATCH_KEY(d, s, raw);
         }
-        hal_gpio_put(rows_gpios[j], MATRIX_DRV_IDL);
-    }
-#elif (MATRIX_TYPE == COL2ROW)
-    for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
-        hal_gpio_put(columns_gpios[i], MATRIX_DRV_ACT);
-#if (MATRIX_IO_DELAY_US > 0)
-        hal_sleep_us(MATRIX_IO_DELAY_US);
-#endif
-        for (uint32_t j = 0; j < CUR_NUM_ROWS; ++j) {
-            matrix_update_key((uint8_t)i, (uint8_t)j, MATRIX_READ(rows_gpios[j]));
-        }
-        hal_gpio_put(columns_gpios[i], MATRIX_DRV_IDL);
+        hal_gpio_put(MATRIX_DRV_PINS[d], MATRIX_DRV_IDL);
     }
 #elif (MATRIX_TYPE == MH3SS2)
     for (uint32_t i = 0; i < CUR_NUM_COLS; ++i) {
         hal_gpio_put(columns_gpios[i], 1);
-#if (MATRIX_IO_DELAY_US > 0)
-        hal_sleep_us(MATRIX_IO_DELAY_US);
-#endif
+        matrix_settle_delay();
+        hal_gpio_snapshot_t snapshot = hal_gpio_snapshot();
 
         for (uint32_t j = 0; j < NUM_ROWS; ++j) {
             bool raw_state = false;
             uint32_t base_pin = j * MH3SS2_ROW_PINS_PER_KEY;
             for (uint32_t p = 0; p < MH3SS2_ROW_PINS_PER_KEY; ++p) {
                 uint32_t pin_idx = base_pin + p;
-                if (pin_idx < CUR_NUM_ROWS && hal_gpio_get(rows_gpios[pin_idx])) {
+                if (pin_idx < CUR_NUM_ROWS && hal_gpio_snapshot_get(snapshot, rows_gpios[pin_idx])) {
                     raw_state = true;
                     break;
                 }
@@ -266,8 +270,9 @@ void matrix_scan(void) {
         hal_gpio_put(columns_gpios[i], 0);
     }
 #elif (MATRIX_TYPE == DIRECT)
+    hal_gpio_snapshot_t snapshot = hal_gpio_snapshot();
     for (uint32_t k = 0; k < CUR_NUM_KEYS; ++k) {
-        matrix_update_direct_key((uint8_t)k, DIRECT_READ(direct_pins[k]));
+        matrix_update_direct_key((uint8_t)k, DIRECT_READ_SNAPSHOT(snapshot, direct_pins[k]));
     }
 #endif
 }

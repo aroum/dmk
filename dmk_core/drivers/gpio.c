@@ -22,6 +22,18 @@ bool hal_gpio_get(pin_t gpio) {
     return gpio_get(gpio);
 }
 
+hal_gpio_snapshot_t hal_gpio_snapshot(void) {
+    hal_gpio_snapshot_t s = {0};
+#if defined(MCU_rp2350)
+    uint64_t all = gpio_get_all64();
+    s.p0 = (uint32_t)all;
+    s.p1 = (uint32_t)(all >> 32);
+#else
+    s.p0 = gpio_get_all();
+#endif
+    return s;
+}
+
 void hal_gpio_pull_down(pin_t gpio) {
     gpio_pull_down(gpio);
 }
@@ -63,6 +75,15 @@ void hal_gpio_put(pin_t gpio, bool value) {
 
 bool hal_gpio_get(pin_t gpio) {
     return (bool)nrf_gpio_pin_read(gpio);
+}
+
+hal_gpio_snapshot_t hal_gpio_snapshot(void) {
+    hal_gpio_snapshot_t s = {0};
+    s.p0 = NRF_P0->IN;
+#if defined(NRF_P1)
+    s.p1 = NRF_P1->IN;
+#endif
+    return s;
 }
 
 void hal_gpio_pull_down(pin_t gpio) {
@@ -130,6 +151,13 @@ bool hal_gpio_get(pin_t gpio) {
     GPIO_TypeDef *port = get_gpio_port(gpio);
     uint16_t mask = get_gpio_pin_mask(gpio);
     return (GPIO_ReadInputPort(port) & mask) != 0U;
+}
+
+hal_gpio_snapshot_t hal_gpio_snapshot(void) {
+    hal_gpio_snapshot_t s = {0};
+    s.p0 = (uint32_t)GPIO_ReadInputPort(GPIO0) | ((uint32_t)GPIO_ReadInputPort(GPIO1) << 16);
+    s.p1 = (uint32_t)GPIO_ReadInputPort(GPIO2);
+    return s;
 }
 
 void hal_gpio_pull_down(pin_t gpio) {
@@ -207,6 +235,17 @@ bool hal_gpio_get(uint8_t gpio) {
     uint16_t pin;
     if (!get_gpio_port(gpio, &port, &pin, NULL)) return false;
     return PORT_ReadInputDataBit(port, pin) != RESET;
+}
+
+hal_gpio_snapshot_t hal_gpio_snapshot(void) {
+    hal_gpio_snapshot_t s = {0};
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTA) s.p0 |= (uint32_t)PORT_ReadInputData(MDR_PORTA);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTB) s.p0 |= ((uint32_t)PORT_ReadInputData(MDR_PORTB) << 16);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTC) s.p1 |= (uint32_t)PORT_ReadInputData(MDR_PORTC);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTD) s.p1 |= ((uint32_t)PORT_ReadInputData(MDR_PORTD) << 16);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTE) s.p2 |= (uint32_t)PORT_ReadInputData(MDR_PORTE);
+    if (MDR_RST_CLK->PER_CLOCK & RST_CLK_PCLK_PORTF) s.p2 |= ((uint32_t)PORT_ReadInputData(MDR_PORTF) << 16);
+    return s;
 }
 
 void hal_gpio_pull_down(uint8_t gpio) {
