@@ -1,21 +1,14 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "pin_defs.h"
+#define MCU_rp2040
 #define DEFAULT_MCU rp2040
 #define MATRIX_TYPE DIRECT
-/* --- Matrix Settings --- */
 
-#if defined(MCU_milandr)
-#define DIRECT_PINS {PE0, PE1, PE2, PE3, PE4, PD0, PD1, PD2, PA3, PD4}
-#elif defined(MCU_nrf52840)
-#define DIRECT_PINS {P0_06, P0_08, P1_00, P0_24, P0_09, P0_11, P0_22, P0_17, P0_10, P0_20}
-#define LED_PINS {P0_15}
-#elif defined(MCU_rp2040)
+/* --- Matrix Settings (RP2040) --- */
 #define DIRECT_PINS {GPIO9, GPIO8, GPIO6, GPIO5, GPIO10, GPIO7, GPIO4, GPIO2, GPIO1, GPIO3}
 #define LED_PINS {GPIO15}
-
-#endif
+#define RGB_PIN GPIO29
 
 #define VIAL
 #define VIAL_KEYBOARD_NAME "Nizkoteno"
@@ -29,9 +22,6 @@
 
 /* --- RGB Settings --- */
 #define RGB_NUM 10
-
-#define RGB_PIN GPIO29
-// #define RGB_PIN GPIO11
 // clang-format off
 #define RGB_MAP { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
 #define RGB_THEME_DEFAULT { 0xFF0000, 0x00FF00, 0x0000FF, 0xFFFFFF, 0xFF00FF, 0xFFFF00, 0x00FFFF, 0x888888, 0x444444, 0x222222 }
