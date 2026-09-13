@@ -16,9 +16,9 @@
 #include "hardware/sync.h"
 #include "i2s_tx.pio.h"
 
-#define SAMPLE_RATE 48000
-#define MAX_VOICES 8
+#define SAMPLE_RATE 44100.0f
 #define SINE_LUT_SIZE 256
+#define MAX_VOICES 8
 
 #ifndef PIN_DAC_I2S_BCK
 #define PIN_DAC_I2S_BCK 6
@@ -30,36 +30,36 @@
 #define PIN_DAC_I2S_LRCK 8
 #endif
 
-// Precomputed Sine Wave LUT (256 samples, int16_t, full scale)
+// Precomputed Sine Wave LUT (256 samples, int16_t, amplitude 32000)
 static int16_t sine_lut[SINE_LUT_SIZE];
 
-// Precalculated phase increment per MIDI note (0..127) at 48000 Hz
+// Precalculated phase increments for MIDI notes 0..127 at 44100 Hz
 static uint32_t note_phase_inc[128];
-
-// Voice descriptor for polyphonic sine synth
-typedef struct {
-    bool active;
-    bool releasing;
-    uint8_t note;
-    uint8_t velocity;       // 1..127
-    uint32_t phase;         // 32-bit fixed point phase accumulator
-    uint32_t phase_inc;     // Frequency phase step per sample
-    uint32_t env_level;     // 16-bit envelope level (0..65535)
-    uint32_t age;           // Age counter for voice stealing
-} voice_t;
-
-static voice_t voices[MAX_VOICES];
-static uint32_t voice_age_counter = 0;
-static volatile uint8_t master_volume = 100; // 0..100%
 
 // Use dedicated PIO1 for I2S audio (pio0 is used by WS2812 and split)
 static PIO audio_pio = pio1;
 static uint audio_sm = 0;
 static bool synth_started = false;
+static volatile uint8_t master_volume = 80; // 0..100%
+
+// Polyphonic voice state
+typedef struct {
+    bool active;
+    bool releasing;
+    uint8_t note;
+    uint8_t velocity;
+    uint32_t phase;
+    uint32_t phase_inc;
+    uint32_t env_level; // 0..65535 (Q16)
+    uint32_t age;
+} voice_t;
+
+static voice_t voices[MAX_VOICES];
+static uint32_t voice_age_counter = 0;
 
 // Inter-core lock-free ring buffer (Core 0 producer, Core 1 consumer)
 typedef struct {
-    uint8_t cmd;
+    uint8_t cmd;   // 1=NoteOn, 0=NoteOff, 2=AllNotesOff
     uint8_t note;
     uint8_t vel;
 } synth_event_t;
@@ -80,11 +80,10 @@ static inline void synth_send_event(uint8_t cmd, uint8_t note, uint8_t vel) {
     }
 }
 
-// Internal voice management (runs on Core 1)
-static inline void internal_note_on(uint8_t note, uint8_t vel) {
+// Internal voice allocators (run on Core 1)
+static void internal_note_on(uint8_t note, uint8_t vel) {
     if (note > 127) return;
     if (vel == 0) {
-        // Velocity 0 is equivalent to Note-Off in MIDI
         for (int i = 0; i < MAX_VOICES; i++) {
             if (voices[i].active && voices[i].note == note) {
                 voices[i].releasing = true;
@@ -93,7 +92,7 @@ static inline void internal_note_on(uint8_t note, uint8_t vel) {
         return;
     }
 
-    // 1. Check if note is already playing (retrigger voice)
+    // 1. Retrigger voice if note is already active
     for (int i = 0; i < MAX_VOICES; i++) {
         if (voices[i].active && voices[i].note == note) {
             voices[i].velocity = vel;
@@ -103,43 +102,43 @@ static inline void internal_note_on(uint8_t note, uint8_t vel) {
         }
     }
 
-    // 2. Find an empty (inactive) voice
-    int target_slot = -1;
+    // 2. Find inactive voice slot
+    int target = -1;
     for (int i = 0; i < MAX_VOICES; i++) {
         if (!voices[i].active) {
-            target_slot = i;
+            target = i;
             break;
         }
     }
 
-    // 3. If all voices busy, steal a releasing voice or the oldest voice
-    if (target_slot < 0) {
+    // 3. Voice stealing: prioritize releasing voice, else steal oldest voice
+    if (target < 0) {
         uint32_t oldest_age = 0xFFFFFFFF;
         for (int i = 0; i < MAX_VOICES; i++) {
             if (voices[i].releasing) {
-                target_slot = i;
+                target = i;
                 break;
             }
             if (voices[i].age < oldest_age) {
                 oldest_age = voices[i].age;
-                target_slot = i;
+                target = i;
             }
         }
     }
 
-    if (target_slot >= 0) {
-        voice_t *v = &voices[target_slot];
+    if (target >= 0) {
+        voice_t *v = &voices[target];
         v->active = true;
         v->releasing = false;
         v->note = note;
         v->velocity = vel;
         v->phase_inc = note_phase_inc[note];
-        v->env_level = 0; // Soft attack starts at 0 to avoid pop
+        v->env_level = 0; // Smooth attack starts from 0 to prevent audio clicks
         v->age = ++voice_age_counter;
     }
 }
 
-static inline void internal_note_off(uint8_t note) {
+static void internal_note_off(uint8_t note) {
     for (int i = 0; i < MAX_VOICES; i++) {
         if (voices[i].active && voices[i].note == note) {
             voices[i].releasing = true;
@@ -147,20 +146,18 @@ static inline void internal_note_off(uint8_t note) {
     }
 }
 
-static inline void internal_all_notes_off(void) {
+static void internal_all_notes_off(void) {
     for (int i = 0; i < MAX_VOICES; i++) {
         voices[i].releasing = true;
     }
 }
 
-// Core 1 Audio Loop
+// Core 1 Audio Loop: synthesizes active voices and continuously streams I2S to DAC
 static void __not_in_flash_func(audio_core_entry)(void) {
-    // Startup chime: play Note 69 (A4, 440Hz) softly on boot to confirm DAC hardware works
-    internal_note_on(69, 85);
-    uint32_t chime_samples = (SAMPLE_RATE * 150) / 1000; // 150 ms duration
+    multicore_lockout_victim_init();
 
     while (1) {
-        // 1. Process pending inter-core commands from Core 0
+        // 1. Drain pending inter-core commands from Core 0
         while (s_synth_tail != s_synth_head) {
             synth_event_t evt = s_synth_queue[s_synth_tail];
             __dmb();
@@ -175,14 +172,7 @@ static void __not_in_flash_func(audio_core_entry)(void) {
             }
         }
 
-        // Automatic release of startup chime
-        if (chime_samples > 0) {
-            if (--chime_samples == 0) {
-                internal_note_off(69);
-            }
-        }
-
-        // 2. Synthesize one audio sample
+        // 2. Synthesize audio across all active polyphonic voices
         int32_t mixed_sample = 0;
         bool any_active = false;
 
@@ -191,7 +181,7 @@ static void __not_in_flash_func(audio_core_entry)(void) {
             if (!v->active) continue;
             any_active = true;
 
-            // Envelope progression:
+            // Attack & Release Envelope
             if (!v->releasing) {
                 // Smooth attack (~2.5ms = 120 samples) to eliminate click
                 if (v->env_level < 65000) {
@@ -214,32 +204,31 @@ static void __not_in_flash_func(audio_core_entry)(void) {
             int16_t wave = sine_lut[lut_idx];
             v->phase += v->phase_inc;
 
-            // Apply velocity (1..127) and envelope (0..65535)
-            // (wave * env_level) >> 16 gives scaled wave
-            // Then scale by velocity / 127
+            // Scale by envelope (0..65535) and velocity (1..127)
             int32_t scaled = ((int32_t)wave * (int32_t)v->env_level) >> 16;
-            int32_t voice_out = (scaled * (int32_t)v->velocity) >> 7;
+            int32_t voice_out = (scaled * (int32_t)v->velocity) >> 8;
 
             mixed_sample += voice_out;
         }
 
         if (any_active) {
-            // Apply master volume
+            // Apply master volume (default 80%)
             mixed_sample = (mixed_sample * (int32_t)master_volume) / 100;
 
-            // Soft-clamp output to 16-bit dynamic range
+            // Soft-clamp output to 16-bit range
             if (mixed_sample > 32767) mixed_sample = 32767;
             if (mixed_sample < -32768) mixed_sample = -32768;
         } else {
+            // Silence when no voices active, but keep writing to keep I2S clocks active
             mixed_sample = 0;
         }
 
         // 3. Pack mono sample into stereo 32-bit (Left in high 16b, Right in low 16b)
         int16_t s16 = (int16_t)mixed_sample;
-        uint32_t packed = ((uint32_t)(uint16_t)s16 << 16) | (uint16_t)s16;
+        uint32_t packed_sample = ((uint32_t)(uint16_t)s16 << 16) | (uint16_t)s16;
 
-        // 4. Send to I2S PIO TX FIFO (blocks automatically to clock audio at 48000 Hz)
-        pio_sm_put_blocking(audio_pio, audio_sm, packed);
+        // 4. Send to I2S PIO TX FIFO (automatically clocks DAC at 44100 Hz)
+        pio_sm_put_blocking(audio_pio, audio_sm, packed_sample);
     }
 }
 
@@ -249,24 +238,22 @@ void synth_init(void) {
     // 1. Generate Sine Wave LUT (256 values)
     for (int i = 0; i < SINE_LUT_SIZE; i++) {
         float angle = (float)i * (2.0f * (float)M_PI) / (float)SINE_LUT_SIZE;
-        sine_lut[i] = (int16_t)(sinf(angle) * 32760.0f);
+        sine_lut[i] = (int16_t)(sinf(angle) * 32000.0f);
     }
 
-    // 2. Precalculate phase increments for MIDI notes 0..127
-    // Formula: freq = 440.0 * 2^((note - 69) / 12)
-    // phase_inc = round(freq * 2^32 / SAMPLE_RATE)
+    // 2. Precalculate phase increments for MIDI notes 0..127 at 44100 Hz
     for (int n = 0; n < 128; n++) {
         float freq = 440.0f * powf(2.0f, (float)(n - 69) / 12.0f);
         double inc = ((double)freq * 4294967296.0) / (double)SAMPLE_RATE;
         note_phase_inc[n] = (uint32_t)(inc + 0.5);
     }
 
-    memset(voices, 0, sizeof(voices));
+    memset((void *)voices, 0, sizeof(voices));
 
     // 3. Initialize I2S PIO program on dedicated pio1
     uint offset = pio_add_program(audio_pio, &i2s_tx_program);
     audio_sm = pio_claim_unused_sm(audio_pio, true);
-    i2s_tx_program_init(audio_pio, audio_sm, offset, PIN_DAC_I2S_DATA, PIN_DAC_I2S_BCK, PIN_DAC_I2S_LRCK, (float)SAMPLE_RATE);
+    i2s_tx_program_init(audio_pio, audio_sm, offset, PIN_DAC_I2S_DATA, PIN_DAC_I2S_BCK, PIN_DAC_I2S_LRCK, SAMPLE_RATE);
 
     // 4. Launch Core 1 Audio Task
     multicore_launch_core1(audio_core_entry);
@@ -306,6 +293,8 @@ void hook_midi_receive(const uint8_t packet[4]) {
         synth_note_on(note, vel);
     } else if (cin == 0x08 || status == 0x80 || ((cin == 0x09 || status == 0x90) && vel == 0)) {
         synth_note_off(note);
+    } else if ((cin == 0x0B || status == 0xB0) && (packet[2] >= 120 && packet[2] <= 123)) {
+        synth_all_notes_off();
     }
 }
 
