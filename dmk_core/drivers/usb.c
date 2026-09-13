@@ -11,6 +11,8 @@
 #include "stdio.h"
 
 // Project includes
+#include "config.h"
+#include "hooks.h"
 #include "keys.h"
 #include "task_internal.h"
 #include "usb.h"
@@ -145,6 +147,16 @@ static inline void midi_write(const uint8_t *pkt) {
 #include "tusb.h"
 static inline void midi_write(const uint8_t *pkt) {
     tud_midi_packet_write(pkt);
+}
+
+void tud_midi_rx_cb(uint8_t itf) {
+    (void)itf;
+    uint8_t packet[4];
+    while (tud_midi_available()) {
+        if (tud_midi_packet_read(packet)) {
+            hook_midi_receive(packet);
+        }
+    }
 }
 #endif
 

@@ -37,6 +37,32 @@ void vApplicationIdleHook(void) {
 #endif
 }
 
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
+                                   StackType_t **ppxIdleTaskStackBuffer,
+                                   uint32_t *pulIdleTaskStackSize) {
+    static StaticTask_t xIdleTaskTCB;
+    static StackType_t uxIdleTaskStack[configMINIMAL_STACK_SIZE];
+
+    *ppxIdleTaskTCBBuffer = &xIdleTaskTCB;
+    *ppxIdleTaskStackBuffer = uxIdleTaskStack;
+    *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
+#if (configUSE_TIMERS == 1)
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                    StackType_t **ppxTimerTaskStackBuffer,
+                                    uint32_t *pulTimerTaskStackSize) {
+    static StaticTask_t xTimerTaskTCB;
+    static StackType_t uxTimerTaskStack[configTIMER_TASK_STACK_DEPTH];
+
+    *ppxTimerTaskTCBBuffer = &xTimerTaskTCB;
+    *ppxTimerTaskStackBuffer = uxTimerTaskStack;
+    *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+}
+#endif
+#endif
+
 // Default weak implementations for module hooks
 __attribute__((weak)) void hook_early_init(void) {}
 
@@ -102,4 +128,8 @@ __attribute__((weak)) bool hook_gamepad_report(int8_t *x, int8_t *y, int8_t *z, 
 __attribute__((weak)) void hook_midi_send(const uint8_t *msg, uint8_t len) {
     (void)msg;
     (void)len;
+}
+
+__attribute__((weak)) void hook_midi_receive(const uint8_t packet[4]) {
+    (void)packet;
 }

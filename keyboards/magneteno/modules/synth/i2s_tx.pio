@@ -1,0 +1,68 @@
+.program i2s_tx
+.side_set 1 ; Pin 0 = BCK (e.g. GPIO 6)
+
+; SET pin = LRCK (e.g. GPIO 8)
+; OUT pin = DATA (e.g. GPIO 7)
+
+public entry_point:
+    set x, 12            side 1
+.wrap_target
+    ; --- LEFT CHANNEL (16 bits) ---
+left_loop:
+    out pins, 1          side 0    ; BCK=0, shift out bit 15..3
+    jmp x-- left_loop    side 1    ; BCK=1 (13 bits total: 15..3)
+
+    out pins, 1          side 0    ; BCK=0, bit 2
+    set x, 12            side 1    ; BCK=1, reload x=12 for Right channel
+
+    out pins, 1          side 0    ; BCK=0, bit 1
+    nop                  side 1    ; BCK=1
+
+    out pins, 1          side 0    ; BCK=0, bit 0 (last bit of Left)
+    set pins, 1          side 1    ; BCK=1, LRCK -> 1 (transition to Right)
+
+    ; --- RIGHT CHANNEL (16 bits) ---
+right_loop:
+    out pins, 1          side 0    ; BCK=0, shift out bit 15..3
+    jmp x-- right_loop   side 1    ; BCK=1 (13 bits total: 15..3)
+
+    out pins, 1          side 0    ; BCK=0, bit 2
+    set x, 12            side 1    ; BCK=1, reload x=12 for Left channel
+
+    out pins, 1          side 0    ; BCK=0, bit 1
+    nop                  side 1    ; BCK=1
+
+    out pins, 1          side 0    ; BCK=0, bit 0 (last bit of Right)
+    set pins, 0          side 1    ; BCK=1, LRCK -> 0 (transition to Left)
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void i2s_tx_program_init(PIO pio, uint sm, uint offset, uint data_pin, uint bck_pin, uint lrck_pin, float sample_rate) {
+    pio_gpio_init(pio, data_pin);
+    pio_gpio_init(pio, bck_pin);
+    pio_gpio_init(pio, lrck_pin);
+
+    uint pin_mask = (1u << data_pin) | (1u << bck_pin) | (1u << lrck_pin);
+    pio_sm_set_pindirs_with_mask(pio, sm, pin_mask, pin_mask);
+    pio_sm_set_pins_with_mask(pio, sm, 0, pin_mask);
+
+    pio_sm_config c = i2s_tx_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, data_pin, 1);
+    sm_config_set_sideset_pins(&c, bck_pin);
+    sm_config_set_set_pins(&c, lrck_pin, 1);
+
+    sm_config_set_out_shift(&c, false, true, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+    // 1 audio frame = 32 bits * 2 cycles per bit = 64 PIO cycles
+    float div = (float)clock_get_hz(clk_sys) / (sample_rate * 64.0f);
+    sm_config_set_clkdiv(&c, div);
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_exec(pio, sm, pio_encode_jmp(offset + i2s_tx_offset_entry_point));
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
