@@ -5,9 +5,6 @@
 
 #include "pin_defs.h"
 
-#ifndef MCU_nrf52840
-#define MCU_nrf52840
-#endif
 #define DEFAULT_MCU nrf52840
 
 /* --- Matrix Settings --- */

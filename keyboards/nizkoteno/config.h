@@ -3,9 +3,6 @@
 
 #include "pin_defs.h"
 
-#ifndef MCU_rp2040
-#define MCU_rp2040
-#endif
 #define DEFAULT_MCU rp2040
 #define MATRIX_TYPE DIRECT
 

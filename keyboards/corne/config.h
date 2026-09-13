@@ -7,9 +7,6 @@
 
 #include "pin_defs.h"
 
-#ifndef MCU_milandr
-#define MCU_milandr
-#endif
 #define DEFAULT_MCU milandr
 
 /* --- Split Settings --- */

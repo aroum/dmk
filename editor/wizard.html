@@ -5412,9 +5412,6 @@ visualElements.push({
 
             if (configState.mcu && configState.mcu !== 'all') {
                 out += `// Default target microcontroller for DMK build system\n`;
-                out += `#ifndef MCU_${configState.mcu}\n`;
-                out += `#define MCU_${configState.mcu}\n`;
-                out += `#endif\n`;
                 out += `#define DEFAULT_MCU ${configState.mcu}\n\n`;
             }
 

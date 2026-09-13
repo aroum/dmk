@@ -3,9 +3,6 @@
 
 #include "pin_defs.h"
 
-#ifndef MCU_rp2350
-#define MCU_rp2350
-#endif
 #define DEFAULT_MCU rp2350
 
 #ifndef VIAL
