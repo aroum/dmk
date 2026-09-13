@@ -370,9 +370,19 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     uint8_t command_id = request[0];
     switch (command_id) {
     case VIA_GET_PROTOCOL_VERSION: {
-        // Return VIA protocol version 12 in Big Endian (0x000C) for VIA v3 support
+#if defined(VIA_PROTOCOL_VERSION)
+        // Explicit protocol version override
+        response[1] = (uint8_t)(((uint16_t)(VIA_PROTOCOL_VERSION) >> 8) & 0xFF);
+        response[2] = (uint8_t)((uint16_t)(VIA_PROTOCOL_VERSION) & 0xFF);
+#elif defined(VIA_V3) || defined(USE_VIA_V3) || (defined(VIA) && !defined(VIAL))
+        // VIA v3 (Protocol 12) for usevia.app Custom UI menus
         response[1] = 0x00;
         response[2] = 0x0C;
+#else
+        // Default: Vial GUI compatibility (VIA Protocol 9)
+        response[1] = 0x00;
+        response[2] = 0x09;
+#endif
         break;
     }
 

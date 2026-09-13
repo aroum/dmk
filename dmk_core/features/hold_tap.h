@@ -28,13 +28,19 @@ typedef struct {
 #if defined(NO_HOLD_TAP)
 static inline void hold_tap_init(void) {}
 static inline bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
-    (void)row; (void)col; (void)key; (void)pressed; return false;
+    (void)row;
+    (void)col;
+    (void)key;
+    (void)pressed;
+    return false;
 }
 static inline void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
-    (void)except_row; (void)except_col;
+    (void)except_row;
+    (void)except_col;
 }
 static inline TickType_t hold_tap_check_timeouts(TickType_t now) {
-    (void)now; return portMAX_DELAY;
+    (void)now;
+    return portMAX_DELAY;
 }
 #else
 // Initialize the hold-tap tracker pool

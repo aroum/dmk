@@ -418,15 +418,16 @@ For split keyboards (such as Corne, Jianovka, or Nizkoteno Split), communication
 
 DMK utilizes a modular compilation architecture to minimize Flash/RAM usage and eliminate unnecessary FreeRTOS overhead. You can selectively disable optional subsystems by defining the corresponding macro in `config.h`:
 
-| Macro | Description | Effect |
-| :--- | :--- | :--- |
-| `#define NO_MOUSE` | Disables USB HID Mouse subsystem | Excludes `mouse.c`, removes Mouse HID descriptor, saves RAM |
-| `#define NO_GAMEPAD` | Disables USB HID Gamepad subsystem | Excludes `gamepad.c`, removes Gamepad HID descriptor |
-| `#define NO_MIDI` | Disables USB MIDI interface | Excludes `midi.c`, removes USB MIDI streaming interface |
-| `#define NO_LED` | Disables standard GPIO status LEDs | Excludes `led.c`, disables Lock/Layer indicator polling |
-| `#define NO_RGB` | Disables WS2812 addressable RGB lighting | Excludes WS2812 driver, animation engines, and color buffers |
+| Macro                | Description                              | Effect                                                       |
+| :------------------- | :--------------------------------------- | :----------------------------------------------------------- |
+| `#define NO_MOUSE`   | Disables USB HID Mouse subsystem         | Excludes `mouse.c`, removes Mouse HID descriptor, saves RAM  |
+| `#define NO_GAMEPAD` | Disables USB HID Gamepad subsystem       | Excludes `gamepad.c`, removes Gamepad HID descriptor         |
+| `#define NO_MIDI`    | Disables USB MIDI interface              | Excludes `midi.c`, removes USB MIDI streaming interface      |
+| `#define NO_LED`     | Disables standard GPIO status LEDs       | Excludes `led.c`, disables Lock/Layer indicator polling      |
+| `#define NO_RGB`     | Disables WS2812 addressable RGB lighting | Excludes WS2812 driver, animation engines, and color buffers |
 
 ### FreeRTOS & Deep Idle Optimization
+
 - When no keys are active and no timeouts (macros, encoders, hold-tap, combos, or led fades) are pending, DMK sleeps on the FreeRTOS event queue with `portMAX_DELAY`, waking strictly on hardware interrupts (matrix scan, split UART, or USB events).
 - Unused FreeRTOS software timers (`configUSE_TIMERS 0`), trace facilities, recursive mutexes, and queue sets are stripped by default, shrinking FreeRTOS heap consumption from 24 KB down to 8 KB (6 KB on Milandr/Baikal).
 

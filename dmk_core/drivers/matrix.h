@@ -9,8 +9,8 @@ typedef struct matrix_event_s {
     uint8_t row;
     uint8_t col;
     uint8_t pressed : 1;
-    uint8_t split   : 1;
-    uint8_t reserved: 6;
+    uint8_t split : 1;
+    uint8_t reserved : 6;
 } matrix_event_t;
 
 extern QueueHandle_t matrix_queue;

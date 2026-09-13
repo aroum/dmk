@@ -56,22 +56,47 @@ void rgb_set_config(const uint8_t *src);
 #else
 
 static inline void rgb_init(void) {}
-static inline void rgb_task(void *pvParameters) { (void)pvParameters; }
+static inline void rgb_task(void *pvParameters) {
+    (void)pvParameters;
+}
 static inline void rgb_toggle(void) {}
 static inline void rgb_next_theme(void) {}
 static inline void rgb_prev_theme(void) {}
 
-static inline void rgb_set_enabled(bool enabled) { (void)enabled; }
-static inline bool rgb_get_enabled(void) { return false; }
-static inline void rgb_set_mode(uint8_t mode) { (void)mode; }
-static inline uint8_t rgb_get_mode(void) { return 0; }
-static inline void rgb_set_brightness(uint8_t brightness) { (void)brightness; }
-static inline uint8_t rgb_get_brightness(void) { return 0; }
-static inline void rgb_set_speed(uint8_t speed) { (void)speed; }
-static inline uint8_t rgb_get_speed(void) { return 0; }
-static inline void rgb_set_color(uint8_t hue, uint8_t sat) { (void)hue; (void)sat; }
-static inline uint8_t rgb_get_hue(void) { return 0; }
-static inline uint8_t rgb_get_sat(void) { return 0; }
+static inline void rgb_set_enabled(bool enabled) {
+    (void)enabled;
+}
+static inline bool rgb_get_enabled(void) {
+    return false;
+}
+static inline void rgb_set_mode(uint8_t mode) {
+    (void)mode;
+}
+static inline uint8_t rgb_get_mode(void) {
+    return 0;
+}
+static inline void rgb_set_brightness(uint8_t brightness) {
+    (void)brightness;
+}
+static inline uint8_t rgb_get_brightness(void) {
+    return 0;
+}
+static inline void rgb_set_speed(uint8_t speed) {
+    (void)speed;
+}
+static inline uint8_t rgb_get_speed(void) {
+    return 0;
+}
+static inline void rgb_set_color(uint8_t hue, uint8_t sat) {
+    (void)hue;
+    (void)sat;
+}
+static inline uint8_t rgb_get_hue(void) {
+    return 0;
+}
+static inline uint8_t rgb_get_sat(void) {
+    return 0;
+}
 
 static inline void rgb_increase_hue(void) {}
 static inline void rgb_decrease_hue(void) {}
@@ -82,11 +107,18 @@ static inline void rgb_decrease_val(void) {}
 static inline void rgb_increase_speed(void) {}
 static inline void rgb_decrease_speed(void) {}
 
-static inline void rgb_set_pixel_raw(uint32_t index, uint32_t color) { (void)index; (void)color; }
+static inline void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
+    (void)index;
+    (void)color;
+}
 static inline void rgb_show(void) {}
 
-static inline void rgb_get_config(uint8_t *dest) { (void)dest; }
-static inline void rgb_set_config(const uint8_t *src) { (void)src; }
+static inline void rgb_get_config(uint8_t *dest) {
+    (void)dest;
+}
+static inline void rgb_set_config(const uint8_t *src) {
+    (void)src;
+}
 
 #endif
 

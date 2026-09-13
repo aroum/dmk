@@ -1,7 +1,7 @@
 #include "config.h"
+#include "led.h"
 #include "tusb.h"
 #include "vial.h"
-#include "led.h"
 
 #ifndef VIAL_VENDOR_ID
 #define VIAL_VENDOR_ID 0xCafe

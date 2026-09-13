@@ -2,19 +2,19 @@
 #include "config.h"
 #include "hooks.h"
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <math.h>
 #include <string.h>
 
 #if defined(MCU_rp2040) || defined(MCU_rp2350)
-#include "pico/stdlib.h"
-#include "pico/multicore.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/sync.h"
 #include "i2s_tx.pio.h"
+#include "pico/multicore.h"
+#include "pico/stdlib.h"
 
 #define SAMPLE_RATE 44100.0f
 #define SINE_LUT_SIZE 256
@@ -59,7 +59,7 @@ static uint32_t voice_age_counter = 0;
 
 // Inter-core lock-free ring buffer (Core 0 producer, Core 1 consumer)
 typedef struct {
-    uint8_t cmd;   // 1=NoteOn, 0=NoteOff, 2=AllNotesOff
+    uint8_t cmd; // 1=NoteOn, 0=NoteOff, 2=AllNotesOff
     uint8_t note;
     uint8_t vel;
 } synth_event_t;
@@ -82,7 +82,8 @@ static inline void synth_send_event(uint8_t cmd, uint8_t note, uint8_t vel) {
 
 // Internal voice allocators (run on Core 1)
 static void internal_note_on(uint8_t note, uint8_t vel) {
-    if (note > 127) return;
+    if (note > 127)
+        return;
     if (vel == 0) {
         for (int i = 0; i < MAX_VOICES; i++) {
             if (voices[i].active && voices[i].note == note) {
@@ -178,7 +179,8 @@ static void __not_in_flash_func(audio_core_entry)(void) {
 
         for (int i = 0; i < MAX_VOICES; i++) {
             voice_t *v = &voices[i];
-            if (!v->active) continue;
+            if (!v->active)
+                continue;
             any_active = true;
 
             // Attack & Release Envelope
@@ -186,7 +188,8 @@ static void __not_in_flash_func(audio_core_entry)(void) {
                 // Smooth attack (~2.5ms = 120 samples) to eliminate click
                 if (v->env_level < 65000) {
                     v->env_level += 550;
-                    if (v->env_level > 65535) v->env_level = 65535;
+                    if (v->env_level > 65535)
+                        v->env_level = 65535;
                 }
             } else {
                 // Exponential decay release (~50ms)
@@ -219,11 +222,13 @@ static void __not_in_flash_func(audio_core_entry)(void) {
             if (mixed_sample > 24000) {
                 int32_t excess = mixed_sample - 24000;
                 mixed_sample = 24000 + (excess * 8000) / (excess + 8000);
-                if (mixed_sample > 32000) mixed_sample = 32000;
+                if (mixed_sample > 32000)
+                    mixed_sample = 32000;
             } else if (mixed_sample < -24000) {
                 int32_t excess = -mixed_sample - 24000;
                 int32_t compressed = 24000 + (excess * 8000) / (excess + 8000);
-                if (compressed > 32000) compressed = 32000;
+                if (compressed > 32000)
+                    compressed = 32000;
                 mixed_sample = -compressed;
             }
         } else {
@@ -241,7 +246,8 @@ static void __not_in_flash_func(audio_core_entry)(void) {
 }
 
 void synth_init(void) {
-    if (synth_started) return;
+    if (synth_started)
+        return;
 
     // 1. Generate Sine Wave LUT (256 values)
     for (int i = 0; i < SINE_LUT_SIZE; i++) {
@@ -281,7 +287,8 @@ void synth_all_notes_off(void) {
 }
 
 void synth_set_master_volume(uint8_t volume_percent) {
-    if (volume_percent > 100) volume_percent = 100;
+    if (volume_percent > 100)
+        volume_percent = 100;
     master_volume = volume_percent;
 }
 
@@ -292,10 +299,10 @@ void hook_early_init(void) {
 
 // Intercept incoming host USB MIDI
 void hook_midi_receive(const uint8_t packet[4]) {
-    uint8_t cin    = packet[0] & 0x0F;
+    uint8_t cin = packet[0] & 0x0F;
     uint8_t status = packet[1] & 0xF0;
-    uint8_t note   = packet[2];
-    uint8_t vel    = packet[3];
+    uint8_t note = packet[2];
+    uint8_t vel = packet[3];
 
     if ((cin == 0x09 || status == 0x90) && vel > 0) {
         synth_note_on(note, vel);
@@ -310,8 +317,8 @@ void hook_midi_receive(const uint8_t packet[4]) {
 void hook_midi_send(const uint8_t *msg, uint8_t len) {
     if (len >= 3) {
         uint8_t status = msg[0] & 0xF0;
-        uint8_t note   = msg[1];
-        uint8_t vel    = msg[2];
+        uint8_t note = msg[1];
+        uint8_t vel = msg[2];
 
         if (status == 0x90 && vel > 0) {
             synth_note_on(note, vel);
@@ -324,8 +331,15 @@ void hook_midi_send(const uint8_t *msg, uint8_t len) {
 #else
 // Stubs for non-RP architectures
 void synth_init(void) {}
-void synth_note_on(uint8_t note, uint8_t velocity) { (void)note; (void)velocity; }
-void synth_note_off(uint8_t note) { (void)note; }
+void synth_note_on(uint8_t note, uint8_t velocity) {
+    (void)note;
+    (void)velocity;
+}
+void synth_note_off(uint8_t note) {
+    (void)note;
+}
 void synth_all_notes_off(void) {}
-void synth_set_master_volume(uint8_t volume_percent) { (void)volume_percent; }
+void synth_set_master_volume(uint8_t volume_percent) {
+    (void)volume_percent;
+}
 #endif

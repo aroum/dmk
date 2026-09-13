@@ -27,7 +27,8 @@ static TickType_t s_delay_deadline = 0;
  */
 static void macros_play(const Macro *macro) {
     if (s_active_macro != NULL) {
-        // If a macro is already playing, release any keys that were held down by previous steps to prevent stuck keys on host
+        // If a macro is already playing, release any keys that were held down by previous steps to prevent stuck keys
+        // on host
         for (uint8_t i = 0; i < s_active_step; i++) {
             if (s_active_macro->steps[i].action == KEY_DOWN) {
                 keyboard_send_key((uint16_t)s_active_macro->steps[i].value, false);

@@ -39,13 +39,22 @@ void led_activity(bool pressed);
 
 #ifndef LED_C_SRC
 static inline void led_init(void) {}
-static inline void led_update(TickType_t now) { (void)now; }
-static inline TickType_t led_check_timeouts(TickType_t now) { (void)now; return portMAX_DELAY; }
+static inline void led_update(TickType_t now) {
+    (void)now;
+}
+static inline TickType_t led_check_timeouts(TickType_t now) {
+    (void)now;
+    return portMAX_DELAY;
+}
 static inline void led_blink(void) {}
 static inline void led_on(void) {}
 static inline void led_off(void) {}
-static inline void led_set_hid_state(uint8_t state) { (void)state; }
-static inline void led_activity(bool pressed) { (void)pressed; }
+static inline void led_set_hid_state(uint8_t state) {
+    (void)state;
+}
+static inline void led_activity(bool pressed) {
+    (void)pressed;
+}
 #endif
 
 #endif

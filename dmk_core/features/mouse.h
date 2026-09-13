@@ -62,15 +62,34 @@ static inline TickType_t mouse_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
 }
-static inline void mouse_move(int8_t dx, int8_t dy) { (void)dx; (void)dy; }
-static inline void mouse_scroll(int8_t wheel, int8_t pan) { (void)wheel; (void)pan; }
-static inline void mouse_button_press(uint8_t button_mask) { (void)button_mask; }
-static inline void mouse_button_release(uint8_t button_mask) { (void)button_mask; }
-static inline void mouse_button_set(uint8_t button_mask, bool pressed) { (void)button_mask; (void)pressed; }
-static inline void mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan) {
-    (void)buttons; (void)dx; (void)dy; (void)wheel; (void)pan;
+static inline void mouse_move(int8_t dx, int8_t dy) {
+    (void)dx;
+    (void)dy;
 }
-static inline uint8_t mouse_get_buttons(void) { return 0; }
+static inline void mouse_scroll(int8_t wheel, int8_t pan) {
+    (void)wheel;
+    (void)pan;
+}
+static inline void mouse_button_press(uint8_t button_mask) {
+    (void)button_mask;
+}
+static inline void mouse_button_release(uint8_t button_mask) {
+    (void)button_mask;
+}
+static inline void mouse_button_set(uint8_t button_mask, bool pressed) {
+    (void)button_mask;
+    (void)pressed;
+}
+static inline void mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan) {
+    (void)buttons;
+    (void)dx;
+    (void)dy;
+    (void)wheel;
+    (void)pan;
+}
+static inline uint8_t mouse_get_buttons(void) {
+    return 0;
+}
 
 #endif // NO_MOUSE
 

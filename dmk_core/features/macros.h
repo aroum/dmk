@@ -1,9 +1,9 @@
 #ifndef MACROS_H
 #define MACROS_H
 
+#include "FreeRTOS.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "FreeRTOS.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,10 +11,13 @@ extern "C" {
 
 #if defined(NO_MACROS)
 static inline bool macros_process_key(uint32_t key, bool pressed) {
-    (void)key; (void)pressed; return false;
+    (void)key;
+    (void)pressed;
+    return false;
 }
 static inline TickType_t macros_check_timeouts(TickType_t now) {
-    (void)now; return portMAX_DELAY;
+    (void)now;
+    return portMAX_DELAY;
 }
 static inline void macros_run_layer_triggers(uint8_t new_layer) {
     (void)new_layer;

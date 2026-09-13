@@ -368,4 +368,3 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         return false;
     }
 }
-

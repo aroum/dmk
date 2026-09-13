@@ -195,7 +195,8 @@ void split_soft_init(void) {
     hal_gpio_pull_up(SPLIT_TX_PIN);
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    xTaskCreateStatic(split_soft_task, "split_soft", 512, NULL, configMAX_PRIORITIES - 1, s_split_soft_task_stack, &s_split_soft_task_tcb);
+    xTaskCreateStatic(split_soft_task, "split_soft", 512, NULL, configMAX_PRIORITIES - 1, s_split_soft_task_stack,
+                      &s_split_soft_task_tcb);
 #else
     xTaskCreate(split_soft_task, "split_soft", 512, NULL, configMAX_PRIORITIES - 1, NULL);
 #endif

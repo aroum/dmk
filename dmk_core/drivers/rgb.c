@@ -288,13 +288,12 @@ void rgb_task(void *pvParameters) {
             ws2812_show();
         }
 
-        bool is_static = !rgb_enabled || (rgb_mode == 0) ||
-                         (rgb_mode == RGBLIGHT_MODE_STATIC_LIGHT) ||
+        bool is_static = !rgb_enabled || (rgb_mode == 0) || (rgb_mode == RGBLIGHT_MODE_STATIC_LIGHT) ||
                          (rgb_mode == RGBLIGHT_MODE_STATIC_GRADIENT)
 #ifdef RGB_THEMES
                          || (rgb_mode == 100)
 #endif
-                         ;
+            ;
 
         if (is_static) {
             // Static mode: sleep indefinitely until woken by setting change notification

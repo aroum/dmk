@@ -12,10 +12,15 @@ extern "C" {
 #if defined(NO_COMBOS)
 static inline void combos_init(void) {}
 static inline bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now) {
-    (void)row; (void)col; (void)pressed; (void)now; return false;
+    (void)row;
+    (void)col;
+    (void)pressed;
+    (void)now;
+    return false;
 }
 static inline TickType_t combos_check_timeouts(TickType_t now) {
-    (void)now; return portMAX_DELAY;
+    (void)now;
+    return portMAX_DELAY;
 }
 static inline void chords_flush(void) {}
 #else

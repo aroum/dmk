@@ -10,7 +10,7 @@ Vial is an open-source, cross-platform GUI application for configuring keyboard 
 
 ---
 
-## 🛠️ Enabling Vial Support
+## Enabling Vial Support
 
 Vial support can be enabled in two ways:
 
@@ -35,7 +35,7 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 
 ---
 
-## 🗺️ How it Works
+## How it Works
 
 1. **Vial Layout Definition (`vial.json`)**:
    Each keyboard that supports Vial must define its physical layouts, vendor ID, and product ID in a `vial.json` file inside the keyboard directory (e.g., `keyboards/corne/vial.json`).
@@ -53,7 +53,7 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 
 ---
 
-## 💡 RGB Lighting Integration
+## RGB Lighting Integration
 
 `dmk` supports WS2812 RGB underglow/backlight control directly through the Vial GUI:
 
@@ -63,7 +63,7 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
   - Define `RGB_NUM` (number of LEDs) and `RGB_PIN` in your keyboard's `config.h` (e.g., in [keyboards/pncateho/config.h](../../keyboards/pncateho/config.h)).
   - Optional: Define `RGB_MAP` to map logical indexes to physical LED indexes.
 
-### 🎭 Supported RGB Effects
+### Supported RGB Effects
 
 While the Vial interface shows a full list of QMK animations, `dmk` implements a optimized subset of effects to save flash space. Only the first index of each animation type is supported:
 
@@ -81,7 +81,7 @@ While the Vial interface shows a full list of QMK animations, `dmk` implements a
 
 ---
 
-## 📊 Vial Features Support Matrix
+## Vial Features Support Matrix
 
 Here is the current implementation status of various Vial / VIA features in `dmk`:
 
@@ -101,7 +101,7 @@ Here is the current implementation status of various Vial / VIA features in `dmk
 
 ---
 
-## 🖱️ Mousekeys & Movement Support
+## Mousekeys & Movement Support
 
 `dmk` implements full USB HID Mousekeys emulation integrated into the Vial protocol (protocol v6, keycodes `0xED01`–`0xED13`):
 
@@ -113,7 +113,7 @@ Here is the current implementation status of various Vial / VIA features in `dmk
 
 ---
 
-## 🔄 Rotary Encoders Support
+## Rotary Encoders Support
 
 Physical rotary encoders are first-class citizens in `dmk` and can be remapped directly in Vial:
 
@@ -125,7 +125,7 @@ Physical rotary encoders are first-class citizens in `dmk` and can be remapped d
 
 ---
 
-## 🔒 Security & Matrix Tester
+## Security & Matrix Tester
 
 - **Vial Lock**: The lock feature is intentionally bypassed (`VIAL_GET_UNLOCK_STATUS` always reports unlocked), making real-time layout adjustments frictionless.
 - **Matrix Tester (macOS vs Windows)**:
@@ -137,7 +137,7 @@ Physical rotary encoders are first-class citizens in `dmk` and can be remapped d
 
 ---
 
-## 🧪 Testing
+## Testing
 
 1. Connect the keyboard to your PC.
 2. Go to the [Vial Web Client](https://vial.rocks/) or download the desktop app.

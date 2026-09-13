@@ -17,8 +17,14 @@ TickType_t encoder_check_timeouts(TickType_t now);
 
 static inline void encoder_init(void) {}
 static inline void encoder_scan(void) {}
-static inline void encoder_process_event(uint8_t encoder_idx, bool direction) { (void)encoder_idx; (void)direction; }
-static inline TickType_t encoder_check_timeouts(TickType_t now) { (void)now; return portMAX_DELAY; }
+static inline void encoder_process_event(uint8_t encoder_idx, bool direction) {
+    (void)encoder_idx;
+    (void)direction;
+}
+static inline TickType_t encoder_check_timeouts(TickType_t now) {
+    (void)now;
+    return portMAX_DELAY;
+}
 
 #endif
 

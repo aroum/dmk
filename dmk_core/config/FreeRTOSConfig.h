@@ -209,12 +209,12 @@
 #endif
 
 /* Lightweight assert without dragging in newlib libc abort/assert strings */
-#define configASSERT(x)                                                        \
-    if ((x) == 0) {                                                            \
-        portDISABLE_INTERRUPTS();                                              \
-        for (;;) {                                                             \
-            __asm volatile("nop");                                             \
-        }                                                                      \
+#define configASSERT(x)                                                                                                \
+    if ((x) == 0) {                                                                                                    \
+        portDISABLE_INTERRUPTS();                                                                                      \
+        for (;;) {                                                                                                     \
+            __asm volatile("nop");                                                                                     \
+        }                                                                                                              \
     }
 
 /* Set the following definitions to 1 to include the API function, or zero

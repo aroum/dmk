@@ -55,9 +55,9 @@ void platform_bootloader_jump(void) {
 
 #elif defined(MCU_nrf52840)
 #include "nrf.h"
-#include "nrf_nvic.h"
 #include "nrf_delay.h"
 #include "nrf_gpio.h"
+#include "nrf_nvic.h"
 
 void hal_gpio_init(pin_t gpio) {
     (void)gpio;

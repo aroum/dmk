@@ -181,8 +181,7 @@ static bool process_vial_release(uint8_t row, uint8_t col) {
                 }
 
                 if (all_released) {
-                    memmove(&s_active[i], &s_active[i + 1],
-                            (s_active_count - 1 - i) * sizeof(active_combo_t));
+                    memmove(&s_active[i], &s_active[i + 1], (s_active_count - 1 - i) * sizeof(active_combo_t));
                     s_active_count--;
                 }
 

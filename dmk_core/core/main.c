@@ -56,7 +56,8 @@ int main(void) {
 
     // Create FreeRTOS matrix event queue
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    matrix_queue = xQueueCreateStatic(QUEUE_DEF_SIZE, sizeof(matrix_event_t), s_matrix_queue_storage, &s_matrix_queue_struct);
+    matrix_queue =
+        xQueueCreateStatic(QUEUE_DEF_SIZE, sizeof(matrix_event_t), s_matrix_queue_storage, &s_matrix_queue_struct);
 #else
     matrix_queue = xQueueCreate(QUEUE_DEF_SIZE, sizeof(matrix_event_t));
 #endif
@@ -71,7 +72,8 @@ int main(void) {
 
     // Keyboard state machine, layer stack, and tap engine task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (xTaskCreateStatic(keyboard_task, "keyboard", TASK_STACK_KEYBOARD, NULL, TASK_PRIO_KEYBOARD, s_keyboard_task_stack, &s_keyboard_task_tcb) == NULL) {
+    if (xTaskCreateStatic(keyboard_task, "keyboard", TASK_STACK_KEYBOARD, NULL, TASK_PRIO_KEYBOARD,
+                          s_keyboard_task_stack, &s_keyboard_task_tcb) == NULL) {
         status = pdFAIL;
     }
 #else
@@ -83,7 +85,8 @@ int main(void) {
 #if defined(RGB_NUM)
     // RGB animations task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (xTaskCreateStatic(rgb_task, "rgb", TASK_STACK_RGB, NULL, TASK_PRIO_RGB, s_rgb_task_stack, &s_rgb_task_tcb) == NULL) {
+    if (xTaskCreateStatic(rgb_task, "rgb", TASK_STACK_RGB, NULL, TASK_PRIO_RGB, s_rgb_task_stack, &s_rgb_task_tcb) ==
+        NULL) {
         status = pdFAIL;
     }
 #else
@@ -95,7 +98,8 @@ int main(void) {
 
     // Matrix switch scanner task
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    if (xTaskCreateStatic(matrix_task, "matrix", TASK_STACK_MATRIX, NULL, TASK_PRIO_MATRIX, s_matrix_task_stack, &s_matrix_task_tcb) == NULL) {
+    if (xTaskCreateStatic(matrix_task, "matrix", TASK_STACK_MATRIX, NULL, TASK_PRIO_MATRIX, s_matrix_task_stack,
+                          &s_matrix_task_tcb) == NULL) {
         status = pdFAIL;
     }
 #else

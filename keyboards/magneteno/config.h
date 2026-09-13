@@ -9,6 +9,7 @@
 #ifndef VIAL
 #define VIAL
 #endif
+#define VIA_V3 // Uncomment to switch from default Vial (Protocol 9) to VIA v3 (Protocol 12) for usevia.app
 #define VIAL_KEYBOARD_NAME "Magneteno"
 #define VIAL_VENDOR_ID 0xCafe
 #define VIAL_PRODUCT_ID 0x4012
@@ -44,9 +45,9 @@
 #endif
 
 /* --- Sharp Memory LCD (LS011B7DH03 160x68) Settings --- */
-#define SHARP_LCD_PIN_MOSI GPIO11    // TX
-#define SHARP_LCD_PIN_SCK GPIO10     // SCK
-#define SHARP_LCD_PIN_CS GPIO9       // CSN
+#define SHARP_LCD_PIN_MOSI GPIO11 // TX
+#define SHARP_LCD_PIN_SCK GPIO10  // SCK
+#define SHARP_LCD_PIN_CS GPIO9    // CSN
 
 #elif defined(MCU_milandr)
 #define MUX_PIN_S0 PA0

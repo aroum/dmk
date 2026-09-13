@@ -76,14 +76,23 @@ function(build_keyboard KEYBOARD_NAME)
     
     # Check for VIAL and CUSTOM_MATRIX configurations
     set(VIAL_ENABLED ${VIAL})
-    set(CUSTOM_MATRIX_ENABLED ${CUSTOM_MATRIX})
     if(EXISTS "${ACTUAL_KEYBOARD_DIR}/config.h")
         file(READ "${ACTUAL_KEYBOARD_DIR}/config.h" CONFIG_CONTENT)
-        if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIAL([ \t\r\n]|$)")
+        if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIAL([ \t\r\n]|$)" OR
+           CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIA([ \t\r\n]|$)" OR
+           CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIA_V3([ \t\r\n]|$)")
             set(VIAL_ENABLED ON)
         endif()
         if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+CUSTOM_MATRIX([ \t\r\n]|$)")
             set(CUSTOM_MATRIX_ENABLED ON)
+        endif()
+    endif()
+
+    if(DEFINE)
+        if(DEFINE MATCHES "(^|[,;])VIAL([,;]|$)" OR
+           DEFINE MATCHES "(^|[,;])VIA([,;]|$)" OR
+           DEFINE MATCHES "(^|[,;])VIA_V3([,;]|$)")
+            set(VIAL_ENABLED ON)
         endif()
     endif()
 

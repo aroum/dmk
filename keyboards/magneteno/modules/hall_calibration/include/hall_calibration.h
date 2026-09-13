@@ -66,16 +66,16 @@ bool hall_calibration_is_learning(void);
 
 // VIA v3 Custom UI Value IDs (channel 0)
 enum via_hall_value_id {
-    ID_HE_CONTINUOUS_MODE    = 1,  // uint8_t: 1 = Continuous RT, 0 = Static
-    ID_HE_ACTUATION_PERCENT  = 2,  // uint8_t: 5..95 %
-    ID_HE_RT_DOWN            = 3,  // uint8_t: 10..250 ADC delta
-    ID_HE_RT_UP              = 4,  // uint8_t: 10..250 ADC delta
-    ID_HE_LEARN_MODE         = 5,  // uint8_t: 1 = Learning active, 0 = Normal
-    ID_HE_SAVE_FLASH         = 6,  // Button: 1 = Save to Flash
-    ID_HE_RESET_DEFAULTS     = 7,  // Button: 1 = Reset to Defaults
-    ID_HE_PER_KEY_ACTUATION  = 10, // Array: [key_idx] -> percent
-    ID_HE_PER_KEY_RT_DOWN    = 11, // Array: [key_idx] -> down_raw
-    ID_HE_PER_KEY_RT_UP      = 12, // Array: [key_idx] -> up_raw
+    ID_HE_CONTINUOUS_MODE = 1,     // uint8_t: 1 = Continuous RT, 0 = Static
+    ID_HE_ACTUATION_PERCENT = 2,   // uint8_t: 5..95 %
+    ID_HE_RT_DOWN = 3,             // uint8_t: 10..250 ADC delta
+    ID_HE_RT_UP = 4,               // uint8_t: 10..250 ADC delta
+    ID_HE_LEARN_MODE = 5,          // uint8_t: 1 = Learning active, 0 = Normal
+    ID_HE_SAVE_FLASH = 6,          // Button: 1 = Save to Flash
+    ID_HE_RESET_DEFAULTS = 7,      // Button: 1 = Reset to Defaults
+    ID_HE_PER_KEY_ACTUATION = 10,  // Array: [key_idx] -> percent
+    ID_HE_PER_KEY_RT_DOWN = 11,    // Array: [key_idx] -> down_raw
+    ID_HE_PER_KEY_RT_UP = 12,      // Array: [key_idx] -> up_raw
     ID_HE_PER_KEY_CONTINUOUS = 13, // Array: [key_idx] -> 1/0
 };
 
