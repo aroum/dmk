@@ -17,21 +17,61 @@ extern const Macro keyboard_macros[];
 extern const uint8_t keyboard_macros_count;
 #endif
 
+static const Macro *s_active_macro = NULL;
+static uint8_t s_active_step = 0;
+static TickType_t s_delay_deadline = 0;
+
 /**
- * @brief Execute a single static macro step sequence.
+ * @brief Start non-blocking playback of a static macro sequence.
  * @param macro Pointer to the Macro descriptor to play back.
  */
 static void macros_play(const Macro *macro) {
-    for (uint8_t s = 0; s < macro->count; ++s) {
-        const MacroStep *step = &macro->steps[s];
+    if (s_active_macro != NULL) {
+        // If a macro is already playing, release any keys that were held down by previous steps to prevent stuck keys on host
+        for (uint8_t i = 0; i < s_active_step; i++) {
+            if (s_active_macro->steps[i].action == KEY_DOWN) {
+                keyboard_send_key((uint16_t)s_active_macro->steps[i].value, false);
+            }
+        }
+    }
+    s_active_macro = macro;
+    s_active_step = 0;
+    s_delay_deadline = 0;
+}
+
+/**
+ * @brief Periodic service of macro playback steps and delays.
+ * @param now Current FreeRTOS tick count.
+ * @return Ticks until next required macro execution, or portMAX_DELAY if idle.
+ */
+TickType_t macros_check_timeouts(TickType_t now) {
+    if (!s_active_macro) {
+        return portMAX_DELAY;
+    }
+
+    if (s_delay_deadline > 0) {
+        if (now < s_delay_deadline) {
+            return (s_delay_deadline - now);
+        }
+        s_delay_deadline = 0;
+    }
+
+    while (s_active_step < s_active_macro->count) {
+        const MacroStep *step = &s_active_macro->steps[s_active_step++];
         if (step->action == KEY_DOWN) {
             keyboard_send_key((uint16_t)step->value, true);
         } else if (step->action == KEY_UP) {
             keyboard_send_key((uint16_t)step->value, false);
         } else if (step->action == DELAY) {
-            vTaskDelay(pdMS_TO_TICKS(step->value));
+            if (step->value > 0) {
+                s_delay_deadline = now + pdMS_TO_TICKS(step->value);
+                return pdMS_TO_TICKS(step->value);
+            }
         }
     }
+
+    s_active_macro = NULL;
+    return portMAX_DELAY;
 }
 
 /**

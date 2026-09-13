@@ -23,6 +23,24 @@ typedef struct {
 #define MAX_OS_TRACKERS 4
 #endif
 
+#if defined(NO_ONESHOT)
+static inline void oneshot_init(void) {}
+static inline bool oneshot_process_event(uint32_t key, bool pressed) {
+    (void)key; (void)pressed; return false;
+}
+static inline bool oneshot_should_consume(uint32_t key) {
+    (void)key; return false;
+}
+static inline void oneshot_on_key_press(uint32_t key) {
+    (void)key;
+}
+static inline void oneshot_on_key_release(void) {}
+static inline void oneshot_send_lazy_mods(void) {}
+static inline void oneshot_on_tap_key(void) {}
+static inline TickType_t oneshot_check_timeouts(TickType_t now) {
+    (void)now; return portMAX_DELAY;
+}
+#else
 // Initialize the One-Shot subsystem
 void oneshot_init(void);
 
@@ -44,6 +62,7 @@ void oneshot_on_tap_key(void);
 
 // Check timeouts for all active One-Shot keys; returns ticks until next deadline or portMAX_DELAY
 TickType_t oneshot_check_timeouts(TickType_t now);
+#endif
 
 #ifdef __cplusplus
 }

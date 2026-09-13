@@ -1,6 +1,6 @@
+#include "config.h"
 #include "midi.h"
 #include "FreeRTOS.h"
-#include "config.h"
 #include "hooks.h"
 #include "keys.h"
 #include "queue.h"

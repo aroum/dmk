@@ -1,6 +1,7 @@
 #ifndef MIDI_H
 #define MIDI_H
 
+#include "config.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -8,7 +9,7 @@
 extern "C" {
 #endif
 
-#if defined(MIDI_USB) || defined(MIDI_ENABLE) || defined(MIDI_JACK)
+#if (defined(MIDI_USB) || defined(MIDI_ENABLE) || defined(MIDI_JACK)) && !defined(NO_MIDI)
 
 // Initialize MIDI subsystem (tables and hardware interfaces)
 void dmk_midi_init(void);

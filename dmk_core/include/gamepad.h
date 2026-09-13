@@ -80,6 +80,8 @@ typedef struct {
     uint32_t buttons; // Bitmask of buttons 1..32
 } gamepad_state_t;
 
+#ifndef NO_GAMEPAD
+
 /**
  * @brief Initialize gamepad state and subsystem.
  */
@@ -146,6 +148,26 @@ bool gamepad_process_key(uint16_t key, bool pressed);
  * @brief Get pointer to read-only current state.
  */
 const gamepad_state_t *gamepad_get_state(void);
+
+#else // NO_GAMEPAD
+
+static inline void gamepad_init(void) {}
+static inline void gamepad_set_axis_left(int8_t x, int8_t y) { (void)x; (void)y; }
+static inline void gamepad_set_axis_right(int8_t z, int8_t rz) { (void)z; (void)rz; }
+static inline void gamepad_set_triggers(int8_t left, int8_t right) { (void)left; (void)right; }
+static inline void gamepad_set_dpad(uint8_t dpad) { (void)dpad; }
+static inline void gamepad_set_button(uint8_t button, bool pressed) { (void)button; (void)pressed; }
+static inline void gamepad_press_button(uint8_t button) { (void)button; }
+static inline void gamepad_release_button(uint8_t button) { (void)button; }
+static inline void gamepad_send(void) {}
+static inline bool gamepad_process_key(uint16_t key, bool pressed) {
+    (void)key;
+    (void)pressed;
+    return false;
+}
+static inline const gamepad_state_t *gamepad_get_state(void) { return 0; }
+
+#endif // NO_GAMEPAD
 
 #ifdef __cplusplus
 }
