@@ -357,6 +357,12 @@ void vial_init(void) {
     vial_eeprom_load();
 }
 
+__attribute__((weak)) bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
+    (void)request;
+    (void)response;
+    return false;
+}
+
 void vial_process_packet(uint8_t const *request, uint8_t *response) {
     // Fill response with request values as a default/fallback
     memcpy(response, request, 32);
@@ -364,9 +370,9 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     uint8_t command_id = request[0];
     switch (command_id) {
     case VIA_GET_PROTOCOL_VERSION: {
-        // Return VIA protocol version 9 in Big Endian (0x0009)
+        // Return VIA protocol version 12 in Big Endian (0x000C) for VIA v3 support
         response[1] = 0x00;
-        response[2] = 0x09;
+        response[2] = 0x0C;
         break;
     }
 
@@ -549,8 +555,31 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     }
 
     case VIA_CUSTOM_GET_VALUE: { // 0x08
-        uint8_t value_id = request[1];
-        switch (value_id) {
+        if (via_custom_value_command_kb(request, response)) {
+            break;
+        }
+        uint8_t channel_or_id = request[1];
+        if (channel_or_id == 2) { // VIA v3 qmk_rgblight channel
+            uint8_t qmk_val = request[2];
+            switch (qmk_val) {
+            case 1: // brightness
+                response[3] = rgb_get_brightness();
+                break;
+            case 2: // effect
+                response[3] = rgb_get_mode();
+                break;
+            case 3: // speed
+                response[3] = rgb_get_speed();
+                break;
+            case 4: // color
+                response[3] = rgb_get_hue();
+                response[4] = rgb_get_sat();
+                break;
+            }
+            break;
+        }
+        // Legacy VIA v2 fallback
+        switch (channel_or_id) {
         case 0x80: // id_qmk_rgblight_brightness
             response[2] = rgb_get_brightness();
             break;
@@ -571,8 +600,30 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     }
 
     case VIA_CUSTOM_SET_VALUE: { // 0x07
-        uint8_t value_id = request[1];
-        switch (value_id) {
+        if (via_custom_value_command_kb(request, response)) {
+            break;
+        }
+        uint8_t channel_or_id = request[1];
+        if (channel_or_id == 2) { // VIA v3 qmk_rgblight channel
+            uint8_t qmk_val = request[2];
+            switch (qmk_val) {
+            case 1: // brightness
+                rgb_set_brightness(request[3]);
+                break;
+            case 2: // effect
+                rgb_set_mode(request[3]);
+                break;
+            case 3: // speed
+                rgb_set_speed(request[3]);
+                break;
+            case 4: // color
+                rgb_set_color(request[3], request[4]);
+                break;
+            }
+            break;
+        }
+        // Legacy VIA v2 fallback
+        switch (channel_or_id) {
         case 0x80: // id_qmk_rgblight_brightness
             rgb_set_brightness(request[2]);
             break;
@@ -592,6 +643,9 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     }
 
     case VIA_CUSTOM_SAVE: {
+        if (via_custom_value_command_kb(request, response)) {
+            break;
+        }
         vial_eeprom_save();
         break;
     }

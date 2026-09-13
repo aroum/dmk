@@ -2,11 +2,135 @@
   "name": "Magneteno",
   "vendorId": "0xCAFE",
   "productId": "0x4012",
-  "lighting": "qmk_rgblight",
   "matrix": {
     "rows": 1,
     "cols": 10
   },
+  "menus": [
+    "qmk_rgblight",
+    {
+      "label": "Hall Effect",
+      "content": [
+        {
+          "label": "Global Configuration",
+          "content": [
+            {
+              "label": "Continuous Rapid Trigger",
+              "type": "toggle",
+              "content": ["id_he_continuous", 0, 1]
+            },
+            {
+              "label": "Actuation Point (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_actuation_pct", 0, 2]
+            },
+            {
+              "showIf": "{id_he_continuous} == 1",
+              "label": "RT Down Sensitivity (ADC delta)",
+              "type": "range",
+              "options": [10, 250],
+              "content": ["id_he_rt_down", 0, 3]
+            },
+            {
+              "showIf": "{id_he_continuous} == 1",
+              "label": "RT Up Sensitivity (ADC delta)",
+              "type": "range",
+              "options": [10, 250],
+              "content": ["id_he_rt_up", 0, 4]
+            }
+          ]
+        },
+        {
+          "label": "Per-Key Actuation",
+          "content": [
+            {
+              "label": "Key 1 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[0]", 0, 10, 0]
+            },
+            {
+              "label": "Key 2 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[1]", 0, 10, 1]
+            },
+            {
+              "label": "Key 3 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[2]", 0, 10, 2]
+            },
+            {
+              "label": "Key 4 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[3]", 0, 10, 3]
+            },
+            {
+              "label": "Key 5 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[4]", 0, 10, 4]
+            },
+            {
+              "label": "Key 6 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[5]", 0, 10, 5]
+            },
+            {
+              "label": "Key 7 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[6]", 0, 10, 6]
+            },
+            {
+              "label": "Key 8 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[7]", 0, 10, 7]
+            },
+            {
+              "label": "Key 9 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[8]", 0, 10, 8]
+            },
+            {
+              "label": "Key 10 Actuation (%)",
+              "type": "range",
+              "options": [5, 95],
+              "content": ["id_he_key_act[9]", 0, 10, 9]
+            }
+          ]
+        },
+        {
+          "label": "Calibration & Storage",
+          "content": [
+            {
+              "label": "Auto-Learn Mode",
+              "type": "toggle",
+              "content": ["id_he_learn_mode", 0, 5]
+            },
+            {
+              "label": "Save Calibration to Flash",
+              "type": "button",
+              "options": [1],
+              "content": ["id_he_save_flash", 0, 6]
+            },
+            {
+              "label": "Reset Calibration to Defaults",
+              "type": "button",
+              "options": [1],
+              "content": ["id_he_reset_defaults", 0, 7]
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "layouts": {
     "keymap": [
       [

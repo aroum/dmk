@@ -50,6 +50,10 @@ void hall_calibration_set_defaults(void);
 void hall_calibration_set_actuation(uint8_t key_idx, uint8_t percent);
 void hall_calibration_set_rapid_trigger(uint8_t key_idx, uint8_t down_raw, uint8_t up_raw);
 void hall_calibration_set_endpoints(uint8_t key_idx, uint16_t rest_val, uint16_t bottom_val);
+void hall_calibration_set_continuous_mode(uint8_t key_idx, bool enabled);
+void hall_calibration_set_global_actuation(uint8_t percent);
+void hall_calibration_set_global_rapid_trigger(uint8_t down_raw, uint8_t up_raw);
+void hall_calibration_set_global_continuous_mode(bool enabled);
 const hall_key_calib_t *hall_calibration_get_key(uint8_t key_idx);
 
 // Live processing engine (returns true if switch is considered active)
@@ -59,6 +63,24 @@ bool hall_process_sample(uint8_t key_idx, uint16_t raw_adc);
 void hall_calibration_enter_learn_mode(void);
 void hall_calibration_exit_learn_mode(void);
 bool hall_calibration_is_learning(void);
+
+// VIA v3 Custom UI Value IDs (channel 0)
+enum via_hall_value_id {
+    ID_HE_CONTINUOUS_MODE    = 1,  // uint8_t: 1 = Continuous RT, 0 = Static
+    ID_HE_ACTUATION_PERCENT  = 2,  // uint8_t: 5..95 %
+    ID_HE_RT_DOWN            = 3,  // uint8_t: 10..250 ADC delta
+    ID_HE_RT_UP              = 4,  // uint8_t: 10..250 ADC delta
+    ID_HE_LEARN_MODE         = 5,  // uint8_t: 1 = Learning active, 0 = Normal
+    ID_HE_SAVE_FLASH         = 6,  // Button: 1 = Save to Flash
+    ID_HE_RESET_DEFAULTS     = 7,  // Button: 1 = Reset to Defaults
+    ID_HE_PER_KEY_ACTUATION  = 10, // Array: [key_idx] -> percent
+    ID_HE_PER_KEY_RT_DOWN    = 11, // Array: [key_idx] -> down_raw
+    ID_HE_PER_KEY_RT_UP      = 12, // Array: [key_idx] -> up_raw
+    ID_HE_PER_KEY_CONTINUOUS = 13, // Array: [key_idx] -> 1/0
+};
+
+// Hook for VIA custom commands
+bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response);
 
 #ifdef __cplusplus
 }
