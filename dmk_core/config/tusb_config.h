@@ -1,6 +1,8 @@
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_
 
+#include "config.h"
+
 #ifndef CFG_TUSB_MCU
 #if defined(MCU_baikal)
 #define CFG_TUSB_MCU OPT_MCU_BMCU
@@ -42,7 +44,7 @@
 #define CFG_TUD_MIDI 0
 #endif
 
-#define CFG_TUD_HID_EP_BUFSIZE 64
+#define CFG_TUD_HID_EP_BUFSIZE 32
 #define CFG_TUD_CDC_RX_BUFSIZE 64
 #define CFG_TUD_CDC_TX_BUFSIZE 64
 

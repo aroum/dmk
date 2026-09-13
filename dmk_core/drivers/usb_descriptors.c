@@ -1,6 +1,7 @@
 #include "config.h"
 #include "tusb.h"
 #include "vial.h"
+#include "led.h"
 
 #ifndef VIAL_VENDOR_ID
 #define VIAL_VENDOR_ID 0xCafe
@@ -16,8 +17,15 @@
 
 // HID Report Descriptor: Composite Keyboard (ID 1), Consumer (ID 2), Mouse (ID 3), Gamepad (ID 4)
 uint8_t const desc_hid_report[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)), TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2)),
-    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3)), TUD_HID_REPORT_DESC_GAMEPAD(HID_REPORT_ID(4))};
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
+    TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(2)),
+#ifndef NO_MOUSE
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(3)),
+#endif
+#ifndef NO_GAMEPAD
+    TUD_HID_REPORT_DESC_GAMEPAD(HID_REPORT_ID(4)),
+#endif
+};
 
 #ifdef VIAL
 // 32-byte Raw HID / Vial descriptor
@@ -99,6 +107,10 @@ uint8_t const desc_configuration[] = {
                           0,                // Attributes (bus-powered)
                           100),             // Maximum power consumption in 2mA units (100 * 2mA = 200mA)
 
+#ifndef HID_POLL_INTERVAL_MS
+#define HID_POLL_INTERVAL_MS 1
+#endif
+
     // Interface 0: Composite Keyboard/Consumer/Mouse HID Descriptor
     TUD_HID_DESCRIPTOR(0,                       // Interface number
                        0,                       // String index
@@ -106,7 +118,7 @@ uint8_t const desc_configuration[] = {
                        sizeof(desc_hid_report), // HID report descriptor length
                        0x81,                    // Endpoint address (IN endpoint)
                        CFG_TUD_HID_EP_BUFSIZE,  // Endpoint size
-                       10),                     // Polling interval in milliseconds
+                       HID_POLL_INTERVAL_MS),   // Polling interval in milliseconds (1ms = 1000Hz)
 
 #ifndef EPNUM_VIAL_OUT
 #define EPNUM_VIAL_OUT 0x02
@@ -169,7 +181,7 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
     return desc_hid_report;
 }
 
-extern volatile bool usb_mounted;
+volatile bool usb_mounted = false;
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
@@ -197,8 +209,6 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
     (void)reqlen;
     return 0;
 }
-
-extern void led_set_hid_state(uint8_t state);
 
 #ifdef VIAL
 static uint8_t pending_vial_response[32];

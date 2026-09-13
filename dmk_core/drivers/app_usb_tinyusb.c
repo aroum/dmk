@@ -37,15 +37,38 @@ void USB_IRQHandler(void) {
 }
 #endif
 
+static TaskHandle_t s_usb_task_handle = NULL;
+
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+static StaticTask_t s_usb_task_tcb;
+static StackType_t s_usb_task_stack[512];
+#endif
+
+void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
+    (void)rhport;
+    (void)eventid;
+    if (s_usb_task_handle == NULL) {
+        return;
+    }
+    if (in_isr) {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        vTaskNotifyGiveFromISR(s_usb_task_handle, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    } else {
+        xTaskNotifyGive(s_usb_task_handle);
+    }
+}
+
 static void usb_device_task(void *pvParameters) {
     (void)pvParameters;
+    s_usb_task_handle = xTaskGetCurrentTaskHandle();
     while (1) {
         tud_task();
 #ifdef VIAL
         extern void vial_flush_pending_report(void);
         vial_flush_pending_report();
 #endif
-        vTaskDelay(pdMS_TO_TICKS(1));
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10));
     }
 }
 
@@ -81,7 +104,11 @@ USB_Result USB_HID_Init(void) {
 #elif defined(MCU_milandr)
     NVIC_SetPriority(USB_IRQn, 6);
 #endif
-    xTaskCreate(usb_device_task, "usbd", 512, NULL, 3, NULL);
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    s_usb_task_handle = xTaskCreateStatic(usb_device_task, "usbd", 512, NULL, 3, s_usb_task_stack, &s_usb_task_tcb);
+#else
+    xTaskCreate(usb_device_task, "usbd", 512, NULL, 3, &s_usb_task_handle);
+#endif
     return USB_SUCCESS;
 }
 
@@ -90,6 +117,9 @@ USB_Result USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_keyboard_report(1, report->Modifier, (uint8_t *)report->Keycodes)) {
+                if (s_usb_task_handle) {
+                    xTaskNotifyGive(s_usb_task_handle);
+                }
                 return USB_SUCCESS;
             }
         }
@@ -104,6 +134,9 @@ USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_report(2, &usage, sizeof(usage))) {
+                if (s_usb_task_handle) {
+                    xTaskNotifyGive(s_usb_task_handle);
+                }
                 return USB_SUCCESS;
             }
         }
@@ -118,6 +151,9 @@ USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t w
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_mouse_report(3, buttons, x, y, wheel, pan)) {
+                if (s_usb_task_handle) {
+                    xTaskNotifyGive(s_usb_task_handle);
+                }
                 return USB_SUCCESS;
             }
         }
@@ -133,6 +169,9 @@ USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, in
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_gamepad_report(4, x, y, z, rz, rx, ry, hat, buttons)) {
+                if (s_usb_task_handle) {
+                    xTaskNotifyGive(s_usb_task_handle);
+                }
                 return USB_SUCCESS;
             }
         }
