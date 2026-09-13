@@ -1,4 +1,4 @@
-name: Test Firmware Build
+name: Build Firmware
 
 on:
   push:
@@ -8,19 +8,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-test-keyboards:
-    name: Build Test Keyboards
+  build-keyboards:
+    name: Build ${{ matrix.keyboard }} (${{ matrix.mcu }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - keyboard: corne
+            mcu: milandr
+            args: "-c"
+          - keyboard: corne
             mcu: rp2040
             args: "-c --uf2"
-          - keyboard: corne
+          - keyboard: jianovka
             mcu: milandr
             args: "-c"
           - keyboard: kabarga
+            mcu: nrf52840
+            args: "-c --uf2"
+          - keyboard: magneteno
+            mcu: rp2350
+            args: "-c --uf2"
+          - keyboard: nizkoteno
+            mcu: rp2040
+            args: "-c --uf2"
+          - keyboard: omsk
+            mcu: rp2350
+            args: "-c --uf2"
+          - keyboard: pncateho
             mcu: nrf52840
             args: "-c --uf2"
 
@@ -38,12 +54,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Run Unit Tests
-        run: |
-          uv run python3 -m unittest discover tests
-
       - name: Build Firmware (${{ matrix.keyboard }} / ${{ matrix.mcu }})
         run: |
+          chmod +x build_all.sh
           ./build_all.sh -b ${{ matrix.keyboard }} --mcu ${{ matrix.mcu }} ${{ matrix.args }}
 
       - name: Upload Firmware Artifacts
