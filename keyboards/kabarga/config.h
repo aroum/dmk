@@ -5,6 +5,9 @@
 
 #include "pin_defs.h"
 
+#ifndef MCU_nrf52840
+#define MCU_nrf52840
+#endif
 #define DEFAULT_MCU nrf52840
 
 /* --- Matrix Settings --- */
@@ -134,6 +137,7 @@ const uint32_t keymap[][NUM_KEYS] = {
 // clang-format on
 
 const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
+#endif // DEFINE_KEYMAP
 
 // #define LED_PINS           { PM_LED, PM_15, PM_14, PM_10, PM_16}
 #if defined(MCU_milandr)
@@ -148,7 +152,5 @@ const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 // #define LED_HID_SCROLL_LOCK 3 // Index in LED_PINS for Scroll Lock LED
 // #define LED_HID_COMPOSE     4 // Index in LED_PINS for Compose LED
 // #define LED_HID_KANA        5 // Index in LED_PINS for Kana LED
-
-#endif // DEFINE_KEYMAP
 
 #endif // CONFIG_H

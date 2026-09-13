@@ -1,16 +1,22 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "pin_defs.h"
+
+#ifndef MCU_rp2040
 #define MCU_rp2040
+#endif
 #define DEFAULT_MCU rp2040
 #define MATRIX_TYPE DIRECT
 
 /* --- Matrix Settings (RP2040) --- */
 #define DIRECT_PINS {GPIO9, GPIO8, GPIO6, GPIO5, GPIO10, GPIO7, GPIO4, GPIO2, GPIO1, GPIO3}
 #define LED_PINS {GPIO15}
-#define RGB_PIN GPIO29
+#define RGB_PIN GPIO11
 
+#ifndef VIAL
 #define VIAL
+#endif
 #define VIAL_KEYBOARD_NAME "Nizkoteno"
 #define VIAL_VENDOR_ID 0xCafe
 #define VIAL_PRODUCT_ID 0x4011

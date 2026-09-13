@@ -1,9 +1,16 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// #ifndef VIAL
 // #define VIAL // Enable Vial/VIA support
+// #endif
 
 #include "pin_defs.h"
+
+#ifndef MCU_milandr
+#define MCU_milandr
+#endif
+#define DEFAULT_MCU milandr
 
 /* --- Split Settings --- */
 #define MASTER_SIDE LEFT // Specify side (LEFT, RIGHT, or AUTO)

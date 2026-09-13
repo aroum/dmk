@@ -3,6 +3,9 @@
 
 #include "pin_defs.h"
 
+#ifndef MCU_rp2350
+#define MCU_rp2350
+#endif
 #define DEFAULT_MCU rp2350
 
 /* --- Keyboard Identity & Features --- */
@@ -33,12 +36,20 @@
 #define RGB_NUM 10
 #define RGB_PIN GPIO12
 
+/* --- I2S DAC Audio (PCM5102a) --- */
+#define PIN_DAC_I2S_BCK GPIO6
+#define PIN_DAC_I2S_DATA GPIO7
+#define PIN_DAC_I2S_LRCK GPIO8
+
+/* --- MIDI USB Support --- */
+#ifndef MIDI_USB
+#define MIDI_USB 1
+#endif
+
 /* --- Sharp Memory LCD (LS011B7DH03 160x68) Settings --- */
 #define SHARP_LCD_PIN_MOSI GPIO11    // TX
 #define SHARP_LCD_PIN_SCK GPIO10     // SCK
 #define SHARP_LCD_PIN_CS GPIO9       // CSN
-#define SHARP_LCD_PIN_DISP GPIO8     // DISP (optional)
-#define SHARP_LCD_PIN_EXTCOMIN GPIO7 // EXTCOMIN (optional)
 
 #elif defined(MCU_milandr)
 #define MUX_PIN_S0 PA0
