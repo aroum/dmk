@@ -34,51 +34,52 @@
 #include "vial.h"
 #endif
 
-#if defined(MCU_rp2040) || defined(MCU_rp2350)
-#include "pico/bootrom.h"
-#elif defined(MCU_nrf52840)
-#include "nrf.h"
-#include "nrf_nvic.h"
-#elif defined(MCU_milandr)
-#include "MDR32FxQI_bkp.h"
-#include "MDR32FxQI_rst_clk.h"
-#elif defined(MCU_baikal)
-#include "bsp/board_api.h"
-#endif
-
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
 #include "encoder.h"
-extern void encoder_update_timers(uint32_t delta_ms);
-extern void encoder_process_event(uint8_t encoder_idx, bool direction);
 #endif
 
 /**
- * @brief Enter bootloader mode for firmware update.
+ * @brief Enter bootloader mode for firmware update via platform abstraction.
  */
 void bootloader_jump(void) {
-#if defined(MCU_rp2040) || defined(MCU_rp2350)
-    reset_usb_boot(0, 0);
-#elif defined(MCU_nrf52840)
-    // Magic value to enter Adafruit / UF2 bootloader mode upon system reset
-    NRF_POWER->GPREGRET = 0x57;
-    NVIC_SystemReset();
-#elif defined(MCU_milandr)
-    RST_CLK_PCLKcmd(RST_CLK_PCLK_BKP, ENABLE);
-    MDR_BKP->REG_00 = 0xDFDB007; // DFU bootloader request signature
-    NVIC_SystemReset();
-#elif defined(MCU_baikal)
-    board_reset_to_bootloader();
-#else
-    // Fallback: standard CMSIS system reset
-    NVIC_SystemReset();
-#endif
+    platform_bootloader_jump();
 }
 
 // FreeRTOS queues
 extern QueueHandle_t matrix_queue;
 
-// Tracks the exact keycode resolved when key was pressed, ensuring correct release even if layers change
-static uint32_t pressed_keycodes[NUM_ROWS][NUM_COLS];
+// Tracks active pressed keys using a compact pool to avoid allocating NUM_ROWS * NUM_COLS * 4 bytes in RAM
+typedef struct {
+    uint32_t key;
+    uint8_t row;
+    uint8_t col;
+} active_key_t;
+
+#define MAX_ACTIVE_KEYS 8
+static active_key_t s_active_keys[MAX_ACTIVE_KEYS];
+
+static void record_pressed_key(uint8_t row, uint8_t col, uint32_t key) {
+    for (uint8_t i = 0; i < MAX_ACTIVE_KEYS; i++) {
+        if (s_active_keys[i].key == 0) {
+            s_active_keys[i].row = row;
+            s_active_keys[i].col = col;
+            s_active_keys[i].key = key;
+            return;
+        }
+    }
+}
+
+static uint32_t pop_pressed_key(uint8_t row, uint8_t col) {
+    for (uint8_t i = 0; i < MAX_ACTIVE_KEYS; i++) {
+        if (s_active_keys[i].key != 0 && s_active_keys[i].row == row && s_active_keys[i].col == col) {
+            uint32_t key = s_active_keys[i].key;
+            s_active_keys[i].key = 0;
+            return key;
+        }
+    }
+    // Fallback if key exceeded pool size (e.g. > 8 simultaneous keys)
+    return layers_lookup_key(row, col);
+}
 
 /**
  * @brief Dispatch a single key event (press/release) directly to the USB HID report engine (Zero-Queue Fast Path).
@@ -119,11 +120,48 @@ void keyboard_init(void) {
     dmk_midi_init();
     mouse_init();
     gamepad_init();
-    memset(pressed_keycodes, 0, sizeof(pressed_keycodes));
+    memset(s_active_keys, 0, sizeof(s_active_keys));
 
 #ifdef VIAL
     vial_init();
 #endif
+}
+
+static bool process_system_key(uint32_t key, bool pressed) {
+    if (key == K_LYRUP) {
+        if (pressed && (layers_get_active() + 1 < layers_get_count())) {
+            layers_on(layers_get_active() + 1);
+            led_on();
+        }
+        return true;
+    }
+    if (key == K_LYRDWN) {
+        if (pressed && (layers_get_active() > 0)) {
+            layers_off(layers_get_active());
+            led_off();
+        }
+        return true;
+    }
+    if (key == K_BOOTLOADER) {
+        if (pressed) {
+            bootloader_jump();
+        }
+        return true;
+    }
+#if !defined(NO_RGB)
+    if (key >= K_RGB_TOGG && key <= K_RGB_SPD) {
+        static void (*const rgb_actions[])(void) = {
+            rgb_toggle,       rgb_next_theme,     rgb_prev_theme,     rgb_increase_hue,
+            rgb_decrease_hue, rgb_increase_sat,   rgb_decrease_sat,   rgb_increase_val,
+            rgb_decrease_val, rgb_increase_speed, rgb_decrease_speed,
+        };
+        if (pressed) {
+            rgb_actions[key - K_RGB_TOGG]();
+        }
+        return true;
+    }
+#endif
+    return false;
 }
 
 /**
@@ -152,9 +190,9 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
         return;
     }
 
-    // 3. Raw layer Momentary Activation (L_0 <= key <= L_15)
-    if (key >= L_0 && key <= L_15) {
-        uint8_t lyr = (uint8_t)(key - L_0);
+    // 3. Layer Momentary Activation (unified L_0..L_15 and MO(layer))
+    if ((key >= L_0 && key <= L_15) || ((key & 0xFF000000) == DMK_MO)) {
+        uint8_t lyr = (key >= L_0 && key <= L_15) ? (uint8_t)(key - L_0) : (uint8_t)(key & 0xFF);
         if (pressed) {
             layers_on(lyr);
         } else {
@@ -163,18 +201,7 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
         return;
     }
 
-    // 4. Explicit MO(layer) momentary layer switch
-    if ((key & 0xFF000000) == DMK_MO) {
-        uint8_t lyr = (uint8_t)(key & 0xFF);
-        if (pressed) {
-            layers_on(lyr);
-        } else {
-            layers_off(lyr);
-        }
-        return;
-    }
-
-    // 5. Toggle Layer (TG(layer)) persistent state toggle
+    // 4. Toggle Layer (TG(layer)) persistent state toggle
     if ((key & 0xFF000000) == DMK_TG) {
         uint8_t lyr = (uint8_t)(key & 0xFF);
         if (pressed) {
@@ -183,7 +210,7 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
         return;
     }
 
-    // 6. Modified Key (e.g. LSFT(KC_A), LCTL(KC_C))
+    // 5. Modified Key (e.g. LSFT(KC_A), LCTL(KC_C))
     if ((key & 0xFF000000) == DMK_MK) {
         uint8_t mod_mask = (uint8_t)((key >> 8) & 0xFF);
         uint8_t kc = (uint8_t)(key & 0xFF);
@@ -197,55 +224,40 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
         return;
     }
 
-    // 7. One Shot Key (OSM modifiers / OSL layers)
+    // 6. One Shot Key (OSM modifiers / OSL layers)
     if (oneshot_process_event(key, pressed)) {
         return;
     }
 
-    // 8. Hold-Tap Dual-Role Key (e.g. LT layer-tap, MT mod-tap)
+    // 7. Hold-Tap Dual-Role Key (e.g. LT layer-tap, MT mod-tap)
     if (hold_tap_process_event(row, col, key, pressed)) {
         return;
     }
 
-    // 9. Mouse keys (buttons, movement, wheel, acceleration)
+    // 8. Mouse keys (buttons, movement, wheel, acceleration)
     if (mouse_process_key(key, pressed)) {
         return;
     }
 
-    // 10. Gamepad keys (buttons, D-Pad, simulated analog sticks/triggers)
+    // 9. Gamepad keys (buttons, D-Pad, simulated analog sticks/triggers)
     if (gamepad_process_key(key, pressed)) {
         return;
     }
 
-    // 10. Standard HID, Consumer Media, and Lighting Controls
-    if (key == K_LYRUP) {
-        if (pressed && (layers_get_active() + 1 < layers_get_count())) {
-            layers_on(layers_get_active() + 1);
-            led_on();
-        }
-    } else if (key == K_LYRDWN) {
-        if (pressed && (layers_get_active() > 0)) {
-            layers_off(layers_get_active());
-            led_off();
-        }
-    } else if (key >= K_RGB_TOGG && key <= K_RGB_SPD) {
-        static void (*const rgb_actions[])(void) = {
-            rgb_toggle,       rgb_next_theme,     rgb_prev_theme,     rgb_increase_hue,
-            rgb_decrease_hue, rgb_increase_sat,   rgb_decrease_sat,   rgb_increase_val,
-            rgb_decrease_val, rgb_increase_speed, rgb_decrease_speed,
-        };
-        if (pressed) {
-            rgb_actions[key - K_RGB_TOGG]();
-        }
-    } else if (key == K_BOOTLOADER) {
-        if (pressed)
-            bootloader_jump();
-    } else if ((key & 0xFF000000) == DMK_CONSUMER) {
+    // 10. System, Layer Up/Down, Bootloader, and RGB Lighting
+    if (process_system_key(key, pressed)) {
+        return;
+    }
+
+    // 11. Consumer Media Keys
+    if ((key & 0xFF000000) == DMK_CONSUMER) {
         uint16_t consumer_usage = (uint16_t)(key & 0xFFFF);
         keyboard_send_key((uint16_t)(consumer_usage | KEY_CONSUMER_FLAG), pressed);
-    } else {
-        keyboard_send_key((uint16_t)key, pressed);
+        return;
     }
+
+    // 12. Standard HID Keycode
+    keyboard_send_key((uint16_t)key, pressed);
 }
 
 /**
@@ -265,26 +277,16 @@ void keyboard_check(void) {
         next_deadline = r;
     if ((r = mouse_check_timeouts(now)) < next_deadline)
         next_deadline = r;
+    if ((r = macros_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
+#if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
+    if ((r = encoder_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
+#endif
+    if ((r = led_check_timeouts(now)) < next_deadline)
+        next_deadline = r;
 
     led_update(now);
-
-#if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
-    static TickType_t last_encoder_time = 0;
-    if (last_encoder_time == 0)
-        last_encoder_time = now;
-    uint32_t delta = (now - last_encoder_time) * (1000 / configTICK_RATE_HZ);
-    if (delta > 0) {
-        encoder_update_timers(delta);
-        last_encoder_time = now;
-    }
-    if (next_deadline > pdMS_TO_TICKS(10)) {
-        next_deadline = pdMS_TO_TICKS(10);
-    }
-#else
-    if (next_deadline > pdMS_TO_TICKS(50)) {
-        next_deadline = pdMS_TO_TICKS(50);
-    }
-#endif
 
     if (next_deadline < 1)
         next_deadline = 1;
@@ -304,22 +306,7 @@ void keyboard_check(void) {
             }
 #endif
 
-#ifdef LED_ACTIVITY_PIN
-            static bool led_act_inited = false;
-            static uint32_t active_keys_count = 0;
-            if (!led_act_inited) {
-                hal_gpio_init(LED_ACTIVITY_PIN);
-                hal_gpio_set_dir(LED_ACTIVITY_PIN, true);
-                hal_gpio_put(LED_ACTIVITY_PIN, false);
-                led_act_inited = true;
-            }
-            if (pressed) {
-                active_keys_count++;
-            } else if (active_keys_count > 0) {
-                active_keys_count--;
-            }
-            hal_gpio_put(LED_ACTIVITY_PIN, active_keys_count > 0);
-#endif
+            led_activity(pressed);
 
             // Notify user modules of matrix events (if hook returns true, event was consumed)
             if (hook_matrix_change(row, col, pressed)) {
@@ -339,7 +326,7 @@ void keyboard_check(void) {
 
                 // Resolve key from active layer stack
                 uint32_t key = layers_lookup_key(row, col);
-                pressed_keycodes[row][col] = key;
+                record_pressed_key(row, col, key);
 
                 // Notify One-Shot subsystem of key press
                 oneshot_on_key_press(key);
@@ -352,8 +339,7 @@ void keyboard_check(void) {
                     continue;
                 }
 
-                uint32_t key = pressed_keycodes[row][col];
-                pressed_keycodes[row][col] = 0;
+                uint32_t key = pop_pressed_key(row, col);
 
                 // Process action release
                 process_key_event(row, col, key, false);

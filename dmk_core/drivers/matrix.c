@@ -145,12 +145,27 @@ extern QueueHandle_t matrix_queue;
 // Integrator counters increment on pressed state, decrement on release.
 // uint8_t saves 50% RAM compared to uint16_t on RAM-constrained microcontrollers.
 #if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW) || (MATRIX_TYPE == MH3SS2)
+#define TOTAL_MATRIX_KEYS (NUM_COLS * NUM_ROWS)
 static uint8_t debounce_counters[NUM_COLS][NUM_ROWS] = {{0}};
-static bool debounced_state[NUM_COLS][NUM_ROWS] = {{false}};
 #elif (MATRIX_TYPE == DIRECT)
+#define TOTAL_MATRIX_KEYS CUR_NUM_KEYS
 static uint8_t debounce_counters[CUR_NUM_KEYS] = {0};
-static bool debounced_state[CUR_NUM_KEYS] = {false};
 #endif
+
+// Compressed debounced state: 1 bit per key saves RAM compared to 1 byte per key bool array
+static uint8_t debounced_bits[(TOTAL_MATRIX_KEYS + 7) / 8] = {0};
+
+static inline bool get_debounced_bit(size_t idx) {
+    return (debounced_bits[idx / 8] & (1U << (idx % 8))) != 0;
+}
+
+static inline void set_debounced_bit(size_t idx, bool val) {
+    if (val) {
+        debounced_bits[idx / 8] |= (1U << (idx % 8));
+    } else {
+        debounced_bits[idx / 8] &= ~(1U << (idx % 8));
+    }
+}
 
 static void init_pins(const pin_t *pins, size_t count, bool is_output, bool idle_val, bool pull_up) {
     for (size_t i = 0; i < count; ++i) {
@@ -204,31 +219,52 @@ void matrix_send_event(matrix_event_t *matrix_event) {
 #endif
 }
 
+#ifndef MATRIX_IDLE_TIMEOUT_MS
+#define MATRIX_IDLE_TIMEOUT_MS (2UL * 60UL * 60UL * 1000UL) // 2 hours idle timeout
+#endif
+
+#ifndef MATRIX_IDLE_POLL_INTERVAL_MS
+#define MATRIX_IDLE_POLL_INTERVAL_MS 10 // 10ms (100Hz) when idle for >= 2 hours
+#endif
+
+static TickType_t s_last_matrix_activity = 0;
+static uint32_t s_active_pressed_count = 0;
+
 /**
  * @brief Unified eager debounce filter for both matrix switches and direct pins.
  * Immediately dispatches switch state transitions on contact (0ms latency),
  * then locks out physical chatter for DEBOUNCE_TICKS.
  */
-static inline void debounce_filter(uint8_t *counter, bool *debounced, uint8_t col, uint8_t row, bool raw_state) {
+static inline void debounce_filter(uint8_t *counter, size_t key_idx, uint8_t col, uint8_t row, bool raw_state) {
     if (*counter > 0) {
         (*counter)--;
-    } else if (raw_state != *debounced) {
-        *debounced = raw_state;
-        *counter = DEBOUNCE_TICKS;
-        matrix_event_t event = {.split = 0, .col = col, .row = row, .pressed = raw_state ? 1 : 0};
-        matrix_send_event(&event);
+    } else {
+        bool debounced = get_debounced_bit(key_idx);
+        if (raw_state != debounced) {
+            set_debounced_bit(key_idx, raw_state);
+            *counter = DEBOUNCE_TICKS;
+            if (raw_state) {
+                s_active_pressed_count++;
+            } else if (s_active_pressed_count > 0) {
+                s_active_pressed_count--;
+            }
+            s_last_matrix_activity = xTaskGetTickCount();
+            matrix_event_t event = {.split = 0, .col = col, .row = row, .pressed = raw_state ? 1 : 0};
+            matrix_send_event(&event);
+        }
     }
 }
 
 #if (MATRIX_TYPE != DIRECT)
 static inline void matrix_update_key(uint8_t col, uint8_t row, bool raw_state) {
-    debounce_filter(&debounce_counters[col][row], &debounced_state[col][row], col, row, raw_state);
+    size_t idx = (size_t)col * NUM_ROWS + row;
+    debounce_filter(&debounce_counters[col][row], idx, col, row, raw_state);
 }
 #endif
 
 #if (MATRIX_TYPE == DIRECT)
 static inline void matrix_update_direct_key(uint8_t key_idx, bool raw_state) {
-    debounce_filter(&debounce_counters[key_idx], &debounced_state[key_idx], key_idx, 0, raw_state);
+    debounce_filter(&debounce_counters[key_idx], key_idx, key_idx, 0, raw_state);
 }
 #endif
 
@@ -286,13 +322,19 @@ void matrix_task(void *pvParameters) {
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
     encoder_init();
 #endif
+    s_last_matrix_activity = xTaskGetTickCount();
 
     while (1) {
         matrix_scan();
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
         encoder_scan();
 #endif
-        vTaskDelay(pdMS_TO_TICKS(POLL_INTERVAL_MS));
+        TickType_t now = xTaskGetTickCount();
+        uint32_t delay_ms = POLL_INTERVAL_MS;
+        if (s_active_pressed_count == 0 && (now - s_last_matrix_activity) >= pdMS_TO_TICKS(MATRIX_IDLE_TIMEOUT_MS)) {
+            delay_ms = MATRIX_IDLE_POLL_INTERVAL_MS;
+        }
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
 }
 
@@ -305,11 +347,11 @@ void matrix_task(void *pvParameters) {
 bool matrix_is_pressed(unsigned char row, unsigned char col) {
 #if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW) || (MATRIX_TYPE == MH3SS2)
     if (col < NUM_COLS && row < NUM_ROWS) {
-        return debounced_state[col][row];
+        return get_debounced_bit((size_t)col * NUM_ROWS + row);
     }
 #elif (MATRIX_TYPE == DIRECT)
     if (col < CUR_NUM_KEYS) {
-        return debounced_state[col];
+        return get_debounced_bit(col);
     }
 #endif
     return false;

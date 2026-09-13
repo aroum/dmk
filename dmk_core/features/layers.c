@@ -21,8 +21,8 @@ uint8_t layer = 0;
 // Layer state bitmask (bit 0 is active by default for base layer)
 static uint16_t layer_state = 1;
 
-// Flat key index lookup table: layout_map[row][col] = flat layout index or -1
-static int16_t layout_map[NUM_ROWS][NUM_COLS];
+// Flat key index lookup table: layout_map[row][col] = flat layout index or 0xFF (unmapped)
+static uint8_t layout_map[NUM_ROWS][NUM_COLS];
 
 /**
  * @brief Fast calculation of the highest active layer index using CLZ instruction.
@@ -53,10 +53,10 @@ void layers_init(void) {
         uint8_t r, c;
     } RC;
     static const RC layout[] = LAYOUT;
-    memset(layout_map, -1, sizeof(layout_map));
+    memset(layout_map, 0xFF, sizeof(layout_map));
     for (size_t i = 0; i < sizeof(layout) / sizeof(layout[0]); i++) {
         if (layout[i].r < NUM_ROWS && layout[i].c < NUM_COLS) {
-            layout_map[layout[i].r][layout[i].c] = (int16_t)i;
+            layout_map[layout[i].r][layout[i].c] = (uint8_t)i;
         }
     }
     layer_state = 1;
@@ -148,7 +148,8 @@ void layers_toggle(uint8_t layer_idx) {
  */
 int16_t keyboard_get_flat_key_index(uint8_t row, uint8_t col) {
     if (row < NUM_ROWS && col < NUM_COLS) {
-        return layout_map[row][col];
+        uint8_t idx = layout_map[row][col];
+        return (idx == 0xFF) ? -1 : (int16_t)idx;
     }
     return -1;
 }
