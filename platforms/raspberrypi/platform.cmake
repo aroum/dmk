@@ -68,8 +68,6 @@ set(PLATFORM_SRC
     ${FREERTOS_PORT_SRC}
     "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
-    "${PLATFORM_DIR}/pio/WS2812.cpp"
-    "${PLATFORM_DIR}/split.c"
 )
 
 # Platform libraries
@@ -77,9 +75,6 @@ set(PLATFORM_LIBS
     pico_stdlib
     hardware_exception
     hardware_clocks
-    hardware_adc
-    hardware_i2c
-    hardware_spi
     pico_multicore
     tinyusb_device
     tinyusb_board
@@ -91,6 +86,21 @@ set(PLATFORM_LIBS
 # Platform-specific post-build command
 function(platform_post_build TARGET_NAME)
     pico_add_extra_outputs(${TARGET_NAME})
-    pico_generate_pio_header(${TARGET_NAME} "${PLATFORM_DIR}/pio/WS2812.pio")
-    pico_generate_pio_header(${TARGET_NAME} "${PLATFORM_DIR}/pio/split.pio")
+    if(RGB_ENABLED)
+        target_sources(${TARGET_NAME} PRIVATE "${PLATFORM_DIR}/pio/WS2812.cpp")
+        pico_generate_pio_header(${TARGET_NAME} "${PLATFORM_DIR}/pio/WS2812.pio")
+    endif()
+    if(SPLIT_ENABLED)
+        target_sources(${TARGET_NAME} PRIVATE "${PLATFORM_DIR}/split.c")
+        pico_generate_pio_header(${TARGET_NAME} "${PLATFORM_DIR}/pio/split.pio")
+    endif()
+    if(ADC_ENABLED)
+        target_link_libraries(${TARGET_NAME} PRIVATE hardware_adc)
+    endif()
+    if(I2C_ENABLED)
+        target_link_libraries(${TARGET_NAME} PRIVATE hardware_i2c)
+    endif()
+    if(SPI_ENABLED)
+        target_link_libraries(${TARGET_NAME} PRIVATE hardware_spi)
+    endif()
 endfunction()

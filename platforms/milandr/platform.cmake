@@ -68,9 +68,6 @@ set(PLATFORM_SRC
     "${TINYUSB_DIR}/src/device/usbd.c"
     "${TINYUSB_DIR}/src/class/hid/hid_device.c"
     "${TINYUSB_DIR}/src/class/midi/midi_device.c"
-    # Peripherals
-    "${PLATFORM_DIR}/ws2812_ssp.c"
-    "${PLATFORM_DIR}/split.c"
 )
 
 # Platform libraries

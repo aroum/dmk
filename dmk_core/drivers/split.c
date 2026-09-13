@@ -148,14 +148,13 @@ static void split_soft_task(void *pvParameters) {
 
                 // Check if low duration matches slave wake-up pulse (>= 1.5ms)
                 if (low_duration >= 1500) {
-                    taskENTER_CRITICAL();
-
                     uint32_t timeout = 5000;
                     while (!hal_gpio_get(SPLIT_TX_PIN) && timeout > 0) {
                         hal_sleep_us(1);
                         timeout--;
                     }
 
+                    taskENTER_CRITICAL();
                     bool success = true;
                     for (size_t i = 0; i < sizeof(split_packet_t); i++) {
                         if (!soft_uart_receive_byte(&pkt_ptr[i])) {
@@ -163,7 +162,6 @@ static void split_soft_task(void *pvParameters) {
                             break;
                         }
                     }
-
                     taskEXIT_CRITICAL();
 
                     if (success && pkt.header == 0xA5) {
@@ -183,6 +181,11 @@ static void split_soft_task(void *pvParameters) {
     }
 }
 
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+static StaticTask_t s_split_soft_task_tcb;
+static StackType_t s_split_soft_task_stack[512];
+#endif
+
 /**
  * @brief Initialize universal software bit-bang split communication.
  */
@@ -191,7 +194,11 @@ void split_soft_init(void) {
     hal_gpio_set_dir(SPLIT_TX_PIN, false);
     hal_gpio_pull_up(SPLIT_TX_PIN);
 
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    xTaskCreateStatic(split_soft_task, "split_soft", 512, NULL, configMAX_PRIORITIES - 1, s_split_soft_task_stack, &s_split_soft_task_tcb);
+#else
     xTaskCreate(split_soft_task, "split_soft", 512, NULL, configMAX_PRIORITIES - 1, NULL);
+#endif
 }
 
 /**

@@ -103,7 +103,13 @@ void split_init(void) {
     nrf_uarte_configure(SPLIT_UART_INSTANCE, NRF_UARTE_PARITY_EXCLUDED, NRF_UARTE_HWFC_DISABLED);
     nrf_uarte_enable(SPLIT_UART_INSTANCE);
 
-    xTaskCreate(split_task, "split", 512, NULL, configMAX_PRIORITIES - 1, NULL);
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    static StaticTask_t s_split_task_tcb;
+    static StackType_t s_split_task_stack[256];
+    xTaskCreateStatic(split_task, "split", 256, NULL, configMAX_PRIORITIES - 1, s_split_task_stack, &s_split_task_tcb);
+#else
+    xTaskCreate(split_task, "split", 256, NULL, configMAX_PRIORITIES - 1, NULL);
+#endif
 }
 
 #endif // HW_HALF_DUPLEX / HW_FULL_DUPLEX

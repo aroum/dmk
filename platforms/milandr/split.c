@@ -165,7 +165,13 @@ void split_init(void) {
     UART_Init(SPLIT_UART_PORT, &UART_InitStructure);
     UART_Cmd(SPLIT_UART_PORT, ENABLE);
 
-    xTaskCreate(split_task, "split", 512, NULL, configMAX_PRIORITIES - 1, NULL);
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    static StaticTask_t s_split_task_tcb;
+    static StackType_t s_split_task_stack[256];
+    xTaskCreateStatic(split_task, "split", 256, NULL, configMAX_PRIORITIES - 1, s_split_task_stack, &s_split_task_tcb);
+#else
+    xTaskCreate(split_task, "split", 256, NULL, configMAX_PRIORITIES - 1, NULL);
+#endif
 }
 
 #endif // HW_FULL_DUPLEX

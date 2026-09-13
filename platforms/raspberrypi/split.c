@@ -132,6 +132,11 @@ void split_task(void *pvParameters) {
     }
 }
 
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+static StaticTask_t s_split_task_tcb;
+static StackType_t s_split_task_stack[256];
+#endif
+
 void split_init(void) {
     uint pin = SPLIT_TX_PIN;
 
@@ -148,7 +153,11 @@ void split_init(void) {
     // Start with Slave (TX) role by default
     configure_split_role(false);
 
-    xTaskCreate(split_task, "split", 1024, NULL, TASK_PRIO_DEF, NULL);
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
+    xTaskCreateStatic(split_task, "split", 256, NULL, TASK_PRIO_DEF, s_split_task_stack, &s_split_task_tcb);
+#else
+    xTaskCreate(split_task, "split", 256, NULL, TASK_PRIO_DEF, NULL);
+#endif
 }
 
 #endif // SPLIT_CONNECTION_TYPE != SOFT

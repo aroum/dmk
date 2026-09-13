@@ -110,9 +110,6 @@ set(PLATFORM_SRC
     "${NRF5_SDK_DIR}/components/libraries/strerror/nrf_strerror.c"
     # nRF5 SDK – SPIM driver
     "${NRF5_SDK_DIR}/modules/nrfx/drivers/src/nrfx_spim.c"
-    # WS2812 SPI driver
-    "${PLATFORM_DIR}/ws2812_spi.c"
-    "${PLATFORM_DIR}/split.c"
 )
 
 # nRF52840 chip-specific compile definitions
