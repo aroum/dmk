@@ -771,15 +771,15 @@
             </div>
             <div class="step-item" onclick="gotoStep(3)">
                 <span class="step-number">3</span>
-                <span>Матрица</span>
+                <span>Экстра</span>
             </div>
             <div class="step-item" onclick="gotoStep(4)">
                 <span class="step-number">4</span>
-                <span>Vial & Раскладка</span>
+                <span>Матрица</span>
             </div>
             <div class="step-item" onclick="gotoStep(5)">
                 <span class="step-number">5</span>
-                <span>Экстра</span>
+                <span>Vial & Раскладка</span>
             </div>
             <div class="step-item" onclick="gotoStep(6)">
                 <span class="step-number">6</span>
@@ -1012,15 +1012,96 @@
 
             <div class="nav-actions">
                 <button class="btn" onclick="gotoStep(1)">&larr; Назад</button>
-                <button class="btn btn-primary" onclick="gotoStep(3)">Далее: Матрица &rarr;</button>
+                <button class="btn btn-primary" onclick="gotoStep(3)">Далее: Экстра &rarr;</button>
             </div>
         </div>
 
-        <!-- Step 3: Layout & Key Matrix Setup -->
+        <!-- Step 3: RGB & Vial Config (Extras) -->
         <div class="card" id="step-3" style="display: none;">
             <div class="card-header">
-                <h2 data-i18n="s3Title">Матрица</h2>
-                <p data-i18n="s3Desc">Нажмите на ячейки сетки, чтобы активировать или выключить клавиши в электрической матрице LAYOUT.</p>
+                <h2 data-i18n="s3Title">Экстра</h2>
+                <p data-i18n="s3Desc">Дополнительные аппаратные возможности и протокол графического конфигуратора.</p>
+            </div>
+
+            <!-- RGB Section -->
+            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <label data-i18n="rgbLabel" style="font-weight: 600;">RGB Подсветка (WS2812)</label>
+                    <input type="checkbox" id="enableRgb" checked onchange="toggleRgbOptions()" style="width: 18px; height: 18px; cursor: pointer;">
+                </div>
+                
+                <div id="rgbOptionsBlock" class="grid-2">
+                    <div class="form-group">
+                        <label data-i18n="rgbNumLabel">Количество светодиодов:</label>
+                        <input type="number" id="rgbCount" value="42" min="1" max="200">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="rgbPinLabel">Пин данных подсветки (RGB_PIN):</label>
+                        <input type="text" id="rgbPin" value="GPIO0" placeholder="Например: GPIO0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subsystems Section -->
+            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <div style="font-weight: 600;" data-i18n="subsystemsConfigTitle">Модульные подсистемы прошивки</div>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" data-i18n="subsystemsConfigDesc">Отключение неиспользуемых драйверов экономит память микроконтроллера (Flash/RAM) и исключает лишние USB HID дескрипторы.</p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
+                        <input type="checkbox" id="s5EnableMouse" checked onchange="toggleFeatureSubsystem('mouse', this.checked)">
+                        <span data-i18n="featMouse">Мышь (Mouse Keys)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
+                        <input type="checkbox" id="s5EnableGamepad" checked onchange="toggleFeatureSubsystem('gamepad', this.checked)">
+                        <span data-i18n="featGamepad">Геймпад (Gamepad)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
+                        <input type="checkbox" id="s5EnableMidi" checked onchange="toggleFeatureSubsystem('midi', this.checked)">
+                        <span data-i18n="featMidi">MIDI (MIDI Device)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
+                        <input type="checkbox" id="s5EnableLed" checked onchange="toggleFeatureSubsystem('led', this.checked)">
+                        <span data-i18n="featLed">Индикаторы LED (Lock / Layer)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Vial / VIA GUI Section -->
+            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <label data-i18n="vialLabel" style="font-weight: 600;">Поддержка Vial GUI</label>
+                    <input type="checkbox" id="enableVial" checked onchange="toggleVialOptions()" style="width: 18px; height: 18px; cursor: pointer;">
+                </div>
+
+                <div id="vialOptionsBlock" class="grid-3">
+                    <div class="form-group">
+                        <label data-i18n="vialNameLabel">Имя клавиатуры в Vial:</label>
+                        <input type="text" id="vialName" value="DMK Custom">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="vialVidLabel">USB Vendor ID:</label>
+                        <input type="text" id="vialVid" value="0xCAFE" placeholder="0xCAFE">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="vialPidLabel">USB Product ID:</label>
+                        <input type="text" id="vialPid" value="0x4001" placeholder="0x4001">
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <button class="btn" onclick="gotoStep(2)">&larr; Назад</button>
+                <button class="btn btn-primary" onclick="gotoStep(4)">Далее: Матрица &rarr;</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Layout & Key Matrix Setup -->
+        <div class="card" id="step-4" style="display: none;">
+            <div class="card-header">
+                <h2 data-i18n="s4Title">Матрица</h2>
+                <p data-i18n="s4Desc">Нажмите на ячейки сетки, чтобы активировать или выключить клавиши в электрической матрице LAYOUT.</p>
             </div>
 
             <div class="layout-editor-box">
@@ -1041,16 +1122,16 @@
             </div>
 
             <div class="nav-actions">
-                <button class="btn" onclick="gotoStep(2)">&larr; Назад</button>
-                <button class="btn btn-primary" onclick="gotoStep(4)">Далее: Vial & Раскладка &rarr;</button>
+                <button class="btn" onclick="gotoStep(3)">&larr; Назад</button>
+                <button class="btn btn-primary" onclick="gotoStep(5)">Далее: Vial & Раскладка &rarr;</button>
             </div>
         </div>
 
-        <!-- Step 4: Vial Visual Layout & Layers Keymap Designer -->
-        <div class="card" id="step-4" style="display: none;">
+        <!-- Step 5: Vial Visual Layout & Layers Keymap Designer -->
+        <div class="card" id="step-5" style="display: none;">
             <div class="card-header">
-                <h2 data-i18n="s4Title">Vial & Раскладка</h2>
-                <p data-i18n="s4Desc">Настройте слои клавиш и визуальное отображение в Vial GUI.</p>
+                <h2 data-i18n="s5Title">Vial & Раскладка</h2>
+                <p data-i18n="s5Desc">Настройте слои клавиш и визуальное отображение в Vial GUI.</p>
             </div>
 
             <!-- Layer Manager Toolbar -->
@@ -1118,6 +1199,28 @@
                         <label data-i18n="keyYLabel">Смещение Y (Offset Y):</label>
                         <input type="number" id="propKeyY" value="0" min="0" max="10" step="0.25" oninput="updateSelectedKeyProperty('y', this.value)">
                     </div>
+                </div>
+            </div>
+
+            <!-- Subsystems Feature Filter Bar -->
+            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 600; font-size: 0.85rem;" data-i18n="subsystemsLabel">Подсистемы:</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);" data-i18n="subsystemsDesc">(включение/отключение фич и вкладок кейкодов)</span>
+                </div>
+                <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; user-select: none;">
+                        <input type="checkbox" id="featureMouse" checked onchange="toggleFeatureSubsystem('mouse', this.checked)">
+                        <span data-i18n="featMouse">Мышь</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; user-select: none;">
+                        <input type="checkbox" id="featureGamepad" checked onchange="toggleFeatureSubsystem('gamepad', this.checked)">
+                        <span data-i18n="featGamepad">Геймпад</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; user-select: none;">
+                        <input type="checkbox" id="featureMidi" checked onchange="toggleFeatureSubsystem('midi', this.checked)">
+                        <span data-i18n="featMidi">MIDI</span>
+                    </label>
                 </div>
             </div>
 
@@ -1194,62 +1297,7 @@
             </div>
 
             <div class="nav-actions">
-                <button class="btn" onclick="gotoStep(3)">&larr; Назад: Матрица</button>
-                <button class="btn btn-primary" onclick="gotoStep(5)">Далее: Экстра &rarr;</button>
-            </div>
-        </div>
-
-        <!-- Step 5: RGB & Vial Config -->
-        <div class="card" id="step-5" style="display: none;">
-            <div class="card-header">
-                <h2 data-i18n="s5Title">Экстра</h2>
-                <p data-i18n="s5Desc">Дополнительные аппаратные возможности и протокол графического конфигуратора.</p>
-            </div>
-
-            <!-- RGB Section -->
-            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <label data-i18n="rgbLabel" style="font-weight: 600;">RGB Подсветка (WS2812)</label>
-                    <input type="checkbox" id="enableRgb" checked onchange="toggleRgbOptions()" style="width: 18px; height: 18px; cursor: pointer;">
-                </div>
-                
-                <div id="rgbOptionsBlock" class="grid-2">
-                    <div class="form-group">
-                        <label data-i18n="rgbNumLabel">Количество светодиодов:</label>
-                        <input type="number" id="rgbCount" value="42" min="1" max="200">
-                    </div>
-                    <div class="form-group">
-                        <label data-i18n="rgbPinLabel">Пин данных подсветки (RGB_PIN):</label>
-                        <input type="text" id="rgbPin" value="GPIO0" placeholder="Например: GPIO0">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vial / VIA GUI Section -->
-            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <label data-i18n="vialLabel" style="font-weight: 600;">Поддержка Vial GUI</label>
-                    <input type="checkbox" id="enableVial" checked onchange="toggleVialOptions()" style="width: 18px; height: 18px; cursor: pointer;">
-                </div>
-
-                <div id="vialOptionsBlock" class="grid-3">
-                    <div class="form-group">
-                        <label data-i18n="vialNameLabel">Имя клавиатуры в Vial:</label>
-                        <input type="text" id="vialName" value="DMK Custom">
-                    </div>
-                    <div class="form-group">
-                        <label data-i18n="vialVidLabel">USB Vendor ID:</label>
-                        <input type="text" id="vialVid" value="0xCAFE" placeholder="0xCAFE">
-                    </div>
-                    <div class="form-group">
-                        <label data-i18n="vialPidLabel">USB Product ID:</label>
-                        <input type="text" id="vialPid" value="0x4001" placeholder="0x4001">
-                    </div>
-                </div>
-            </div>
-
-            <div class="nav-actions">
-                <button class="btn" onclick="gotoStep(4)">&larr; Назад</button>
+                <button class="btn" onclick="gotoStep(4)">&larr; Назад: Матрица</button>
                 <button class="btn btn-primary" onclick="gotoStep(6)">Сгенерировать config.h & vial.json &rarr;</button>
             </div>
         </div>
@@ -1506,6 +1554,10 @@
             colPins: ["GPIO29", "GPIO28", "GPIO27", "GPIO26", "GPIO22", "GPIO20"],
             directPins: ["GPIO9", "GPIO8", "GPIO6", "GPIO5", "GPIO10", "GPIO7", "GPIO4", "GPIO2", "GPIO1", "GPIO3"],
             activeKeys: [], // Matrix boolean [r][c]
+            enableMouse: true,
+            enableGamepad: true,
+            enableMidi: true,
+            enableLed: true,
             enableRgb: true,
             rgbCount: 42,
             rgbPin: "GPIO0",
@@ -1885,13 +1937,17 @@
             }
 
             applyLanguage();
+            toggleFeatureSubsystem('mouse', configState.enableMouse !== false);
+            toggleFeatureSubsystem('gamepad', configState.enableGamepad !== false);
+            toggleFeatureSubsystem('midi', configState.enableMidi !== false);
+            toggleFeatureSubsystem('led', configState.enableLed !== false);
             initMatrixGrid();
             toggleEncoderOptions();
             toggleRgbOptions();
             toggleChordsOptions();
             toggleCustomMacrosOptions();
             toggleLayerHotkeyOptions();
-            renderStepUI();
+            gotoStep(1);
         }
 
         function setSplitMode(isSplit) {
@@ -1956,6 +2012,53 @@
             { cw: "K_PGUP", ccw: "K_PGDN" },
             { cw: "K_RIGHT", ccw: "K_LEFT" }
         ];
+
+        function toggleFeatureSubsystem(feat, enabled) {
+            if (feat === 'mouse') {
+                configState.enableMouse = enabled;
+                const el1 = document.getElementById('featureMouse');
+                const el2 = document.getElementById('s5EnableMouse');
+                if (el1) el1.checked = enabled;
+                if (el2) el2.checked = enabled;
+                const tab = document.getElementById('tab-pal-MOUSE');
+                if (tab) tab.style.display = enabled ? '' : 'none';
+                if (!enabled && currentPaletteCategory === 'MOUSE') {
+                    renderPalette('ALL');
+                } else if (currentPaletteCategory === 'ALL') {
+                    renderPalette('ALL');
+                }
+            } else if (feat === 'gamepad') {
+                configState.enableGamepad = enabled;
+                const el1 = document.getElementById('featureGamepad');
+                const el2 = document.getElementById('s5EnableGamepad');
+                if (el1) el1.checked = enabled;
+                if (el2) el2.checked = enabled;
+                const tab = document.getElementById('tab-pal-GAMEPAD');
+                if (tab) tab.style.display = enabled ? '' : 'none';
+                if (!enabled && currentPaletteCategory === 'GAMEPAD') {
+                    renderPalette('ALL');
+                } else if (currentPaletteCategory === 'ALL') {
+                    renderPalette('ALL');
+                }
+            } else if (feat === 'midi') {
+                configState.enableMidi = enabled;
+                const el1 = document.getElementById('featureMidi');
+                const el2 = document.getElementById('s5EnableMidi');
+                if (el1) el1.checked = enabled;
+                if (el2) el2.checked = enabled;
+                const tab = document.getElementById('tab-pal-MIDI');
+                if (tab) tab.style.display = enabled ? '' : 'none';
+                if (!enabled && currentPaletteCategory === 'MIDI') {
+                    renderPalette('ALL');
+                } else if (currentPaletteCategory === 'ALL') {
+                    renderPalette('ALL');
+                }
+            } else if (feat === 'led') {
+                configState.enableLed = enabled;
+                const el2 = document.getElementById('s5EnableLed');
+                if (el2) el2.checked = enabled;
+            }
+        }
 
         function toggleRgbOptions() {
             const en = document.getElementById('enableRgb').checked;
@@ -3807,9 +3910,9 @@ visualElements.push({
                 btnImportVial: 'Импорт vial.json',
                 step1: 'Архитектура',
                 step2: 'Матрица & Пины',
-                step3: 'Матрица',
-                step4: 'Vial & Раскладка',
-                step5: 'Экстра',
+                step3: 'Экстра',
+                step4: 'Матрица',
+                step5: 'Vial & Раскладка',
                 step6: 'Экспорт',
                 btnUndo: 'Отмена',
                 btnRedo: 'Повтор',
@@ -3870,18 +3973,39 @@ visualElements.push({
                 btnBack: 'Назад',
                 btnNextGrid: 'Далее: Матрица',
 
-                // Step 3
-                s3Title: 'Матрица',
-                s3Desc: 'Нажмите на ячейки сетки, чтобы активировать или выключить клавиши в электрической матрице LAYOUT.',
+                // Step 3 (Extras)
+                s3Title: 'Экстра',
+                s3Desc: 'Дополнительные аппаратные возможности и протокол графического конфигуратора.',
+                rgbLabel: 'RGB Подсветка (WS2812)',
+                rgbNumLabel: 'Количество светодиодов:',
+                rgbPinLabel: 'Пин данных подсветки (RGB_PIN):',
+                rgbPinHint: '',
+                subsystemsLabel: 'Подсистемы:',
+                subsystemsDesc: '(включение/отключение фич и вкладок кейкодов)',
+                subsystemsConfigTitle: 'Модульные подсистемы прошивки',
+                subsystemsConfigDesc: 'Отключение неиспользуемых драйверов экономит память микроконтроллера (Flash/RAM) и исключает лишние USB HID дескрипторы.',
+                featMouse: 'Мышь (Mouse)',
+                featGamepad: 'Геймпад (Gamepad)',
+                featMidi: 'MIDI',
+                featLed: 'Индикаторы LED (Lock / Layer)',
+                vialLabel: 'Поддержка Vial GUI',
+                vialNameLabel: 'Имя клавиатуры в Vial:',
+                vialVidLabel: 'USB Vendor ID:',
+                vialPidLabel: 'USB Product ID:',
+                btnNextGrid: 'Далее: Матрица',
+
+                // Step 4 (Matrix)
+                s4Title: 'Матрица',
+                s4Desc: 'Нажмите на ячейки сетки, чтобы активировать или выключить клавиши в электрической матрице LAYOUT.',
                 activeKeysLabel: 'Активно клавиш:',
                 btnSelectAll: 'Включить все',
                 btnClearAll: 'Очистить все',
                 matrixHint: 'Кликните на ячейку, чтобы добавить или убрать кнопку из прошивки.',
                 btnNextLayout: 'Далее: Vial & Раскладка',
 
-                // Step 4
-                s4Title: 'Раскладка',
-                s4Desc: 'Настройте слои клавиш и визуальное отображение.',
+                // Step 5 (Vial & Layout)
+                s5Title: 'Vial & Раскладка',
+                s5Desc: 'Настройте слои клавиш и визуальное отображение.',
                 layersLabel: 'Слои раскладки:',
                 btnAddLayer: 'Добавить',
                 btnDupLayer: 'Дублировать',
@@ -3915,6 +4039,11 @@ visualElements.push({
                 btnNextLighting: 'Далее: Экстра',
                 btnCancel: 'Отмена',
                 btnApply: 'Применить',
+                customMacrosLabel: 'Макросы',
+                customMacrosDesc: 'Создавайте последовательности нажатий клавиш и задержек, назначаемые на кнопки через M(0), M(1)...',
+                chordsLabel: 'Аккорды',
+                chordsDesc: 'Одновременное зажатие 2–4 клавиш для отправки сочетания или вызова функции (например: JK = Esc, SD = Ctrl+C).',
+                btnGenerateFiles: 'Сгенерировать config.h & vial.json',
 
                 // Dynamic & Prompts (RU)
                 promptNewLayer: 'Введите имя нового слоя (например: NUMPAD, NAV, RU):',
@@ -3938,14 +4067,6 @@ visualElements.push({
                 encCw: 'Вращение вправо:',
                 keySelectedPrefix: 'Кнопка #',
                 keyMatrixCoord: 'Матрица',
-
-                // Step 5
-                s5Title: 'Экстра',
-                s5Desc: 'Дополнительные аппаратные возможности и протокол графического конфигуратора.',
-                rgbLabel: 'RGB Подсветка (WS2812)',
-                rgbNumLabel: 'Количество светодиодов:',
-                rgbPinLabel: 'Пин данных подсветки (RGB_PIN):',
-                rgbPinHint: '',
                 encodersLabel: 'Вращающиеся энкодеры',
                 encodersDesc: '',
                 encResLabel: 'Разрешение энкодера:',
@@ -3957,15 +4078,6 @@ visualElements.push({
                 encCount2: '2 энкодера',
                 encCount3: '3 энкодера',
                 encCount4: '4 энкодера',
-                vialLabel: 'Поддержка Vial GUI',
-                vialNameLabel: 'Имя клавиатуры в Vial:',
-                vialVidLabel: 'USB Vendor ID:',
-                vialPidLabel: 'USB Product ID:',
-                customMacrosLabel: 'Макросы',
-                customMacrosDesc: 'Создавайте последовательности нажатий клавиш и задержек, назначаемые на кнопки через M(0), M(1)...',
-                chordsLabel: 'Аккорды',
-                chordsDesc: 'Одновременное зажатие 2–4 клавиш для отправки сочетания или вызова функции (например: JK = Esc, SD = Ctrl+C).',
-                btnGenerateFiles: 'Сгенерировать config.h & vial.json',
 
                 // Step 6
                 s6Title: 'Экспорт',
@@ -3984,9 +4096,9 @@ visualElements.push({
                 btnImportVial: 'Import vial.json',
                 step1: 'Architecture',
                 step2: 'Matrix & Pins',
-                step3: 'Matrix',
-                step4: 'Vial & Layout',
-                step5: 'Extras',
+                step3: 'Extras',
+                step4: 'Matrix',
+                step5: 'Vial & Layout',
                 step6: 'Export',
                 btnUndo: 'Undo',
                 btnRedo: 'Redo',
@@ -4047,27 +4159,40 @@ visualElements.push({
                 btnBack: 'Back',
                 btnNextGrid: 'Next: Matrix',
 
-                // Step 3
-                s3Title: 'Matrix',
-                s3Desc: 'Click matrix cells to toggle active keys in the electrical LAYOUT matrix.',
+                // Step 3 (Extras)
+                s3Title: 'Extras',
+                s3Desc: 'Configure hardware addons and GUI configurator protocol settings.',
+                rgbLabel: 'RGB Backlight (WS2812 / NeoPixel)',
+                rgbNumLabel: 'Number of LEDs:',
+                rgbPinLabel: 'LED Data Pin (RGB_PIN):',
+                rgbPinHint: '',
+                subsystemsLabel: 'Subsystems:',
+                subsystemsDesc: '(toggle features and keycode tabs)',
+                subsystemsConfigTitle: 'Modular Firmware Subsystems',
+                subsystemsConfigDesc: 'Disabling unused drivers saves MCU Flash/RAM and strips redundant USB HID descriptors.',
+                featMouse: 'Mouse Keys',
+                featGamepad: 'Gamepad',
+                featMidi: 'MIDI Device',
+                featLed: 'Status LEDs (Lock / Layer)',
+                vialLabel: 'Vial / VIA GUI Support (In-browser config)',
+                vialNameLabel: 'Keyboard Name in Vial:',
+                vialVidLabel: 'USB Vendor ID:',
+                vialPidLabel: 'USB Product ID:',
+                btnNextGrid: 'Next: Matrix',
+
+                // Step 4 (Matrix)
+                s4Title: 'Matrix',
+                s4Desc: 'Click matrix cells to toggle active keys in the electrical LAYOUT matrix.',
                 activeKeysLabel: 'Active Keys:',
                 btnSelectAll: 'Select All',
                 btnClearAll: 'Clear All',
                 matrixHint: 'Click on a cell to add or remove switch from firmware.',
                 btnNextLayout: 'Next: Vial & Layout',
 
-                // Step 4
-                s4Title: 'Vial & Layout',
-                s4Desc: 'Configure layers and visual layout in Vial GUI.',
+                // Step 5 (Vial & Layout)
+                s5Title: 'Vial & Layout',
+                s5Desc: 'Configure layers and visual layout in Vial GUI.',
                 layersLabel: 'Keymap Layers:',
-                btnAddLayer: 'Add',
-                btnRenameLayer: 'Rename',
-                btnRemoveLayer: 'Delete',
-                currentLayerPrefix: 'Current Layer:',
-                currentLayerHint: 'Click on a key to assign keycode from palette below.',
-                inspectorTitle: 'Selected Key Properties:',
-                inspectorKeyPrompt: '[Click on a key]',
-                inspectorDesc: 'Configure physical key width, height, and visual offsets in Vial GUI',
                 btnAddLayer: 'Add Layer',
                 btnDupLayer: 'Duplicate',
                 btnClearLayer: 'Clear',
@@ -4100,6 +4225,11 @@ visualElements.push({
                 btnNextLighting: 'Next: Extras',
                 btnCancel: 'Cancel',
                 btnApply: 'Apply',
+                customMacrosLabel: 'Macros',
+                customMacrosDesc: 'Build sequences of key presses and delays assignable to any key via M(0), M(1)...',
+                chordsLabel: 'Chords',
+                chordsDesc: 'Press 2–4 keys simultaneously to trigger custom actions (e.g. JK = Esc, or SD = Ctrl+C).',
+                btnGenerateFiles: 'Generate config.h & vial.json',
 
                 // Dynamic & Prompts (EN)
                 promptNewLayer: 'Enter new layer name (e.g. NUMPAD, NAV, MEDIA, RU):',
@@ -4123,14 +4253,6 @@ visualElements.push({
                 encCw: 'Clockwise (CW):',
                 keySelectedPrefix: 'Key #',
                 keyMatrixCoord: 'Matrix',
-
-                // Step 5
-                s5Title: 'Extras',
-                s5Desc: 'Configure hardware addons and GUI configurator protocol settings.',
-                rgbLabel: 'RGB Backlight (WS2812 / NeoPixel)',
-                rgbNumLabel: 'Number of LEDs:',
-                rgbPinLabel: 'LED Data Pin (RGB_PIN):',
-                rgbPinHint: '',
                 encodersLabel: 'Rotary Encoders',
                 encodersDesc: '',
                 encResLabel: 'Encoder Resolution (ENCODER_RESOLUTION):',
@@ -4142,15 +4264,6 @@ visualElements.push({
                 encCount2: '2 Encoders',
                 encCount3: '3 Encoders',
                 encCount4: '4 Encoders',
-                vialLabel: 'Vial / VIA GUI Support (In-browser config)',
-                vialNameLabel: 'Keyboard Name in Vial:',
-                vialVidLabel: 'USB Vendor ID:',
-                vialPidLabel: 'USB Product ID:',
-                customMacrosLabel: 'Macros',
-                customMacrosDesc: 'Build sequences of key presses and delays assignable to any key via M(0), M(1)...',
-                chordsLabel: 'Chords',
-                chordsDesc: 'Press 2–4 keys simultaneously to trigger custom actions (e.g. JK = Esc, or SD = Ctrl+C).',
-                btnGenerateFiles: 'Generate config.h & vial.json',
 
                 // Step 6
                 s6Title: 'Export',
@@ -4168,8 +4281,8 @@ visualElements.push({
             const isLight = document.body.classList.contains('light-theme');
             localStorage.setItem('dmk_theme', isLight ? 'light' : 'dark');
             applyLanguage();
-            if (configState.step === 3) initMatrixGrid(configState.activeKeys);
-            if (configState.step === 4) renderVisualKeymap();
+            if (configState.step === 4) initMatrixGrid(configState.activeKeys);
+            if (configState.step === 5) renderVisualKeymap();
         }
 
         function toggleLanguage() {
@@ -4222,15 +4335,15 @@ visualElements.push({
             const navS2Back = document.querySelector('#step-2 .nav-actions button:first-child');
             if (navS2Back) navS2Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
             const navS2Next = document.querySelector('#step-2 .nav-actions button.btn-primary');
-            if (navS2Next) navS2Next.innerHTML = `${t.btnNextGrid} ${ICONS.arrowRight}`;
+            if (navS2Next) navS2Next.innerHTML = `${t.btnNextLighting} ${ICONS.arrowRight}`;
             const navS3Back = document.querySelector('#step-3 .nav-actions button:first-child');
             if (navS3Back) navS3Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
             const navS3Next = document.querySelector('#step-3 .nav-actions button.btn-primary');
-            if (navS3Next) navS3Next.innerHTML = `${t.btnNextLayout} ${ICONS.arrowRight}`;
+            if (navS3Next) navS3Next.innerHTML = `${t.btnNextGrid} ${ICONS.arrowRight}`;
             const navS4Back = document.querySelector('#step-4 .nav-actions button:first-child');
             if (navS4Back) navS4Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
             const navS4Next = document.querySelector('#step-4 .nav-actions button.btn-primary');
-            if (navS4Next) navS4Next.innerHTML = `${t.btnNextLighting} ${ICONS.arrowRight}`;
+            if (navS4Next) navS4Next.innerHTML = `${t.btnNextLayout} ${ICONS.arrowRight}`;
             const navS5Back = document.querySelector('#step-5 .nav-actions button:first-child');
             if (navS5Back) navS5Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
             const navS5Next = document.querySelector('#step-5 .nav-actions button.btn-primary');
@@ -4239,9 +4352,9 @@ visualElements.push({
             if (navS6Back) navS6Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBackSettings}`;
 
             // Buttons inside Steps
-            const btnSelAll = document.querySelector('#step-3 button[onclick="selectAllGridKeys(true)"]');
+            const btnSelAll = document.querySelector('#step-4 button[onclick="selectAllGridKeys(true)"]');
             if (btnSelAll) btnSelAll.innerHTML = `${ICONS.check} ${t.btnSelectAll}`;
-            const btnClrAll = document.querySelector('#step-3 button[onclick="selectAllGridKeys(false)"]');
+            const btnClrAll = document.querySelector('#step-4 button[onclick="selectAllGridKeys(false)"]');
             if (btnClrAll) btnClrAll.innerHTML = `${ICONS.trash} ${t.btnClearAll}`;
 
             const btnUndoEl = document.getElementById('btnUndo');
@@ -4249,15 +4362,15 @@ visualElements.push({
             const btnRedoEl = document.getElementById('btnRedo');
             if (btnRedoEl) btnRedoEl.innerHTML = `${ICONS.redo} ${t.btnRedo || 'Redo'}`;
 
-            const btnAddL = document.querySelector('#step-4 button[onclick="addCustomLayer()"]');
+            const btnAddL = document.querySelector('#step-5 button[onclick="addCustomLayer()"]');
             if (btnAddL) btnAddL.innerHTML = `${ICONS.plus} ${t.btnAddLayer}`;
-            const btnDupL = document.querySelector('#step-4 button[onclick="duplicateCurrentLayer()"]');
+            const btnDupL = document.querySelector('#step-5 button[onclick="duplicateCurrentLayer()"]');
             if (btnDupL) btnDupL.innerHTML = `${ICONS.copy} ${t.btnDupLayer}`;
-            const btnClrL = document.querySelector('#step-4 button[onclick="clearCurrentLayer()"]');
+            const btnClrL = document.querySelector('#step-5 button[onclick="clearCurrentLayer()"]');
             if (btnClrL) btnClrL.innerHTML = `${ICONS.trash} ${t.btnClearLayer}`;
-            const btnRenL = document.querySelector('#step-4 button[onclick="renameCurrentLayer()"]');
+            const btnRenL = document.querySelector('#step-5 button[onclick="renameCurrentLayer()"]');
             if (btnRenL) btnRenL.innerHTML = `${ICONS.edit} ${t.btnRenameLayer}`;
-            const btnRemL = document.querySelector('#step-4 button[onclick="removeCurrentLayer()"]');
+            const btnRemL = document.querySelector('#step-5 button[onclick="removeCurrentLayer()"]');
             if (btnRemL) btnRemL.innerHTML = `${ICONS.trash} ${t.btnRemoveLayer}`;
 
             const btnCopyC = document.querySelector('button[onclick="copyConfigCode()"]');
@@ -4858,9 +4971,9 @@ visualElements.push({
                     ...ALL_PALETTE_CODES.BASIC,
                     ...ALL_PALETTE_CODES.NUMPAD,
                     ...ALL_PALETTE_CODES.MODS,
-                    ...ALL_PALETTE_CODES.MOUSE,
-                    ...ALL_PALETTE_CODES.GAMEPAD,
-                    ...ALL_PALETTE_CODES.MIDI,
+                    ...(configState.enableMouse !== false ? ALL_PALETTE_CODES.MOUSE : []),
+                    ...(configState.enableGamepad !== false ? ALL_PALETTE_CODES.GAMEPAD : []),
+                    ...(configState.enableMidi !== false ? ALL_PALETTE_CODES.MIDI : []),
                     ...ALL_PALETTE_CODES.MEDIA,
                     ...ALL_PALETTE_CODES.LAYERS
                 ];
@@ -5128,9 +5241,14 @@ visualElements.push({
                 }
                 checkPinConflicts();
             } else if (stepNum === 3) {
+                if (document.getElementById('enableEncoders')?.checked) {
+                    updateEncoderInputs();
+                }
+                checkPinConflicts();
+            } else if (stepNum === 4) {
                 checkPinConflicts();
                 initMatrixGrid(configState.activeKeys);
-            } else if (stepNum === 4) {
+            } else if (stepNum === 5) {
                 renderLayersUI();
                 renderVisualKeymap();
                 renderPalette('BASIC');
@@ -5294,12 +5412,30 @@ visualElements.push({
 
             if (configState.mcu && configState.mcu !== 'all') {
                 out += `// Default target microcontroller for DMK build system\n`;
+                out += `#ifndef MCU_${configState.mcu}\n`;
+                out += `#define MCU_${configState.mcu}\n`;
+                out += `#endif\n`;
                 out += `#define DEFAULT_MCU ${configState.mcu}\n\n`;
+            }
+
+            // Modular Subsystem Disables
+            const featureDisables = [];
+            if (configState.enableMouse === false) featureDisables.push('#define NO_MOUSE');
+            if (configState.enableGamepad === false) featureDisables.push('#define NO_GAMEPAD');
+            if (configState.enableMidi === false) featureDisables.push('#define NO_MIDI');
+            if (configState.enableLed === false) featureDisables.push('#define NO_LED');
+            if (!enableRgb) featureDisables.push('#define NO_RGB');
+
+            if (featureDisables.length > 0) {
+                out += `/* --- Modular Subsystem Options --- */\n`;
+                out += featureDisables.join('\n') + `\n\n`;
             }
 
             if (enableVial) {
                 out += `// === Vial / VIA GUI Configuration ===\n`;
+                out += `#ifndef VIAL\n`;
                 out += `#define VIAL\n`;
+                out += `#endif\n`;
                 out += `#define VIAL_KEYBOARD_NAME "${vialName}"\n`;
                 out += `#define VIAL_VENDOR_ID ${vialVid}\n`;
                 out += `#define VIAL_PRODUCT_ID ${vialPid}\n\n`;
@@ -5641,7 +5777,7 @@ visualElements.push({
         }
 
         function generateConfigModal() {
-            gotoStep(5);
+            gotoStep(6);
         }
 
         function copyConfigCode() {
@@ -5805,13 +5941,28 @@ visualElements.push({
                 loadedSomething = true;
             }
 
-            // 6. RGB
+            // 6. Subsystems / Feature flags
+            const noMouse = /#define\s+NO_MOUSE\b/.test(text);
+            const noGamepad = /#define\s+NO_GAMEPAD\b/.test(text);
+            const noMidi = /#define\s+NO_MIDI\b/.test(text);
+            const noLed = /#define\s+NO_LED\b/.test(text);
+            const noRgb = /#define\s+NO_RGB\b/.test(text);
+
+            toggleFeatureSubsystem('mouse', !noMouse);
+            toggleFeatureSubsystem('gamepad', !noGamepad);
+            toggleFeatureSubsystem('midi', !noMidi);
+            toggleFeatureSubsystem('led', !noLed);
+
+            // 7. RGB
             const rgbNumMatch = text.match(/#define\s+RGB_NUM\s+(\d+)/);
             const rgbPinMatch = text.match(/#define\s+RGB_PIN\s+([A-Za-z0-9_]+)/);
-            if (rgbNumMatch) {
+            if (rgbNumMatch && !noRgb) {
                 document.getElementById('enableRgb').checked = true;
                 document.getElementById('rgbCount').value = parseInt(rgbNumMatch[1], 10);
                 if (rgbPinMatch) document.getElementById('rgbPin').value = rgbPinMatch[1];
+                toggleRgbOptions();
+            } else if (noRgb) {
+                document.getElementById('enableRgb').checked = false;
                 toggleRgbOptions();
             }
 
@@ -6091,8 +6242,8 @@ visualElements.push({
             const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
             if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
 
-            const step4 = document.getElementById('step-4');
-            if (!step4 || step4.style.display === 'none') return;
+            const step5 = document.getElementById('step-5');
+            if (!step5 || step5.style.display === 'none') return;
 
             // Ctrl+Z / Cmd+Z (Undo) and Ctrl+Y / Cmd+Y / Ctrl+Shift+Z (Redo)
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
