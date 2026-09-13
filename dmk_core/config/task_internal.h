@@ -17,7 +17,7 @@
 // Tailored task stack sizes (in words, 1 word = 4 bytes on 32-bit Cortex-M)
 #define TASK_STACK_MATRIX 256
 #define TASK_STACK_KEYBOARD 384
-#define TASK_STACK_RGB 512
+#define TASK_STACK_RGB 256
 #define TASK_STACK_DEF 384
 
 #define TASK_PARAMS_DEF NULL
