@@ -498,17 +498,47 @@ if [[ "$USB_FLASH" == true ]]; then
 
             echo -e "${YELLOW}${MSG_FLASH_USB} (${TARGET_NAME})${NC}"
             
-            # Try magic reboot or check if already in BOOTSEL
-            if ! picotool info > /dev/null 2>&1; then
-                echo -e "${RED}${MSG_PICO_BOOTSEL_ERR}${NC}"
-                echo -e "${YELLOW}${MSG_PICO_BOOTSEL_ACT}${NC}"
-                read -n 1 -s -r -p "${MSG_PICO_PRESS_KEY}"
-                echo -e "${MSG_PICO_CONT}"
+            FLASH_SUCCESS=false
+
+            # Check if volume is mounted (macOS / Linux: RPI-RP2 for RP2040, RP2350 for RP2350)
+            for MOUNT_PATH in "/Volumes/RPI-RP2" "/Volumes/RP2350" "/media/$USER/RPI-RP2" "/media/$USER/RP2350"; do
+                if [[ -d "$MOUNT_PATH" && -f "$UF2_FILE" ]]; then
+                    echo "Found mounted BOOTSEL drive: $MOUNT_PATH. Copying UF2..."
+                    if cp -X "$UF2_FILE" "$MOUNT_PATH/" 2>/dev/null || cp "$UF2_FILE" "$MOUNT_PATH/"; then
+                        sync
+                        FLASH_SUCCESS=true
+                        break
+                    fi
+                fi
+            done
+
+            if [[ "$FLASH_SUCCESS" == false ]]; then
+                echo "${MSG_PICO_UPLOAD} $ELF_FILE..."
+                if ! picotool load "$ELF_FILE" -x 2>/dev/null; then
+                    echo -e "${RED}${MSG_PICO_BOOTSEL_ERR}${NC}"
+                    echo -e "${YELLOW}${MSG_PICO_BOOTSEL_ACT}${NC}"
+                    read -n 1 -s -r -p "${MSG_PICO_PRESS_KEY}"
+                    echo -e "${MSG_PICO_CONT}"
+
+                    for MOUNT_PATH in "/Volumes/RPI-RP2" "/Volumes/RP2350" "/media/$USER/RPI-RP2" "/media/$USER/RP2350"; do
+                        if [[ -d "$MOUNT_PATH" && -f "$UF2_FILE" ]]; then
+                            cp -X "$UF2_FILE" "$MOUNT_PATH/" 2>/dev/null || cp "$UF2_FILE" "$MOUNT_PATH/"
+                            sync
+                            FLASH_SUCCESS=true
+                            break
+                        fi
+                    done
+
+                    if [[ "$FLASH_SUCCESS" == false ]]; then
+                        picotool load "$ELF_FILE" -x
+                        [[ $? -eq 0 ]] && FLASH_SUCCESS=true
+                    fi
+                else
+                    FLASH_SUCCESS=true
+                fi
             fi
 
-            echo "${MSG_PICO_UPLOAD} $ELF_FILE..."
-            picotool load "$ELF_FILE" -x
-            if [ $? -eq 0 ]; then
+            if [[ "$FLASH_SUCCESS" == true ]]; then
                 echo -e "${GREEN}${MSG_PICO_SUCCESS}${NC}"
             else
                 echo -e "${RED}${MSG_PICO_FAIL}${NC}"
