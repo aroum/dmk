@@ -38,8 +38,10 @@ typedef struct {
     uint8_t combo_idx;
     uint16_t output;
     uint8_t count;
+    bool output_released;
     struct {
         uint8_t row, col;
+        bool released;
     } triggers[4];
 } active_combo_t;
 
@@ -142,9 +144,11 @@ static bool check_vial_combos(uint8_t row, uint8_t col) {
                 ac->combo_idx = (uint8_t)i;
                 ac->output = c->output;
                 ac->count = (uint8_t)input_count;
+                ac->output_released = false;
                 for (int k = 0; k < input_count; k++) {
                     ac->triggers[k].row = s_keys[match_indices[k]].row;
                     ac->triggers[k].col = s_keys[match_indices[k]].col;
+                    ac->triggers[k].released = false;
                 }
             }
             process_key_event(row, col, from_via_keycode(c->output), true);
@@ -155,49 +159,82 @@ static bool check_vial_combos(uint8_t row, uint8_t col) {
 }
 
 static bool process_vial_release(uint8_t row, uint8_t col) {
-    int found_idx = -1;
     for (int i = 0; i < s_active_count; i++) {
-        for (int k = 0; k < s_active[i].count; k++) {
-            if (s_active[i].triggers[k].row == row && s_active[i].triggers[k].col == col) {
-                found_idx = i;
-                break;
-            }
-        }
-        if (found_idx >= 0)
-            break;
-    }
+        active_combo_t *ac = &s_active[i];
+        for (int k = 0; k < ac->count; k++) {
+            if (ac->triggers[k].row == row && ac->triggers[k].col == col) {
+                ac->triggers[k].released = true;
 
-    if (found_idx >= 0) {
-        active_combo_t *ac = &s_active[found_idx];
-        bool still_pressed = false;
-        for (int k = 0; k < ac->count && !still_pressed; k++) {
-            for (int p = 0; p < s_keys_count; p++) {
-                if (s_keys[p].row == ac->triggers[k].row && s_keys[p].col == ac->triggers[k].col) {
-                    still_pressed = true;
-                    break;
+                // Send key-up for the combo output as soon as ANY constituent key is released
+                if (!ac->output_released) {
+                    process_key_event(row, col, from_via_keycode(ac->output), false);
+                    ac->output_released = true;
                 }
+
+                // Check if ALL trigger keys for this combo are now released
+                bool all_released = true;
+                for (int j = 0; j < ac->count; j++) {
+                    if (!ac->triggers[j].released) {
+                        all_released = false;
+                        break;
+                    }
+                }
+
+                if (all_released) {
+                    memmove(&s_active[i], &s_active[i + 1],
+                            (s_active_count - 1 - i) * sizeof(active_combo_t));
+                    s_active_count--;
+                }
+
+                return true;
             }
         }
-        if (!still_pressed) {
-            process_key_event(row, col, from_via_keycode(ac->output), false);
-            memmove(&s_active[found_idx], &s_active[found_idx + 1],
-                    (s_active_count - 1 - found_idx) * sizeof(active_combo_t));
-            s_active_count--;
-        }
-        return true;
     }
     return false;
 }
 #endif
 
 bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now) {
-#ifdef VIAL
     if (!pressed) {
+#ifdef VIAL
+        // 1. Process active combo releases first
         if (process_vial_release(row, col)) {
+            // Also ensure key is removed from buffer if it was still pending
+            for (int p = 0; p < s_keys_count; p++) {
+                if (s_keys[p].row == row && s_keys[p].col == col) {
+                    memmove(&s_keys[p], &s_keys[p + 1], (s_keys_count - 1 - p) * sizeof(combo_key_t));
+                    s_keys_count--;
+                    break;
+                }
+            }
             return true;
         }
-    }
 #endif
+
+        // 2. If a buffered key was released before combo timeout (quick tap), flush press first
+        for (int p = 0; p < s_keys_count; p++) {
+            if (s_keys[p].row == row && s_keys[p].col == col) {
+                if (!s_keys[p].consumed) {
+                    uint32_t key = layers_lookup_key(row, col);
+                    oneshot_on_key_press(key);
+                    process_key_event(row, col, key, true);
+                }
+                memmove(&s_keys[p], &s_keys[p + 1], (s_keys_count - 1 - p) * sizeof(combo_key_t));
+                s_keys_count--;
+                break;
+            }
+        }
+
+#ifdef CHORDS_COUNT
+        for (uint8_t b = 0; b < s_keys_count; ++b) {
+            if (s_keys[b].row == row && s_keys[b].col == col) {
+                chords_flush();
+                break;
+            }
+        }
+#endif
+        return false;
+    }
 
     if (pressed) {
         if (s_keys_count < MAX_BUFFERED_KEYS) {
@@ -252,22 +289,6 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
             return true;
         }
         chords_flush();
-    } else {
-#ifdef CHORDS_COUNT
-        for (uint8_t b = 0; b < s_keys_count; ++b) {
-            if (s_keys[b].row == row && s_keys[b].col == col) {
-                chords_flush();
-                break;
-            }
-        }
-#endif
-        for (int p = 0; p < s_keys_count; p++) {
-            if (s_keys[p].row == row && s_keys[p].col == col) {
-                memmove(&s_keys[p], &s_keys[p + 1], (s_keys_count - 1 - p) * sizeof(combo_key_t));
-                s_keys_count--;
-                break;
-            }
-        }
     }
     return false;
 }
