@@ -8,7 +8,7 @@
 
 A lightweight, modern, and highly modular keyboard firmware designed for cross-platform MCU compatibility.
 
-**Documentation:** [Build](docs/en/build.md) • [Config](docs/en/config.md) • [Keycodes](docs/en/keycodes.md) • [Keymap](docs/en/keymap.md) • [Pins](docs/en/pins.md) • [Vial](docs/en/vial.md) • [Modules](docs/en/modules.md) • [MIDI](docs/en/midi.md) • [Config Wizard](editor/wizard.html)
+**Documentation:** [Build](docs/en/build.md) • [Config](docs/en/config.md) • [Keycodes](docs/en/keycodes.md) • [Keymap](docs/en/keymap.md) • [Pins](docs/en/pins.md) • [Vial](docs/en/vial.md) • [Modules](docs/en/modules.md) • [MIDI](docs/en/midi.md) • [Config Wizard](https://htmlpreview.github.io/?https://github.com/aroum/dmk/blob/main/editor/wizard.html)
 
 ## Features
 
@@ -26,20 +26,20 @@ A lightweight, modern, and highly modular keyboard firmware designed for cross-p
 
 ### Advanced Layout & Keymap Features
 
-| Feature                   | Code / Macro              | Description                                                                                          |
-| :------------------------ | :------------------------ | :--------------------------------------------------------------------------------------------------- |
-| **Nested Layers**         | `K_TRNS`, `0..15`         | Up to 16 active stacked layers with transparent fallback resolution                                  |
-| **Momentary Switch**      | `MO(layer)`, `L_0..L_15`  | Activates a layer while held down                                                                    |
-| **Layer Toggle**          | `TG(layer)`               | Toggles a layer state on or off                                                                      |
-| **One-Shot (Sticky)**     | `OS(K_LSFT)`, `OS(layer)` | Activates a modifier or layer for the next single keypress                                           |
-| **Hold-Tap**              | `HT(hold, tap)`           | Sends one keycode on quick tap and another (or layer/mod) on hold                                    |
-| **Modified Key**          | `MK(mod, key)`            | Sends a keycode combined with a modifier mask (e.g., `Shift + D`)                                    |
-| **Physical Chords**       | `my_chords[]`             | Triggers custom macros/actions when multiple keys are pressed together                               |
-| **Multi-Step Macros**     | `M(index)`                | Executes sequences of key-down, key-up, and precise millisecond delays                               |
-| **Layer & Language Sync** | `M(index)` + `TG(layer)`  | Macros can trigger OS language hotkeys (`Shift+Alt`) and toggle layers for separate language keymaps |
-| **Mouse Keys**            | `MS_UP`, `MS_BTN1`..      | Full mouse cursor movement, button clicks, and scrolling from keys or modules                        |
-| **DirectInput Gamepad**   | `GP_A`, `GP_UP`, `GP_BTN` | 32 buttons, 8-directional D-Pad, and 6 analog axes mapped to keys or modules                         |
-| **Vial / VIA GUI**        | `#define VIAL`            | Real-time layout editing, dynamic macros, and key remaps via Vial GUI                                |
+| Feature                   | Code / Macro                      | Description                                                                                          |
+| :------------------------ | :-------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| **Nested Layers**         | `K_TRNS`, `0..15`                 | Up to 16 active stacked layers with transparent fallback resolution                                  |
+| **Momentary Switch**      | `MO(layer)`, `L_0..L_15`          | Activates a layer while held down                                                                    |
+| **Layer Toggle**          | `TG(layer)`                       | Toggles a layer state on or off                                                                      |
+| **One-Shot (Sticky)**     | `OS(K_LSFT)`, `OS(layer)`         | Activates a modifier or layer for the next single keypress                                           |
+| **Hold-Tap**              | `HT(hold, tap)`                   | Sends one keycode on quick tap and another (or layer/mod) on hold                                    |
+| **Modified Key**          | `MK(mod, key)`                    | Sends a keycode combined with a modifier mask (e.g., `Shift + D`)                                    |
+| **Physical Chords**       | `my_chords[]`                     | Triggers custom macros/actions when multiple keys are pressed together                               |
+| **Multi-Step Macros**     | `M(index)`                        | Executes sequences of key-down, key-up, and precise millisecond delays                               |
+| **Layer & Language Sync** | `M(index)` + `TG(layer)`          | Macros can trigger OS language hotkeys (`Shift+Alt`) and toggle layers for separate language keymaps |
+| **Mouse Keys**            | `MS_UP`, `MS_BTN1`..              | Full mouse cursor movement, button clicks, and scrolling from keys or modules                        |
+| **DirectInput Gamepad**   | `GP_A`, `GP_UP`, `GP_BTN`         | 32 buttons, 8-directional D-Pad, and 6 analog axes mapped to keys or modules                         |
+| **Vial & VIA Support**    | `#define VIAL` / `#define VIA_V3` | Real-time layout editing via Vial GUI (protocol 9) or VIA v3 Custom UI (protocol 12)                 |
 
 ---
 
@@ -55,11 +55,11 @@ Below is a comparison of the codebase size of DMK and other firmwares. Measured 
 
 | Project                                                | Language | SLOC   | Relative to DMK |
 | :----------------------------------------------------- | :------- | :----- | :-------------- |
-| **DMK** (~6.8K core + ~1.4K platforms)                 | C        | ~8.1K  | 1×              |
-| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 3.0×            |
-| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 4.1×            |
-| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 6.7×            |
-| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 9.4×            |
+| **DMK** (~8.1K core + ~1.4K platforms)                 | C        | ~9.5K  | 1×              |
+| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 2.6×            |
+| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 3.5×            |
+| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 5.7×            |
+| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 8.0×            |
 
 ---
 

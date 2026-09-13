@@ -1,6 +1,6 @@
 🌐 **Language / Язык:** [English](config.md) | [Русский](../ru/config.md)
 
-📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md) • [Modules](modules.md) • [MIDI](midi.md)
+📖 **Documentation / Документация:** [Build](build.md) • [Config](config.md) • [Keycodes](keycodes.md) • [Keymap](keymap.md) • [Pins](pins.md) • [Vial](vial.md) • [Modules](modules.md) • [MIDI](midi.md) • [Wizard](https://htmlpreview.github.io/?https://github.com/aroum/dmk/blob/main/editor/wizard.html)
 
 ---
 
@@ -283,7 +283,7 @@ const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_
 
 ## Split Keyboard Settings
 
-For split keyboards (such as Corne, Jianovka, or Nizkoteno Split), communication between halves is handled over a unified serial protocol driver architecture.
+For split keyboards (such as Corne), communication between halves is handled over a unified serial protocol driver architecture.
 
 ### Unified Split Connection Types & Platform Matrix
 

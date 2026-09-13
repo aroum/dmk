@@ -1,6 +1,6 @@
 🌐 **Язык / Language:** [Русский](config.md) | [English](../en/config.md)
 
-📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md)
+📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md) • [Визард](https://htmlpreview.github.io/?https://github.com/aroum/dmk/blob/main/editor/wizard.html)
 
 ---
 
@@ -286,7 +286,7 @@ const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_
 
 ## Настройки сплит-клавиатур
 
-Для раздельных клавиатур (таких как Corne, Jianovka или Nizkoteno Split) связь между половинками осуществляется через унифицированную архитектуру драйверов последовательного протокола.
+Для раздельных клавиатур (таких как Corne) связь между половинками осуществляется через унифицированную архитектуру драйверов последовательного протокола.
 
 ### Единый формат назначения режимов и пинов
 

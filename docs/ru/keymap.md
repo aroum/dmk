@@ -1,6 +1,6 @@
 🌐 **Язык / Language:** [Русский](keymap.md) | [English](../en/keymap.md)
 
-📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md)
+📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md) • [Визард](https://htmlpreview.github.io/?https://github.com/aroum/dmk/blob/main/editor/wizard.html)
 
 ---
 
@@ -206,11 +206,11 @@ const Chord my_chords[] = {
 #define CHORDS_COUNT (sizeof(my_chords) / sizeof(my_chords[0]))
 ```
 
-## Модификаторы и Слои (Mod/Layer)
+## Модификаторы и Слои
 
 Поддерживается до 16 слоев.
 
-### Временная активация слоя/модификатора (Momentary)
+### Временная активация слоя/модификатора
 
 - FN1/LSHIFT > Временно активирует слой/модификатор. Как только вы отпускаете клавишу, слой деактивируется.
 
@@ -243,7 +243,7 @@ const uint16_t keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 ```
 
-### Модифицированная клавиша (Modified key)
+### Модифицированная клавиша
 
 ```c
 // --------------------------------------------------------------------------
@@ -261,7 +261,7 @@ const uint16_t keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 #define MK_SA_A   MK(MOD_LSHIFT | MOD_LALT, K_A)
 ```
 
-### Залипающие клавиши (ONE SHOT)
+### Залипающие клавиши (One-Shot)
 
 Подробнее о концепции можно прочитать в документации [ZMK Sticky Key](https://zmk.dev/docs/keymaps/behaviors/sticky-key).
 

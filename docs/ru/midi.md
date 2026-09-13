@@ -1,6 +1,6 @@
 🌐 **Язык / Language:** [Русский](midi.md) | [English](../en/midi.md)
 
-📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md)
+📖 **Навигация / Navigation:** [Сборка](build.md) • [Конфигурация](config.md) • [Коды клавиш](keycodes.md) • [Раскладка](keymap.md) • [Пины](pins.md) • [Vial](vial.md) • [Модули](modules.md) • [MIDI](midi.md) • [Визард](https://htmlpreview.github.io/?https://github.com/aroum/dmk/blob/main/editor/wizard.html)
 
 ---
 
@@ -102,7 +102,7 @@ Vial позволяет назначать на кнопки или вращен
 | **Сдвиг громкости**          | `MIDI_VELOCITY_DOWN` / `MIDI_VELOCITY_UP`                                           | —                         | Уменьшает или увеличивает силу нажатия                        |
 | **Выбор MIDI канала**        | `MIDI_CHANNEL_1` .. `MIDI_CHANNEL_16`                                               | каналы 1–16               | Устанавливает рабочий MIDI-канал                              |
 | **Сдвиг канала**             | `MIDI_CHANNEL_DOWN` / `MIDI_CHANNEL_UP`                                             | —                         | Понижает или повышает номер канала                            |
-| **Pitch Bend (колесо)**      | `MIDI_PITCH_BEND_DOWN` / `MIDI_PITCH_BEND_UP`                                       | —                         | Отклоняет высоту тона вниз или вверх                          |
+| **Pitch Bend**               | `MIDI_PITCH_BEND_DOWN` / `MIDI_PITCH_BEND_UP`                                       | —                         | Отклоняет высоту тона вниз или вверх                          |
 | **CC Эффекты**               | `MIDI_SUSTAIN` / `MIDI_PORTAMENTO` / `MIDI_SOSTENUTO` / `MIDI_SOFT` / `MIDI_LEGATO` | —                         | Стандартные MIDI-эффекты (педали сустейна, портаменто и др.)  |
 | **Паника**                   | `MIDI_ALL_NOTES_OFF`                                                                | —                         | Выключает все звучащие ноты                                   |
 | **Инкремент CC (Vial)**      | `MIDI_CC_X_INC`                                                                     | X = 0 .. 127              | Увеличивает абсолютное значение CC X на 1 при нажатии         |
