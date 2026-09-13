@@ -1,3 +1,4 @@
+#define LED_C_SRC 1
 #include "led.h"
 #include "FreeRTOS.h"
 #include "config.h"
@@ -34,7 +35,7 @@ static inline void Board_LED_Off(void) {
 }
 
 bool led_initialized = false;
-volatile bool usb_mounted = false;
+extern volatile bool usb_mounted;
 
 static TickType_t blink_until = 0;
 static bool is_blinking = false;
@@ -118,6 +119,41 @@ void led_update(TickType_t now) {
 }
 
 /**
+ * @brief Determine earliest wakeup deadline needed by LED subsystem (blink or heartbeat).
+ * @param now Current FreeRTOS tick count.
+ * @return Next timeout in ticks, or portMAX_DELAY if no LED animations/timers active.
+ */
+TickType_t led_check_timeouts(TickType_t now) {
+#ifdef LED_PINS
+#ifdef LED_DEBUG
+    if (LED_DEBUG >= LED_COUNT) {
+        return portMAX_DELAY;
+    }
+    if (is_blinking) {
+        if (now >= blink_until) {
+            Board_LED_Off();
+            is_blinking = false;
+        } else {
+            return (blink_until - now);
+        }
+    }
+    TickType_t interval = usb_mounted ? pdMS_TO_TICKS(250) : pdMS_TO_TICKS(1000);
+    TickType_t elapsed = now - last_toggle_time;
+    if (elapsed >= interval) {
+        return 1;
+    }
+    return (interval - elapsed);
+#else
+    (void)now;
+    return portMAX_DELAY;
+#endif
+#else
+    (void)now;
+    return portMAX_DELAY;
+#endif
+}
+
+/**
  * @brief Update host keyboard lock LEDs (Num Lock, Caps Lock, Scroll Lock, Compose, Kana).
  * @param state Host HID LED indicator bitmask.
  */
@@ -150,4 +186,25 @@ void led_set_hid_state(uint8_t state) {
 #endif
 #endif
     hook_hid_led_change(state);
+}
+
+void led_activity(bool pressed) {
+#ifdef LED_ACTIVITY_PIN
+    static bool led_act_inited = false;
+    static uint32_t active_keys_count = 0;
+    if (!led_act_inited) {
+        hal_gpio_init(LED_ACTIVITY_PIN);
+        hal_gpio_set_dir(LED_ACTIVITY_PIN, true);
+        hal_gpio_put(LED_ACTIVITY_PIN, false);
+        led_act_inited = true;
+    }
+    if (pressed) {
+        active_keys_count++;
+    } else if (active_keys_count > 0) {
+        active_keys_count--;
+    }
+    hal_gpio_put(LED_ACTIVITY_PIN, active_keys_count > 0);
+#else
+    (void)pressed;
+#endif
 }

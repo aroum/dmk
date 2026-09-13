@@ -4,6 +4,7 @@
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
+#include "pico/bootrom.h"
 #include "pico/stdlib.h"
 
 void hal_gpio_init(pin_t gpio) {
@@ -48,7 +49,13 @@ void hal_sleep_us(uint32_t us) {
 
 void platform_init(void) {}
 
+void platform_bootloader_jump(void) {
+    reset_usb_boot(0, 0);
+}
+
 #elif defined(MCU_nrf52840)
+#include "nrf.h"
+#include "nrf_nvic.h"
 #include "nrf_delay.h"
 #include "nrf_gpio.h"
 
@@ -99,9 +106,15 @@ void hal_sleep_us(uint32_t us) {
 
 void platform_init(void) {}
 
+void platform_bootloader_jump(void) {
+    NRF_POWER->GPREGRET = 0x57;
+    NVIC_SystemReset();
+}
+
 #elif defined(MCU_baikal)
 #include "bmcu_cru.h"
 #include "bmcu_gpio.h"
+#include "bsp/board_api.h"
 
 static inline GPIO_TypeDef *get_gpio_port(pin_t pin) {
     if (pin < 16)
@@ -176,7 +189,12 @@ void hal_sleep_us(uint32_t us) {
 
 void platform_init(void) {}
 
+void platform_bootloader_jump(void) {
+    board_reset_to_bootloader();
+}
+
 #elif defined(MCU_milandr)
+#include "MDR32FxQI_bkp.h"
 #include "MDR32FxQI_port.h"
 #include "MDR32FxQI_rst_clk.h"
 #include "board_pins.h"
@@ -279,6 +297,12 @@ void hal_sleep_us(uint32_t us) {
 
 void platform_init(void) {
     CLK_Init_80_mhz();
+}
+
+void platform_bootloader_jump(void) {
+    RST_CLK_PCLKcmd(RST_CLK_PCLK_BKP, ENABLE);
+    MDR_BKP->REG_00 = 0xDFDB007; // DFU bootloader request signature
+    NVIC_SystemReset();
 }
 
 #endif

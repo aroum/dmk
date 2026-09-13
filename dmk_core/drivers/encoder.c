@@ -186,10 +186,6 @@ void encoder_process_event(uint8_t encoder_idx, bool direction) {
     }
 }
 
-/**
- * @brief Update encoder synthetic key press release timers and emit release events when expired.
- * @param delta_ms Elapsed milliseconds since last check.
- */
 void encoder_update_timers(uint32_t delta_ms) {
     for (int i = 0; i < NUM_ENCODERS; i++) {
         if (encoder_release_timers[i] > 0) {
@@ -203,6 +199,51 @@ void encoder_update_timers(uint32_t delta_ms) {
             }
         }
     }
+}
+
+/**
+ * @brief Check encoder release timers and compute next wakeup deadline.
+ * @param now Current FreeRTOS tick count.
+ * @return Next deadline timeout in ticks (or portMAX_DELAY if no encoder timers active).
+ */
+TickType_t encoder_check_timeouts(TickType_t now) {
+    static TickType_t last_time = 0;
+    if (last_time == 0) {
+        last_time = now;
+    }
+
+    uint32_t delta_ms = (uint32_t)((now - last_time) * (1000 / configTICK_RATE_HZ));
+    last_time = now;
+
+    bool has_active = false;
+    int16_t min_remaining = 30000;
+
+    for (int i = 0; i < NUM_ENCODERS; i++) {
+        if (encoder_release_timers[i] > 0) {
+            if (delta_ms > 0) {
+                encoder_release_timers[i] -= (int16_t)delta_ms;
+            }
+            if (encoder_release_timers[i] <= 0) {
+                encoder_release_timers[i] = 0;
+                if (active_encoder_keys[i] != 0) {
+                    process_key_event(0xFF, 0xFF, active_encoder_keys[i], false);
+                    active_encoder_keys[i] = 0;
+                }
+            } else {
+                has_active = true;
+                if (encoder_release_timers[i] < min_remaining) {
+                    min_remaining = encoder_release_timers[i];
+                }
+            }
+        }
+    }
+
+    if (!has_active) {
+        return portMAX_DELAY;
+    }
+
+    TickType_t ticks = pdMS_TO_TICKS(min_remaining);
+    return (ticks > 0) ? ticks : 1;
 }
 
 #else

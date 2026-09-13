@@ -46,5 +46,6 @@ void hal_gpio_pull_down(pin_t gpio);
 void hal_gpio_pull_up(pin_t gpio);
 void hal_sleep_us(uint32_t us);
 void platform_init(void);
+void platform_bootloader_jump(void);
 
 #endif
