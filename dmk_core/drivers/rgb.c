@@ -130,6 +130,14 @@ void rgb_init(void) {
 #endif
 }
 
+static TaskHandle_t s_rgb_task_handle = NULL;
+
+static inline void rgb_notify_change(void) {
+    if (s_rgb_task_handle != NULL) {
+        xTaskNotifyGive(s_rgb_task_handle);
+    }
+}
+
 static uint32_t animation_tick = 0;
 static uint32_t step_accum = 0;
 
@@ -138,6 +146,7 @@ static uint32_t step_accum = 0;
  */
 void rgb_task(void *pvParameters) {
     (void)pvParameters;
+    s_rgb_task_handle = xTaskGetCurrentTaskHandle();
 
     while (1) {
 #ifdef POWER_PIN
@@ -277,7 +286,21 @@ void rgb_task(void *pvParameters) {
             ws2812_show();
         }
 
-        vTaskDelay(pdMS_TO_TICKS(20)); // run at 50fps for smooth animations
+        bool is_static = !rgb_enabled || (rgb_mode == 0) ||
+                         (rgb_mode == RGBLIGHT_MODE_STATIC_LIGHT) ||
+                         (rgb_mode == RGBLIGHT_MODE_STATIC_GRADIENT)
+#ifdef RGB_THEMES
+                         || (rgb_mode == 100)
+#endif
+                         ;
+
+        if (is_static) {
+            // Static mode: sleep indefinitely until woken by setting change notification
+            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        } else {
+            // Animated mode: run at 50fps (20ms delay), but wake up early if setting changes
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20));
+        }
     }
 }
 
@@ -292,6 +315,7 @@ void rgb_toggle(void) {
     } else {
         rgb_mode = 0;
     }
+    rgb_notify_change();
 }
 
 static const uint8_t rgb_modes[] = {RGBLIGHT_MODE_STATIC_LIGHT,
@@ -336,6 +360,7 @@ void rgb_next_theme(void) {
     rgb_mode = get_next_mode(rgb_mode);
 #endif
     rgb_enabled = true;
+    rgb_notify_change();
 }
 
 void rgb_prev_theme(void) {
@@ -358,6 +383,7 @@ void rgb_prev_theme(void) {
     rgb_mode = get_prev_mode(rgb_mode);
 #endif
     rgb_enabled = true;
+    rgb_notify_change();
 }
 
 // --- Getters and setters for Vial ---
@@ -372,6 +398,7 @@ void rgb_set_enabled(bool enabled) {
         rgb_mode = RGBLIGHT_MODE_STATIC_LIGHT;
 #endif
     }
+    rgb_notify_change();
 }
 
 bool rgb_get_enabled(void) {
@@ -386,6 +413,7 @@ void rgb_set_mode(uint8_t mode) {
         rgb_enabled = true;
         rgb_mode = mode;
     }
+    rgb_notify_change();
 }
 
 uint8_t rgb_get_mode(void) {
@@ -398,6 +426,7 @@ void rgb_set_brightness(uint8_t brightness) {
     } else {
         rgb_brightness = brightness;
     }
+    rgb_notify_change();
 }
 
 uint8_t rgb_get_brightness(void) {
@@ -406,6 +435,7 @@ uint8_t rgb_get_brightness(void) {
 
 void rgb_set_speed(uint8_t speed) {
     rgb_speed = speed;
+    rgb_notify_change();
 }
 
 uint8_t rgb_get_speed(void) {
@@ -416,6 +446,7 @@ void rgb_set_color(uint8_t hue, uint8_t sat) {
     rgb_hue = hue;
     rgb_sat = sat;
     rgb_mode = RGBLIGHT_MODE_STATIC_LIGHT; // Override active mode to Solid color
+    rgb_notify_change();
 }
 
 uint8_t rgb_get_hue(void) {
@@ -428,35 +459,43 @@ uint8_t rgb_get_sat(void) {
 
 void rgb_increase_hue(void) {
     rgb_hue = (rgb_hue + 8) & 0xFF;
+    rgb_notify_change();
 }
 
 void rgb_decrease_hue(void) {
     rgb_hue = (rgb_hue - 8) & 0xFF;
+    rgb_notify_change();
 }
 
 void rgb_increase_sat(void) {
     rgb_sat = (rgb_sat > 255 - 17) ? 255 : (rgb_sat + 17);
+    rgb_notify_change();
 }
 
 void rgb_decrease_sat(void) {
     rgb_sat = (rgb_sat < 17) ? 0 : (rgb_sat - 17);
+    rgb_notify_change();
 }
 
 void rgb_increase_val(void) {
     uint8_t limit = RGB_LIMIT_VAL;
     rgb_brightness = (rgb_brightness > limit - 17) ? limit : (rgb_brightness + 17);
+    rgb_notify_change();
 }
 
 void rgb_decrease_val(void) {
     rgb_brightness = (rgb_brightness < 17) ? 0 : (rgb_brightness - 17);
+    rgb_notify_change();
 }
 
 void rgb_increase_speed(void) {
     rgb_speed = (rgb_speed > 255 - 16) ? 255 : (rgb_speed + 16);
+    rgb_notify_change();
 }
 
 void rgb_decrease_speed(void) {
     rgb_speed = (rgb_speed < 16) ? 0 : (rgb_speed - 16);
+    rgb_notify_change();
 }
 
 void rgb_get_config(uint8_t *dest) {
@@ -484,56 +523,7 @@ void rgb_set_config(const uint8_t *src) {
 #ifdef RGB_THEMES
     active_theme = src[6];
 #endif
+    rgb_notify_change();
 }
-
-#else
-
-// Stubs for unsupported/non-LED platforms
-void rgb_init(void) {}
-void rgb_task(void *pvParameters) {
-    (void)pvParameters;
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-void rgb_toggle(void) {}
-void rgb_next_theme(void) {}
-void rgb_prev_theme(void) {}
-
-void rgb_set_enabled(bool enabled) {}
-bool rgb_get_enabled(void) {
-    return false;
-}
-void rgb_set_mode(uint8_t mode) {}
-uint8_t rgb_get_mode(void) {
-    return 0;
-}
-void rgb_set_brightness(uint8_t brightness) {}
-uint8_t rgb_get_brightness(void) {
-    return 0;
-}
-void rgb_set_speed(uint8_t speed) {}
-uint8_t rgb_get_speed(void) {
-    return 0;
-}
-void rgb_set_color(uint8_t hue, uint8_t sat) {}
-uint8_t rgb_get_hue(void) {
-    return 0;
-}
-uint8_t rgb_get_sat(void) {
-    return 0;
-}
-void rgb_increase_hue(void) {}
-void rgb_decrease_hue(void) {}
-void rgb_increase_sat(void) {}
-void rgb_decrease_sat(void) {}
-void rgb_increase_val(void) {}
-void rgb_decrease_val(void) {}
-void rgb_increase_speed(void) {}
-void rgb_decrease_speed(void) {}
-void rgb_get_config(uint8_t *dest) {
-    memset(dest, 0, 8);
-}
-void rgb_set_config(const uint8_t *src) {}
 
 #endif // defined(RGB_NUM)
