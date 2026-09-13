@@ -13,6 +13,7 @@
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
+#include "hardware/sync.h"
 #include "i2s_tx.pio.h"
 
 #define SAMPLE_RATE 48000
@@ -50,12 +51,37 @@ typedef struct {
 static voice_t voices[MAX_VOICES];
 static uint32_t voice_age_counter = 0;
 static volatile uint8_t master_volume = 100; // 0..100%
-static PIO audio_pio = pio0;
+
+// Use dedicated PIO1 for I2S audio (pio0 is used by WS2812 and split)
+static PIO audio_pio = pio1;
 static uint audio_sm = 0;
 static bool synth_started = false;
 
+// Inter-core lock-free ring buffer (Core 0 producer, Core 1 consumer)
+typedef struct {
+    uint8_t cmd;
+    uint8_t note;
+    uint8_t vel;
+} synth_event_t;
+
+#define SYNTH_QUEUE_SIZE 64
+static volatile synth_event_t s_synth_queue[SYNTH_QUEUE_SIZE];
+static volatile uint32_t s_synth_head = 0;
+static volatile uint32_t s_synth_tail = 0;
+
+static inline void synth_send_event(uint8_t cmd, uint8_t note, uint8_t vel) {
+    uint32_t next_head = (s_synth_head + 1) % SYNTH_QUEUE_SIZE;
+    if (next_head != s_synth_tail) {
+        s_synth_queue[s_synth_head].cmd = cmd;
+        s_synth_queue[s_synth_head].note = note;
+        s_synth_queue[s_synth_head].vel = vel;
+        __dmb();
+        s_synth_head = next_head;
+    }
+}
+
 // Internal voice management (runs on Core 1)
-static void internal_note_on(uint8_t note, uint8_t vel) {
+static inline void internal_note_on(uint8_t note, uint8_t vel) {
     if (note > 127) return;
     if (vel == 0) {
         // Velocity 0 is equivalent to Note-Off in MIDI
@@ -113,7 +139,7 @@ static void internal_note_on(uint8_t note, uint8_t vel) {
     }
 }
 
-static void internal_note_off(uint8_t note) {
+static inline void internal_note_off(uint8_t note) {
     for (int i = 0; i < MAX_VOICES; i++) {
         if (voices[i].active && voices[i].note == note) {
             voices[i].releasing = true;
@@ -121,7 +147,7 @@ static void internal_note_off(uint8_t note) {
     }
 }
 
-static void internal_all_notes_off(void) {
+static inline void internal_all_notes_off(void) {
     for (int i = 0; i < MAX_VOICES; i++) {
         voices[i].releasing = true;
     }
@@ -129,22 +155,30 @@ static void internal_all_notes_off(void) {
 
 // Core 1 Audio Loop
 static void __not_in_flash_func(audio_core_entry)(void) {
-    multicore_lockout_victim_init();
+    // Startup chime: play Note 69 (A4, 440Hz) softly on boot to confirm DAC hardware works
+    internal_note_on(69, 85);
+    uint32_t chime_samples = (SAMPLE_RATE * 150) / 1000; // 150 ms duration
 
     while (1) {
         // 1. Process pending inter-core commands from Core 0
-        while (multicore_fifo_rvalid()) {
-            uint32_t msg = multicore_fifo_pop_blocking();
-            uint8_t cmd  = (msg >> 16) & 0xFF;
-            uint8_t note = (msg >> 8) & 0xFF;
-            uint8_t vel  = msg & 0xFF;
+        while (s_synth_tail != s_synth_head) {
+            synth_event_t evt = s_synth_queue[s_synth_tail];
+            __dmb();
+            s_synth_tail = (s_synth_tail + 1) % SYNTH_QUEUE_SIZE;
 
-            if (cmd == 1) {
-                internal_note_on(note, vel);
-            } else if (cmd == 0) {
-                internal_note_off(note);
-            } else if (cmd == 2) {
+            if (evt.cmd == 1) {
+                internal_note_on(evt.note, evt.vel);
+            } else if (evt.cmd == 0) {
+                internal_note_off(evt.note);
+            } else if (evt.cmd == 2) {
                 internal_all_notes_off();
+            }
+        }
+
+        // Automatic release of startup chime
+        if (chime_samples > 0) {
+            if (--chime_samples == 0) {
+                internal_note_off(69);
             }
         }
 
@@ -209,11 +243,6 @@ static void __not_in_flash_func(audio_core_entry)(void) {
     }
 }
 
-static inline void synth_send_event(uint8_t cmd, uint8_t note, uint8_t vel) {
-    uint32_t msg = ((uint32_t)cmd << 16) | ((uint32_t)note << 8) | (vel & 0xFF);
-    multicore_fifo_push_timeout_us(msg, 50);
-}
-
 void synth_init(void) {
     if (synth_started) return;
 
@@ -234,7 +263,7 @@ void synth_init(void) {
 
     memset(voices, 0, sizeof(voices));
 
-    // 3. Initialize I2S PIO program
+    // 3. Initialize I2S PIO program on dedicated pio1
     uint offset = pio_add_program(audio_pio, &i2s_tx_program);
     audio_sm = pio_claim_unused_sm(audio_pio, true);
     i2s_tx_program_init(audio_pio, audio_sm, offset, PIN_DAC_I2S_DATA, PIN_DAC_I2S_BCK, PIN_DAC_I2S_LRCK, (float)SAMPLE_RATE);
@@ -268,13 +297,14 @@ void hook_early_init(void) {
 
 // Intercept incoming host USB MIDI
 void hook_midi_receive(const uint8_t packet[4]) {
-    uint8_t cin  = packet[0] & 0x0F;
-    uint8_t note = packet[2];
-    uint8_t vel  = packet[3];
+    uint8_t cin    = packet[0] & 0x0F;
+    uint8_t status = packet[1] & 0xF0;
+    uint8_t note   = packet[2];
+    uint8_t vel    = packet[3];
 
-    if (cin == 0x09 && vel > 0) {
+    if ((cin == 0x09 || status == 0x90) && vel > 0) {
         synth_note_on(note, vel);
-    } else if (cin == 0x08 || (cin == 0x09 && vel == 0)) {
+    } else if (cin == 0x08 || status == 0x80 || ((cin == 0x09 || status == 0x90) && vel == 0)) {
         synth_note_off(note);
     }
 }

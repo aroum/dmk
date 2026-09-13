@@ -132,19 +132,21 @@ void WS2812::show() {
 
 static uint32_t ws2812_buf[WS2812_MAX_LEDS];
 static uint32_t ws2812_len = 0;
-static uint ws2812_sm = 0;
+static int ws2812_sm = -1;
 
 extern "C" void ws2812_init(uint32_t pin, uint32_t length) {
     ws2812_len = (length <= WS2812_MAX_LEDS) ? length : WS2812_MAX_LEDS;
-    ws2812_sm = 0;
 
     // Clear pixel buffer
     for (uint32_t i = 0; i < WS2812_MAX_LEDS; i++)
         ws2812_buf[i] = 0;
 
-    // Load and start PIO program
-    uint offset = pio_add_program(pio0, &ws2812_program);
-    ws2812_program_init(pio0, ws2812_sm, offset, (uint)pin, 800000, 24);
+    // Claim state machine and load PIO program once
+    if (ws2812_sm < 0) {
+        uint offset = pio_add_program(pio0, &ws2812_program);
+        ws2812_sm = pio_claim_unused_sm(pio0, true);
+        ws2812_program_init(pio0, (uint)ws2812_sm, offset, (uint)pin, 800000, 24);
+    }
 }
 
 extern "C" void ws2812_set_color(uint32_t index, uint32_t color) {
@@ -161,7 +163,9 @@ extern "C" void ws2812_set_color(uint32_t index, uint32_t color) {
 }
 
 extern "C" void ws2812_show(void) {
+    if (ws2812_sm < 0)
+        return;
     for (uint32_t i = 0; i < ws2812_len; i++) {
-        pio_sm_put_blocking(pio0, ws2812_sm, ws2812_buf[i]);
+        pio_sm_put_blocking(pio0, (uint)ws2812_sm, ws2812_buf[i]);
     }
 }

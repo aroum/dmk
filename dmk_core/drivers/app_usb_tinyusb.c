@@ -1,4 +1,5 @@
 #include "app_usb_hid.h"
+#include "config.h"
 
 // Undefine conflicting definitions before including TinyUSB headers
 #undef KEYBOARD_MODIFIER_LEFTCTRL
@@ -64,6 +65,12 @@ static void usb_device_task(void *pvParameters) {
     s_usb_task_handle = xTaskGetCurrentTaskHandle();
     while (1) {
         tud_task();
+#if defined(MIDI_USB) && !defined(MCU_milandr)
+        extern void tud_midi_rx_cb(uint8_t itf);
+        while (tud_midi_available()) {
+            tud_midi_rx_cb(0);
+        }
+#endif
 #ifdef VIAL
         extern void vial_flush_pending_report(void);
         vial_flush_pending_report();

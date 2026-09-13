@@ -30,8 +30,10 @@ static void power_pin_set(bool on) {
 
 // RGB configuration state
 static bool rgb_enabled = true;
-#ifdef RGB_THEMES
-static uint8_t rgb_mode = 100; // Default to Theme mode (100) if themes are defined
+#ifdef RGB_DEFAULT_MODE
+static uint8_t rgb_mode = RGB_DEFAULT_MODE;
+#elif defined(RGB_THEMES)
+static uint8_t rgb_mode = RGBLIGHT_MODE_RAINBOW_SWIRL;
 #else
 static uint8_t rgb_mode = RGBLIGHT_MODE_STATIC_LIGHT;
 #endif
