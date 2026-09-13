@@ -1,39 +1,44 @@
 .program i2s_tx
-.side_set 1 ; Pin 0 = BCK (e.g. GPIO 6)
+.side_set 1 ; Pin 0 = BCK (GPIO 6)
 
-; SET pin = LRCK (e.g. GPIO 8)
-; OUT pin = DATA (e.g. GPIO 7)
+; SET pin = LRCK (GPIO 8)
+; OUT pin = DATA (GPIO 7)
+
+; Standard Philips I2S:
+; 1 audio frame = 32 bits (16-bit Left, 16-bit Right).
+; 1 bit = 4 PIO cycles (2 cycles BCK=0, 2 cycles BCK=1).
+; Total 32 bits * 4 cycles = 128 PIO cycles per frame.
+;
+; In standard Philips I2S, LRCK transitions on the last bit (bit 0) of the
+; PREVIOUS channel while BCK is low. The rising edge of BCK on that last bit
+; serves as the standard 1-BCK delay cycle. The MSB (bit 15) of the new channel
+; is then clocked on the 2nd rising edge of BCK, ensuring exact bit alignment
+; without any 1-bit shift or MSB corruption.
 
 public entry_point:
-    set x, 12            side 1
+    set x, 14            side 1 [1]    ; BCK=1
 .wrap_target
-    ; --- LEFT CHANNEL (16 bits) ---
+    ; --- LEFT CHANNEL DATA (Bits 15..1 = 15 bits) ---
 left_loop:
-    out pins, 1          side 0    ; BCK=0, shift out bit 15..3
-    jmp x-- left_loop    side 1    ; BCK=1 (13 bits total: 15..3)
+    out pins, 1          side 0 [1]    ; BCK=0 (2 cycles), shift out bit
+    jmp x-- left_loop    side 1 [1]    ; BCK=1 (2 cycles)
 
-    out pins, 1          side 0    ; BCK=0, bit 2
-    set x, 12            side 1    ; BCK=1, reload x=12 for Right channel
+    ; --- LEFT CHANNEL BIT 0 (LSB of Left) ---
+    ; Transition LRCK -> 1 (Right channel select) while BCK=0, BEFORE rising edge of BCK!
+    set pins, 1          side 0        ; BCK=0 (cycle 1), LRCK -> 1
+    out pins, 1          side 0        ; BCK=0 (cycle 2), shift out bit 0 of Left
+    set x, 14            side 1 [1]    ; BCK=1 (2 cycles), reload x=14 for Right
 
-    out pins, 1          side 0    ; BCK=0, bit 1
-    nop                  side 1    ; BCK=1
-
-    out pins, 1          side 0    ; BCK=0, bit 0 (last bit of Left)
-    set pins, 1          side 1    ; BCK=1, LRCK -> 1 (transition to Right)
-
-    ; --- RIGHT CHANNEL (16 bits) ---
+    ; --- RIGHT CHANNEL DATA (Bits 15..1 = 15 bits) ---
 right_loop:
-    out pins, 1          side 0    ; BCK=0, shift out bit 15..3
-    jmp x-- right_loop   side 1    ; BCK=1 (13 bits total: 15..3)
+    out pins, 1          side 0 [1]    ; BCK=0 (2 cycles), shift out bit
+    jmp x-- right_loop   side 1 [1]    ; BCK=1 (2 cycles)
 
-    out pins, 1          side 0    ; BCK=0, bit 2
-    set x, 12            side 1    ; BCK=1, reload x=12 for Left channel
-
-    out pins, 1          side 0    ; BCK=0, bit 1
-    nop                  side 1    ; BCK=1
-
-    out pins, 1          side 0    ; BCK=0, bit 0 (last bit of Right)
-    set pins, 0          side 1    ; BCK=1, LRCK -> 0 (transition to Left)
+    ; --- RIGHT CHANNEL BIT 0 (LSB of Right) ---
+    ; Transition LRCK -> 0 (Left channel select) while BCK=0, BEFORE rising edge of BCK!
+    set pins, 0          side 0        ; BCK=0 (cycle 1), LRCK -> 0
+    out pins, 1          side 0        ; BCK=0 (cycle 2), shift out bit 0 of Right
+    set x, 14            side 1 [1]    ; BCK=1 (2 cycles), reload x=14 for Left
 .wrap
 
 % c-sdk {
@@ -57,8 +62,8 @@ static inline void i2s_tx_program_init(PIO pio, uint sm, uint offset, uint data_
     sm_config_set_out_shift(&c, false, true, 32);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
-    // 1 audio frame = 32 bits * 2 cycles per bit = 64 PIO cycles
-    float div = (float)clock_get_hz(clk_sys) / (sample_rate * 64.0f);
+    // 1 audio frame = 32 bits * 4 cycles per bit = 128 PIO cycles
+    float div = (float)clock_get_hz(clk_sys) / (sample_rate * 128.0f);
     sm_config_set_clkdiv(&c, div);
 
     pio_sm_init(pio, sm, offset, &c);

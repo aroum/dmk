@@ -212,12 +212,20 @@ static void __not_in_flash_func(audio_core_entry)(void) {
         }
 
         if (any_active) {
-            // Apply master volume (default 80%)
+            // Master volume scaling
             mixed_sample = (mixed_sample * (int32_t)master_volume) / 100;
 
-            // Soft-clamp output to 16-bit range
-            if (mixed_sample > 32767) mixed_sample = 32767;
-            if (mixed_sample < -32768) mixed_sample = -32768;
+            // Smooth musical soft-saturation (prevents harsh digital flat-topping on multi-voice chords)
+            if (mixed_sample > 24000) {
+                int32_t excess = mixed_sample - 24000;
+                mixed_sample = 24000 + (excess * 8000) / (excess + 8000);
+                if (mixed_sample > 32000) mixed_sample = 32000;
+            } else if (mixed_sample < -24000) {
+                int32_t excess = -mixed_sample - 24000;
+                int32_t compressed = 24000 + (excess * 8000) / (excess + 8000);
+                if (compressed > 32000) compressed = 32000;
+                mixed_sample = -compressed;
+            }
         } else {
             // Silence when no voices active, but keep writing to keep I2S clocks active
             mixed_sample = 0;
