@@ -51,11 +51,26 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
    - Reports protocol 12 (`0x000C`) on version requests to unlock VIA v3 menus.
    - Protocol version can also be explicitly overridden using `#define VIA_PROTOCOL_VERSION 0x000C`.
 
-```c
-// Example to switch to VIA v3 in config.h:
-#define VIAL
-#define VIA_V3
-```
+> [!IMPORTANT]
+> **Protocol Choice: Either Vial or VIA v3 (Mutually Exclusive)**:
+> In `config.h` (and via the toggle at the top of Step 5 in the DMK Web Wizard), select **one of the two modes**:
+>
+> **Option 1: Vial (Default & Recommended)**
+>
+> ```c
+> #define VIAL
+> ```
+>
+> _Reports VIA Protocol 9. The layout definition `vial.json` is LZMA-compressed and embedded into controller flash. Works out-of-the-box in the desktop Vial app and on https://vial.rocks without uploading files._
+>
+> **Option 2: VIA v3 (Compatibility for usevia.app)**
+>
+> ```c
+> #define VIAL
+> #define VIA_V3
+> ```
+>
+> _Reports VIA Protocol 12 (`0x000C`). Required for the official https://usevia.app web configurator. Adding `VIA_V3` switches the protocol from Vial to Protocol 12._
 
 ---
 

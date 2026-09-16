@@ -371,7 +371,7 @@
                     <div class="grid-2">
                         <div class="form-group">
                             <label data-i18n="vialProtocolLabel">Протокол конфигуратора:</label>
-                            <select id="vialProtocolMode">
+                            <select id="vialProtocolMode" onchange="setProtocolMode(this.value)">
                                 <option value="vial" selected data-i18n="vialProtoVial">Vial (Протокол v9, встроенный vial.json, макросы, комбо)</option>
                                 <option value="via_v3" data-i18n="vialProtoViaV3">VIA v3 (Протокол v12, usevia.app)</option>
                             </select>
@@ -443,6 +443,21 @@
             <div class="card-header">
                 <h2 data-i18n="s5Title">Vial & Раскладка</h2>
                 <p data-i18n="s5Desc">Настройте слои клавиш и визуальное отображение в Vial GUI.</p>
+            </div>
+
+            <!-- Protocol Mode Switcher (Vial vs VIA v3) -->
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-weight: 700; font-size: 0.85rem;" data-i18n="protocolLabel">Режим конфигуратора:</span>
+                    <div style="display: inline-flex; background: var(--panel-header); padding: 3px; border-radius: 6px; border: 1px solid var(--border); gap: 4px;">
+                        <button type="button" class="btn btn-sm active" id="btnProtoVial" onclick="setProtocolMode('vial')" style="padding: 5px 14px; font-weight: 600; font-size: 0.8rem;">Vial (vial.rocks)</button>
+                        <button type="button" class="btn btn-sm" id="btnProtoVia" onclick="setProtocolMode('via_v3')" style="padding: 5px 14px; font-weight: 600; font-size: 0.8rem;">VIA v3 (usevia.app)</button>
+                    </div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                    <span id="hintProtoVial" data-i18n="hintProtoVial">✓ Vial: протокол v9, встроенный vial.json, макросы и комбо (vial.rocks)</span>
+                    <span id="hintProtoVia" data-i18n="hintProtoVia" style="display: none;">✓ VIA v3: протокол v12 для официального веб-клиента usevia.app</span>
+                </div>
             </div>
 
             <!-- Layer Manager Toolbar -->
@@ -1139,6 +1154,26 @@
             document.getElementById('gridMatrixPins').style.display = isDirect ? 'none' : 'flex';
             document.getElementById('directMatrixPins').style.display = isDirect ? 'flex' : 'none';
             initMatrixGrid();
+        }
+
+        function setProtocolMode(mode) {
+            const proto = (mode === 'via_v3') ? 'via_v3' : 'vial';
+            configState.vialProtocol = proto;
+            configState.protocolMode = proto;
+
+            const isVia = (proto === 'via_v3');
+            const btnVial = document.getElementById('btnProtoVial');
+            const btnVia = document.getElementById('btnProtoVia');
+            if (btnVial) btnVial.classList.toggle('active', !isVia);
+            if (btnVia) btnVia.classList.toggle('active', isVia);
+
+            const hintVial = document.getElementById('hintProtoVial');
+            const hintVia = document.getElementById('hintProtoVia');
+            if (hintVial) hintVial.style.display = isVia ? 'none' : 'inline';
+            if (hintVia) hintVia.style.display = isVia ? 'inline' : 'none';
+
+            const selectEl = document.getElementById('vialProtocolMode');
+            if (selectEl) selectEl.value = proto;
         }
 
         function applyPreset(key) {
@@ -4299,8 +4334,7 @@ visualElements.push({
             if (vPidMatch) document.getElementById('vialPid').value = vPidMatch[1];
 
             const isViaV3 = /#define\s+(?:VIA_V3|USE_VIA_V3)\b/.test(text);
-            const protoEl = document.getElementById('vialProtocolMode');
-            if (protoEl) protoEl.value = isViaV3 ? 'via_v3' : 'vial';
+            setProtocolMode(isViaV3 ? 'via_v3' : 'vial');
 
             // 2. MCU detection (preserve custom pins / don't reset pins with default MCU pins)
             if (text.includes('MCU_milandr')) setMcu('milandr', false);

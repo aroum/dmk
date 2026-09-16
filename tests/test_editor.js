@@ -31,9 +31,19 @@ function createSandbox() {
                     add(c) { this._classes.add(c); },
                     remove(c) { this._classes.delete(c); },
                     contains(c) { return this._classes.has(c); },
-                    toggle(c) {
-                        if (this._classes.has(c)) this._classes.delete(c);
-                        else this._classes.add(c);
+                    toggle(c, force) {
+                        if (force !== undefined) {
+                            if (force) this._classes.add(c);
+                            else this._classes.delete(c);
+                            return force;
+                        }
+                        if (this._classes.has(c)) {
+                            this._classes.delete(c);
+                            return false;
+                        } else {
+                            this._classes.add(c);
+                            return true;
+                        }
                     }
                 },
                 appendChild() {},
@@ -655,4 +665,33 @@ test('Wizard Navigation & Step Flow', () => {
 
     sandbox.gotoStep(1);
     assert.strictEqual(sandbox.configState.step, 1);
+});
+
+test('Protocol Mode Switcher: Vial vs VIA v3', () => {
+    const sandbox = createSandbox();
+    sandbox.document.getElementById('enableVial').checked = true;
+
+    // Default is vial
+    sandbox.setProtocolMode('vial');
+    assert.strictEqual(sandbox.configState.vialProtocol, 'vial');
+    assert.strictEqual(sandbox.document.getElementById('vialProtocolMode').value, 'vial');
+    assert.strictEqual(sandbox.document.getElementById('btnProtoVial').classList.contains('active'), true);
+    assert.strictEqual(sandbox.document.getElementById('btnProtoVia').classList.contains('active'), false);
+
+    sandbox.generateConfigCode();
+    let configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define VIAL'));
+    assert.ok(!configH.includes('#define VIA_V3'));
+
+    // Switch to via_v3
+    sandbox.setProtocolMode('via_v3');
+    assert.strictEqual(sandbox.configState.vialProtocol, 'via_v3');
+    assert.strictEqual(sandbox.document.getElementById('vialProtocolMode').value, 'via_v3');
+    assert.strictEqual(sandbox.document.getElementById('btnProtoVial').classList.contains('active'), false);
+    assert.strictEqual(sandbox.document.getElementById('btnProtoVia').classList.contains('active'), true);
+
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define VIAL'));
+    assert.ok(configH.includes('#define VIA_V3'));
 });

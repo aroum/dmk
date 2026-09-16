@@ -124,6 +124,9 @@ const ICONS = {
                 // Step 5 (Vial & Layout)
                 s5Title: 'Vial & Раскладка',
                 s5Desc: 'Настройте слои клавиш и визуальное отображение.',
+                protocolLabel: 'Режим конфигуратора:',
+                hintProtoVial: '✓ Vial: протокол v9, встроенный vial.json, макросы и комбо (vial.rocks)',
+                hintProtoVia: '✓ VIA v3: протокол v12 для официального веб-клиента usevia.app',
                 layersLabel: 'Слои раскладки:',
                 btnAddLayer: 'Добавить',
                 btnDupLayer: 'Дублировать',
@@ -314,6 +317,9 @@ const ICONS = {
                 // Step 5 (Vial & Layout)
                 s5Title: 'Vial & Layout',
                 s5Desc: 'Configure layers and visual layout in Vial GUI.',
+                protocolLabel: 'Configurator Protocol:',
+                hintProtoVial: '✓ Vial: protocol v9, embedded vial.json, macros & combos (vial.rocks)',
+                hintProtoVia: '✓ VIA v3: protocol v12 for official usevia.app web client',
                 layersLabel: 'Keymap Layers:',
                 btnAddLayer: 'Add Layer',
                 btnDupLayer: 'Duplicate',

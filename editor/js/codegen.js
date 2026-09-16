@@ -171,7 +171,7 @@ function generateVialJson() {
             }
 
             if (enableVial) {
-                const proto = document.getElementById('vialProtocolMode')?.value || 'vial';
+                const proto = configState.protocolMode || configState.vialProtocol || document.getElementById('vialProtocolMode')?.value || 'vial';
                 out += `// === Vial / VIA GUI Configuration ===\n`;
                 out += `#ifndef VIAL\n`;
                 out += `#define VIAL\n`;
