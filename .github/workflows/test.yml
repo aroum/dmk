@@ -16,9 +16,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run Editor Unit Tests
+        run: |
+          node --test tests/test_editor.js
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Run Unit Tests
+      - name: Run Python Unit Tests
         run: |
           uv run python3 -m unittest discover tests
