@@ -707,12 +707,42 @@
             customChords: []
         };
 
+        // Dirty state tracking to prevent accidental unload / page reload
+        let isPageDirty = false;
+
+        function markDirty() {
+            isPageDirty = true;
+        }
+
+        function clearDirty() {
+            isPageDirty = false;
+        }
+
+        window.addEventListener('beforeunload', (e) => {
+            if (isPageDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+
+        document.addEventListener('input', (e) => {
+            if (e.target && e.target.id === 'paletteSearchInput') return;
+            markDirty();
+        });
+
+        document.addEventListener('change', (e) => {
+            if (e.target && (e.target.id === 'btnThemeToggle' || e.target.id === 'btnLangToggle')) return;
+            markDirty();
+        });
+
         // History Stacks for Undo/Redo
         const undoStack = [];
         const redoStack = [];
         const MAX_HISTORY_STATES = 30;
 
         function saveUndoState() {
+            markDirty();
             try {
                 const snapshot = {
                     keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
@@ -731,6 +761,7 @@
 
         function undoKeymap() {
             if (undoStack.length === 0) return;
+            markDirty();
             try {
                 const currentSnapshot = {
                     keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
@@ -751,6 +782,7 @@
 
         function redoKeymap() {
             if (redoStack.length === 0) return;
+            markDirty();
             try {
                 const currentSnapshot = {
                     keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
@@ -1012,6 +1044,7 @@
         }
 
         function setMcu(mcu, resetPins = false) {
+            markDirty();
             const mcuChanged = (configState.mcu !== mcu);
             configState.mcu = mcu;
             ['rp2040', 'milandr', 'nrf52840', 'baikal', 'all'].forEach(k => {
@@ -1127,9 +1160,11 @@
             toggleCustomMacrosOptions();
             toggleLayerHotkeyOptions();
             gotoStep(1);
+            isPageDirty = false;
         }
 
         function setSplitMode(isSplit) {
+            markDirty();
             configState.isSplit = isSplit;
             document.getElementById('opt-single').classList.toggle('selected', !isSplit);
             document.getElementById('opt-split').classList.toggle('selected', isSplit);
@@ -1141,6 +1176,7 @@
         }
 
         function setMatrixType(type) {
+            markDirty();
             configState.matrixType = type;
             document.getElementById('opt-col2row').classList.toggle('selected', type === 'COL2ROW');
             document.getElementById('opt-row2col').classList.toggle('selected', type === 'ROW2COL');
@@ -1153,6 +1189,7 @@
         }
 
         function setProtocolMode(mode) {
+            markDirty();
             const proto = (mode === 'via_v3') ? 'via_v3' : 'vial';
             configState.vialProtocol = proto;
             configState.protocolMode = proto;
@@ -1193,6 +1230,7 @@
         }
 
         function applyPreset(key) {
+            markDirty();
             const p = PRESETS[key];
             if (!p) return;
 
@@ -1505,6 +1543,7 @@
                     alert(t.alertLayerExists || "Слой с таким именем уже существует!");
                     return;
                 }
+                markDirty();
                 configState.layers.push(cleanName);
                 const activeCount = getActiveLayoutPairs().length;
                 configState.keymaps[cleanName] = [];
@@ -1537,7 +1576,7 @@
                     alert(t.alertLayerExists || "Слой с таким именем уже существует!");
                     return;
                 }
-                saveUndoState();
+                markDirty();
                 configState.layers.push(cleanName);
                 configState.keymaps[cleanName] = [...(configState.keymaps[srcName] || [])];
                 if (configState.encoderKeymaps && configState.encoderKeymaps[srcName]) {
@@ -1592,6 +1631,7 @@
                     return;
                 }
 
+                markDirty();
                 const idx = configState.layers.indexOf(oldName);
                 if (idx !== -1) {
                     configState.layers[idx] = cleanName;
@@ -1640,6 +1680,7 @@
             if (idx === -1) return;
             const toRemove = configState.currentLayer;
             
+            markDirty();
             // Remove layer from array and clean up keymaps
             configState.layers.splice(idx, 1);
             delete configState.keymaps[toRemove];
@@ -3565,6 +3606,7 @@ visualElements.push({
 
         function moveSelectedItemsBy(dx, dy) {
             if (!configState.selectedItems || configState.selectedItems.length === 0) return;
+            markDirty();
 
             configState.selectedItems.forEach(item => {
                 if (item.type === 'enc') {
@@ -4156,6 +4198,7 @@ visualElements.push({
         }
 
         function toggleMatrixKey(r, c) {
+            markDirty();
             configState.activeKeys[r][c] = !configState.activeKeys[r][c];
             const el = document.getElementById(`key-${r}-${c}`);
             if (el) {
@@ -4166,6 +4209,7 @@ visualElements.push({
         }
 
         function selectAllGridKeys(status) {
+            markDirty();
             const { totalRows, totalCols } = getParsedPins();
             for (let r = 0; r < totalRows; r++) {
                 for (let c = 0; c < totalCols; c++) {
@@ -4576,6 +4620,7 @@ visualElements.push({
             }
 
             if (loadedSomething) {
+                markDirty();
                 initMatrixGrid();
                 renderVisualKeymap();
                 gotoStep(1);
@@ -4587,6 +4632,7 @@ visualElements.push({
         }
 
         function parseAndApplyVialJson(json, filename) {
+            markDirty();
             if (json.name) {
                 document.getElementById('kbName').value = json.name;
                 document.getElementById('vialName').value = json.name;

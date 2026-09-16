@@ -60,13 +60,21 @@ function createSandbox() {
         return domStore.get(id);
     }
 
+    const eventListeners = {
+        document: {},
+        window: {}
+    };
+
     const documentMock = {
         getElementById(id) { return getElement(id); },
         createElement(tag) { return getElement(`elem_${Math.random()}`); },
         createDocumentFragment() { return getElement(`frag_${Math.random()}`); },
         querySelectorAll() { return []; },
         querySelector(sel) { return getElement("elem_q_" + sel); },
-        addEventListener() {},
+        addEventListener(type, fn) {
+            eventListeners.document[type] = eventListeners.document[type] || [];
+            eventListeners.document[type].push(fn);
+        },
         removeEventListener() {},
         body: getElement('body')
     };
@@ -87,7 +95,11 @@ function createSandbox() {
         navigator: { language: 'ru' },
         currentLanguage: 'ru',
         localStorage: localStorageMock,
-        addEventListener() {},
+        eventListeners,
+        addEventListener(type, fn) {
+            eventListeners.window[type] = eventListeners.window[type] || [];
+            eventListeners.window[type].push(fn);
+        },
         removeEventListener() {},
         globalThis: null
     };
@@ -700,4 +712,34 @@ test('Protocol Mode Switcher: Vial vs VIA v3', () => {
     configH = sandbox.document.getElementById('configCodeOutput').textContent;
     assert.ok(!configH.includes('#define VIAL\n'));
     assert.ok(configH.includes('#define VIA_V3'));
+});
+
+test('Unsaved Changes: beforeunload prompt when page is dirty', () => {
+    const sandbox = createSandbox();
+    sandbox.init();
+
+    // Initial state: not dirty
+    let beforeUnloadPrevented = false;
+    let eventObj = {
+        preventDefault: () => { beforeUnloadPrevented = true; },
+        returnValue: undefined
+    };
+    const beforeUnloadHandlers = sandbox.eventListeners.window['beforeunload'] || [];
+    assert.ok(beforeUnloadHandlers.length > 0, 'beforeunload handler registered');
+
+    beforeUnloadHandlers.forEach(h => h(eventObj));
+    assert.strictEqual(beforeUnloadPrevented, false, 'Clean state should not prevent unload');
+    assert.strictEqual(eventObj.returnValue, undefined);
+
+    // Make an edit (e.g. change split mode)
+    sandbox.setSplitMode(true);
+
+    beforeUnloadPrevented = false;
+    eventObj = {
+        preventDefault: () => { beforeUnloadPrevented = true; },
+        returnValue: undefined
+    };
+    beforeUnloadHandlers.forEach(h => h(eventObj));
+    assert.strictEqual(beforeUnloadPrevented, true, 'Dirty state must prevent unload');
+    assert.strictEqual(eventObj.returnValue, '');
 });
