@@ -5,734 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMK Config Wizard — Конфигуратор клавиатур</title>
     <style>
-        :root {
-            --bg: #18181b;
-            --panel: #27272a;
-            --panel-header: #3f3f46;
-            --border: #3f3f46;
-            --border-active: #6366f1;
-            --text: #f4f4f5;
-            --text-muted: #a1a1aa;
-            --accent: #6366f1;
-            --accent-hover: #4f46e5;
-            --accent-glow: rgba(99, 102, 241, 0.25);
-            --key-bg: #3f3f46;
-            --key-active: #6366f1;
-            --key-empty: #27272a;
-            --key-empty-border: #52525b;
-            --key-empty-text: #71717a;
-            --danger: #ef4444;
-            --success: #22c55e;
-            --code-bg: #09090b;
-            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-
-        body.light-theme {
-            --bg: #f8fafc;
-            --panel: #ffffff;
-            --panel-header: #f1f5f9;
-            --border: #cbd5e1;
-            --border-active: #4f46e5;
-            --text: #0f172a;
-            --text-muted: #475569;
-            --accent: #4f46e5;
-            --accent-hover: #4338ca;
-            --accent-glow: rgba(79, 70, 229, 0.15);
-            --key-bg: #e2e8f0;
-            --key-active: #4f46e5;
-            --key-empty: #f8fafc;
-            --key-empty-border: #94a3b8;
-            --key-empty-text: #64748b;
-            --danger: #dc2626;
-            --success: #16a34a;
-            --code-bg: #1e293b;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: var(--font-family);
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            background: var(--panel);
-            border-bottom: 1px solid var(--border);
-            padding: 14px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .brand h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #a5b4fc, #6366f1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .brand span {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: var(--bg);
-            padding: 2px 8px;
-            border-radius: 9999px;
-            border: 1px solid var(--border);
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            background: var(--panel-header);
-            color: var(--text);
-            border: 1px solid var(--border);
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            text-decoration: none;
-            transition: all 0.15s ease;
-        }
-
-        .btn:hover {
-            background: var(--border);
-            border-color: #52525b;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #ffffff;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            border-color: var(--accent-hover);
-        }
-
-        .btn-sm {
-            padding: 4px 10px;
-            font-size: 0.8rem;
-        }
-
-        .btn-danger {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: var(--danger);
-            color: #fca5a5;
-        }
-
-        .btn-danger:hover {
-            background: rgba(239, 68, 68, 0.4);
-        }
-
-        /* Container & Wizard Steps */
-        main {
-            flex: 1;
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .stepper {
-            display: flex;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .step-item {
-            flex: 1;
-            padding: 14px 12px;
-            text-align: center;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            border-right: 1px solid var(--border);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background 0.15s ease;
-            user-select: none;
-        }
-
-        .step-item:last-child { border-right: none; }
-        .step-item:hover { background: rgba(255, 255, 255, 0.02); }
-
-        .step-item.active {
-            color: var(--accent);
-            background: var(--accent-glow);
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .step-item.completed {
-            color: var(--text);
-        }
-
-        .step-number {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: var(--key-bg);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-        }
-
-        .step-item.active .step-number {
-            background: var(--accent);
-            color: #ffffff;
-        }
-
-        .step-item.completed .step-number {
-            background: var(--success);
-            color: #ffffff;
-        }
-
-        /* Content Card */
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .card-header {
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 12px;
-        }
-
-        .card-header h2 {
-            font-size: 1.15rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-            color: var(--text);
-        }
-
-        .card-header p {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-top: 4px;
-        }
-
-        /* Form Groups */
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .form-group label {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text);
-        }
-
-        .form-group .hint {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        input[type="text"], input[type="number"], select, textarea {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            outline: none;
-            transition: all 0.15s ease;
-        }
-
-        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--accent-glow);
-        }
-
-        /* Modern styled checkboxes */
-        input[type="checkbox"] {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            background: var(--panel);
-            border: 1.5px solid var(--border);
-            border-radius: 4px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            vertical-align: middle;
-            transition: all 0.15s ease;
-            flex-shrink: 0;
-        }
-
-        input[type="checkbox"]:hover {
-            border-color: var(--accent);
-        }
-
-        input[type="checkbox"]:checked {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
-
-        input[type="checkbox"]:checked::after {
-            content: '';
-            width: 5px;
-            height: 9px;
-            border: solid #ffffff;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg) translate(-1px, -1px);
-            display: block;
-        }
-
-        textarea {
-            min-height: 80px;
-            resize: vertical;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
-        }
-
-        /* Preset Cards / Option Pickers */
-        .option-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 12px;
-        }
-
-        .option-grid-5 {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-        }
-
-        @media (max-width: 992px) {
-            .option-grid-5 {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            }
-        }
-
-        .option-box {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 14px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .option-box:hover {
-            border-color: #52525b;
-            transform: translateY(-1px);
-        }
-
-        .option-box.selected {
-            border-color: var(--accent);
-            background: var(--accent-glow);
-            box-shadow: 0 0 12px var(--accent-glow);
-        }
-
-        .option-box .title {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text);
-        }
-
-        .option-box .desc {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            line-height: 1.35;
-        }
-
-        /* Layout Grid Editor */
-        .layout-editor-box {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .layout-controls {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            background: var(--bg);
-            padding: 12px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-        }
-
-        .matrix-grid-wrapper {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 24px;
-            overflow-x: auto;
-            max-width: 100%;
-            min-height: 280px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .grid-matrix {
-            display: grid;
-            gap: 8px;
-            user-select: none;
-            padding: 4px;
-        }
-
-        .grid-key {
-            width: 52px;
-            height: 52px;
-            min-width: 52px;
-            min-height: 52px;
-            background: var(--key-bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.1s ease;
-            position: relative;
-            box-sizing: border-box;
-        }
-
-        .grid-key:hover {
-            border-color: var(--accent);
-            transform: scale(1.05);
-            z-index: 2;
-        }
-
-        .grid-key.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        .grid-key.selected {
-            outline: 2px solid #ffffff !important;
-            border-color: #ffffff !important;
-            box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent), 0 2px 10px rgba(0,0,0,0.4) !important;
-            z-index: 10 !important;
-            filter: brightness(1.15);
-        }
-
-        .grid-key.disabled {
-            background: var(--key-empty);
-            border: 1.5px dashed var(--key-empty-border);
-            color: var(--key-empty-text);
-            opacity: 1;
-        }
-
-        .grid-key .coord {
-            font-size: 0.65rem;
-            font-family: var(--font-mono);
-            font-weight: 600;
-            color: inherit;
-            line-height: 1;
-            margin-bottom: 2px;
-            pointer-events: none;
-        }
-
-        .grid-key .idx {
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: inherit;
-            text-align: center;
-            line-height: 1.1;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            hyphens: auto;
-            max-width: 95%;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        .visual-key {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            background: var(--panel);
-            color: var(--text);
-            user-select: none;
-            box-sizing: border-box;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-        }
-
-        .visual-key:hover {
-            border-color: var(--accent);
-            box-shadow: 0 0 10px rgba(59, 130, 246, 0.35);
-        }
-
-        .visual-key.selected {
-            outline: 2px solid #ffffff !important;
-            border-color: var(--accent) !important;
-            background: var(--accent) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 0 2px var(--accent), 0 0 16px var(--accent), 0 2px 10px rgba(0,0,0,0.4) !important;
-            z-index: 10 !important;
-            filter: brightness(1.15);
-        }
-
-        .visual-key.selected .coord,
-        .visual-key.selected .idx {
-            color: #ffffff !important;
-        }
-
-        .visual-key .coord {
-            font-size: 0.78rem;
-            font-family: var(--font-mono);
-            font-weight: 700;
-            color: inherit;
-            line-height: 1.1;
-            margin-bottom: 2px;
-            pointer-events: none;
-        }
-
-        .visual-key .idx {
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: inherit;
-            text-align: center;
-            line-height: 1.1;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            hyphens: auto;
-            max-width: 95%;
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        /* Physical Keyboard Palette Styling */
-        .palette-kb-wrapper {
-            display: flex;
-            gap: 16px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            padding: 8px 4px;
-            user-select: none;
-        }
-
-        .palette-kb-main {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .palette-kb-nav {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .palette-kb-numpad {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .palette-kb-row {
-            display: flex;
-            gap: 4px;
-            align-items: center;
-        }
-
-        .palette-key {
-            height: 38px;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            color: var(--text);
-            border-radius: 5px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            padding: 0 2px;
-            box-sizing: border-box;
-            transition: all 0.1s ease;
-            text-align: center;
-            line-height: 1.1;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-
-        .palette-key:hover {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #ffffff;
-            transform: translateY(-1px);
-        }
-
-        .palette-key.special {
-            color: var(--accent);
-            border-color: var(--accent);
-        }
-
-        .palette-key.special:hover {
-            color: #ffffff;
-        }
-
-        .palette-key .sub-lbl {
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            line-height: 1;
-        }
-
-        .palette-key:hover .sub-lbl {
-            color: rgba(255,255,255,0.8);
-        }
-
-        /* Preset Layout Selectors */
-        .preset-badge {
-            background: var(--key-bg);
-            border: 1px solid var(--border);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            color: var(--text);
-            transition: all 0.15s ease;
-        }
-
-        .preset-badge:hover, .preset-badge.active {
-            background: var(--accent);
-            color: #ffffff;
-            border-color: var(--accent);
-        }
-
-        /* Code Output & Preview */
-        .code-container {
-            position: relative;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .code-header {
-            background: var(--panel-header);
-            padding: 8px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .code-title {
-            font-size: 0.8rem;
-            font-family: var(--font-mono);
-            color: #d4d4d8;
-        }
-
-        pre {
-            padding: 16px;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            line-height: 1.5;
-            color: #a5b4fc;
-            overflow-x: auto;
-            max-height: 480px;
-        }
-
-        /* Bottom Nav */
-        .nav-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .icon {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            stroke-width: 0;
-            stroke: currentColor;
-            fill: currentColor;
-            vertical-align: -0.15em;
-        }
-
-        .icon-stroke {
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .stepper { flex-direction: column; }
-            .step-item { border-right: none; border-bottom: 1px solid var(--border); text-align: left; justify-content: flex-start; }
-            .grid-2 { grid-template-columns: 1fr; }
-        }
-    </style>
+    <link rel="stylesheet" href="./css/wizard.css">
 </head>
 <body>
     <header>
@@ -847,8 +120,8 @@
                     <div class="form-group">
                         <label data-i18n="splitModeLabel">Режим связи между половинами:</label>
                         <select id="splitUartMode">
-                            <option value="bitbang" selected data-i18n="uartBitbang">Bit-Bang UART (1 GPIO, универсально)</option>
-                            <option value="hardware" data-i18n="uartHardware">Hardware / PIO UART (Аппаратный)</option>
+                            <option value="bitbang" selected data-i18n="uartBitbang">Bit-Bang UART (1 GPIO, программно)</option>
+                            <option value="hardware" data-i18n="uartHardware">Hardware / PIO UART (Аппаратный, 1–2 GPIO)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -899,13 +172,13 @@
             </div>
 
             <!-- MCU Tabs for Universal Mode -->
-            <div id="universalMcuTabsContainer" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+            <div id="universalMcuTabsContainer" class="universal-mcu-tab-bar" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 12px;">
                 <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Платформы микроконтроллеров в универсальном режиме:</div>
                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-sm active" id="tab-mcu-rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
-                    <button type="button" class="btn btn-sm" id="tab-mcu-milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
-                    <button type="button" class="btn btn-sm" id="tab-mcu-nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
-                    <button type="button" class="btn btn-sm" id="tab-mcu-baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
+                    <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
+                    <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
+                    <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
+                    <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
                 </div>
             </div>
 
@@ -933,9 +206,9 @@
                 </div>
             </div>
 
-            <!-- Specific MCU Split & RGB override pins in Universal mode -->
+            <!-- Specific MCU Split override pins in Universal mode -->
             <div id="universalMcuExtrasContainer" style="display: none; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; flex-direction: column; gap: 10px; margin-top: 6px;">
-                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">Индивидуальные настройки связи половин (Split) и RGB для выбранного MCU:</div>
+                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">Индивидуальные настройки связи половин (Split) для выбранного MCU:</div>
                 <div class="grid-2">
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 0.75rem;">Пин связи (SPLIT_TX_PIN / SERIAL_PIN):</label>
@@ -945,10 +218,6 @@
                         <label style="font-size: 0.75rem;">Пин RX при Full-Duplex (SPLIT_RX_PIN):</label>
                         <input type="text" id="mcuSplitRxPin" value="GPIO1" oninput="saveCurrentMcuPinState()">
                     </div>
-                </div>
-                <div class="form-group" style="margin: 0;">
-                    <label style="font-size: 0.75rem;">Пин данных RGB подсветки (RGB_PIN):</label>
-                    <input type="text" id="mcuRgbPin" value="GPIO0" oninput="saveCurrentMcuPinState()">
                 </div>
             </div>
 
@@ -976,6 +245,17 @@
                 </div>
 
                 <div id="encoderOptionsBlock" style="display: none; flex-direction: column; gap: 14px;">
+                    <!-- MCU Tabs for Universal Mode (Encoders) -->
+                    <div id="universalMcuTabsContainerEnc" class="universal-mcu-tab-bar" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 4px;">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Платформы микроконтроллеров в универсальном режиме:</div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
+                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
+                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
+                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
+                        </div>
+                    </div>
+
                     <div class="grid-2">
                         <div class="form-group">
                             <label data-i18n="encResLabel">Разрешение энкодера (ENCODER_RESOLUTION):</label>
@@ -1030,14 +310,27 @@
                     <input type="checkbox" id="enableRgb" checked onchange="toggleRgbOptions()" style="width: 18px; height: 18px; cursor: pointer;">
                 </div>
                 
-                <div id="rgbOptionsBlock" class="grid-2">
-                    <div class="form-group">
-                        <label data-i18n="rgbNumLabel">Количество светодиодов:</label>
-                        <input type="number" id="rgbCount" value="42" min="1" max="200">
+                <div id="rgbOptionsBlock" style="display: flex; flex-direction: column; gap: 14px;">
+                    <!-- MCU Tabs for Universal Mode (RGB) -->
+                    <div id="universalMcuTabsContainerRgb" class="universal-mcu-tab-bar" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 4px;">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Платформы микроконтроллеров в универсальном режиме:</div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
+                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
+                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
+                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label data-i18n="rgbPinLabel">Пин данных подсветки (RGB_PIN):</label>
-                        <input type="text" id="rgbPin" value="GPIO0" placeholder="Например: GPIO0">
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label data-i18n="rgbNumLabel">Количество светодиодов:</label>
+                            <input type="number" id="rgbCount" value="42" min="1" max="200" oninput="saveCurrentMcuPinState()">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="rgbPinLabel">Пин данных подсветки (RGB_PIN):</label>
+                            <input type="text" id="rgbPin" value="GPIO0" placeholder="Например: GPIO0" oninput="saveCurrentMcuPinState()">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1051,19 +344,19 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
                         <input type="checkbox" id="s5EnableMouse" checked onchange="toggleFeatureSubsystem('mouse', this.checked)">
-                        <span data-i18n="featMouse">Мышь (Mouse Keys)</span>
+                        <span data-i18n="featMouse">Мышь</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
                         <input type="checkbox" id="s5EnableGamepad" checked onchange="toggleFeatureSubsystem('gamepad', this.checked)">
-                        <span data-i18n="featGamepad">Геймпад (Gamepad)</span>
+                        <span data-i18n="featGamepad">Геймпад</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
                         <input type="checkbox" id="s5EnableMidi" checked onchange="toggleFeatureSubsystem('midi', this.checked)">
-                        <span data-i18n="featMidi">MIDI (MIDI Device)</span>
+                        <span data-i18n="featMidi">MIDI</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
                         <input type="checkbox" id="s5EnableLed" checked onchange="toggleFeatureSubsystem('led', this.checked)">
-                        <span data-i18n="featLed">Индикаторы LED (Lock / Layer)</span>
+                        <span data-i18n="featLed">Индикаторы LED</span>
                     </label>
                 </div>
             </div>
@@ -1071,24 +364,43 @@
             <!-- Vial / VIA GUI Section -->
             <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <label data-i18n="vialLabel" style="font-weight: 600;">Поддержка Vial GUI</label>
+                    <label data-i18n="vialLabel" style="font-weight: 600;">Поддержка Vial / VIA GUI</label>
                     <input type="checkbox" id="enableVial" checked onchange="toggleVialOptions()" style="width: 18px; height: 18px; cursor: pointer;">
                 </div>
 
-                <div id="vialOptionsBlock" class="grid-3">
-                    <div class="form-group">
-                        <label data-i18n="vialNameLabel">Имя клавиатуры в Vial:</label>
-                        <input type="text" id="vialName" value="DMK Custom">
+                <div id="vialOptionsBlock" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label data-i18n="vialProtocolLabel">Протокол конфигуратора:</label>
+                            <select id="vialProtocolMode">
+                                <option value="vial" selected data-i18n="vialProtoVial">Vial (Протокол v9, встроенный vial.json, макросы, комбо)</option>
+                                <option value="via_v3" data-i18n="vialProtoViaV3">VIA v3 (Протокол v12, usevia.app)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="vialNameLabel">Имя клавиатуры в Vial / VIA:</label>
+                            <input type="text" id="vialName" value="DMK Custom">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label data-i18n="vialVidLabel">USB Vendor ID:</label>
-                        <input type="text" id="vialVid" value="0xCAFE" placeholder="0xCAFE">
-                    </div>
-                    <div class="form-group">
-                        <label data-i18n="vialPidLabel">USB Product ID:</label>
-                        <input type="text" id="vialPid" value="0x4001" placeholder="0x4001">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label data-i18n="vialVidLabel">USB Vendor ID:</label>
+                            <input type="text" id="vialVid" value="0xCAFE" placeholder="0xCAFE">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="vialPidLabel">USB Product ID:</label>
+                            <input type="text" id="vialPid" value="0x4001" placeholder="0x4001">
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <div id="pinConflictNoticeStep3" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 12px; font-size: 0.82rem; color: #fca5a5; flex-direction: column; gap: 4px;">
+                <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                    <span>⚠️</span>
+                    <span id="pinConflictTitleStep3">Обнаружены ошибки или конфликты пинов:</span>
+                </div>
+                <div id="pinConflictDetailsStep3"></div>
             </div>
 
             <div class="nav-actions">
@@ -1181,46 +493,24 @@
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
                     <div class="form-group" id="propKeyWGroup" style="margin: 0;">
-                        <label data-i18n="keyWidthLabel">Ширина (Key Width):</label>
+                        <label data-i18n="keyWidthLabel">Ширина:</label>
                         <input type="number" id="propKeyW" value="1" min="0.25" max="10" step="0.25" oninput="updateSelectedKeyProperty('w', this.value)">
                     </div>
 
                     <div class="form-group" id="propKeyHGroup" style="margin: 0;">
-                        <label data-i18n="keyHeightLabel">Высота (Key Height):</label>
+                        <label data-i18n="keyHeightLabel">Высота:</label>
                         <input type="number" id="propKeyH" value="1" min="0.25" max="5" step="0.25" oninput="updateSelectedKeyProperty('h', this.value)">
                     </div>
 
                     <div class="form-group" style="margin: 0;">
-                        <label data-i18n="keyXLabel">Смещение X (Offset X):</label>
+                        <label data-i18n="keyXLabel">Смещение X:</label>
                         <input type="number" id="propKeyX" value="0" min="0" max="10" step="0.25" oninput="updateSelectedKeyProperty('x', this.value)">
                     </div>
 
                     <div class="form-group" style="margin: 0;">
-                        <label data-i18n="keyYLabel">Смещение Y (Offset Y):</label>
+                        <label data-i18n="keyYLabel">Смещение Y:</label>
                         <input type="number" id="propKeyY" value="0" min="0" max="10" step="0.25" oninput="updateSelectedKeyProperty('y', this.value)">
                     </div>
-                </div>
-            </div>
-
-            <!-- Subsystems Feature Filter Bar -->
-            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-weight: 600; font-size: 0.85rem;" data-i18n="subsystemsLabel">Подсистемы:</span>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);" data-i18n="subsystemsDesc">(включение/отключение фич и вкладок кейкодов)</span>
-                </div>
-                <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; user-select: none;">
-                        <input type="checkbox" id="featureMouse" checked onchange="toggleFeatureSubsystem('mouse', this.checked)">
-                        <span data-i18n="featMouse">Мышь</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; user-select: none;">
-                        <input type="checkbox" id="featureGamepad" checked onchange="toggleFeatureSubsystem('gamepad', this.checked)">
-                        <span data-i18n="featGamepad">Геймпад</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.82rem; user-select: none;">
-                        <input type="checkbox" id="featureMidi" checked onchange="toggleFeatureSubsystem('midi', this.checked)">
-                        <span data-i18n="featMidi">MIDI</span>
-                    </label>
                 </div>
             </div>
 
@@ -1352,192 +642,12 @@
         </div>
     </main>
 
+    <!-- Modular Editor Scripts (compatible with htmlpreview.github.io CORS proxy) -->
+    <script src="./js/keycodes.js"></script>
+    <script src="./js/presets.js"></script>
+    <script src="./js/i18n.js"></script>
+    <script src="./js/codegen.js"></script>
     <script>
-        // Keycode display labels map
-        const DISPLAY_MAP = {
-            K_TRNS: "▽",
-            K_NO: "✕",
-            K_A: "A", K_B: "B", K_C: "C", K_D: "D", K_E: "E", K_F: "F", K_G: "G",
-            K_H: "H", K_I: "I", K_J: "J", K_K: "K", K_L: "L", K_M: "M", K_N: "N",
-            K_O: "O", K_P: "P", K_Q: "Q", K_R: "R", K_S: "S", K_T: "T", K_U: "U",
-            K_V: "V", K_W: "W", K_X: "X", K_Y: "Y", K_Z: "Z",
-            K_1: "1", K_2: "2", K_3: "3", K_4: "4", K_5: "5",
-            K_6: "6", K_7: "7", K_8: "8", K_9: "9", K_0: "0",
-            K_ESC: "ESC",
-            K_TAB: "↹",
-            K_SPC: "␣",
-            K_ENT: "↵",
-            K_BSPC: "⌫",
-            K_MINS: "-",
-            K_EQL: "=",
-            K_LBRC: "[",
-            K_RBRC: "]",
-            K_BSLS: "\\",
-            K_SCLN: ";",
-            K_QUOT: "'",
-            K_GRV: "`",
-            K_COMM: ",",
-            K_DOT: ".",
-            K_SLSH: "/",
-            K_CAPS: "CAPS",
-            K_LCTRL: "LCTRL",
-            K_RCTRL: "RCTRL",
-            MOD_LCTRL: "LCTRL",
-            MOD_RCTRL: "RCTRL",
-            K_LSHIFT: "LSHIFT",
-            K_RSHIFT: "RSHIFT",
-            MOD_LSHIFT: "LSHIFT",
-            MOD_RSHIFT: "RSHIFT",
-            K_LALT: "LALT",
-            K_RALT: "RALT",
-            MOD_LALT: "LALT",
-            MOD_RALT: "RALT",
-            K_LGUI: "LGUI",
-            K_RGUI: "RGUI",
-            MOD_LGUI: "LGUI",
-            MOD_RGUI: "RGUI",
-            MOD_HYPER: "HYP",
-            K_LEFT: "←",
-            K_RIGHT: "→",
-            K_UP: "↑",
-            K_DOWN: "↓",
-            K_INS: "INS",
-            K_DEL: "DEL",
-            K_HOME: "HOME",
-            K_END: "END",
-            K_PGUP: "PGUP",
-            K_PGDN: "PGDN",
-            K_PSCR: "PRTSC",
-            K_SCRL: "SCRLK",
-            K_PAUS: "PAUSE",
-            K_MENU: "MENU",
-            // F1 - F24 generated dynamically below
-            K_EXECUTE: "EXEC",
-            K_HELP: "HELP",
-            K_MENU_KB: "MENU",
-            K_SELECT: "SEL",
-            K_STOP_KB: "STOP",
-            K_AGAIN: "AGAIN",
-            K_UNDO: "UNDO",
-            K_CUT: "CUT",
-            K_COPY: "COPY",
-            K_PASTE: "PASTE",
-            K_FIND: "FIND",
-            K_NLCK: "NUM",
-            K_KP_SLASH: "NUM /",
-            K_KP_ASTERISK: "NUM *",
-            K_KP_MINUS: "NUM -",
-            K_KP_PLUS: "NUM +",
-            K_KP_ENTER: "NUM ↵",
-            K_KP_DOT: "NUM .",
-            K_KP_EQUAL: "NUM =",
-            // K_KP0 - K_KP9 generated dynamically below
-            K_MUTE: "MUTE",
-            K_VOLU: "VOL+",
-            K_VOLD: "VOL-",
-            K_MPLY: "PLAY",
-            K_MNXT: "NEXT",
-            K_MPRV: "PREV",
-            K_MSTP: "STOP",
-            K_BRIU: "BRI+",
-            K_BRID: "BRI-",
-            K_CALC: "CALC",
-            K_MYCM: "PC",
-            K_MAIL: "MAIL",
-            K_WSCH: "FIND",
-            K_WHOM: "HOME",
-            K_WBAK: "BACK",
-            K_WFWD: "FWD",
-            K_WSTP: "STOP",
-            K_WREF: "REFR",
-            K_WFAV: "FAV",
-            K_MFFD: "FFWD",
-            K_MRWD: "RWND",
-            K_EJCT: "EJCT",
-            K_MSEL: "MSEL",
-            // RGB Controls
-            RGB_TOGG: "RGB TOG",
-            RGB_NEXT: "RGB NEXT",
-            RGB_PREV: "RGB PREV",
-            RGB_HUI: "HUE +",
-            RGB_HUD: "HUE -",
-            RGB_SAI: "SAT +",
-            RGB_SAD: "SAT -",
-            RGB_VAI: "BRI +",
-            RGB_VAD: "BRI -",
-            RGB_SPI: "SPD +",
-            RGB_SPD: "SPD -",
-            // Mouse Keys
-            K_MS_UP: "MS ↑",
-            K_MS_DOWN: "MS ↓",
-            K_MS_LEFT: "MS ←",
-            K_MS_RIGHT: "MS →",
-            K_MS_BTN1: "MS L",
-            K_MS_BTN2: "MS R",
-            K_MS_BTN3: "MS M",
-            K_MS_BTN4: "MS 4",
-            K_MS_BTN5: "MS 5",
-            K_MS_WH_UP: "WH ↑",
-            K_MS_WH_DOWN: "WH ↓",
-            K_MS_WH_LEFT: "WH ←",
-            K_MS_WH_RIGHT: "WH →",
-            K_MS_ACCEL0: "ACL 0",
-            K_MS_ACCEL1: "ACL 1",
-            K_MS_ACCEL2: "ACL 2",
-            // Gamepad Buttons (GP_BTN1 - GP_BTN32 generated dynamically below)
-            GP_A: "GP A", GP_B: "GP B", GP_X: "GP X", GP_Y: "GP Y",
-            GP_LB: "GP LB", GP_RB: "GP RB", GP_LT: "GP LT", GP_RT: "GP RT",
-            GP_SELECT: "SELECT", GP_START: "START",
-            GP_L3: "GP L3", GP_R3: "GP R3",
-            GP_DPAD_UP: "DPAD ↑", GP_DPAD_DOWN: "DPAD ↓", GP_DPAD_LEFT: "DPAD ←", GP_DPAD_RIGHT: "DPAD →",
-            GP_LX_LEFT: "LX ←", GP_LX_RIGHT: "LX →", GP_LY_UP: "LY ↑", GP_LY_DOWN: "LY ↓",
-            GP_RX_LEFT: "RX ←", GP_RX_RIGHT: "RX →", GP_RY_UP: "RY ↑", GP_RY_DOWN: "RY ↓",
-            // MIDI Controls
-            MIDI_OCTAVE_DOWN: "OCT -", MIDI_OCTAVE_UP: "OCT +",
-            MIDI_TRANSPOSE_DOWN: "TRN -", MIDI_TRANSPOSE_UP: "TRN +",
-            MIDI_VELOCITY_DOWN: "VEL -", MIDI_VELOCITY_UP: "VEL +",
-            MIDI_CHANNEL_DOWN: "CH -", MIDI_CHANNEL_UP: "CH +",
-            MIDI_ALL_NOTES_OFF: "PANIC",
-            MIDI_SUSTAIN: "SUSTAIN", MIDI_PORTAMENTO: "PORT", MIDI_SOSTENUTO: "SOST",
-            MIDI_SOFT: "SOFT", MIDI_LEGATO: "LEGATO", MIDI_MODULATION: "MOD",
-            MIDI_PITCH_BEND_DOWN: "PB -", MIDI_PITCH_BEND_UP: "PB +",
-            "CC X": "CC X",
-            "CC(...)": "CC X",
-            "CC_TOG(...)": "CC TOG",
-            "CC_VAL127(...)": "CC ON",
-            "CC_VAL0(...)": "CC OFF",
-            "CC_INC(...)": "CC +",
-            "CC_DEC(...)": "CC -",
-            // International / ISO
-            K_NONUS_HASH: "# ~",
-            K_NONUS_BSLASH: "\\ |",
-            K_KP_COMMA: "NUM ,",
-            K_KP_EQUAL_AS400: "NUM =",
-            K_LOCKING_CAPS: "LCAPS",
-            K_LOCKING_NUM: "LNUM",
-            K_LOCKING_SCROLL: "LSCRL",
-            K_LYRUP: "LAYER ▲",
-            K_LYRDWN: "LAYER ▼",
-            K_BOOTLOADER: "BOOT"
-        };
-
-        // Generators for repetitive keycode labels (reducing dictionary bloat)
-        for (let i = 1; i <= 24; i++) DISPLAY_MAP[`K_F${i}`] = `F${i}`;
-        for (let i = 0; i <= 9; i++) DISPLAY_MAP[`K_KP${i}`] = `N${i}`;
-        for (let i = 1; i <= 32; i++) DISPLAY_MAP[`GP_BTN${i}`] = `GP ${i}`;
-        for (let i = 1; i <= 9; i++) {
-            DISPLAY_MAP[`K_INT${i}`] = `INT ${i}`;
-            DISPLAY_MAP[`K_LANG${i}`] = `LANG${i}`;
-        }
-        const MIDI_NOTE_NAMES_SHORT = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-        const MIDI_NOTE_NAMES_CODE = ["C", "C_SHARP", "D", "D_SHARP", "E", "F", "F_SHARP", "G", "G_SHARP", "A", "A_SHARP", "B"];
-        for (let oct = 0; oct <= 5; oct++) {
-            for (let n = 0; n < 12; n++) {
-                DISPLAY_MAP[`MIDI_NOTE_${MIDI_NOTE_NAMES_CODE[n]}_${oct}`] = `${MIDI_NOTE_NAMES_SHORT[n]}${oct}`;
-            }
-        }
-        window.DISPLAY_MAP = DISPLAY_MAP;
-
         // State Model
         const configState = {
             step: 1,
@@ -1565,6 +675,7 @@
             encPinsA: ["GPIO2", "GPIO4"],
             encPinsB: ["GPIO3", "GPIO5"],
             enableVial: true,
+            vialProtocol: "vial", // "vial" (Protocol v9) or "via_v3" (Protocol v12)
             vialName: "DMK Keyboard",
             vialVid: "0xCAFE",
             vialPid: "0x4001",
@@ -1640,16 +751,50 @@
             }
         }
 
+        function validatePinFormat(pin, mcu) {
+            if (!pin) return true;
+            const p = pin.trim().toUpperCase();
+            if (!p || p === 'NONE' || p === 'NO_PIN') return true;
+
+            const isRp = (pinName) => /^GPIO([0-9]|[1-3][0-9]|4[0-7])$/i.test(pinName);
+            const isMilandr = (pinName) => /^P[A-F]([0-9]|1[0-5])$/i.test(pinName);
+            const isNrf = (pinName) => /^P(0|1)_(0[0-9]|[1-9]|[12][0-9]|3[01])$/i.test(pinName);
+            const isBaikal = (pinName) => /^(GPIO([0-9]|[12][0-9]|3[01])|P[A-C]([0-9]|1[0-5]))$/i.test(pinName);
+
+            switch (mcu) {
+                case 'rp2040':
+                    return isRp(p);
+                case 'milandr':
+                    return isMilandr(p);
+                case 'nrf52840':
+                    return isNrf(p);
+                case 'baikal':
+                    return isBaikal(p);
+                case 'all':
+                default:
+                    return isRp(p) || isMilandr(p) || isNrf(p) || isBaikal(p);
+            }
+        }
+
         function checkPinConflicts() {
             const noticeEl = document.getElementById('pinConflictNotice');
             const detailsEl = document.getElementById('pinConflictDetails');
-            if (!noticeEl || !detailsEl) return false;
+            const noticeEl3 = document.getElementById('pinConflictNoticeStep3');
+            const detailsEl3 = document.getElementById('pinConflictDetailsStep3');
 
             const pinUsage = {}; // pinName -> list of usages
+            const invalidPins = []; // list of { pin, label }
+            const activeMcu = (configState.mcu === 'all') ? (currentUniversalMcu || 'rp2040') : (configState.mcu || 'rp2040');
+
             const addUsage = (pin, label) => {
                 if (!pin) return;
                 const clean = pin.trim().toUpperCase();
                 if (!clean || clean === 'NONE' || clean === 'NO_PIN') return;
+
+                if (!validatePinFormat(clean, activeMcu)) {
+                    invalidPins.push({ pin: clean, label });
+                }
+
                 if (!pinUsage[clean]) pinUsage[clean] = [];
                 pinUsage[clean].push(label);
             };
@@ -1680,9 +825,7 @@
 
             const enableRgb = document.getElementById('enableRgb')?.checked;
             if (enableRgb) {
-                const rgbPin = (configState.mcu === 'all')
-                    ? document.getElementById('mcuRgbPin')?.value
-                    : document.getElementById('rgbPin')?.value;
+                const rgbPin = document.getElementById('rgbPin')?.value;
                 addUsage(rgbPin, 'RGB Data Pin');
             }
 
@@ -1698,20 +841,55 @@
             }
 
             const conflicts = Object.keys(pinUsage).filter(p => pinUsage[p].length > 1);
+            const hasIssues = (conflicts.length > 0) || (invalidPins.length > 0);
 
+            const mcuHints = {
+                rp2040: 'GPIO0–GPIO29 / GPIO47',
+                milandr: 'PA0–PA15 ... PF0–PF15',
+                nrf52840: 'P0_00–P0_31, P1_00–P1_15',
+                baikal: 'PA0–PC15 / GPIO0–GPIO31',
+                all: 'GPIO... / PA... / P0_...'
+            };
+            const currentMcuHint = mcuHints[activeMcu] || mcuHints.rp2040;
+
+            const errorHtmlParts = [];
             if (conflicts.length > 0) {
-                noticeEl.style.display = 'flex';
-                detailsEl.innerHTML = conflicts.map(p => `• <strong>${p}</strong>: ${pinUsage[p].join(', ')}`).join('<br>');
-                return true;
-            } else {
-                noticeEl.style.display = 'none';
-                detailsEl.innerHTML = '';
-                return false;
+                errorHtmlParts.push(`<strong>${currentLanguage === 'en' ? 'Pin conflicts (assigned to multiple functions):' : 'Конфликты пинов (назначены одновременно):'}</strong>`);
+                conflicts.forEach(p => {
+                    errorHtmlParts.push(`• <strong>${p}</strong>: ${pinUsage[p].join(', ')}`);
+                });
             }
-        }
+            if (invalidPins.length > 0) {
+                if (errorHtmlParts.length > 0) errorHtmlParts.push('');
+                errorHtmlParts.push(`<strong>${currentLanguage === 'en' ? `Invalid pin format for ${activeMcu.toUpperCase()} (expected: ${currentMcuHint}):` : `Некорректный формат пинов для ${activeMcu.toUpperCase()} (ожидается: ${currentMcuHint}):`}</strong>`);
+                invalidPins.forEach(item => {
+                    errorHtmlParts.push(`• <strong>${item.pin}</strong> (${item.label})`);
+                });
+            }
 
-        function saveCurrentMcuPinState() {
-            checkPinConflicts();
+            const finalErrorHtml = errorHtmlParts.join('<br>');
+
+            if (noticeEl && detailsEl) {
+                if (hasIssues) {
+                    noticeEl.style.display = 'flex';
+                    detailsEl.innerHTML = finalErrorHtml;
+                } else {
+                    noticeEl.style.display = 'none';
+                    detailsEl.innerHTML = '';
+                }
+            }
+
+            if (noticeEl3 && detailsEl3) {
+                if (hasIssues) {
+                    noticeEl3.style.display = 'flex';
+                    detailsEl3.innerHTML = finalErrorHtml;
+                } else {
+                    noticeEl3.style.display = 'none';
+                    detailsEl3.innerHTML = '';
+                }
+            }
+
+            return hasIssues;
         }
 
         const parsePins = (str) => (str || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1780,9 +958,43 @@
         };
 
         // Multi-MCU per-platform pin configurations for Universal mode derived from MCU_DEFAULTS
+        configState.multiMcuPins = JSON.parse(JSON.stringify(MCU_DEFAULTS));
         let currentUniversalMcu = 'rp2040';
 
-        function setMcu(mcu, resetPins = true) {
+        function saveCurrentMcuPinState() {
+            if (configState.mcu === 'all' && configState.multiMcuPins && currentUniversalMcu) {
+                if (!configState.multiMcuPins[currentUniversalMcu]) {
+                    configState.multiMcuPins[currentUniversalMcu] = JSON.parse(JSON.stringify(MCU_DEFAULTS[currentUniversalMcu] || MCU_DEFAULTS.rp2040));
+                }
+                const cur = configState.multiMcuPins[currentUniversalMcu];
+                const rowEl = document.getElementById('rowPins');
+                if (rowEl) cur.rows = parsePins(rowEl.value);
+                const colEl = document.getElementById('colPins');
+                if (colEl) cur.cols = parsePins(colEl.value);
+                const dirEl = document.getElementById('directPins');
+                if (dirEl) cur.direct = parsePins(dirEl.value);
+                const splitTxEl = document.getElementById('mcuSplitTxPin');
+                if (splitTxEl) cur.splitTx = splitTxEl.value.trim();
+                const splitRxEl = document.getElementById('mcuSplitRxPin');
+                if (splitRxEl) cur.splitRx = splitRxEl.value.trim();
+                const rgbEl = document.getElementById('rgbPin');
+                if (rgbEl) cur.rgb = rgbEl.value.trim();
+
+                const encCount = parseInt(document.getElementById('encCount')?.value, 10) || 0;
+                if (!cur.encA) cur.encA = [];
+                if (!cur.encB) cur.encB = [];
+                for (let i = 0; i < encCount; i++) {
+                    const pA = document.getElementById(`enc_${i}_pinA`)?.value;
+                    const pB = document.getElementById(`enc_${i}_pinB`)?.value;
+                    if (pA) cur.encA[i] = pA.trim();
+                    if (pB) cur.encB[i] = pB.trim();
+                }
+            }
+            checkPinConflicts();
+        }
+
+        function setMcu(mcu, resetPins = false) {
+            const mcuChanged = (configState.mcu !== mcu);
             configState.mcu = mcu;
             ['rp2040', 'milandr', 'nrf52840', 'baikal', 'all'].forEach(k => {
                 const el = document.getElementById(`opt-mcu-${k}`);
@@ -1790,14 +1002,16 @@
             });
 
             const isAll = (mcu === 'all');
-            const tabsEl = document.getElementById('universalMcuTabsContainer');
+            ['universalMcuTabsContainer', 'universalMcuTabsContainerEnc', 'universalMcuTabsContainerRgb'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = isAll ? 'flex' : 'none';
+            });
             const extrasEl = document.getElementById('universalMcuExtrasContainer');
-            if (tabsEl) tabsEl.style.display = isAll ? 'flex' : 'none';
             if (extrasEl) extrasEl.style.display = isAll ? 'flex' : 'none';
 
             if (isAll) {
                 switchUniversalMcuTab(currentUniversalMcu);
-            } else if (resetPins) {
+            } else if (resetPins && mcuChanged) {
                 const defs = MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040;
                 document.getElementById('serialPinRP').value = defs.serial;
                 document.getElementById('rgbPin').value = defs.rgb;
@@ -1807,111 +1021,58 @@
                     document.getElementById('rowPins').value = defs.rows.join(', ');
                     document.getElementById('colPins').value = defs.cols.join(', ');
                 }
+                if (document.getElementById('enableEncoders')?.checked) {
+                    updateEncoderInputs();
+                }
                 initMatrixGrid();
+            } else {
+                checkPinConflicts();
             }
         }
 
         function switchUniversalMcuTab(mcu) {
+            // 1. Save inputs of current platform before switching
+            if (configState.mcu === 'all') {
+                saveCurrentMcuPinState();
+            }
+
             currentUniversalMcu = mcu;
-            ['rp2040', 'milandr', 'nrf52840', 'baikal'].forEach(k => {
-                const b = document.getElementById(`tab-mcu-${k}`);
-                if (b) b.classList.toggle('active', k === mcu);
+
+            // 2. Synchronize active state for all platform buttons across all sections
+            document.querySelectorAll('.universal-mcu-btn').forEach(btn => {
+                const btnMcu = btn.getAttribute('data-mcu');
+                btn.classList.toggle('active', btnMcu === mcu);
             });
 
-            const d = MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040;
-            if (d) {
-                document.getElementById('rowPins').value = d.rows.join(', ');
-                document.getElementById('colPins').value = d.cols.join(', ');
-                document.getElementById('directPins').value = d.direct.join(', ');
-                document.getElementById('mcuSplitTxPin').value = d.serial;
-                document.getElementById('mcuSplitRxPin').value = d.serial === 'GPIO1' ? 'GPIO0' : d.serial;
-                document.getElementById('mcuRgbPin').value = d.rgb;
+            // 3. Load pins for target platform
+            if (!configState.multiMcuPins) {
+                configState.multiMcuPins = JSON.parse(JSON.stringify(MCU_DEFAULTS));
             }
+            if (!configState.multiMcuPins[mcu]) {
+                configState.multiMcuPins[mcu] = JSON.parse(JSON.stringify(MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040));
+            }
+            const d = configState.multiMcuPins[mcu];
+            if (d) {
+                const rowEl = document.getElementById('rowPins');
+                if (rowEl) rowEl.value = (d.rows || []).join(', ');
+                const colEl = document.getElementById('colPins');
+                if (colEl) colEl.value = (d.cols || []).join(', ');
+                const dirEl = document.getElementById('directPins');
+                if (dirEl) dirEl.value = (d.direct || []).join(', ');
+                const splitTxEl = document.getElementById('mcuSplitTxPin');
+                if (splitTxEl) splitTxEl.value = d.splitTx || d.serial || 'GPIO0';
+                const splitRxEl = document.getElementById('mcuSplitRxPin');
+                if (splitRxEl) splitRxEl.value = d.splitRx || (d.serial === 'GPIO1' ? 'GPIO0' : (d.serial || 'GPIO1'));
+                const rgbEl = document.getElementById('rgbPin');
+                if (rgbEl) rgbEl.value = d.rgb || 'GPIO0';
+            }
+
             if (document.getElementById('enableEncoders')?.checked) {
                 updateEncoderInputs();
             }
-        }
 
-        // Presets Definitions
-        const PRESETS = {
-            corne: {
-                name: "Corne DMK",
-                isSplit: true,
-                matrixType: "COL2ROW",
-                rowPins: ["GPIO4", "GPIO5", "GPIO6", "GPIO7"],
-                colPins: ["GPIO29", "GPIO28", "GPIO27", "GPIO26", "GPIO22", "GPIO20"],
-                enableRgb: true,
-                rgbCount: 42,
-                rgbPin: "GPIO0",
-                enableEncoders: false,
-                pattern: [
-                    [1,1,1,1,1,1, 1,1,1,1,1,1],
-                    [1,1,1,1,1,1, 1,1,1,1,1,1],
-                    [1,1,1,1,1,1, 1,1,1,1,1,1],
-                    [0,0,0,1,1,1, 1,1,1,0,0,0]
-                ]
-            },
-            sweep: {
-                name: "Sweep / Ferris",
-                isSplit: true,
-                matrixType: "COL2ROW",
-                rowPins: ["GPIO4", "GPIO5", "GPIO6", "GPIO7"],
-                colPins: ["GPIO29", "GPIO28", "GPIO27", "GPIO26", "GPIO22"],
-                enableRgb: false,
-                rgbCount: 0,
-                pattern: [
-                    [1,1,1,1,1, 1,1,1,1,1],
-                    [1,1,1,1,1, 1,1,1,1,1],
-                    [1,1,1,1,1, 1,1,1,1,1],
-                    [0,0,0,1,1, 1,1,0,0,0]
-                ]
-            },
-            kabarga: {
-                name: "Kabarga DMK",
-                isSplit: false,
-                matrixType: "COL2ROW",
-                rowPins: ["PB5", "PB4", "PB3", "PA1", "PA0", "PA2", "PA3"],
-                colPins: ["PA9", "PA8", "PA7", "PA6", "PA5", "PA4"],
-                enableRgb: false,
-                rgbCount: 0,
-                enableEncoders: false,
-                pattern: [
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1]
-                ]
-            },
-            nizkoteno: {
-                name: "Nizkoteno 10",
-                isSplit: false,
-                matrixType: "DIRECT",
-                directPins: ["GPIO9", "GPIO8", "GPIO6", "GPIO5", "GPIO10", "GPIO7", "GPIO4", "GPIO2", "GPIO1", "GPIO3"],
-                enableRgb: true,
-                rgbCount: 10,
-                rgbPin: "GPIO29",
-                pattern: [[1,1,1,1,1,1,1,1,1,1]]
-            },
-            planck: {
-                name: "Planck 4x12",
-                isSplit: false,
-                matrixType: "COL2ROW",
-                rowPins: ["GPIO4", "GPIO5", "GPIO6", "GPIO7"],
-                colPins: ["GPIO10", "GPIO11", "GPIO12", "GPIO13", "GPIO14", "GPIO15", "GPIO16", "GPIO17", "GPIO18", "GPIO19", "GPIO20", "GPIO21"],
-                enableRgb: true,
-                rgbCount: 48,
-                rgbPin: "GPIO0",
-                pattern: [
-                    [1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1]
-                ]
-            }
-        };
+            checkPinConflicts();
+        }
 
         function init() {
             // Explicitly sync checkboxes with initial state
@@ -2016,9 +1177,7 @@
         function toggleFeatureSubsystem(feat, enabled) {
             if (feat === 'mouse') {
                 configState.enableMouse = enabled;
-                const el1 = document.getElementById('featureMouse');
                 const el2 = document.getElementById('s5EnableMouse');
-                if (el1) el1.checked = enabled;
                 if (el2) el2.checked = enabled;
                 const tab = document.getElementById('tab-pal-MOUSE');
                 if (tab) tab.style.display = enabled ? '' : 'none';
@@ -2029,9 +1188,7 @@
                 }
             } else if (feat === 'gamepad') {
                 configState.enableGamepad = enabled;
-                const el1 = document.getElementById('featureGamepad');
                 const el2 = document.getElementById('s5EnableGamepad');
-                if (el1) el1.checked = enabled;
                 if (el2) el2.checked = enabled;
                 const tab = document.getElementById('tab-pal-GAMEPAD');
                 if (tab) tab.style.display = enabled ? '' : 'none';
@@ -2042,9 +1199,7 @@
                 }
             } else if (feat === 'midi') {
                 configState.enableMidi = enabled;
-                const el1 = document.getElementById('featureMidi');
                 const el2 = document.getElementById('s5EnableMidi');
-                if (el1) el1.checked = enabled;
                 if (el2) el2.checked = enabled;
                 const tab = document.getElementById('tab-pal-MIDI');
                 if (tab) tab.style.display = enabled ? '' : 'none';
@@ -2062,7 +1217,7 @@
 
         function toggleRgbOptions() {
             const en = document.getElementById('enableRgb').checked;
-            document.getElementById('rgbOptionsBlock').style.display = en ? 'grid' : 'none';
+            document.getElementById('rgbOptionsBlock').style.display = en ? 'flex' : 'none';
         }
 
         function toggleEncoderOptions() {
@@ -2076,7 +1231,7 @@
             const container = document.getElementById('encoderPinList');
             const t = I18N[currentLanguage];
 
-            // Save existing pin values to preserve across language switches
+            // Save existing pin values to preserve across language switches if not in multi-MCU mode
             const existingVals = [];
             for (let i = 0; i < 4; i++) {
                 const a = document.getElementById(`enc_${i}_pinA`)?.value;
@@ -2085,8 +1240,12 @@
             }
 
             container.innerHTML = '';
-            const defs = (configState.mcu === 'all')
-                ? (MCU_DEFAULTS[currentUniversalMcu] || MCU_DEFAULTS.rp2040)
+            const isAll = (configState.mcu === 'all');
+            const multiPins = (isAll && configState.multiMcuPins && configState.multiMcuPins[currentUniversalMcu])
+                ? configState.multiMcuPins[currentUniversalMcu]
+                : null;
+            const defs = isAll
+                ? (multiPins || MCU_DEFAULTS[currentUniversalMcu] || MCU_DEFAULTS.rp2040)
                 : (MCU_DEFAULTS[configState.mcu] || MCU_DEFAULTS.rp2040);
 
             for (let i = 0; i < count; i++) {
@@ -2099,23 +1258,23 @@
                 row.style.gridTemplateColumns = '1fr 1fr';
                 row.style.gap = '12px';
 
-                let pinAVal = existingVals[i]?.a;
+                let pinAVal = isAll ? (multiPins?.encA?.[i] || defs.encA?.[i]) : (existingVals[i]?.a || defs.encA?.[i]);
                 if (!pinAVal) {
-                    pinAVal = (defs.encA && defs.encA[i]) ? defs.encA[i] : `GPIO${2 + i*2}`;
+                    pinAVal = `GPIO${2 + i*2}`;
                 }
-                let pinBVal = existingVals[i]?.b;
+                let pinBVal = isAll ? (multiPins?.encB?.[i] || defs.encB?.[i]) : (existingVals[i]?.b || defs.encB?.[i]);
                 if (!pinBVal) {
-                    pinBVal = (defs.encB && defs.encB[i]) ? defs.encB[i] : `GPIO${3 + i*2}`;
+                    pinBVal = `GPIO${3 + i*2}`;
                 }
 
                 row.innerHTML = `
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinA || 'Encoder'} #${i+1} — ${t.encPinALabel || 'Pin A'}:</label>
-                        <input type="text" id="enc_${i}_pinA" value="${pinAVal}" oninput="checkPinConflicts()">
+                        <input type="text" id="enc_${i}_pinA" value="${pinAVal}" oninput="saveCurrentMcuPinState()">
                     </div>
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinB || 'Encoder'} #${i+1} — ${t.encPinBLabel || 'Pin B'}:</label>
-                        <input type="text" id="enc_${i}_pinB" value="${pinBVal}" oninput="checkPinConflicts()">
+                        <input type="text" id="enc_${i}_pinB" value="${pinBVal}" oninput="saveCurrentMcuPinState()">
                     </div>
                 `;
                 container.appendChild(row);
@@ -2187,7 +1346,7 @@
 
         function toggleVialOptions() {
             const en = document.getElementById('enableVial').checked;
-            document.getElementById('vialOptionsBlock').style.display = en ? 'grid' : 'none';
+            document.getElementById('vialOptionsBlock').style.display = en ? 'flex' : 'none';
         }
 
         function getParsedPins() {
@@ -2825,11 +1984,7 @@
 
         function renderModalKeyChoiceContent(callback) {
             const isRu = (currentLanguage !== 'en');
-            const sampleKeys = ALL_PALETTE_CODES.BASIC;
-            let optionsHtml = sampleKeys.map(k => {
-                const label = (window.DISPLAY_MAP && window.DISPLAY_MAP[k]) ? window.DISPLAY_MAP[k] : k.replace(/^K_/, '');
-                return `<option value="${k}">${label} (${k})</option>`;
-            }).join('');
+            ensureKeycodesDatalist();
 
             let title = isRu ? "Настройка модификаторов и клавиши" : "Configure Modifiers & Key";
 
@@ -2876,10 +2031,7 @@
                     <!-- Single Input with Suggestions -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <label style="font-size: 0.8rem; font-weight: 600; color: var(--text);">${isRu ? 'Клавиша (введите имя или выберите из подсказок):' : 'Keycode (type name or select from suggestions):'}</label>
-                        <input type="text" id="modalKeySingleInput" list="modalKeyCodesDatalist" value="K_9" placeholder="K_9, K_A, K_ENT, K_SPC..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);" oninput="updateModalKeyPreview()">
-                        <datalist id="modalKeyCodesDatalist">
-                            ${optionsHtml}
-                        </datalist>
+                        <input type="text" id="modalKeySingleInput" list="allKeycodesList" value="K_9" placeholder="K_9, K_A, K_ENT, K_SPC..." style="padding: 8px 10px; font-size: 0.9rem; font-family: var(--font-mono);" oninput="if (typeof SYMBOL_KEY_MAP !== 'undefined' && SYMBOL_KEY_MAP[this.value.trim()]) { this.value = SYMBOL_KEY_MAP[this.value.trim()]; } updateModalKeyPreview()" onchange="const resolved = resolveKeycodeFromSearch(this.value); if (resolved) { this.value = resolved; } updateModalKeyPreview()">
                     </div>
 
                     <!-- Live Generated Code Preview -->
@@ -2957,9 +2109,11 @@
         }
 
         function buildFinalModalKeycode() {
-            let key = (document.getElementById('modalKeySingleInput')?.value || 'K_A').trim();
-            if (!key.startsWith('K_') && !key.startsWith('0x') && !key.includes('(')) {
-                key = 'K_' + key.toUpperCase();
+            const rawVal = (document.getElementById('modalKeySingleInput')?.value || '').trim();
+            if (!rawVal) return 'K_NO';
+            let key = resolveKeycodeFromSearch(rawVal);
+            if (!key) {
+                key = rawVal.startsWith('K_') ? rawVal.toUpperCase() : `K_${rawVal.toUpperCase()}`;
             }
 
             let result = key;
@@ -3051,9 +2205,28 @@
             return list;
         }
 
+        // Direct and shifted symbol mappings for smart search & substitution
+        const SYMBOL_KEY_MAP = {
+            // Direct punctuation
+            '-': 'K_MINS', '=': 'K_EQL', '[': 'K_LBRC', ']': 'K_RBRC', '\\': 'K_BSLS',
+            ';': 'K_SCLN', '\'': 'K_QUOT', '`': 'K_GRV', ',': 'K_COMM', '.': 'K_DOT', '/': 'K_SLSH',
+            // Shifted symbols
+            '>': 'LS(K_DOT)', '<': 'LS(K_COMM)', '+': 'LS(K_EQL)', '_': 'LS(K_MINS)',
+            '&': 'LS(K_7)', '#': 'LS(K_3)', '@': 'LS(K_2)', '!': 'LS(K_1)', '$': 'LS(K_4)',
+            '%': 'LS(K_5)', '^': 'LS(K_6)', '*': 'LS(K_8)', '(': 'LS(K_9)', ')': 'LS(K_0)',
+            '{': 'LS(K_LBRC)', '}': 'LS(K_RBRC)', '|': 'LS(K_BSLS)', ':': 'LS(K_SCLN)',
+            '"': 'LS(K_QUOT)', '?': 'LS(K_SLSH)', '~': 'LS(K_GRV)'
+        };
+
         function resolveKeycodeFromSearch(query) {
-            if (!query) return 'K_A';
-            const q = query.trim().toUpperCase();
+            if (!query) return '';
+            const raw = query.trim();
+            if (!raw) return '';
+
+            // Check smart symbol map first (e.g. ">", "<", "\", "&", "#", "+", "-", "=")
+            if (SYMBOL_KEY_MAP[raw]) return SYMBOL_KEY_MAP[raw];
+
+            const q = raw.toUpperCase();
             
             // Check direct match
             if (q.startsWith('K_')) return q;
@@ -3061,7 +2234,7 @@
 
             // Check aliases dictionary
             for (const [kc, aliases] of Object.entries(KEY_SEARCH_ALIASES)) {
-                if (kc === `K_${q}` || aliases.includes(q) || aliases.includes(query.trim())) {
+                if (kc === `K_${q}` || aliases.includes(q) || aliases.includes(raw)) {
                     return kc;
                 }
             }
@@ -3073,29 +2246,32 @@
         function serializeMacroArrayToSteps(arr) {
             const out = [];
             arr.forEach(item => {
-                let k = item.key ? item.key.trim() : 'K_A';
+                let k = item.key ? item.key.trim() : '';
                 if (item.type === 'DELAY') {
                     const ms = parseInt(k, 10) || 50;
                     out.push(`M_D(${ms})`);
-                } else {
+                } else if (k) {
                     const resolved = resolveKeycodeFromSearch(k);
-                    if (item.type === 'DN') {
-                        out.push(`M_DN(${resolved})`);
-                    } else if (item.type === 'UP') {
-                        out.push(`M_UP(${resolved})`);
-                    } else if (item.type === 'TAP') {
-                        out.push(`M_DN(${resolved})`);
-                        out.push(`M_UP(${resolved})`);
+                    if (resolved) {
+                        if (item.type === 'DN') {
+                            out.push(`M_DN(${resolved})`);
+                        } else if (item.type === 'UP') {
+                            out.push(`M_UP(${resolved})`);
+                        } else if (item.type === 'TAP') {
+                            out.push(`M_DN(${resolved})`);
+                            out.push(`M_UP(${resolved})`);
+                        }
                     }
                 }
             });
             return out.join(', ');
         }
 
-        function renderMacroStepRowHtml(step, sIdx, onActionChange, onKeyChange, onRemove) {
+        function renderMacroStepRowHtml(step, sIdx, onActionChange, onKeyChange, onRemove, onChangeKey) {
             const isRu = (currentLanguage !== 'en');
             const actionOptions = getMacroActionTypes().map(a => `<option value="${a.value}" ${step.type === a.value ? 'selected' : ''}>${a.label}</option>`).join('');
             const isDelay = step.type === 'DELAY';
+            const changeAttr = onChangeKey ? `onchange="${onChangeKey}"` : '';
 
             return `
                 <div style="display: grid; grid-template-columns: 32px 140px 1fr 32px; gap: 8px; align-items: center; background: var(--bg); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);">
@@ -3103,7 +2279,7 @@
                     <select onchange="${onActionChange}" style="padding: 4px 8px; font-size: 0.8rem;">
                         ${actionOptions}
                     </select>
-                    <input type="${isDelay ? 'number' : 'text'}" ${isDelay ? 'placeholder="50"' : `list="allKeycodesList" placeholder="${isRu ? 'Поиск кнопки (Enter, Dot, [, Shift...)' : 'Search key (Enter, Dot, [, Shift...)'}"`} value="${step.key}" oninput="${onKeyChange}" style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
+                    <input type="${isDelay ? 'number' : 'text'}" ${isDelay ? 'placeholder="50"' : `list="allKeycodesList" placeholder="${isRu ? 'Поиск кнопки (Enter, Dot, [, Shift...)' : 'Search key (Enter, Dot, [, Shift...)'}"`} value="${step.key}" oninput="${onKeyChange}" ${changeAttr} style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
                     <button onclick="${onRemove}" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 2px; font-weight: 700; font-size: 0.9rem;" title="${isRu ? 'Удалить шаг' : 'Delete step'}">✕</button>
                 </div>
             `;
@@ -3138,7 +2314,8 @@
                             sIdx,
                             `onMacroStepActionChange(${mIdx}, ${sIdx}, this.value)`,
                             `onMacroStepKeyChange(${mIdx}, ${sIdx}, this.value)`,
-                            `removeMacroStep(${mIdx}, ${sIdx})`
+                            `removeMacroStep(${mIdx}, ${sIdx})`,
+                            `const res = resolveKeycodeFromSearch(this.value); if (res) { this.value = res; onMacroStepKeyChange(${mIdx}, ${sIdx}, res); }`
                         );
                     });
                 }
@@ -3184,7 +2361,7 @@
                 if (actionVal === 'DELAY' && isNaN(parseInt(steps[sIdx].key, 10))) {
                     steps[sIdx].key = '50';
                 } else if (actionVal !== 'DELAY' && !isNaN(parseInt(steps[sIdx].key, 10))) {
-                    steps[sIdx].key = 'K_A';
+                    steps[sIdx].key = '';
                 }
                 configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
                 renderCustomMacrosUI();
@@ -3194,7 +2371,8 @@
         function onMacroStepKeyChange(mIdx, sIdx, keyVal) {
             const steps = parseMacroStepsToArray(configState.customMacros[mIdx].steps || '');
             if (steps[sIdx]) {
-                steps[sIdx].key = keyVal;
+                const resolved = resolveKeycodeFromSearch(keyVal);
+                steps[sIdx].key = resolved || keyVal;
                 configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
                 renderPalette(currentPaletteCategory);
             }
@@ -3202,7 +2380,7 @@
 
         function addMacroStep(mIdx) {
             const steps = parseMacroStepsToArray(configState.customMacros[mIdx].steps || '');
-            steps.push({ type: 'TAP', key: 'K_A' });
+            steps.push({ type: 'TAP', key: '' });
             configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
             renderCustomMacrosUI();
         }
@@ -3260,10 +2438,11 @@
             { label: "Пользовательская функция...", name: "do_custom" }
         ];
 
-        // Flexible smart coordinate parser: supports "1.11", "1, 11", "1 11", "1/11", "1;11" -> { r: 1, c: 11 }
+        // Flexible smart coordinate parser: supports "1.11", "1, 11", "1 11", "1/11", "1;11" -> { r: 0, c: 0 }
         function parseFlexibleCoordinate(rawStr) {
-            if (!rawStr || typeof rawStr !== 'string') return { r: 0, c: 0, formatted: '0, 0' };
+            if (!rawStr || typeof rawStr !== 'string') return { r: 0, c: 0, formatted: '' };
             const clean = rawStr.replace(/[\[\]\(\)\{\}]/g, '').trim();
+            if (!clean) return { r: 0, c: 0, formatted: '' };
             const parts = clean.split(/[\s,./;:\-_|\\]+/).filter(Boolean);
             let r = 0, c = 0;
             if (parts.length >= 2) {
@@ -3295,10 +2474,6 @@
                 const parsed = parseFlexibleCoordinate(p);
                 list.push({ r: parsed.r, c: parsed.c, coordStr: parsed.formatted });
             });
-            if (list.length === 0) {
-                list.push({ r: 0, c: 1, coordStr: '0, 1' });
-                list.push({ r: 0, c: 2, coordStr: '0, 2' });
-            }
             chord.keyList = list;
             return list;
         }
@@ -3373,10 +2548,10 @@
 
                 const keyList = parseChordKeys(chord);
 
-                let keysRowsHtml = '';
+                 let keysRowsHtml = '';
                 if (!isCollapsed) {
                     keyList.forEach((kItem, kIdx) => {
-                        const valStr = kItem.coordStr || `${kItem.r || 0}, ${kItem.c || 0}`;
+                        const valStr = kItem.coordStr !== undefined ? kItem.coordStr : `${kItem.r || 0}, ${kItem.c || 0}`;
                         keysRowsHtml += `
                             <div style="display: grid; grid-template-columns: 28px 1fr auto 32px; gap: 8px; align-items: center; background: var(--bg); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);">
                                 <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-align: center;">${kIdx + 1}</span>
@@ -3395,7 +2570,7 @@
                             <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem; color: var(--accent); background: var(--bg); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);">${isRu ? 'Аккорд' : 'Chord'} #${cIdx + 1}</span>
                             <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 280px;">
                                 <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">${isRu ? 'Действие:' : 'Action:'}</label>
-                                <input type="text" list="allKeycodesList" placeholder="K_ESC, LC(K_C), MO(1), do_custom..." value="${chord.action || ''}" oninput="configState.customChords[${cIdx}].action = this.value" style="flex: 1; padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
+                                <input type="text" list="allKeycodesList" placeholder="K_ESC, LC(K_C), MO(1), do_custom..." value="${chord.action || ''}" onchange="const resolved = resolveKeycodeFromSearch(this.value); if (resolved) { this.value = resolved; } configState.customChords[${cIdx}].action = this.value;" oninput="const resolved = resolveKeycodeFromSearch(this.value); if (resolved && (SYMBOL_KEY_MAP[this.value.trim()] || KEY_SEARCH_ALIASES[this.value.trim().toUpperCase()])) { this.value = resolved; } configState.customChords[${cIdx}].action = this.value;" style="flex: 1; padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px;">
@@ -3489,7 +2664,7 @@
         function addChordKey(cIdx) {
             const chord = configState.customChords[cIdx];
             const list = parseChordKeys(chord);
-            list.push({ r: 0, c: 0, coordStr: '0, 0' });
+            list.push({ r: 0, c: 0, coordStr: '' });
             chord.keyList = list;
             renderChordsUI();
         }
@@ -3526,19 +2701,51 @@
                 
                 const seen = new Set();
                 const addOpt = (val, label) => {
-                    if (!seen.has(val)) {
-                        seen.add(val);
-                        const opt = document.createElement('option');
-                        opt.value = val;
-                        opt.label = label || val;
-                        dl.appendChild(opt);
+                    if (!val || seen.has(val)) return;
+                    seen.add(val);
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    if (label && label !== val) {
+                        opt.label = label;
                     }
+                    dl.appendChild(opt);
                 };
 
                 // Add basic & common keys
-                ALL_PALETTE_CODES.BASIC.forEach(k => addOpt(k));
+                ALL_PALETTE_CODES.BASIC.forEach(k => {
+                    const disp = (window.DISPLAY_MAP && window.DISPLAY_MAP[k]) ? window.DISPLAY_MAP[k] : '';
+                    const aliases = KEY_SEARCH_ALIASES[k] ? KEY_SEARCH_ALIASES[k].slice(0, 2).join(', ') : '';
+                    const labelDesc = [disp, aliases].filter(Boolean).join(' - ');
+                    addOpt(k, labelDesc || k);
+                });
                 ALL_PALETTE_CODES.MODS.forEach(k => { if (!k.includes('...')) addOpt(k); });
                 ALL_PALETTE_CODES.MEDIA.forEach(k => addOpt(k));
+
+                // Add shifted symbol keycodes directly
+                const shiftedSymbols = [
+                    { sym: '>', kc: 'LS(K_DOT)' },
+                    { sym: '<', kc: 'LS(K_COMM)' },
+                    { sym: '+', kc: 'LS(K_EQL)' },
+                    { sym: '_', kc: 'LS(K_MINS)' },
+                    { sym: '&', kc: 'LS(K_7)' },
+                    { sym: '#', kc: 'LS(K_3)' },
+                    { sym: '@', kc: 'LS(K_2)' },
+                    { sym: '!', kc: 'LS(K_1)' },
+                    { sym: '$', kc: 'LS(K_4)' },
+                    { sym: '%', kc: 'LS(K_5)' },
+                    { sym: '^', kc: 'LS(K_6)' },
+                    { sym: '*', kc: 'LS(K_8)' },
+                    { sym: '(', kc: 'LS(K_9)' },
+                    { sym: ')', kc: 'LS(K_0)' },
+                    { sym: '{', kc: 'LS(K_LBRC)' },
+                    { sym: '}', kc: 'LS(K_RBRC)' },
+                    { sym: '|', kc: 'LS(K_BSLS)' },
+                    { sym: ':', kc: 'LS(K_SCLN)' },
+                    { sym: '"', kc: 'LS(K_QUOT)' },
+                    { sym: '?', kc: 'LS(K_SLSH)' },
+                    { sym: '~', kc: 'LS(K_GRV)' }
+                ];
+                shiftedSymbols.forEach(s => addOpt(s.kc, `${s.sym} (${s.kc})`));
 
                 // Add modifier combinations & One-Shot modifiers
                 ["LC(K_C)", "LC(K_V)", "LC(K_Z)", "LC(K_A)", "LC(K_X)", "LS(K_A)", "LA(K_TAB)", "LG(K_SPC)", "LG(LS(K_S))", "HYPER(K_A)", "MEH(K_A)", "OS_SHIFT", "OS_CTRL", "OS_ALT", "OS_GUI", "OS_HYPER"].forEach(k => addOpt(k));
@@ -3558,14 +2765,6 @@
                         addOpt(`M(${i})`, m.name || `Макрос ${i}`);
                     });
                 }
-
-                // Add search aliases
-                Object.keys(KEY_SEARCH_ALIASES).forEach(kc => {
-                    addOpt(kc, KEY_SEARCH_ALIASES[kc].slice(0, 3).join(', '));
-                    KEY_SEARCH_ALIASES[kc].forEach(alias => {
-                        addOpt(alias, kc);
-                    });
-                });
 
                 document.body.appendChild(dl);
             }
@@ -3626,7 +2825,8 @@
                             sIdx,
                             `onLayerMacroStepActionChange('${l}', ${sIdx}, this.value)`,
                             `onLayerMacroStepKeyChange('${l}', ${sIdx}, this.value)`,
-                            `removeLayerMacroStep('${l}', ${sIdx})`
+                            `removeLayerMacroStep('${l}', ${sIdx})`,
+                            `const res = resolveKeycodeFromSearch(this.value); if (res) { this.value = res; onLayerMacroStepKeyChange('${l}', ${sIdx}, res); }`
                         );
                     });
                 }
@@ -3666,7 +2866,7 @@
                 if (actionType === 'DELAY') {
                     steps[sIdx].delay = steps[sIdx].delay || 100;
                 } else {
-                    steps[sIdx].key = steps[sIdx].key || 'K_A';
+                    steps[sIdx].key = steps[sIdx].key || '';
                 }
             }
             renderLayerHotkeysUI();
@@ -3675,7 +2875,8 @@
         function onLayerMacroStepKeyChange(layerName, sIdx, keyVal) {
             const steps = parseLayerMacroSteps(layerName);
             if (steps[sIdx]) {
-                steps[sIdx].key = resolveKeycodeFromSearch(keyVal);
+                const resolved = resolveKeycodeFromSearch(keyVal);
+                steps[sIdx].key = resolved || keyVal;
             }
         }
 
@@ -3688,7 +2889,7 @@
 
         function addLayerMacroStep(layerName) {
             const steps = parseLayerMacroSteps(layerName);
-            steps.push({ type: 'TAP', key: 'K_A' });
+            steps.push({ type: 'TAP', key: '' });
             renderLayerHotkeysUI();
         }
 
@@ -3882,399 +3083,6 @@ visualElements.push({
             canvas.appendChild(frag);
             container.appendChild(canvas);
         }
-
-        const ICONS = {
-            theme: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`,
-            globe: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
-            editor: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
-            code: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
-            copy: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
-            download: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
-            plus: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
-            trash: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
-            check: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
-            arrowRight: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
-            arrowLeft: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
-            edit: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-            undo: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>`,
-            redo: `<svg class="icon icon-stroke" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>`
-        };
-
-        let currentLanguage = 'ru';
-        const I18N = {
-            ru: {
-                themeLight: 'Светлая',
-                themeDark: 'Тёмная',
-                langToggle: 'RU',
-                btnImportConfig: 'Импорт config.h',
-                btnImportVial: 'Импорт vial.json',
-                step1: 'Архитектура',
-                step2: 'Матрица & Пины',
-                step3: 'Экстра',
-                step4: 'Матрица',
-                step5: 'Vial & Раскладка',
-                step6: 'Экспорт',
-                btnUndo: 'Отмена',
-                btnRedo: 'Повтор',
-                
-                // Step 1
-                s1Title: 'Основные параметры и Архитектура',
-                s1Desc: 'Выберите форм-фактор и микроконтроллер.',
-                kbNameLabel: 'Название клавиатуры:',
-                kbNamePlaceholder: 'Например: Corne, Sweep, Dactyl...',
-                mcuLabel: 'Основной микроконтроллер (MCU):',
-                mcuRp2040Title: 'Raspberry Pi RP2040 / RP2350',
-                mcuMilandrTitle: 'Миландр K1986BE92FI',
-                mcuNrfTitle: 'Nordic nRF52840',
-                mcuBaikalTitle: 'Байкал BE-U1000',
-                mcuAllTitle: 'Универсальный Multi-MCU',
-                formFactorLabel: 'Форм-фактор клавиатуры:',
-                ffSingleTitle: 'Стандартная',
-                ffSingleDesc: 'Единый корпус, один микроконтроллер, прямое сканирование матрицы.',
-                ffSplitTitle: 'Раздельная',
-                ffSplitDesc: 'две половинки, два микроконтроллера соедененных кабелем',
-                masterSideLabel: 'Сторона подключения USB (Master):',
-                masterLeft: 'Левая половина (LEFT)',
-                masterRight: 'Правая половина (RIGHT)',
-                masterAuto: 'Автоопределение (VBUS Sense)',
-                splitModeLabel: 'Режим связи между половинами:',
-                uartBitbang: 'Bit-Bang UART (1 GPIO, универсально)',
-                uartHardware: 'Hardware / PIO UART (Аппаратный)',
-                serialPinLabel: 'Пин связи:',
-                serialPinHint: 'Например: GPIO1 (RP2040), PA0 (Milandr), P0_00 (nRF52840)',
-                presetsLabel: 'Быстрый пресет раскладки (по желанию):',
-                presetCorne: 'Corne (42 клавиши, сплит)',
-                presetKabarga: 'Kabarga (42 клавиши, моноблок)',
-                presetSweep: 'Sweep / Ferris (34 клавиши, сплит)',
-                presetNizkoteno: 'Nizkoteno (10 кнопок, Direct)',
-                presetPlanck: 'Planck 4x12 (48 кнопок, моноблок)',
-                btnNextPins: 'Далее: Матрица и пины',
-
-                // Step 2
-                s2Title: 'Матрица и пины',
-                s2Desc: 'Укажите, как кнопки физически подключены к портам микроконтроллера.',
-                matrixTypeLabel: 'Тип матрицы переключателей:',
-                mCol2RowTitle: 'COL2ROW (Диоды на строках)',
-                mCol2RowDesc: '',
-                mRow2ColTitle: 'ROW2COL (Диоды на колонках)',
-                mRow2ColDesc: '',
-                mDirectTitle: 'DIRECT (Прямое подключение)',
-                mDirectDesc: '',
-                rowPinsLabel: 'Пины строк через запятую:',
-                rowPinsHint: '',
-                colPinsLabel: 'Пины колонок через запятую:',
-                colPinsHint: 'Для сплит-клавиатур указываются пины на одну половину.',
-                directPinsLabel: 'Пины кнопок через запятую:',
-                directPinsHint: 'Каждый пин соответствует одной клавише в порядке следования.',
-                debounceLabel: 'Антидребезг (мс):',
-                polarityLabel: 'Полярность матрицы:',
-                polarityNormal: 'Прямая (Active High)',
-                polarityActiveLow: 'Инверсная (Active Low)',
-                btnBack: 'Назад',
-                btnNextGrid: 'Далее: Матрица',
-
-                // Step 3 (Extras)
-                s3Title: 'Экстра',
-                s3Desc: 'Дополнительные аппаратные возможности и протокол графического конфигуратора.',
-                rgbLabel: 'RGB Подсветка (WS2812)',
-                rgbNumLabel: 'Количество светодиодов:',
-                rgbPinLabel: 'Пин данных подсветки (RGB_PIN):',
-                rgbPinHint: '',
-                subsystemsLabel: 'Подсистемы:',
-                subsystemsDesc: '(включение/отключение фич и вкладок кейкодов)',
-                subsystemsConfigTitle: 'Модульные подсистемы прошивки',
-                subsystemsConfigDesc: 'Отключение неиспользуемых драйверов экономит память микроконтроллера (Flash/RAM) и исключает лишние USB HID дескрипторы.',
-                featMouse: 'Мышь (Mouse)',
-                featGamepad: 'Геймпад (Gamepad)',
-                featMidi: 'MIDI',
-                featLed: 'Индикаторы LED (Lock / Layer)',
-                vialLabel: 'Поддержка Vial GUI',
-                vialNameLabel: 'Имя клавиатуры в Vial:',
-                vialVidLabel: 'USB Vendor ID:',
-                vialPidLabel: 'USB Product ID:',
-                btnNextGrid: 'Далее: Матрица',
-
-                // Step 4 (Matrix)
-                s4Title: 'Матрица',
-                s4Desc: 'Нажмите на ячейки сетки, чтобы активировать или выключить клавиши в электрической матрице LAYOUT.',
-                activeKeysLabel: 'Активно клавиш:',
-                btnSelectAll: 'Включить все',
-                btnClearAll: 'Очистить все',
-                matrixHint: 'Кликните на ячейку, чтобы добавить или убрать кнопку из прошивки.',
-                btnNextLayout: 'Далее: Vial & Раскладка',
-
-                // Step 5 (Vial & Layout)
-                s5Title: 'Vial & Раскладка',
-                s5Desc: 'Настройте слои клавиш и визуальное отображение.',
-                layersLabel: 'Слои раскладки:',
-                btnAddLayer: 'Добавить',
-                btnDupLayer: 'Дублировать',
-                btnClearLayer: 'Очистить',
-                btnRenameLayer: 'Переименовать',
-                btnRemoveLayer: 'Удалить',
-                currentLayerPrefix: 'Текущий слой:',
-                currentLayerHint: 'Кликните по кнопке, чтобы назначить ей кейкод из палитры ниже.',
-                inspectorTitle: 'Параметры выбранной клавиши:',
-                inspectorKeyPrompt: '[Кликните по клавише]',
-                inspectorDesc: 'Настройка физического размера и положения',
-                keyWidthLabel: 'Ширина клавиши:',
-                keyHeightLabel: 'Высота клавиши:',
-                keyXLabel: 'Смещение X:',
-                keyYLabel: 'Смещение Y:',
-                paletteTitle: 'Палитра кейкодов:',
-                paletteSearch: 'Поиск',
-                tabPalAll: 'Все',
-                tabPalBasic: 'Основные',
-                tabPalMods: 'Модификаторы',
-                tabPalMouse: 'Мышь',
-                tabPalGamepad: 'Геймпад',
-                tabPalMidi: 'MIDI',
-                tabPalMedia: 'Медиа',
-                tabPalLayers: 'Слои',
-                layerEncodersTitle: 'Действия энкодеров для текущего слоя:',
-                layerEncodersDesc: 'Поворот по/против часовой стрелки настраивается отдельно для каждого слоя',
-                encInspectorPrefix: 'Энкодер',
-                encDirCcw: 'Влево',
-                encDirCw: 'Вправо',
-                btnNextLighting: 'Далее: Экстра',
-                btnCancel: 'Отмена',
-                btnApply: 'Применить',
-                customMacrosLabel: 'Макросы',
-                customMacrosDesc: 'Создавайте последовательности нажатий клавиш и задержек, назначаемые на кнопки через M(0), M(1)...',
-                chordsLabel: 'Аккорды',
-                chordsDesc: 'Одновременное зажатие 2–4 клавиш для отправки сочетания или вызова функции (например: JK = Esc, SD = Ctrl+C).',
-                btnGenerateFiles: 'Сгенерировать config.h & vial.json',
-
-                // Dynamic & Prompts (RU)
-                promptNewLayer: 'Введите имя нового слоя (например: NUMPAD, NAV, RU):',
-                promptRenameLayer: 'Введите новое имя для слоя:',
-                promptTargetLayer: 'Целевой слой:',
-                promptTargetKey: 'Клавиша:',
-                alertLayerExists: 'Слой с таким именем уже существует!',
-                alertCannotDeleteBase: 'Нельзя удалить единственный оставшийся слой!',
-                alertSelectKeyFirst: 'Сначала нажмите на кнопку в раскладке выше!',
-                macroNone: 'Нет макроса',
-                macroShiftAlt: 'Переключение языка (Shift + Alt)',
-                macroWinSpc: 'Переключение раскладки (Win + Space)',
-                macroCtrlSft: 'Переключение языка (Ctrl + Shift)',
-                macroCustom: 'Пользовательский макрос...',
-                macroPlaceholder: 'Введите или выберите: K_LSHIFT, K_LALT...',
-                encPinA: 'Энкодер',
-                encPinB: 'Энкодер',
-                encPinALabel: 'Пин A',
-                encPinBLabel: 'Пин B',
-                encCcw: 'Вращение влево:',
-                encCw: 'Вращение вправо:',
-                keySelectedPrefix: 'Кнопка #',
-                keyMatrixCoord: 'Матрица',
-                encodersLabel: 'Вращающиеся энкодеры',
-                encodersDesc: '',
-                encResLabel: 'Разрешение энкодера:',
-                encRes4: '4 (Стандартные энкодеры EC11)',
-                encRes2: '2 импульса на щелчок',
-                encRes1: '1 импульс на щелчок',
-                encCountLabel: 'Количество активных энкодеров:',
-                encCount1: '1 энкодер',
-                encCount2: '2 энкодера',
-                encCount3: '3 энкодера',
-                encCount4: '4 энкодера',
-
-                // Step 6
-                s6Title: 'Экспорт',
-                s6Desc: 'Скопируйте или скачайте сгенерированные файлы в папку вашей клавиатуры.',
-                copyConfig: 'Копировать config.h',
-                downloadConfig: 'Скачать config.h',
-                copyVial: 'Копировать vial.json',
-                downloadVial: 'Download vial.json',
-                btnBackSettings: 'Вернуться к настройкам'
-            },
-            en: {
-                themeLight: 'Light',
-                themeDark: 'Dark',
-                langToggle: 'EN',
-                btnImportConfig: 'Import config.h',
-                btnImportVial: 'Import vial.json',
-                step1: 'Architecture',
-                step2: 'Matrix & Pins',
-                step3: 'Extras',
-                step4: 'Matrix',
-                step5: 'Vial & Layout',
-                step6: 'Export',
-                btnUndo: 'Undo',
-                btnRedo: 'Redo',
-
-                // Step 1
-                s1Title: 'General Settings & Architecture',
-                s1Desc: 'Select form factor and microcontroller.',
-                kbNameLabel: 'Keyboard Name:',
-                kbNamePlaceholder: 'e.g. Corne, Sweep, Dactyl...',
-                mcuLabel: 'Target Microcontroller (MCU):',
-                mcuRp2040Title: 'Raspberry Pi RP2040 / RP2350',
-                mcuMilandrTitle: 'Milandr K1986BE92FI',
-                mcuNrfTitle: 'Nordic nRF52840',
-                mcuBaikalTitle: 'Baikal BE-U1000',
-                mcuAllTitle: 'Universal Multi-MCU',
-                formFactorLabel: 'Keyboard Form Factor:',
-                ffSingleTitle: 'Standard',
-                ffSingleDesc: 'Single enclosure, single MCU, direct matrix scanning.',
-                ffSplitTitle: 'Split',
-                ffSplitDesc: 'Two halves, two microcontrollers connected by cable',
-                masterSideLabel: 'USB Host Connection Side (Master):',
-                masterLeft: 'Left Half (LEFT)',
-                masterRight: 'Right Half (RIGHT)',
-                masterAuto: 'Auto-detection (VBUS Sense)',
-                splitModeLabel: 'Inter-half Communication Mode:',
-                uartBitbang: 'Bit-Bang UART (1 GPIO, Universal)',
-                uartHardware: 'Hardware / PIO UART',
-                serialPinLabel: 'Serial Link Pin:',
-                serialPinHint: 'e.g.: GPIO0 (RP2040), PF1/PF0 (Milandr), P0_00 (nRF52840), PC6 (Baikal)',
-                presetsLabel: 'Quick Layout Preset (Optional):',
-                presetCorne: 'Corne (42 keys, split)',
-                presetKabarga: 'Kabarga (42 keys, unibody)',
-                presetSweep: 'Sweep / Ferris (34 keys, split)',
-                presetNizkoteno: 'Nizkoteno (10 keys, Direct)',
-                presetPlanck: 'Planck 4x12 (48 keys, unibody)',
-                btnNextPins: 'Next: Matrix & Pins',
-
-                // Step 2
-                s2Title: 'Matrix & Pins',
-                s2Desc: 'Specify how keys are electrically connected to microcontroller ports.',
-                matrixTypeLabel: 'Switch Matrix Type:',
-                mCol2RowTitle: 'COL2ROW (Diodes on Rows)',
-                mCol2RowDesc: '',
-                mRow2ColTitle: 'ROW2COL (Diodes on Columns)',
-                mRow2ColDesc: '',
-                mDirectTitle: 'DIRECT (Direct Pin Connection)',
-                mDirectDesc: '',
-                rowPinsLabel: 'Row Pins comma-separated:',
-                rowPinsHint: '',
-                colPinsLabel: 'Column Pins comma-separated:',
-                colPinsHint: 'For split keyboards specify pins per single half.',
-                directPinsLabel: 'Direct Switch Pins comma-separated:',
-                directPinsHint: 'Each pin maps directly to one key switch in sequence.',
-                debounceLabel: 'Debounce (ms):',
-                polarityLabel: 'Matrix Polarity:',
-                polarityNormal: 'Normal (Active High)',
-                polarityActiveLow: 'Reverse (Active Low)',
-                btnBack: 'Back',
-                btnNextGrid: 'Next: Matrix',
-
-                // Step 3 (Extras)
-                s3Title: 'Extras',
-                s3Desc: 'Configure hardware addons and GUI configurator protocol settings.',
-                rgbLabel: 'RGB Backlight (WS2812 / NeoPixel)',
-                rgbNumLabel: 'Number of LEDs:',
-                rgbPinLabel: 'LED Data Pin (RGB_PIN):',
-                rgbPinHint: '',
-                subsystemsLabel: 'Subsystems:',
-                subsystemsDesc: '(toggle features and keycode tabs)',
-                subsystemsConfigTitle: 'Modular Firmware Subsystems',
-                subsystemsConfigDesc: 'Disabling unused drivers saves MCU Flash/RAM and strips redundant USB HID descriptors.',
-                featMouse: 'Mouse Keys',
-                featGamepad: 'Gamepad',
-                featMidi: 'MIDI Device',
-                featLed: 'Status LEDs (Lock / Layer)',
-                vialLabel: 'Vial / VIA GUI Support (In-browser config)',
-                vialNameLabel: 'Keyboard Name in Vial:',
-                vialVidLabel: 'USB Vendor ID:',
-                vialPidLabel: 'USB Product ID:',
-                btnNextGrid: 'Next: Matrix',
-
-                // Step 4 (Matrix)
-                s4Title: 'Matrix',
-                s4Desc: 'Click matrix cells to toggle active keys in the electrical LAYOUT matrix.',
-                activeKeysLabel: 'Active Keys:',
-                btnSelectAll: 'Select All',
-                btnClearAll: 'Clear All',
-                matrixHint: 'Click on a cell to add or remove switch from firmware.',
-                btnNextLayout: 'Next: Vial & Layout',
-
-                // Step 5 (Vial & Layout)
-                s5Title: 'Vial & Layout',
-                s5Desc: 'Configure layers and visual layout in Vial GUI.',
-                layersLabel: 'Keymap Layers:',
-                btnAddLayer: 'Add Layer',
-                btnDupLayer: 'Duplicate',
-                btnClearLayer: 'Clear',
-                btnRenameLayer: 'Rename',
-                btnRemoveLayer: 'Delete',
-                currentLayerPrefix: 'Current Layer:',
-                currentLayerHint: 'Click on a key to assign a keycode from the palette below.',
-                inspectorTitle: 'Selected Key Properties:',
-                inspectorKeyPrompt: '[Click a key]',
-                inspectorDesc: 'Adjust physical dimension and position',
-                keyWidthLabel: 'Key Width:',
-                keyHeightLabel: 'Key Height:',
-                keyXLabel: 'Offset X:',
-                keyYLabel: 'Offset Y:',
-                paletteTitle: 'Keycode Palette:',
-                paletteSearch: 'Search',
-                tabPalAll: 'All',
-                tabPalBasic: 'Basic',
-                tabPalMods: 'Modifiers',
-                tabPalMouse: 'Mouse',
-                tabPalGamepad: 'Gamepad',
-                tabPalMidi: 'MIDI',
-                tabPalMedia: 'Media',
-                tabPalLayers: 'Layers',
-                layerEncodersTitle: 'Rotary Encoder Actions for Current Layer:',
-                layerEncodersDesc: 'CW / CCW rotation actions configured per layer and supported in Vial GUI',
-                encInspectorPrefix: 'Encoder',
-                encDirCcw: 'Left / CCW',
-                encDirCw: 'Right / CW',
-                btnNextLighting: 'Next: Extras',
-                btnCancel: 'Cancel',
-                btnApply: 'Apply',
-                customMacrosLabel: 'Macros',
-                customMacrosDesc: 'Build sequences of key presses and delays assignable to any key via M(0), M(1)...',
-                chordsLabel: 'Chords',
-                chordsDesc: 'Press 2–4 keys simultaneously to trigger custom actions (e.g. JK = Esc, or SD = Ctrl+C).',
-                btnGenerateFiles: 'Generate config.h & vial.json',
-
-                // Dynamic & Prompts (EN)
-                promptNewLayer: 'Enter new layer name (e.g. NUMPAD, NAV, MEDIA, RU):',
-                promptRenameLayer: 'Enter new layer name:',
-                promptTargetLayer: 'Select target layer:',
-                promptTargetKey: 'Select key:',
-                alertLayerExists: 'A layer with this name already exists!',
-                alertCannotDeleteBase: 'Cannot delete the only remaining layer!',
-                alertSelectKeyFirst: 'Click a key in the visual keymap above first!',
-                macroNone: 'None',
-                macroShiftAlt: 'OS Language Switch (Shift + Alt)',
-                macroWinSpc: 'OS Layout Switch (Win + Space)',
-                macroCtrlSft: 'OS Language Switch (Ctrl + Shift)',
-                macroCustom: 'Custom Macro...',
-                macroPlaceholder: 'Enter keycodes: K_LSHIFT, K_LALT...',
-                encPinA: 'Encoder',
-                encPinB: 'Encoder',
-                encPinALabel: 'Pin A',
-                encPinBLabel: 'Pin B',
-                encCcw: 'Counter-Clockwise (CCW):',
-                encCw: 'Clockwise (CW):',
-                keySelectedPrefix: 'Key #',
-                keyMatrixCoord: 'Matrix',
-                encodersLabel: 'Rotary Encoders',
-                encodersDesc: '',
-                encResLabel: 'Encoder Resolution (ENCODER_RESOLUTION):',
-                encRes4: '4 (Standard EC11 encoders with 4 ticks per detent)',
-                encRes2: '2 (Popular 2 pulses per detent)',
-                encRes1: '1 (1 pulse per detent)',
-                encCountLabel: 'Active Encoders Count:',
-                encCount1: '1 Encoder',
-                encCount2: '2 Encoders',
-                encCount3: '3 Encoders',
-                encCount4: '4 Encoders',
-
-                // Step 6
-                s6Title: 'Export',
-                s6Desc: 'Copy or download generated files to your keyboard folder.',
-                copyConfig: 'Copy config.h',
-                downloadConfig: 'Download config.h',
-                copyVial: 'Copy vial.json',
-                downloadVial: 'Download vial.json',
-                btnBackSettings: 'Return to Settings'
-            }
-        };
 
         function toggleTheme() {
             document.body.classList.toggle('light-theme');
@@ -4991,9 +3799,13 @@ visualElements.push({
             }
 
             const query = rawQuery.toUpperCase();
+            const symbolResolved = (typeof SYMBOL_KEY_MAP !== 'undefined' && SYMBOL_KEY_MAP[rawQuery]) ? SYMBOL_KEY_MAP[rawQuery] : null;
 
             const filtered = codes.filter(code => {
                 if (!query) return true;
+
+                // 0. Smart symbol map match (e.g. searching ">", "<", "+", "&", "#", "-", "=")
+                if (symbolResolved && (code === symbolResolved || symbolResolved.includes(code))) return true;
                 
                 // 1. Direct code check (e.g. K_BSPC, K_ENT, K_1, LS(...))
                 if (code.toUpperCase().includes(query)) return true;
@@ -5258,521 +4070,6 @@ visualElements.push({
             }
         }
 
-        function generateVialJson() {
-            const kbName = document.getElementById('kbName').value || "DMK Keyboard";
-            const vialVid = document.getElementById('vialVid').value || "0xCAFE";
-            const vialPid = document.getElementById('vialPid').value || "0x4001";
-            const { totalRows, totalCols } = getParsedPins();
-            const enableEnc = document.getElementById('enableEncoders')?.checked;
-            const encCount = parseInt(document.getElementById('encCount')?.value, 10) || 0;
-            const enableRgb = document.getElementById('enableRgb')?.checked;
-
-            const matrixMap = [];
-
-            // Add encoders row at the top if enabled
-            if (enableEnc && encCount > 0) {
-                const encRow = [];
-                for (let e = 0; e < encCount; e++) {
-                    const eGeom = (configState.encoderGeometry && configState.encoderGeometry[e]) ? configState.encoderGeometry[e] : { x: 0, y: 0 };
-                    const props = {};
-                    if (eGeom.x !== 0) props.x = eGeom.x;
-                    if (eGeom.y !== 0) props.y = eGeom.y;
-                    if (Object.keys(props).length > 0) {
-                        encRow.push(props);
-                    }
-                    encRow.push(`${e},0\n\n\n\n\ne`);
-                    encRow.push(`${e},1\n\n\n\n\ne`);
-                }
-                matrixMap.push(encRow);
-            }
-
-            // Collect all active keys with their absolute visual coordinates
-            const allKeys = [];
-            let keySeqIndex = 0;
-            for (let r = 0; r < totalRows; r++) {
-                for (let c = 0; c < totalCols; c++) {
-                    if (configState.activeKeys[r] && configState.activeKeys[r][c]) {
-                        const geom = (configState.keyGeometry && configState.keyGeometry[keySeqIndex]) ? configState.keyGeometry[keySeqIndex] : { w: 1, h: 1, x: 0, y: 0 };
-                        const vX = Math.round((c + (geom.x || 0)) * 1000) / 1000;
-                        const vY = Math.round((r + (geom.y || 0)) * 1000) / 1000;
-                        allKeys.push({
-                            r, c,
-                            w: geom.w || 1,
-                            h: geom.h || 1,
-                            vX, vY
-                        });
-                        keySeqIndex++;
-                    }
-                }
-            }
-
-            // Group keys into visual rows by vY (KLE standard)
-            const yValues = [...new Set(allKeys.map(k => k.vY))].sort((a, b) => a - b);
-            let currentKLE_Y = 0;
-
-            yValues.forEach((yVal, rowIdx) => {
-                const rowArr = [];
-                const keysInRow = allKeys.filter(k => k.vY === yVal).sort((a, b) => a.vX - b.vX);
-
-                const defaultY = (rowIdx === 0) ? 0 : (currentKLE_Y + 1);
-                const deltaY = Math.round((yVal - defaultY) * 1000) / 1000;
-
-                let currentKLE_X = 0;
-
-                keysInRow.forEach((k, kIdx) => {
-                    const props = {};
-                    if (kIdx === 0 && deltaY !== 0) {
-                        props.y = deltaY;
-                    }
-
-                    const deltaX = Math.round((k.vX - currentKLE_X) * 1000) / 1000;
-                    if (deltaX !== 0) {
-                        props.x = deltaX;
-                    }
-
-                    if (k.w > 1) props.w = k.w;
-                    if (k.h > 1) props.h = k.h;
-
-                    if (Object.keys(props).length > 0) {
-                        rowArr.push(props);
-                    }
-                    rowArr.push(`${k.r},${k.c}`);
-
-                    currentKLE_X = k.vX + k.w;
-                });
-
-                currentKLE_Y = yVal;
-                matrixMap.push(rowArr);
-            });
-
-            const vialObj = {
-                "name": kbName,
-                "vendorId": vialVid,
-                "productId": vialPid,
-                ...(enableRgb ? { "lighting": "qmk_rgblight" } : {}),
-                "matrix": {
-                    "rows": totalRows,
-                    "cols": totalCols
-                },
-                ...(enableEnc && encCount > 0 ? { "features": { "encoder": true } } : {}),
-                "layouts": {
-                    "keymap": matrixMap
-                }
-            };
-
-            document.getElementById('vialJsonOutput').textContent = JSON.stringify(vialObj, null, 2);
-        }
-
-        function generateConfigCode() {
-            const kbName = document.getElementById('kbName').value || "DMK Custom";
-            const isSplit = configState.isSplit;
-            const masterSide = document.getElementById('masterSide').value;
-            const matrixType = configState.matrixType;
-            const { rows, cols, totalCols, totalRows } = getParsedPins();
-            const debounce = document.getElementById('debounceMs').value || 10;
-            const polarity = document.getElementById('matrixPolarity').value;
-
-            const enableRgb = document.getElementById('enableRgb').checked;
-            const rgbCount = document.getElementById('rgbCount').value || 0;
-            const rgbPin = document.getElementById('rgbPin').value || "GPIO0";
-
-            const enableEnc = document.getElementById('enableEncoders').checked;
-            const encCount = parseInt(document.getElementById('encCount').value, 10) || 0;
-            const encResolution = document.getElementById('encResolution').value || 2;
-            const encA = [];
-            const encB = [];
-            const encKeymapEntries = [];
-
-            if (enableEnc) {
-                for (let i = 0; i < encCount; i++) {
-                    const pA = document.getElementById(`enc_${i}_pinA`)?.value?.trim() || `GPIO${2+i*2}`;
-                    const pB = document.getElementById(`enc_${i}_pinB`)?.value?.trim() || `GPIO${3+i*2}`;
-                    encA.push(pA);
-                    encB.push(pB);
-                }
-            }
-
-            const enableVial = document.getElementById('enableVial').checked;
-            const vialName = document.getElementById('vialName').value || kbName;
-            const vialVid = document.getElementById('vialVid').value || "0xCAFE";
-            const vialPid = document.getElementById('vialPid').value || "0x4001";
-
-            // Count Active Keys & Build Layout Array
-            const layoutPairs = [];
-            for (let r = 0; r < totalRows; r++) {
-                for (let c = 0; c < totalCols; c++) {
-                    if (configState.activeKeys[r] && configState.activeKeys[r][c]) {
-                        layoutPairs.push(`{${r}, ${c}}`);
-                    }
-                }
-            }
-            const numKeys = layoutPairs.length;
-
-            let out = `#ifndef CONFIG_H\n#define CONFIG_H\n\n`;
-
-            if (configState.mcu && configState.mcu !== 'all') {
-                out += `// Default target microcontroller for DMK build system\n`;
-                out += `#define DEFAULT_MCU ${configState.mcu}\n\n`;
-            }
-
-            // Modular Subsystem Disables
-            const featureDisables = [];
-            if (configState.enableMouse === false) featureDisables.push('#define NO_MOUSE');
-            if (configState.enableGamepad === false) featureDisables.push('#define NO_GAMEPAD');
-            if (configState.enableMidi === false) featureDisables.push('#define NO_MIDI');
-            if (configState.enableLed === false) featureDisables.push('#define NO_LED');
-            if (!enableRgb) featureDisables.push('#define NO_RGB');
-
-            if (featureDisables.length > 0) {
-                out += `/* --- Modular Subsystem Options --- */\n`;
-                out += featureDisables.join('\n') + `\n\n`;
-            }
-
-            if (enableVial) {
-                out += `// === Vial / VIA GUI Configuration ===\n`;
-                out += `#ifndef VIAL\n`;
-                out += `#define VIAL\n`;
-                out += `#endif\n`;
-                out += `#define VIAL_KEYBOARD_NAME "${vialName}"\n`;
-                out += `#define VIAL_VENDOR_ID ${vialVid}\n`;
-                out += `#define VIAL_PRODUCT_ID ${vialPid}\n\n`;
-            }
-
-            out += `#include "pin_defs.h"\n\n`;
-
-            // Split settings
-            if (isSplit) {
-                out += `/* --- Split Keyboard Settings --- */\n`;
-                out += `#define MASTER_SIDE ${masterSide}\n`;
-                if (configState.mcu === 'all') {
-                    out += `// Communication modes per platform (HW Half-Duplex, Full-Duplex UART, Soft Bit-Bang)\n`;
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${MCU_DEFAULTS.rp2040.splitTx || 'GPIO0'}\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${MCU_DEFAULTS.milandr.splitTx || 'PF1'}\n`;
-                    out += `    #define SPLIT_RX_PIN          ${MCU_DEFAULTS.milandr.splitRx || 'PF0'}\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${MCU_DEFAULTS.nrf52840.splitTx || 'P0_00'}\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${MCU_DEFAULTS.baikal.splitTx || 'PC6'}\n`;
-                    out += `#endif\n\n`;
-                } else if (configState.mcu === 'milandr') {
-                    out += `#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
-                    out += `#define SPLIT_TX_PIN PF1\n`;
-                    out += `#define SPLIT_RX_PIN PF0\n\n`;
-                } else {
-                    out += `#define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `#define SPLIT_TX_PIN ${document.getElementById('serialPinRP').value || 'GPIO0'}\n\n`;
-                }
-            }
-
-            // Matrix Settings
-            out += `/* --- Matrix Settings --- */\n`;
-            out += `#define MATRIX_TYPE ${matrixType}\n`;
-            if (polarity === 'ACTIVE_LOW') {
-                out += `#define MATRIX_ACTIVE_LOW\n`;
-            }
-            out += `#define DEBOUNCE ${debounce}\n\n`;
-
-            if (matrixType === 'DIRECT') {
-                out += `// Direct connection pins\n`;
-                if (configState.mcu === 'all') {
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define DIRECT_PINS { ${MCU_DEFAULTS.rp2040.direct.join(', ')} }\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define DIRECT_PINS { ${MCU_DEFAULTS.milandr.direct.join(', ')} }\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define DIRECT_PINS { ${MCU_DEFAULTS.nrf52840.direct.join(', ')} }\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define DIRECT_PINS { ${MCU_DEFAULTS.baikal.direct.join(', ')} }\n`;
-                    out += `#endif\n\n`;
-                } else {
-                    out += `#define DIRECT_PINS { ${document.getElementById('directPins').value} }\n\n`;
-                }
-            } else {
-                out += `// Row and column pins\n`;
-                if (configState.mcu === 'all') {
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define ROW_PINS { ${MCU_DEFAULTS.rp2040.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${MCU_DEFAULTS.rp2040.cols.join(', ')} }\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define ROW_PINS { ${MCU_DEFAULTS.milandr.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${MCU_DEFAULTS.milandr.cols.join(', ')} }\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define ROW_PINS { ${MCU_DEFAULTS.nrf52840.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${MCU_DEFAULTS.nrf52840.cols.join(', ')} }\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define ROW_PINS { ${MCU_DEFAULTS.baikal.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${MCU_DEFAULTS.baikal.cols.join(', ')} }\n`;
-                    out += `#endif\n\n`;
-                } else {
-                    out += `#define ROW_PINS { ${rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${cols.join(', ')} }\n\n`;
-                }
-            }
-
-            // RGB
-            if (enableRgb && rgbCount > 0) {
-                out += `/* --- RGB Backlight --- */\n`;
-                out += `#define RGB_NUM ${rgbCount}\n`;
-                if (configState.mcu === 'all') {
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define RGB_PIN ${MCU_DEFAULTS.rp2040.rgb || 'GPIO0'}\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define RGB_PIN ${MCU_DEFAULTS.milandr.rgb || 'PC0'}\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define RGB_PIN ${MCU_DEFAULTS.nrf52840.rgb || 'P0_13'}\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define RGB_PIN ${MCU_DEFAULTS.baikal.rgb || 'GPIO25'}\n`;
-                    out += `#endif\n\n`;
-                } else {
-                    out += `#define RGB_PIN ${rgbPin}\n\n`;
-                }
-            }
-
-            // Encoders
-            if (enableEnc) {
-                out += `/* --- Rotary Encoders --- */\n`;
-                if (configState.mcu === 'all') {
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define ENCODER_PINS_A { ${MCU_DEFAULTS.rp2040.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${MCU_DEFAULTS.rp2040.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define ENCODER_PINS_A { ${MCU_DEFAULTS.milandr.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${MCU_DEFAULTS.milandr.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define ENCODER_PINS_A { ${MCU_DEFAULTS.nrf52840.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${MCU_DEFAULTS.nrf52840.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define ENCODER_PINS_A { ${MCU_DEFAULTS.baikal.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${MCU_DEFAULTS.baikal.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#endif\n`;
-                } else if (encA.length > 0) {
-                    out += `#define ENCODER_PINS_A { ${encA.join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${encB.join(', ')} }\n`;
-                }
-                out += `#define ENCODER_RESOLUTION ${encResolution}\n\n`;
-            }
-
-            // Keymap Matrix & LAYOUT
-            out += `/* --- Keymap Matrix --- */\n`;
-            out += `#define NUM_ROWS ${totalRows}\n`;
-            out += `#define NUM_COLS ${totalCols}\n`;
-            if (isSplit) {
-                out += `#define NUM_ROWS_SPLIT ${rows.length}\n`;
-                out += `#define NUM_COLS_SPLIT ${cols.length}\n`;
-            }
-            out += `#define NUM_KEYS ${numKeys}\n\n`;
-
-            out += `// {ROW, COL} coordinate mapping\n`;
-            out += `// clang-format off\n`;
-            out += `#define LAYOUT { \\\n`;
-
-            // Break layout into logical rows
-            let rowChunks = [];
-            let currentChunk = [];
-            for (let i = 0; i < layoutPairs.length; i++) {
-                currentChunk.push(layoutPairs[i]);
-                if (currentChunk.length >= (isSplit ? totalCols : Math.min(totalCols, 12)) || i === layoutPairs.length - 1) {
-                    rowChunks.push("    " + currentChunk.join(', '));
-                    currentChunk = [];
-                }
-            }
-
-            out += rowChunks.join(', \\\n') + ` \\\n}\n`;
-            out += `#define LAYOUT_DEFAULT LAYOUT\n`;
-            out += `// clang-format on\n\n`;
-
-            // Layers definition and Keymap
-            out += `#ifdef DEFINE_KEYMAP\n`;
-            configState.layers.forEach((l, idx) => {
-                out += `#define ${l} ${idx}\n`;
-            });
-            out += `\n// Flat keymaps: one entry per key in LAYOUT order\n`;
-            out += `// clang-format off\n`;
-            out += `const uint32_t keymap[][NUM_KEYS] = {\n`;
-
-            configState.layers.forEach((l, lIdx) => {
-                out += `    [${l}] = {\n`;
-                const keys = configState.keymaps[l] || [];
-                let keyLines = [];
-                let kChunk = [];
-                for (let i = 0; i < numKeys; i++) {
-                    kChunk.push(keys[i] || "K_TRNS");
-                    if (kChunk.length >= 12 || i === numKeys - 1) {
-                        keyLines.push("        " + kChunk.join(', '));
-                        kChunk = [];
-                    }
-                }
-                out += keyLines.join(', \\\n') + `\n    }${lIdx < configState.layers.length - 1 ? ',' : ''}\n`;
-            });
-            out += `};\n`;
-            out += `\nconst size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);\n\n`;
-
-            if (enableEnc && encA.length > 0) {
-                out += `// Rotary encoder actions per layer: { CW, CCW }\n`;
-                out += `const uint32_t encoder_keymap[][${encA.length}][2] = {\n`;
-                configState.layers.forEach((l, lIdx) => {
-                    out += `    [${l}] = {\n`;
-                    const layerEncActs = (configState.encoderKeymaps && configState.encoderKeymaps[l]) ? configState.encoderKeymaps[l] : [];
-                    const lines = [];
-                    for (let i = 0; i < encA.length; i++) {
-                        const act = layerEncActs[i] || (lIdx === 0 ? { cw: "K_VOLU", ccw: "K_VOLD" } : { cw: "K_TRNS", ccw: "K_TRNS" });
-                        lines.push(`        { ${act.cw || 'K_TRNS'}, ${act.ccw || 'K_TRNS'} } // Enc ${i+1}`);
-                    }
-                    out += lines.join(',\n') + `\n`;
-                    out += `    }${lIdx < configState.layers.length - 1 ? ',' : ''}\n`;
-                });
-                out += `};\n\n`;
-            }
-
-            // Macros: Layer Trigger Macros & Custom User Macros
-            const enableLayerHotkeys = document.getElementById('enableLayerHotkeys')?.checked;
-            const enableCustomMacros = document.getElementById('enableCustomMacros')?.checked;
-            const enableChords = document.getElementById('enableChords')?.checked;
-
-            const macroAliases = [];
-            const macroDefinitions = [];
-            const macroEntries = [];
-
-            // 1. Custom User Macros (M(0), M(1)...)
-            if (enableCustomMacros && configState.customMacros && configState.customMacros.length > 0) {
-                configState.customMacros.forEach((macro, idx) => {
-                    const aliasName = macro.name ? macro.name.trim().toUpperCase() : `MC_MACRO_${idx}`;
-                    macroAliases.push(`#define ${aliasName} M(${macroEntries.length})`);
-
-                    let stepsCode = `const MacroStep ${aliasName}_STEPS[] = { ${macro.steps || 'M_DN(K_NO), M_UP(K_NO)'} };`;
-                    macroDefinitions.push(stepsCode);
-
-                    macroEntries.push(
-                        `    // Macro ${idx}: ${aliasName}\n` +
-                        `    [${macroEntries.length}] = {\n` +
-                        `        .steps         = ${aliasName}_STEPS,\n` +
-                        `        .count         = sizeof(${aliasName}_STEPS) / sizeof(${aliasName}_STEPS[0]),\n` +
-                        `        .layer_trigger = MACRO_NO_LAYER,\n` +
-                        `    }`
-                    );
-                });
-            }
-
-            // 2. Layer Trigger Macros
-            if (enableLayerHotkeys && configState.layerTriggerMacros) {
-                configState.layers.forEach((l, idx) => {
-                    const stepsArray = configState.layerTriggerMacros[l] || [];
-                    if (stepsArray.length > 0) {
-                        const stepCodes = [];
-                        stepsArray.forEach(st => {
-                            if (st.type === 'TAP') {
-                                stepCodes.push(`M_DN(${st.key || 'K_NO'})`);
-                                stepCodes.push(`M_UP(${st.key || 'K_NO'})`);
-                            } else if (st.type === 'DOWN') {
-                                stepCodes.push(`M_DN(${st.key || 'K_NO'})`);
-                            } else if (st.type === 'UP') {
-                                stepCodes.push(`M_UP(${st.key || 'K_NO'})`);
-                            } else if (st.type === 'DELAY') {
-                                stepCodes.push(`M_D(${st.delay || 100})`);
-                            }
-                        });
-
-                        let macroStepsCode = `const MacroStep STEPS_LAYER_TRIGGER_${l}[] = { ${stepCodes.join(', ')} };`;
-                        macroDefinitions.push(macroStepsCode);
-
-                        macroEntries.push(
-                            `    // Automatically fires when layer ${l} (${idx}) becomes active\n` +
-                            `    [${macroEntries.length}] = {\n` +
-                            `        .steps         = STEPS_LAYER_TRIGGER_${l},\n` +
-                            `        .count         = sizeof(STEPS_LAYER_TRIGGER_${l}) / sizeof(STEPS_LAYER_TRIGGER_${l}[0]),\n` +
-                            `        .layer_trigger = ${l},\n` +
-                            `    }`
-                        );
-                    }
-                });
-            }
-
-            if (macroDefinitions.length > 0) {
-                out += `/* --- Custom Macros & Layer Triggers --- */\n`;
-                if (macroAliases.length > 0) {
-                    out += macroAliases.join('\n') + `\n\n`;
-                }
-                out += macroDefinitions.join('\n') + `\n\n`;
-                out += `const Macro keyboard_macros[] = {\n`;
-                out += macroEntries.join(',\n') + `\n`;
-                out += `};\n\n`;
-                out += `const uint8_t keyboard_macros_count = sizeof(keyboard_macros) / sizeof(keyboard_macros[0]);\n\n`;
-            } else {
-                out += `const Macro keyboard_macros[] = {};\n`;
-                out += `const uint8_t keyboard_macros_count = 0;\n\n`;
-            }
-
-            // 3. Chords / Combos
-            if (enableChords && configState.customChords && configState.customChords.length > 0) {
-                out += `/* --- Chords / Combos Configuration --- */\n`;
-                out += `// Macro helper for chord key coordinates: K(Row, Col, Layer)\n`;
-                out += `#ifndef K\n#define K(r, c, l) {r, c, l}\n#endif\n\n`;
-
-                // Function declarations & generated action functions for chord actions
-                const actionSet = new Set();
-                const chordActionFuncMap = {};
-
-                configState.customChords.forEach((chord, cIdx) => {
-                    const actRaw = (chord.action || 'LC(K_C)').trim();
-                    if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(actRaw) && !actRaw.startsWith('K_')) {
-                        // User C function name
-                        chordActionFuncMap[cIdx] = actRaw;
-                        actionSet.add(`void ${actRaw}(void) { /* Custom function */ }`);
-                    } else {
-                        // Keycode, modifier, or layer expression (e.g. LC(K_C), MO(1), K_ESC)
-                        const fnName = `chord_action_${cIdx + 1}`;
-                        chordActionFuncMap[cIdx] = fnName;
-                        actionSet.add(`void ${fnName}(void) {\n    // Generated chord action for: ${actRaw}\n    action_exec(${actRaw});\n}`);
-                    }
-                });
-
-                actionSet.forEach(fnCode => {
-                    out += `${fnCode}\n\n`;
-                });
-
-                out += `const Chord my_chords[] = {\n`;
-                const chordEntries = [];
-                configState.customChords.forEach((chord, idx) => {
-                    const keyList = parseChordKeys(chord);
-                    const layersList = (Array.isArray(chord.targetLayers) && chord.targetLayers.length > 0) ? chord.targetLayers : [0];
-                    const fnName = chordActionFuncMap[idx] || 'do_action';
-
-                    layersList.forEach(layerIdx => {
-                        const kFormatted = keyList.map(kItem => {
-                            let r = kItem.r !== undefined ? kItem.r : 0;
-                            let c = kItem.c !== undefined ? kItem.c : 0;
-                            return `K(${r}, ${c}, ${layerIdx})`;
-                        });
-
-                        chordEntries.push(
-                            `    // Chord ${idx + 1} (Layer ${layerIdx})\n` +
-                            `    {\n` +
-                            `        .keys      = { ${kFormatted.join(', ')} },\n` +
-                            `        .key_count = ${kFormatted.length},\n` +
-                            `        .action    = ${fnName}\n` +
-                            `    }`
-                        );
-                    });
-                });
-                out += chordEntries.join(',\n') + `\n`;
-                out += `};\n\n`;
-                out += `#define CHORDS_COUNT (sizeof(my_chords) / sizeof(my_chords[0]))\n`;
-            }
-
-            out += `// clang-format on\n`;
-            out += `#endif\n\n`;
-
-            out += `#endif // CONFIG_H\n`;
-
-            document.getElementById('configCodeOutput').textContent = out;
-        }
-
         function generateConfigModal() {
             gotoStep(6);
         }
@@ -5883,6 +4180,10 @@ visualElements.push({
             if (vVidMatch) document.getElementById('vialVid').value = vVidMatch[1];
             const vPidMatch = text.match(/#define\s+VIAL_PRODUCT_ID\s+(0x[0-9a-fA-F]+)/);
             if (vPidMatch) document.getElementById('vialPid').value = vPidMatch[1];
+
+            const isViaV3 = /#define\s+(?:VIA_V3|USE_VIA_V3)\b/.test(text);
+            const protoEl = document.getElementById('vialProtocolMode');
+            if (protoEl) protoEl.value = isViaV3 ? 'via_v3' : 'vial';
 
             // 2. MCU detection (preserve custom pins / don't reset pins with default MCU pins)
             if (text.includes('MCU_milandr')) setMcu('milandr', false);
