@@ -137,7 +137,7 @@
                     </div>
                     <!-- Single pin communication (for 1-wire modes) -->
                     <div class="form-group" id="splitSinglePinGroup">
-                        <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи (SPLIT_TX_PIN / SERIAL_PIN):</label>
+                        <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи:</label>
                         <input type="text" id="serialPinRP" value="GPIO1" placeholder="Для RP2040 (например GPIO1)" oninput="markDirty()">
                         <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
                     </div>
@@ -146,14 +146,14 @@
                 <!-- Dual communication pins for Milandr / Full-Duplex UART -->
                 <div id="splitDualPinsGroup" class="grid-2" style="display: none;">
                     <div class="form-group">
-                        <label id="lblSplitTxPin" data-i18n="splitTxPinLabel">Пин TX (SPLIT_TX_PIN):</label>
+                        <label id="lblSplitTxPin" data-i18n="splitTxPinLabel">Пин TX:</label>
                         <input type="text" id="splitTxPin" value="PF1" placeholder="PF1" oninput="markDirty()">
-                        <span class="hint" id="hintSplitTxPin" data-i18n="splitTxPinHint">Линия передачи данных (выход UART TX)</span>
+                        <span class="hint" id="hintSplitTxPin" data-i18n="splitTxPinHint">Линия передачи данных</span>
                     </div>
                     <div class="form-group">
-                        <label id="lblSplitRxPin" data-i18n="splitRxPinLabel">Пин RX (SPLIT_RX_PIN):</label>
+                        <label id="lblSplitRxPin" data-i18n="splitRxPinLabel">Пин RX:</label>
                         <input type="text" id="splitRxPin" value="PF0" placeholder="PF0" oninput="markDirty()">
-                        <span class="hint" id="hintSplitRxPin" data-i18n="splitRxPinHint">Линия приёма данных (вход UART RX)</span>
+                        <span class="hint" id="hintSplitRxPin" data-i18n="splitRxPinHint">Линия приёма данных</span>
                     </div>
                 </div>
             </div>
@@ -230,14 +230,14 @@
 
             <!-- Specific MCU Split override pins in Universal mode -->
             <div id="universalMcuExtrasContainer" style="display: none; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; flex-direction: column; gap: 10px; margin-top: 6px;">
-                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);" id="lblUniversalMcuExtrasTitle">Индивидуальные настройки связи половин (Split) для выбранного MCU:</div>
+                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);" id="lblUniversalMcuExtrasTitle">Индивидуальные настройки связи половин для выбранного MCU:</div>
                 <div class="grid-2">
                     <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem;" id="lblMultiSplitTx">Пин TX (SPLIT_TX_PIN):</label>
+                        <label style="font-size: 0.75rem;" id="lblMultiSplitTx">Пин TX:</label>
                         <input type="text" id="mcuSplitTxPin" value="GPIO0" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                     <div class="form-group" style="margin: 0;" id="multiSplitRxGroup">
-                        <label style="font-size: 0.75rem;" id="lblMultiSplitRx">Пин RX (SPLIT_RX_PIN):</label>
+                        <label style="font-size: 0.75rem;" id="lblMultiSplitRx">Пин RX:</label>
                         <input type="text" id="mcuSplitRxPin" value="GPIO1" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                 </div>
@@ -1166,40 +1166,20 @@
 
             if (optBitbang && optHardware) {
                 if (configState.mcu === 'all') {
-                    optBitbang.textContent = isEn
-                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO across platforms)'
-                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO на всех MCU)';
-                    optHardware.textContent = isEn
-                        ? 'Hardware / PIO UART (1 GPIO on RP2040/nRF/Baikal, 2 GPIO TX+RX on Milandr)'
-                        : 'Hardware / PIO UART (аппаратный: 1 GPIO для RP2040/nRF/Байкал, 2 GPIO TX+RX для Миландра)';
+                    optBitbang.textContent = isEn ? 'Bit-Bang UART (software)' : 'Bit-Bang UART (программный)';
+                    optHardware.textContent = isEn ? 'Hardware / PIO UART (hardware)' : 'Hardware / PIO UART (аппаратный)';
                 } else if (isMilandr) {
-                    optBitbang.textContent = isEn
-                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO: PF0)'
-                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO: PF0)';
-                    optHardware.textContent = isEn
-                        ? 'Hardware UART (hardware full-duplex, 2 GPIO: PF1/TX + PF0/RX)'
-                        : 'Hardware UART (аппаратный полный дуплекс, 2 GPIO: PF1/TX + PF0/RX)';
+                    optBitbang.textContent = isEn ? 'Bit-Bang UART (software)' : 'Bit-Bang UART (программный)';
+                    optHardware.textContent = isEn ? 'Hardware UART (hardware TX + RX)' : 'Hardware UART (аппаратный TX + RX)';
                 } else if (activeMcu === 'rp2040') {
-                    optBitbang.textContent = isEn
-                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO)'
-                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO)';
-                    optHardware.textContent = isEn
-                        ? 'Hardware PIO UART (hardware half-duplex, 1 GPIO)'
-                        : 'Hardware PIO UART (аппаратный полудуплекс, 1 GPIO)';
+                    optBitbang.textContent = isEn ? 'Bit-Bang UART (software)' : 'Bit-Bang UART (программный)';
+                    optHardware.textContent = isEn ? 'Hardware PIO UART (hardware)' : 'Hardware PIO UART (аппаратный)';
                 } else if (activeMcu === 'nrf52840') {
-                    optBitbang.textContent = isEn
-                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO)'
-                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO)';
-                    optHardware.textContent = isEn
-                        ? 'Hardware UARTE (hardware half-duplex, 1 GPIO)'
-                        : 'Hardware UARTE (аппаратный полудуплекс, 1 GPIO)';
+                    optBitbang.textContent = isEn ? 'Bit-Bang UART (software)' : 'Bit-Bang UART (программный)';
+                    optHardware.textContent = isEn ? 'Hardware UARTE (hardware)' : 'Hardware UARTE (аппаратный)';
                 } else if (activeMcu === 'baikal') {
-                    optBitbang.textContent = isEn
-                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO)'
-                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO)';
-                    optHardware.textContent = isEn
-                        ? 'Hardware UART (hardware half-duplex RS-485, 1 GPIO)'
-                        : 'Hardware UART (аппаратный полудуплекс RS-485, 1 GPIO)';
+                    optBitbang.textContent = isEn ? 'Bit-Bang UART (software)' : 'Bit-Bang UART (программный)';
+                    optHardware.textContent = isEn ? 'Hardware UART (hardware)' : 'Hardware UART (аппаратный)';
                 }
             }
 
@@ -1225,21 +1205,18 @@
             const hintSerial = document.getElementById('hintSerialPin');
             const serialInput = document.getElementById('serialPinRP');
             if (lblSerial && hintSerial && serialInput) {
+                lblSerial.textContent = isEn ? 'Communication Pin:' : 'Пин связи:';
                 if (isMilandr) {
-                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN):' : 'Пин связи (SPLIT_TX_PIN):';
-                    hintSerial.textContent = isEn ? 'Milandr Bit-Bang 1-wire pin (e.g. PF0)' : 'Программный 1-проводной пин Миландра (например PF0)';
+                    hintSerial.textContent = isEn ? 'Milandr Bit-Bang 1-wire pin, e.g. PF0' : 'Программный 1-проводной пин Миландра, например PF0';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PF0';
                 } else if (activeMcu === 'rp2040') {
-                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN / SERIAL_PIN):' : 'Пин связи (SPLIT_TX_PIN / SERIAL_PIN):';
-                    hintSerial.textContent = isEn ? 'RP2040 1-wire PIO / Bit-Bang pin (e.g. GPIO0 or GPIO1)' : '1-проводной пин PIO или Bit-Bang (например GPIO0 или GPIO1)';
+                    hintSerial.textContent = isEn ? '1-wire PIO / Bit-Bang pin, e.g. GPIO0 or GPIO1' : '1-проводной пин PIO или Bit-Bang, например GPIO0 или GPIO1';
                     if (!serialInput.value || serialInput.value.startsWith('P')) serialInput.value = 'GPIO1';
                 } else if (activeMcu === 'nrf52840') {
-                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN):' : 'Пин связи (SPLIT_TX_PIN):';
-                    hintSerial.textContent = isEn ? 'nRF52840 UARTE / Bit-Bang pin (e.g. P0_00)' : 'Пин nRF52840 (например P0_00)';
+                    hintSerial.textContent = isEn ? 'nRF52840 pin, e.g. P0_00' : 'Пин nRF52840, например P0_00';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'P0_00';
                 } else if (activeMcu === 'baikal') {
-                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN):' : 'Пин связи (SPLIT_TX_PIN):';
-                    hintSerial.textContent = isEn ? 'Baikal UART pin (e.g. PC6 or PA2)' : 'Пин Байкал UART (например PC6 или PA2)';
+                    hintSerial.textContent = isEn ? 'Baikal UART pin, e.g. PC6 or PA2' : 'Пин Байкал UART, например PC6 или PA2';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PC6';
                 }
             }
@@ -1252,24 +1229,18 @@
                 const lblMultiRx = document.getElementById('lblMultiSplitRx');
                 const hintMulti = document.getElementById('hintMultiSplit');
                 const rxGroup = document.getElementById('multiSplitRxGroup');
+                if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin:' : 'Пин TX:';
+                if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin:' : 'Пин RX:';
                 if (currentUniversalMcu === 'milandr') {
-                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin (SPLIT_TX_PIN):' : 'Пин TX (SPLIT_TX_PIN):';
-                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin (SPLIT_RX_PIN):' : 'Пин RX (SPLIT_RX_PIN):';
                     if (hintMulti) hintMulti.textContent = isEn ? 'Milandr hardware UART requires 2 pins: PF1 (TX) and PF0 (RX).' : 'На Миландере аппаратный UART требует 2 раздельных пина: PF1 (TX) и PF0 (RX).';
                     if (rxGroup) rxGroup.style.display = 'block';
                 } else if (currentUniversalMcu === 'rp2040') {
-                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'PIO Communication Pin (SPLIT_TX_PIN):' : 'Пин связи PIO (SPLIT_TX_PIN):';
-                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin (Not needed for 1-wire PIO):' : 'Пин RX (не требуется для 1-проводного PIO):';
                     if (hintMulti) hintMulti.textContent = isEn ? 'RP2040 uses a single GPIO pin for PIO half-duplex.' : 'RP2040 использует 1 провод через аппаратный полудуплексный PIO.';
                     if (rxGroup) rxGroup.style.display = 'none';
                 } else if (currentUniversalMcu === 'nrf52840') {
-                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin (SPLIT_TX_PIN):' : 'Пин TX (SPLIT_TX_PIN):';
-                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin for Full-Duplex (SPLIT_RX_PIN):' : 'Пин RX при Full-Duplex (SPLIT_RX_PIN):';
                     if (hintMulti) hintMulti.textContent = isEn ? 'nRF52840 UARTE pin configuration.' : 'Настройки пинов UARTE для nRF52840.';
                     if (rxGroup) rxGroup.style.display = 'block';
                 } else if (currentUniversalMcu === 'baikal') {
-                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin (SPLIT_TX_PIN):' : 'Пин TX (SPLIT_TX_PIN):';
-                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin for Full-Duplex (SPLIT_RX_PIN):' : 'Пин RX при Full-Duplex (SPLIT_RX_PIN):';
                     if (hintMulti) hintMulti.textContent = isEn ? 'Baikal UART pin configuration.' : 'Настройки пинов UART для Байкал.';
                     if (rxGroup) rxGroup.style.display = 'block';
                 }
