@@ -63,7 +63,7 @@ For split keyboards, the communication line (`SERIAL_PIN`) works over a single-w
 
    - **Single-Pin Configurations**:
      - **nRF52840**: **Supports single-pin operation**. Thanks to the fully routable pin configuration (GPIO crossbar), both the TXD and RXD signals of the UARTE peripheral can be assigned to the **same physical GPIO pin** (e.g., `P0_06`). The pin must be set to open-drain mode with a pull-up resistor.
-     - **Raspberry Pi (RP2040/RP2350) & Baikal (via PIO)**: **Support single-pin operation**. They leverage Programmable I/O (PIO) blocks to dynamically switch the direction of a single GPIO pin between input and output on the fly.
+     - **Raspberry Pi (RP2040/RP2350) & Baikal (via PIO)**: **Support single-pin operation**. They use Programmable I/O (PIO) blocks to dynamically switch the direction of a single GPIO pin between input and output on the fly.
      - **STM32**: **Supports single-pin operation**. The built-in USART has a native Single-wire mode (enabled via the `USART_CR3_HDSEL` bit in QMK/ChibiOS), which internally routes the receiver channel to the TX pin. Only the TX pin is connected externally.
 
    - **Tied TX/RX Configurations**:

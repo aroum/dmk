@@ -17,7 +17,7 @@ Vial support can be enabled in two ways:
 1. **Via Keyboard Configuration File**: Add `#define VIAL` in your keyboard's `config.h` (e.g., in [keyboards/corne/config.h](../../keyboards/corne/config.h)). This is the preferred method because it preserves the configuration directly in your layout source code.
 2. **Via CMake Build Option**: Pass `-DVIAL=ON` when configuring the build.
 
-When Vial support is enabled, a secondary **Raw HID** USB interface is initialized to facilitate communication between the keyboard and the Vial GUI.
+When Vial support is enabled, a secondary **Raw HID** USB interface is initialized to communicate with the Vial GUI.
 
 ### Build Commands Examples
 
@@ -32,6 +32,30 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
   ```bash
   cmake -DVIAL=ON -DKEYBOARD=corne -DMCU=rp2040 build && cmake --build build
   ```
+
+---
+
+## Protocol Selection: Vial (v9) vs VIA v3 (v12)
+
+`dmk` supports two GUI configurator targets:
+
+1. **Vial GUI (default, protocol version 9)**:
+   - Enabled via `#define VIAL` in `config.h`.
+   - Used with the official desktop Vial application or [vial.rocks](https://vial.rocks/) web client.
+   - The layout definition (`vial.json`) is compressed and embedded directly in firmware, requiring no side-loaded layout definitions.
+   - Unlocks full feature support: dynamic combos, dynamic macros, and layer-specific rotary encoder mapping.
+
+2. **VIA v3 (protocol version 12, usevia.app)**:
+   - Enabled by adding `#define VIA_V3` in `config.h` (alongside `#define VIAL`).
+   - Used for connecting to the official [usevia.app](https://usevia.app/) web interface.
+   - Reports protocol 12 (`0x000C`) on version requests to unlock VIA v3 menus.
+   - Protocol version can also be explicitly overridden using `#define VIA_PROTOCOL_VERSION 0x000C`.
+
+```c
+// Example to switch to VIA v3 in config.h:
+#define VIAL
+#define VIA_V3
+```
 
 ---
 

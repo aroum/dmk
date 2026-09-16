@@ -22,7 +22,7 @@ A lightweight, modern, and highly modular keyboard firmware designed for cross-p
 - **External Modules & Extensions**: Flexible peripheral and driver architecture via CMake `-DDMK_MODULES` and lifecycle hooks (`hooks.h`) without modifying core code.
 - **Split Keyboard Support**: Hardware and software (bit-bang/UART) split communication between halves.
 - **6KRO (6-Key Roll Over)**: Reliable USB HID reporting allowing up to 6 concurrent keypresses plus modifiers.
-- **FreeRTOS Integration**: Built on top of FreeRTOS for robust multi-tasking, reliable scanning, and clean event-driven queues.
+- **FreeRTOS Integration**: Built on top of FreeRTOS for preemptive multi-tasking, reliable scanning, and clean event-driven queues.
 
 ### Advanced Layout & Keymap Features
 

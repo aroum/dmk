@@ -235,7 +235,7 @@ const uint16_t keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     
     // LAYER 0: Base layout
     [BASE_LAYER] = LAYOUT(
-        // FN1 -> Now simply the name of the layer. The firmware sees it and knows:
+        // FN1 -> The layer name. The firmware sees it and knows:
         //        "Activate layer 1 while the key is held" (pure Momentary).
         FN1, 
     )
@@ -405,7 +405,7 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
         { HT(FN1, K_A),
 
         // 2. MOD-TAP EQUIVALENT (&mt LSHIFT F)
-        // Held: acts as Left Shift. Tapped: sends key 'F'.
+        // Held: is Left Shift. Tapped: sends key 'F'.
         // Firmware detects MOD_LSHIFT and handles it as Mod-Tap, not Layer-Tap.
         HT(MOD_LSHIFT, K_F),
 

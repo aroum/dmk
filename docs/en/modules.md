@@ -85,7 +85,7 @@ When a module belongs specifically to a given keyboard (such as `keyboards/omsk/
 
 ## 3. Core Lifecycle & Event Hooks (Hooks API)
 
-Modules communicate with DMK through non-blocking weak hooks declared in `dmk_core/include/hooks.h`. Modules simply implement any of these functions without requiring glue code or core edits:
+Modules communicate with DMK through non-blocking weak hooks declared in `dmk_core/include/hooks.h`. Modules implement any of these functions without requiring glue code or core edits:
 
 | Hook Function                                                                                                                    | When It Is Called                                                | Typical Use Cases                                                                                 |
 | :------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
