@@ -70,16 +70,21 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 > ```
 >
 > _Reports VIA Protocol 12 (`0x000C`). Required for the official https://usevia.app web configurator._
+>
+> Unlike Vial, the VIA v3 specification supports creating user-defined **Custom UI Controls / Menus** defined in the keyboard JSON schema. These can be leveraged, for instance, for interactive calibration of Hall Effect (**HE**) magnetic switches or electrostatic capacitive (**EC**) switches, custom actuation points, and Rapid Trigger. Note that custom control menus are **only supported through the official web client** https://usevia.app.
 
 ---
 
 ## How it Works
 
-1. **Vial Layout Definition (`vial.json`)**:
-   Each keyboard that supports Vial must define its physical layouts, vendor ID, and product ID in a `vial.json` file inside the keyboard directory (e.g., `keyboards/corne/vial.json`).
+1. **Layout Definition (`vial.json` or `via.json`)**:
+   A keyboard directory (e.g., `keyboards/corne/`) may contain `vial.json` and/or `via.json`:
+   - When `config.h` defines `#define VIA_V3`, CMake automatically picks `via.json` (falling back to `vial.json` if missing, or auto-generating `via.json` if neither exists).
+   - When `config.h` defines `#define VIAL`, CMake picks `vial.json` (falling back to `via.json` if missing, or auto-generating `vial.json` if neither exists).
+     This allows you to store both layout definitions in the same keyboard folder and switch seamlessly via your configuration file.
 
 2. **Automatic Compression**:
-   The CMake build system automatically invokes a Python tool (`tools/vial/compress.py`) to compress `vial.json` using LZMA (`FORMAT_ALONE` container format). This generates a C header `vial_generated.h` in the keyboard directory containing:
+   The CMake build system automatically invokes a Python tool (`tools/vial/compress.py`) to compress the selected layout definition (`via.json` or `vial.json`) using LZMA (`FORMAT_ALONE` container format). This generates a C header `vial_generated.h` in the keyboard directory containing:
    - `vial_keyboard_def[]`: The compressed JSON layout array.
    - `vial_keyboard_id[]`: A stable 8-byte ID hashed from the layout file.
 

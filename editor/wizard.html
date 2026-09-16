@@ -599,11 +599,11 @@
 
             <div class="nav-actions">
                 <button class="btn" onclick="gotoStep(4)">&larr; Назад: Матрица</button>
-                <button class="btn btn-primary" onclick="gotoStep(6)">Сгенерировать config.h & vial.json &rarr;</button>
+                <button class="btn btn-primary" id="btnGenerateFiles" onclick="gotoStep(6)">Сгенерировать config.h & vial.json &rarr;</button>
             </div>
         </div>
 
-        <!-- Step 6: Final config.h & vial.json Output -->
+        <!-- Step 6: Final config.h & Layout JSON Output -->
         <div class="card" id="step-6" style="display: none;">
             <div class="card-header">
                 <h2 data-i18n="s6Title">Экспорт</h2>
@@ -623,10 +623,10 @@
 
             <div class="code-container" style="margin-top: 14px;">
                 <div class="code-header">
-                    <span class="code-title">vial.json</span>
+                    <span class="code-title" id="jsonCodeTitle">vial.json</span>
                     <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-sm" onclick="copyVialJson()">Копировать vial.json</button>
-                        <button class="btn btn-sm btn-primary" onclick="downloadVialJson()">Скачать vial.json</button>
+                        <button class="btn btn-sm" id="btnCopyJson" onclick="copyVialJson()">Копировать vial.json</button>
+                        <button class="btn btn-sm btn-primary" id="btnDownloadJson" onclick="downloadVialJson()">Скачать vial.json</button>
                     </div>
                 </div>
                 <pre><code id="vialJsonOutput"></code></pre>
@@ -1165,6 +1165,31 @@
 
             const selectEl = document.getElementById('vialProtocolMode');
             if (selectEl) selectEl.value = proto;
+
+            updateJsonExportLabels();
+        }
+
+        function updateJsonExportLabels() {
+            const isVia = (configState.vialProtocol === 'via_v3' || configState.protocolMode === 'via_v3');
+            const jsonFileName = isVia ? 'via.json' : 'vial.json';
+
+            const titleEl = document.getElementById('jsonCodeTitle');
+            if (titleEl) titleEl.textContent = jsonFileName;
+
+            const btnCopy = document.getElementById('btnCopyJson');
+            if (btnCopy) {
+                btnCopy.textContent = (currentLanguage === 'en' ? 'Copy ' : 'Копировать ') + jsonFileName;
+            }
+
+            const btnDownload = document.getElementById('btnDownloadJson');
+            if (btnDownload) {
+                btnDownload.textContent = (currentLanguage === 'en' ? 'Download ' : 'Скачать ') + jsonFileName;
+            }
+
+            const btnGen = document.getElementById('btnGenerateFiles');
+            if (btnGen) {
+                btnGen.innerHTML = (currentLanguage === 'en' ? `Generate config.h & ${jsonFileName} &rarr;` : `Сгенерировать config.h & ${jsonFileName} &rarr;`);
+            }
         }
 
         function applyPreset(key) {
@@ -3311,6 +3336,7 @@ visualElements.push({
             if (document.getElementById('enableLayerHotkeys')?.checked) {
                 renderLayerHotkeysUI();
             }
+            updateJsonExportLabels();
         }
 
         // Apply saved theme & lang on startup
@@ -4237,19 +4263,23 @@ visualElements.push({
         }
 
         function copyVialJson() {
+            const isVia = (configState.vialProtocol === 'via_v3' || configState.protocolMode === 'via_v3');
+            const jsonFileName = isVia ? 'via.json' : 'vial.json';
             const json = document.getElementById('vialJsonOutput').textContent;
             navigator.clipboard.writeText(json).then(() => {
-                alert(currentLanguage === 'en' ? "vial.json copied to clipboard!" : "vial.json успешно скопирован в буфер обмена!");
+                alert(currentLanguage === 'en' ? `${jsonFileName} copied to clipboard!` : `${jsonFileName} успешно скопирован в буфер обмена!`);
             });
         }
 
         function downloadVialJson() {
+            const isVia = (configState.vialProtocol === 'via_v3' || configState.protocolMode === 'via_v3');
+            const jsonFileName = isVia ? 'via.json' : 'vial.json';
             const json = document.getElementById('vialJsonOutput').textContent;
             const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'vial.json';
+            a.download = jsonFileName;
             a.click();
             URL.revokeObjectURL(url);
         }

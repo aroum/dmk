@@ -100,40 +100,89 @@ function(build_keyboard KEYBOARD_NAME)
     if(VIAL_ENABLED)
         set(VIAL_SRC "${DMK_ROOT}/dmk_core/features/vial.c")
 
-        # vial.json lives in the keyboard source dir so it's visible alongside config.h
-        set(VIAL_JSON_FILE "${ACTUAL_KEYBOARD_DIR}/vial.json")
-        set(VIAL_GEN_H_FILE "${ACTUAL_KEYBOARD_DIR}/vial_generated.h")
-
-        # Generate vial.json only if it doesn't already exist (allows custom layouts in vial.json)
-        if(NOT EXISTS "${VIAL_JSON_FILE}")
-            message(STATUS "Generating vial.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}...")
-            set(GEN_EXTRA_DEFS "")
-            if(DEFINE)
-                string(REPLACE "," ";" DEFINE_LIST "${DEFINE}")
-                foreach(DEF ${DEFINE_LIST})
-                    string(STRIP "${DEF}" STRIPPED_DEF)
-                    if(NOT STRIPPED_DEF STREQUAL "")
-                        list(APPEND GEN_EXTRA_DEFS "-D${STRIPPED_DEF}")
-                    endif()
-                endforeach()
-            endif()
-            execute_process(
-                COMMAND uv run python3 "${DMK_ROOT}/tools/vial/generate_json.py" "${ACTUAL_KEYBOARD_DIR}/config.h" "${VIAL_JSON_FILE}" ${GEN_EXTRA_DEFS}
-                RESULT_VARIABLE GEN_EXEC_RESULT
-            )
-            if(NOT GEN_EXEC_RESULT EQUAL 0)
-                message(FATAL_ERROR "Failed to execute vial.json generator")
-            endif()
-        else()
-            message(STATUS "Using existing vial.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}")
+        # Determine preferred layout format: VIA v3 (via.json) vs Vial (vial.json)
+        set(IS_VIA_V3 OFF)
+        if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIA_V3([ \t\r\n]|$)" OR
+           (DEFINE AND DEFINE MATCHES "(^|[,;])VIA_V3([,;]|$)"))
+            set(IS_VIA_V3 ON)
         endif()
 
-        if(EXISTS "${VIAL_JSON_FILE}")
+        set(VIAL_JSON_CANDIDATE "${ACTUAL_KEYBOARD_DIR}/vial.json")
+        set(VIA_JSON_CANDIDATE "${ACTUAL_KEYBOARD_DIR}/via.json")
+        set(VIAL_GEN_H_FILE "${ACTUAL_KEYBOARD_DIR}/vial_generated.h")
+
+        if(IS_VIA_V3)
+            # Prefer via.json, fallback to vial.json
+            if(EXISTS "${VIA_JSON_CANDIDATE}")
+                set(CHOSEN_LAYOUT_JSON "${VIA_JSON_CANDIDATE}")
+                set(LAYOUT_JSON_NAME "via.json")
+                message(STATUS "Using existing via.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}")
+            elseif(EXISTS "${VIAL_JSON_CANDIDATE}")
+                set(CHOSEN_LAYOUT_JSON "${VIAL_JSON_CANDIDATE}")
+                set(LAYOUT_JSON_NAME "vial.json")
+                message(STATUS "Using existing vial.json (fallback for VIA v3) for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}")
+            else()
+                set(CHOSEN_LAYOUT_JSON "${VIA_JSON_CANDIDATE}")
+                set(LAYOUT_JSON_NAME "via.json")
+                message(STATUS "Generating via.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}...")
+                set(GEN_EXTRA_DEFS "")
+                if(DEFINE)
+                    string(REPLACE "," ";" DEFINE_LIST "${DEFINE}")
+                    foreach(DEF ${DEFINE_LIST})
+                        string(STRIP "${DEF}" STRIPPED_DEF)
+                        if(NOT STRIPPED_DEF STREQUAL "")
+                            list(APPEND GEN_EXTRA_DEFS "-D${STRIPPED_DEF}")
+                        endif()
+                    endforeach()
+                endif()
+                execute_process(
+                    COMMAND uv run python3 "${DMK_ROOT}/tools/vial/generate_json.py" "${ACTUAL_KEYBOARD_DIR}/config.h" "${CHOSEN_LAYOUT_JSON}" ${GEN_EXTRA_DEFS}
+                    RESULT_VARIABLE GEN_EXEC_RESULT
+                )
+                if(NOT GEN_EXEC_RESULT EQUAL 0)
+                    message(FATAL_ERROR "Failed to execute via.json generator")
+                endif()
+            endif()
+        else()
+            # Prefer vial.json, fallback to via.json
+            if(EXISTS "${VIAL_JSON_CANDIDATE}")
+                set(CHOSEN_LAYOUT_JSON "${VIAL_JSON_CANDIDATE}")
+                set(LAYOUT_JSON_NAME "vial.json")
+                message(STATUS "Using existing vial.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}")
+            elseif(EXISTS "${VIA_JSON_CANDIDATE}")
+                set(CHOSEN_LAYOUT_JSON "${VIA_JSON_CANDIDATE}")
+                set(LAYOUT_JSON_NAME "via.json")
+                message(STATUS "Using existing via.json (fallback for Vial) for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}")
+            else()
+                set(CHOSEN_LAYOUT_JSON "${VIAL_JSON_CANDIDATE}")
+                set(LAYOUT_JSON_NAME "vial.json")
+                message(STATUS "Generating vial.json for ${KBD_BASE} in ${ACTUAL_KEYBOARD_DIR}...")
+                set(GEN_EXTRA_DEFS "")
+                if(DEFINE)
+                    string(REPLACE "," ";" DEFINE_LIST "${DEFINE}")
+                    foreach(DEF ${DEFINE_LIST})
+                        string(STRIP "${DEF}" STRIPPED_DEF)
+                        if(NOT STRIPPED_DEF STREQUAL "")
+                            list(APPEND GEN_EXTRA_DEFS "-D${STRIPPED_DEF}")
+                        endif()
+                    endforeach()
+                endif()
+                execute_process(
+                    COMMAND uv run python3 "${DMK_ROOT}/tools/vial/generate_json.py" "${ACTUAL_KEYBOARD_DIR}/config.h" "${CHOSEN_LAYOUT_JSON}" ${GEN_EXTRA_DEFS}
+                    RESULT_VARIABLE GEN_EXEC_RESULT
+                )
+                if(NOT GEN_EXEC_RESULT EQUAL 0)
+                    message(FATAL_ERROR "Failed to execute vial.json generator")
+                endif()
+            endif()
+        endif()
+
+        if(EXISTS "${CHOSEN_LAYOUT_JSON}")
             add_custom_command(
                 OUTPUT "${VIAL_GEN_H_FILE}"
-                COMMAND uv run python3 "${DMK_ROOT}/tools/vial/compress.py" "${VIAL_JSON_FILE}" "${VIAL_GEN_H_FILE}"
-                DEPENDS "${VIAL_JSON_FILE}" "${DMK_ROOT}/tools/vial/compress.py"
-                COMMENT "Compressing vial.json for ${KBD_BASE}"
+                COMMAND uv run python3 "${DMK_ROOT}/tools/vial/compress.py" "${CHOSEN_LAYOUT_JSON}" "${VIAL_GEN_H_FILE}"
+                DEPENDS "${CHOSEN_LAYOUT_JSON}" "${DMK_ROOT}/tools/vial/compress.py"
+                COMMENT "Compressing ${LAYOUT_JSON_NAME} for ${KBD_BASE}"
             )
             set_source_files_properties("${VIAL_SRC}" PROPERTIES OBJECT_DEPENDS "${VIAL_GEN_H_FILE}")
             target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")

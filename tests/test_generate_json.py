@@ -169,6 +169,30 @@ class TestGenerateJson(unittest.TestCase):
         self.assertEqual(data.get("lighting"), "qmk_rgblight")
         self.assertEqual(data.get("vial"), {"midi": "advanced"})
 
+    def test_via_v3_json_generation(self):
+        config_content = """
+        #define VIA_V3
+        #define VIAL_KEYBOARD_NAME "VIA v3 Board"
+        #define NUM_ROWS 1
+        #define NUM_COLS 1
+        #define LAYOUT { {0, 0} }
+        #define MIDI_USB
+        """
+        config_file = Path(self.temp_dir.name) / "config.h"
+        config_file.write_text(config_content)
+        via_json = Path(self.temp_dir.name) / "via.json"
+
+        sys.argv = ["generate_json.py", str(config_file), str(via_json)]
+        main()
+
+        self.assertTrue(via_json.exists())
+        data = json.loads(via_json.read_text())
+        self.assertEqual(data["name"], "VIA v3 Board")
+        # In VIA v3, vial-specific container is omitted
+        self.assertNotIn("vial", data)
+        self.assertIn("customKeycodes", data)
+        self.assertIn("layouts", data)
+
     def test_repo_keyboards(self):
         keyboards_dir = ROOT_DIR / "keyboards"
         for kb_dir in keyboards_dir.iterdir():

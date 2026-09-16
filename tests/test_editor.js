@@ -677,6 +677,9 @@ test('Protocol Mode Switcher: Vial vs VIA v3', () => {
     assert.strictEqual(sandbox.document.getElementById('vialProtocolMode').value, 'vial');
     assert.strictEqual(sandbox.document.getElementById('btnProtoVial').classList.contains('active'), true);
     assert.strictEqual(sandbox.document.getElementById('btnProtoVia').classList.contains('active'), false);
+    assert.strictEqual(sandbox.document.getElementById('jsonCodeTitle').textContent, 'vial.json');
+    assert.ok(sandbox.document.getElementById('btnCopyJson').textContent.includes('vial.json'));
+    assert.ok(sandbox.document.getElementById('btnDownloadJson').textContent.includes('vial.json'));
 
     sandbox.generateConfigCode();
     let configH = sandbox.document.getElementById('configCodeOutput').textContent;
@@ -689,6 +692,9 @@ test('Protocol Mode Switcher: Vial vs VIA v3', () => {
     assert.strictEqual(sandbox.document.getElementById('vialProtocolMode').value, 'via_v3');
     assert.strictEqual(sandbox.document.getElementById('btnProtoVial').classList.contains('active'), false);
     assert.strictEqual(sandbox.document.getElementById('btnProtoVia').classList.contains('active'), true);
+    assert.strictEqual(sandbox.document.getElementById('jsonCodeTitle').textContent, 'via.json');
+    assert.ok(sandbox.document.getElementById('btnCopyJson').textContent.includes('via.json'));
+    assert.ok(sandbox.document.getElementById('btnDownloadJson').textContent.includes('via.json'));
 
     sandbox.generateConfigCode();
     configH = sandbox.document.getElementById('configCodeOutput').textContent;

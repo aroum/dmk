@@ -98,8 +98,11 @@ def main():
     if "RGB_NUM" in defs or any(d == "RGB_NUM" or d.startswith("RGB_NUM=") for d in args.define):
         root["lighting"] = "qmk_rgblight"
 
+    is_via_v3 = "VIA_V3" in defs or any(d == "VIA_V3" or d.startswith("VIA_V3=") for d in args.define) or args.output_file.endswith("via.json")
+
     if "MIDI_USB" in defs or any(d == "MIDI_USB" or d.startswith("MIDI_USB=") for d in args.define):
-        root["vial"] = {"midi": "advanced"}
+        if not is_via_v3:
+            root["vial"] = {"midi": "advanced"}
         custom_keycodes = []
         # INC keycodes (0x7E00 .. 0x7E0F)
         for i in range(16):
