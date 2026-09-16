@@ -102,7 +102,7 @@ void usb_process_key(uint16_t keycode, bool pressed) {
         }
     }
 
-    // Only send over USB if report payload actually changed (saves bus bandwidth)
+    // Only send over USB if report payload changed (saves bus bandwidth)
     if (report_changed) {
         USB_HID_SendReport(&current_report);
     }

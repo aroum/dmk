@@ -8,22 +8,43 @@
 extern "C" {
 #endif
 
-// Initialize keyboard subsystems
+/**
+ * @brief Initialize keyboard core subsystems, timers, and driver queues.
+ */
 void keyboard_init(void);
 
-// Main keyboard task executed by FreeRTOS scheduler
+/**
+ * @brief Main keyboard task loop executed by FreeRTOS scheduler.
+ * @param pvParameters FreeRTOS task parameters pointer (unused)
+ */
 void keyboard_task(void *pvParameters);
 
-// Send key press/release event to USB queue
+/**
+ * @brief Queue standard key press or release event to USB report task.
+ * @param keycode 16-bit USB HID keycode
+ * @param pressed True on press, false on release
+ */
 void keyboard_send_key(uint16_t keycode, bool pressed);
 
-// Send modifier bitmask press/release to USB queue
+/**
+ * @brief Send modifier bitmask update directly to USB report task.
+ * @param mod_mask 8-bit modifier mask
+ * @param pressed True on press, false on release
+ */
 void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
 
-// Core event processor for resolving actions
+/**
+ * @brief Core event processor for resolving matrix coordinate into keycode action.
+ * @param row Matrix row index
+ * @param col Matrix col index
+ * @param key Resolved 32-bit keycode
+ * @param pressed True on press, false on release
+ */
 void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed);
 
-// Software jump / reboot to bootloader mode across supported platforms
+/**
+ * @brief Reset MCU and jump to platform bootloader.
+ */
 void bootloader_jump(void);
 
 #ifdef __cplusplus

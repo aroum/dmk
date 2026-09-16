@@ -15,9 +15,18 @@ typedef struct matrix_event_s {
 
 extern QueueHandle_t matrix_queue;
 
-// Matrix scanning main task, to be executed by FreeRTOS scheduler periodically
+/**
+ * @brief Main matrix scanning task executed periodically by FreeRTOS scheduler.
+ * @param pvParameters FreeRTOS task parameter pointer (unused)
+ */
 void matrix_task(void *pvParameters);
 
+/**
+ * @brief Query current debounced press state of a matrix switch coordinate.
+ * @param row Matrix row index
+ * @param col Matrix col index
+ * @return true if switch is currently pressed, false otherwise
+ */
 bool matrix_is_pressed(unsigned char row, unsigned char col);
 
 #endif // _MATRIX_H

@@ -33,7 +33,7 @@ static bool s_use_pio_mux = false;
  *   bit 1 -> GPIO 14 (S1)
  *   bit 2 -> GPIO 15 (S0)
  * Thus, we reverse the 3 bits: bit 0 <-> bit 2.
- * In next PCB revision with normal order, this reversal can simply be removed!
+ * In next PCB revision with normal order, remove this reversal!
  */
 static inline uint32_t channel_to_pio_word(uint8_t channel) {
     uint32_t bit0 = (channel & 0x01) ? 1 : 0; // S0

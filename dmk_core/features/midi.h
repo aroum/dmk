@@ -11,10 +11,17 @@ extern "C" {
 
 #if (defined(MIDI_USB) || defined(MIDI_ENABLE) || defined(MIDI_JACK)) && !defined(NO_MIDI)
 
-// Initialize MIDI subsystem (tables and hardware interfaces)
+/**
+ * @brief Initialize MIDI subsystem state and hardware interfaces.
+ */
 void dmk_midi_init(void);
 
-// Process a MIDI keycode. Returns true if keycode is a MIDI action and was handled.
+/**
+ * @brief Process a MIDI keycode.
+ * @param key 32-bit keycode
+ * @param pressed True on press, false on release
+ * @return true if keycode is a MIDI action and was handled, false otherwise
+ */
 bool dmk_midi_process_keycode(uint32_t key, bool pressed);
 
 #else

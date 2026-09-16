@@ -38,14 +38,59 @@ static inline bool hal_gpio_snapshot_get(hal_gpio_snapshot_t snapshot, pin_t pin
     }
 }
 
+/**
+ * @brief Initialize a GPIO pin.
+ * @param gpio Hardware pin identifier
+ */
 void hal_gpio_init(pin_t gpio);
+
+/**
+ * @brief Set GPIO pin direction.
+ * @param gpio Hardware pin identifier
+ * @param is_output True for output, false for input
+ */
 void hal_gpio_set_dir(pin_t gpio, bool is_output);
+
+/**
+ * @brief Set GPIO pin output state.
+ * @param gpio Hardware pin identifier
+ * @param value True for high, false for low
+ */
 void hal_gpio_put(pin_t gpio, bool value);
+
+/**
+ * @brief Read current state of a GPIO pin.
+ * @param gpio Hardware pin identifier
+ * @return true if pin is high, false if low
+ */
 bool hal_gpio_get(pin_t gpio);
+
+/**
+ * @brief Enable internal pull-down resistor on GPIO pin.
+ * @param gpio Hardware pin identifier
+ */
 void hal_gpio_pull_down(pin_t gpio);
+
+/**
+ * @brief Enable internal pull-up resistor on GPIO pin.
+ * @param gpio Hardware pin identifier
+ */
 void hal_gpio_pull_up(pin_t gpio);
+
+/**
+ * @brief Busy-wait delay in microseconds.
+ * @param us Duration in microseconds
+ */
 void hal_sleep_us(uint32_t us);
+
+/**
+ * @brief Initialize hardware platform clocks, peripherals, and interrupts.
+ */
 void platform_init(void);
+
+/**
+ * @brief Reset microcontroller and jump to ROM/UF2 bootloader mode.
+ */
 void platform_bootloader_jump(void);
 
 #endif

@@ -15,10 +15,16 @@ typedef struct {
     uint8_t pressed;
 } key_event_t;
 
-// Initialize USB hardware and endpoints
+/**
+ * @brief Initialize USB hardware controller and endpoints.
+ */
 void usb_init(void);
 
-// Zero-Queue Fast Path: updates HID report and transmits to host directly
+/**
+ * @brief Fast-path handler: update USB HID report buffer and transmit to host.
+ * @param keycode 16-bit USB HID keycode
+ * @param pressed True on press, false on release
+ */
 void usb_process_key(uint16_t keycode, bool pressed);
 
 #ifdef __cplusplus
