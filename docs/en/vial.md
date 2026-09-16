@@ -69,9 +69,9 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 > #define VIA_V3
 > ```
 >
-> _Reports VIA Protocol 12 (`0x000C`). Required for the official https://usevia.app web configurator._
+> _Reports VIA Protocol 12. Required for the official https://usevia.app web configurator._
 >
-> Unlike Vial, the VIA v3 specification supports creating user-defined **Custom UI Controls / Menus** defined in the keyboard JSON schema. These can be leveraged, for instance, for interactive calibration of Hall Effect (**HE**) magnetic switches or electrostatic capacitive (**EC**) switches, custom actuation points, and Rapid Trigger. Note that custom control menus are **only supported through the official web client** https://usevia.app.
+> Unlike Vial, the VIA v3 specification supports creating custom controls in the keyboard JSON definition. These can be used, for example, for calibrating HE and EC switches, adjusting actuation points, and setting up Rapid Trigger. This functionality is supported only via the official web client https://usevia.app.
 
 ---
 
