@@ -138,10 +138,12 @@ function generateVialJson() {
             const vialPid = document.getElementById('vialPid').value || "0x4001";
 
             // Count Active Keys & Build Layout Array
+            const activeCoords = [];
             const layoutPairs = [];
             for (let r = 0; r < totalRows; r++) {
                 for (let c = 0; c < totalCols; c++) {
                     if (configState.activeKeys[r] && configState.activeKeys[r][c]) {
+                        activeCoords.push({ r, c });
                         layoutPairs.push(`{${r}, ${c}}`);
                     }
                 }
@@ -353,16 +355,19 @@ function generateVialJson() {
             out += `// clang-format off\n`;
             out += `#define LAYOUT { \\\n`;
 
-            // Break layout into logical rows
-            let rowChunks = [];
-            let currentChunk = [];
-            for (let i = 0; i < layoutPairs.length; i++) {
-                currentChunk.push(layoutPairs[i]);
-                if (currentChunk.length >= (isSplit ? totalCols : Math.min(totalCols, 12)) || i === layoutPairs.length - 1) {
-                    rowChunks.push("    " + currentChunk.join(', '));
-                    currentChunk = [];
+            // Break layout into logical rows matching the matrix rows
+            const rowsMap = new Map();
+            activeCoords.forEach((coord, idx) => {
+                if (!rowsMap.has(coord.r)) {
+                    rowsMap.set(coord.r, []);
                 }
-            }
+                rowsMap.get(coord.r).push({ ...coord, idx, pairStr: layoutPairs[idx] });
+            });
+
+            const rowChunks = [];
+            rowsMap.forEach((keysInRow) => {
+                rowChunks.push("    " + keysInRow.map(k => k.pairStr).join(', '));
+            });
 
             out += rowChunks.join(', \\\n') + ` \\\n}\n`;
             out += `#define LAYOUT_DEFAULT LAYOUT\n`;
@@ -380,15 +385,11 @@ function generateVialJson() {
             configState.layers.forEach((l, lIdx) => {
                 out += `    [${l}] = {\n`;
                 const keys = configState.keymaps[l] || [];
-                let keyLines = [];
-                let kChunk = [];
-                for (let i = 0; i < numKeys; i++) {
-                    kChunk.push(keys[i] || "K_TRNS");
-                    if (kChunk.length >= 12 || i === numKeys - 1) {
-                        keyLines.push("        " + kChunk.join(', '));
-                        kChunk = [];
-                    }
-                }
+                const keyLines = [];
+                rowsMap.forEach((keysInRow) => {
+                    const rowKeycodes = keysInRow.map(k => keys[k.idx] || "K_TRNS");
+                    keyLines.push("        " + rowKeycodes.join(', '));
+                });
                 out += keyLines.join(', \\\n') + `\n    }${lIdx < configState.layers.length - 1 ? ',' : ''}\n`;
             });
             out += `};\n`;

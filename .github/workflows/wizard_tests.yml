@@ -1,0 +1,32 @@
+name: Wizard Tests
+
+on:
+  push:
+    paths:
+      - 'editor/**'
+      - 'tests/test_editor.js'
+      - '.github/workflows/wizard_tests.yml'
+  pull_request:
+    paths:
+      - 'editor/**'
+      - 'tests/test_editor.js'
+      - '.github/workflows/wizard_tests.yml'
+  workflow_dispatch:
+
+jobs:
+  wizard-tests:
+    name: Run Wizard Unit & Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run Editor Tests
+        run: |
+          node --test tests/test_editor.js

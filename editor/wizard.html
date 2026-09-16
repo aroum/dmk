@@ -705,6 +705,7 @@
             try {
                 const snapshot = {
                     keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+                    keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
                     encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
                 };
                 undoStack.push(snapshot);
@@ -722,11 +723,13 @@
             try {
                 const currentSnapshot = {
                     keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+                    keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
                     encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
                 };
                 redoStack.push(currentSnapshot);
                 const previous = undoStack.pop();
                 configState.keymaps = previous.keymaps;
+                configState.keymapByCoord = previous.keymapByCoord || {};
                 configState.encoderKeymaps = previous.encoderKeymaps;
                 renderVisualKeymap();
                 renderLayerEncodersUI();
@@ -740,11 +743,13 @@
             try {
                 const currentSnapshot = {
                     keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+                    keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
                     encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
                 };
                 undoStack.push(currentSnapshot);
                 const nextState = redoStack.pop();
                 configState.keymaps = nextState.keymaps;
+                configState.keymapByCoord = nextState.keymapByCoord || {};
                 configState.encoderKeymaps = nextState.encoderKeymaps;
                 renderVisualKeymap();
                 renderLayerEncodersUI();
