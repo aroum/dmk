@@ -56,10 +56,19 @@
         header {
             background: var(--panel);
             border-bottom: 1px solid var(--border);
-            padding: 14px 24px;
+            padding: 12px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        #headerUniversalMcuContainer {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto;
         }
 
         .brand {

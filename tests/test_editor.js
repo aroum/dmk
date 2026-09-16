@@ -743,3 +743,59 @@ test('Unsaved Changes: beforeunload prompt when page is dirty', () => {
     assert.strictEqual(beforeUnloadPrevented, true, 'Dirty state must prevent unload');
     assert.strictEqual(eventObj.returnValue, '');
 });
+
+test('Split Pin Configuration & MCU Full-Duplex vs Half-Duplex', () => {
+    const sandbox = createSandbox();
+    sandbox.init();
+
+    // 1. RP2040 Split (default 1-wire PIO Half-Duplex)
+    sandbox.setMcu('rp2040');
+    sandbox.setSplitMode(true);
+    sandbox.document.getElementById('splitUartMode').value = 'hardware';
+    sandbox.updateSplitPinsUI();
+
+    assert.strictEqual(sandbox.document.getElementById('splitSinglePinGroup').style.display, 'block');
+    assert.strictEqual(sandbox.document.getElementById('splitDualPinsGroup').style.display, 'none');
+    sandbox.generateConfigCode();
+    let configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX'));
+    assert.ok(configH.includes('#define SPLIT_TX_PIN GPIO1'));
+
+    // 2. Milandr Hardware Split (2-wire Full-Duplex TX + RX)
+    sandbox.setMcu('milandr');
+    sandbox.updateSplitPinsUI();
+    assert.strictEqual(sandbox.document.getElementById('splitSinglePinGroup').style.display, 'none');
+    assert.strictEqual(sandbox.document.getElementById('splitDualPinsGroup').style.display, 'grid');
+    assert.strictEqual(sandbox.document.getElementById('splitTxPin').value, 'PF1');
+    assert.strictEqual(sandbox.document.getElementById('splitRxPin').value, 'PF0');
+
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX'));
+    assert.ok(configH.includes('#define SPLIT_TX_PIN PF1'));
+    assert.ok(configH.includes('#define SPLIT_RX_PIN PF0'));
+
+    // 3. Milandr Bit-Bang Split (1-wire Soft UART)
+    sandbox.document.getElementById('splitUartMode').value = 'bitbang';
+    sandbox.updateSplitPinsUI();
+    assert.strictEqual(sandbox.document.getElementById('splitSinglePinGroup').style.display, 'block');
+    assert.strictEqual(sandbox.document.getElementById('splitDualPinsGroup').style.display, 'none');
+
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define SPLIT_CONNECTION_TYPE SOFT'));
+    assert.ok(configH.includes('#define SPLIT_TX_PIN PF0'));
+
+    // 4. Universal Mode Header Tabs and Split Extras
+    sandbox.setMcu('all');
+    assert.strictEqual(sandbox.document.getElementById('headerUniversalMcuContainer').style.display, 'flex');
+
+    sandbox.switchUniversalMcuTab('milandr');
+    assert.strictEqual(sandbox.document.getElementById('multiSplitRxGroup').style.display, 'block');
+    assert.strictEqual(sandbox.document.getElementById('mcuSplitTxPin').value, 'PF1');
+    assert.strictEqual(sandbox.document.getElementById('mcuSplitRxPin').value, 'PF0');
+
+    sandbox.switchUniversalMcuTab('rp2040');
+    assert.strictEqual(sandbox.document.getElementById('multiSplitRxGroup').style.display, 'none');
+    assert.strictEqual(sandbox.document.getElementById('mcuSplitTxPin').value, 'GPIO0');
+});

@@ -11,6 +11,18 @@
         <div class="brand">
             <h1>DMK Config Wizard</h1>
         </div>
+
+        <!-- Universal Multi-MCU Tab Bar in Header (Centered, visible only when MCU is 'all') -->
+        <div id="headerUniversalMcuContainer" style="display: none; align-items: center; gap: 8px;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--accent);" data-i18n="multiMcuHeaderLabel">Платформы микроконтроллеров:</span>
+            <div style="display: inline-flex; background: var(--bg); padding: 3px; border-radius: 6px; border: 1px solid var(--border); gap: 4px;">
+                <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')" style="padding: 4px 10px; font-size: 0.8rem;">RP2040 / RP2350</button>
+                <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')" style="padding: 4px 10px; font-size: 0.8rem;">Миландр</button>
+                <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')" style="padding: 4px 10px; font-size: 0.8rem;">nRF52840</button>
+                <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')" style="padding: 4px 10px; font-size: 0.8rem;">Байкал</button>
+            </div>
+        </div>
+
         <div class="header-actions">
             <!-- Hidden file inputs for uploading config.h and vial.json -->
             <input type="file" id="importConfigFile" accept=".h,.c,.txt" style="display: none;" onchange="handleConfigFileUpload(event)">
@@ -118,15 +130,30 @@
                 <div class="grid-2">
                     <div class="form-group">
                         <label data-i18n="splitModeLabel">Режим связи между половинами:</label>
-                        <select id="splitUartMode">
-                            <option value="bitbang" selected data-i18n="uartBitbang">Bit-Bang UART (1 GPIO, программно)</option>
-                            <option value="hardware" data-i18n="uartHardware">Hardware / PIO UART (Аппаратный, 1–2 GPIO)</option>
+                        <select id="splitUartMode" onchange="updateSplitPinsUI(); markDirty();">
+                            <option value="bitbang" data-i18n="uartBitbang">Bit-Bang UART (программный полудуплекс, 1 GPIO)</option>
+                            <option value="hardware" selected data-i18n="uartHardware">Hardware PIO UART (аппаратный полудуплекс, 1 GPIO)</option>
                         </select>
                     </div>
+                    <!-- Single pin communication (for 1-wire modes) -->
+                    <div class="form-group" id="splitSinglePinGroup">
+                        <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи (SPLIT_TX_PIN / SERIAL_PIN):</label>
+                        <input type="text" id="serialPinRP" value="GPIO1" placeholder="Для RP2040 (например GPIO1)" oninput="markDirty()">
+                        <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
+                    </div>
+                </div>
+
+                <!-- Dual communication pins for Milandr / Full-Duplex UART -->
+                <div id="splitDualPinsGroup" class="grid-2" style="display: none;">
                     <div class="form-group">
-                        <label data-i18n="serialPinLabel">Пин связи:</label>
-                        <input type="text" id="serialPinRP" value="GPIO1" placeholder="Для RP2040 (например GPIO1)">
-                        <span class="hint" data-i18n="serialPinHint">Например: GPIO1 (RP2040), PA0 (Milandr), P0_00 (nRF52840)</span>
+                        <label id="lblSplitTxPin" data-i18n="splitTxPinLabel">Пин TX (SPLIT_TX_PIN):</label>
+                        <input type="text" id="splitTxPin" value="PF1" placeholder="PF1" oninput="markDirty()">
+                        <span class="hint" id="hintSplitTxPin" data-i18n="splitTxPinHint">Линия передачи данных (выход UART TX)</span>
+                    </div>
+                    <div class="form-group">
+                        <label id="lblSplitRxPin" data-i18n="splitRxPinLabel">Пин RX (SPLIT_RX_PIN):</label>
+                        <input type="text" id="splitRxPin" value="PF0" placeholder="PF0" oninput="markDirty()">
+                        <span class="hint" id="hintSplitRxPin" data-i18n="splitRxPinHint">Линия приёма данных (вход UART RX)</span>
                     </div>
                 </div>
             </div>
@@ -170,15 +197,11 @@
                 </div>
             </div>
 
-            <!-- MCU Tabs for Universal Mode -->
-            <div id="universalMcuTabsContainer" class="universal-mcu-tab-bar" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 12px;">
-                <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Платформы микроконтроллеров в универсальном режиме:</div>
-                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
-                    <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
-                    <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
-                    <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
-                </div>
+            <!-- Active MCU indicator when in Universal Mode -->
+            <div id="activeUniversalMcuBadge" style="display: none; align-items: center; gap: 8px; margin-bottom: 12px; padding: 6px 12px; background: rgba(99, 102, 241, 0.12); border: 1px solid var(--accent); border-radius: 6px; font-size: 0.82rem;">
+                <span style="color: var(--accent); font-weight: 600;" data-i18n="activeMcuEditingLabel">Текущая настраиваемая платформа:</span>
+                <span id="activeUniversalMcuName" style="font-weight: 700; color: #fff;">RP2040 / RP2350</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);" data-i18n="activeMcuEditingHint">(переключается в шапке сверху)</span>
             </div>
 
             <!-- Matrix Pins Settings (COL2ROW / ROW2COL) -->
@@ -207,17 +230,18 @@
 
             <!-- Specific MCU Split override pins in Universal mode -->
             <div id="universalMcuExtrasContainer" style="display: none; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; flex-direction: column; gap: 10px; margin-top: 6px;">
-                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">Индивидуальные настройки связи половин (Split) для выбранного MCU:</div>
+                <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);" id="lblUniversalMcuExtrasTitle">Индивидуальные настройки связи половин (Split) для выбранного MCU:</div>
                 <div class="grid-2">
                     <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem;">Пин связи (SPLIT_TX_PIN / SERIAL_PIN):</label>
-                        <input type="text" id="mcuSplitTxPin" value="GPIO0" oninput="saveCurrentMcuPinState()">
+                        <label style="font-size: 0.75rem;" id="lblMultiSplitTx">Пин TX (SPLIT_TX_PIN):</label>
+                        <input type="text" id="mcuSplitTxPin" value="GPIO0" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem;">Пин RX при Full-Duplex (SPLIT_RX_PIN):</label>
-                        <input type="text" id="mcuSplitRxPin" value="GPIO1" oninput="saveCurrentMcuPinState()">
+                    <div class="form-group" style="margin: 0;" id="multiSplitRxGroup">
+                        <label style="font-size: 0.75rem;" id="lblMultiSplitRx">Пин RX (SPLIT_RX_PIN):</label>
+                        <input type="text" id="mcuSplitRxPin" value="GPIO1" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                 </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);" id="hintMultiSplit"></div>
             </div>
 
             <div class="grid-2">
@@ -244,16 +268,6 @@
                 </div>
 
                 <div id="encoderOptionsBlock" style="display: none; flex-direction: column; gap: 14px;">
-                    <!-- MCU Tabs for Universal Mode (Encoders) -->
-                    <div id="universalMcuTabsContainerEnc" class="universal-mcu-tab-bar" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 4px;">
-                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Платформы микроконтроллеров в универсальном режиме:</div>
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
-                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
-                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
-                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
-                        </div>
-                    </div>
 
                     <div class="grid-2">
                         <div class="form-group">
@@ -310,16 +324,6 @@
                 </div>
                 
                 <div id="rgbOptionsBlock" style="display: flex; flex-direction: column; gap: 14px;">
-                    <!-- MCU Tabs for Universal Mode (RGB) -->
-                    <div id="universalMcuTabsContainerRgb" class="universal-mcu-tab-bar" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 4px;">
-                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--accent);">Платформы микроконтроллеров в универсальном режиме:</div>
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button type="button" class="btn btn-sm universal-mcu-btn active" data-mcu="rp2040" onclick="switchUniversalMcuTab('rp2040')">RP2040 / RP2350</button>
-                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="milandr" onclick="switchUniversalMcuTab('milandr')">Миландр</button>
-                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="nrf52840" onclick="switchUniversalMcuTab('nrf52840')">nRF52840</button>
-                            <button type="button" class="btn btn-sm universal-mcu-btn" data-mcu="baikal" onclick="switchUniversalMcuTab('baikal')">Байкал</button>
-                        </div>
-                    </div>
 
                     <div class="grid-2">
                         <div class="form-group">
@@ -1024,11 +1028,11 @@
                 const dirEl = document.getElementById('directPins');
                 if (dirEl) cur.direct = parsePins(dirEl.value);
                 const splitTxEl = document.getElementById('mcuSplitTxPin');
-                if (splitTxEl) cur.splitTx = splitTxEl.value.trim();
+                if (splitTxEl && splitTxEl.value.trim()) cur.splitTx = splitTxEl.value.trim();
                 const splitRxEl = document.getElementById('mcuSplitRxPin');
-                if (splitRxEl) cur.splitRx = splitRxEl.value.trim();
+                if (splitRxEl && splitRxEl.value.trim()) cur.splitRx = splitRxEl.value.trim();
                 const rgbEl = document.getElementById('rgbPin');
-                if (rgbEl) cur.rgb = rgbEl.value.trim();
+                if (rgbEl && rgbEl.value.trim()) cur.rgb = rgbEl.value.trim();
 
                 const encCount = parseInt(document.getElementById('encCount')?.value, 10) || 0;
                 if (!cur.encA) cur.encA = [];
@@ -1053,18 +1057,24 @@
             });
 
             const isAll = (mcu === 'all');
-            ['universalMcuTabsContainer', 'universalMcuTabsContainerEnc', 'universalMcuTabsContainerRgb'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = isAll ? 'flex' : 'none';
-            });
+            const headerTabs = document.getElementById('headerUniversalMcuContainer');
+            if (headerTabs) headerTabs.style.display = isAll ? 'flex' : 'none';
+
+            const badgeEl = document.getElementById('activeUniversalMcuBadge');
+            if (badgeEl) badgeEl.style.display = isAll ? 'flex' : 'none';
+
             const extrasEl = document.getElementById('universalMcuExtrasContainer');
-            if (extrasEl) extrasEl.style.display = isAll ? 'flex' : 'none';
+            if (extrasEl) extrasEl.style.display = (isAll && configState.isSplit) ? 'flex' : 'none';
 
             if (isAll) {
                 switchUniversalMcuTab(currentUniversalMcu);
             } else if (resetPins && mcuChanged) {
                 const defs = MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040;
                 document.getElementById('serialPinRP').value = defs.serial;
+                const txEl = document.getElementById('splitTxPin');
+                if (txEl) txEl.value = defs.splitTx || 'PF1';
+                const rxEl = document.getElementById('splitRxPin');
+                if (rxEl) rxEl.value = defs.splitRx || 'PF0';
                 document.getElementById('rgbPin').value = defs.rgb;
                 if (configState.matrixType === 'DIRECT') {
                     document.getElementById('directPins').value = defs.direct.join(', ');
@@ -1076,9 +1086,10 @@
                     updateEncoderInputs();
                 }
                 initMatrixGrid();
-            } else {
-                checkPinConflicts();
             }
+
+            updateSplitPinsUI();
+            checkPinConflicts();
         }
 
         function switchUniversalMcuTab(mcu) {
@@ -1089,11 +1100,23 @@
 
             currentUniversalMcu = mcu;
 
-            // 2. Synchronize active state for all platform buttons across all sections
+            // 2. Synchronize active state for all platform buttons in header and across page
             document.querySelectorAll('.universal-mcu-btn').forEach(btn => {
                 const btnMcu = btn.getAttribute('data-mcu');
                 btn.classList.toggle('active', btnMcu === mcu);
             });
+
+            // Update badge text on Step 2
+            const badgeName = document.getElementById('activeUniversalMcuName');
+            if (badgeName) {
+                const names = {
+                    rp2040: 'RP2040 / RP2350',
+                    milandr: 'Миландр',
+                    nrf52840: 'nRF52840',
+                    baikal: 'Байкал'
+                };
+                badgeName.textContent = names[mcu] || mcu;
+            }
 
             // 3. Load pins for target platform
             if (!configState.multiMcuPins) {
@@ -1111,9 +1134,9 @@
                 const dirEl = document.getElementById('directPins');
                 if (dirEl) dirEl.value = (d.direct || []).join(', ');
                 const splitTxEl = document.getElementById('mcuSplitTxPin');
-                if (splitTxEl) splitTxEl.value = d.splitTx || d.serial || 'GPIO0';
+                if (splitTxEl) splitTxEl.value = d.splitTx || 'GPIO0';
                 const splitRxEl = document.getElementById('mcuSplitRxPin');
-                if (splitRxEl) splitRxEl.value = d.splitRx || (d.serial === 'GPIO1' ? 'GPIO0' : (d.serial || 'GPIO1'));
+                if (splitRxEl) splitRxEl.value = d.splitRx || 'GPIO1';
                 const rgbEl = document.getElementById('rgbPin');
                 if (rgbEl) rgbEl.value = d.rgb || 'GPIO0';
             }
@@ -1122,7 +1145,137 @@
                 updateEncoderInputs();
             }
 
+            updateSplitPinsUI();
             checkPinConflicts();
+        }
+
+        function updateSplitPinsUI() {
+            const isSplit = Boolean(configState.isSplit);
+            const splitPanel = document.getElementById('splitSettings');
+            if (splitPanel) splitPanel.style.display = isSplit ? 'flex' : 'none';
+            if (!isSplit) return;
+
+            const activeMcu = (configState.mcu === 'all') ? currentUniversalMcu : configState.mcu;
+            const mode = document.getElementById('splitUartMode')?.value || 'hardware';
+            const isMilandr = (activeMcu === 'milandr');
+            const isEn = (currentLanguage === 'en');
+
+            // 1. Update option labels for splitUartMode to match exact MCU capabilities
+            const optBitbang = document.querySelector('#splitUartMode option[value="bitbang"]');
+            const optHardware = document.querySelector('#splitUartMode option[value="hardware"]');
+
+            if (optBitbang && optHardware) {
+                if (configState.mcu === 'all') {
+                    optBitbang.textContent = isEn
+                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO across platforms)'
+                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO на всех MCU)';
+                    optHardware.textContent = isEn
+                        ? 'Hardware / PIO UART (1 GPIO on RP2040/nRF/Baikal, 2 GPIO TX+RX on Milandr)'
+                        : 'Hardware / PIO UART (аппаратный: 1 GPIO для RP2040/nRF/Байкал, 2 GPIO TX+RX для Миландра)';
+                } else if (isMilandr) {
+                    optBitbang.textContent = isEn
+                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO: PF0)'
+                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO: PF0)';
+                    optHardware.textContent = isEn
+                        ? 'Hardware UART (hardware full-duplex, 2 GPIO: PF1/TX + PF0/RX)'
+                        : 'Hardware UART (аппаратный полный дуплекс, 2 GPIO: PF1/TX + PF0/RX)';
+                } else if (activeMcu === 'rp2040') {
+                    optBitbang.textContent = isEn
+                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO)'
+                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO)';
+                    optHardware.textContent = isEn
+                        ? 'Hardware PIO UART (hardware half-duplex, 1 GPIO)'
+                        : 'Hardware PIO UART (аппаратный полудуплекс, 1 GPIO)';
+                } else if (activeMcu === 'nrf52840') {
+                    optBitbang.textContent = isEn
+                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO)'
+                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO)';
+                    optHardware.textContent = isEn
+                        ? 'Hardware UARTE (hardware half-duplex, 1 GPIO)'
+                        : 'Hardware UARTE (аппаратный полудуплекс, 1 GPIO)';
+                } else if (activeMcu === 'baikal') {
+                    optBitbang.textContent = isEn
+                        ? 'Bit-Bang UART (software half-duplex, 1 GPIO)'
+                        : 'Bit-Bang UART (программный полудуплекс, 1 GPIO)';
+                    optHardware.textContent = isEn
+                        ? 'Hardware UART (hardware half-duplex RS-485, 1 GPIO)'
+                        : 'Hardware UART (аппаратный полудуплекс RS-485, 1 GPIO)';
+                }
+            }
+
+            // 2. Step 1 inputs: single pin vs dual TX+RX pins
+            const singleGroup = document.getElementById('splitSinglePinGroup');
+            const dualGroup = document.getElementById('splitDualPinsGroup');
+            if (singleGroup && dualGroup) {
+                if (isMilandr && mode === 'hardware') {
+                    singleGroup.style.display = 'none';
+                    dualGroup.style.display = 'grid';
+                    const txEl = document.getElementById('splitTxPin');
+                    const rxEl = document.getElementById('splitRxPin');
+                    if (txEl && (!txEl.value || txEl.value.startsWith('GPIO'))) txEl.value = 'PF1';
+                    if (rxEl && (!rxEl.value || rxEl.value.startsWith('GPIO'))) rxEl.value = 'PF0';
+                } else {
+                    singleGroup.style.display = 'block';
+                    dualGroup.style.display = 'none';
+                }
+            }
+
+            // Labels and hints for single pin on Step 1
+            const lblSerial = document.getElementById('lblSerialPin');
+            const hintSerial = document.getElementById('hintSerialPin');
+            const serialInput = document.getElementById('serialPinRP');
+            if (lblSerial && hintSerial && serialInput) {
+                if (isMilandr) {
+                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN):' : 'Пин связи (SPLIT_TX_PIN):';
+                    hintSerial.textContent = isEn ? 'Milandr Bit-Bang 1-wire pin (e.g. PF0)' : 'Программный 1-проводной пин Миландра (например PF0)';
+                    if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PF0';
+                } else if (activeMcu === 'rp2040') {
+                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN / SERIAL_PIN):' : 'Пин связи (SPLIT_TX_PIN / SERIAL_PIN):';
+                    hintSerial.textContent = isEn ? 'RP2040 1-wire PIO / Bit-Bang pin (e.g. GPIO0 or GPIO1)' : '1-проводной пин PIO или Bit-Bang (например GPIO0 или GPIO1)';
+                    if (!serialInput.value || serialInput.value.startsWith('P')) serialInput.value = 'GPIO1';
+                } else if (activeMcu === 'nrf52840') {
+                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN):' : 'Пин связи (SPLIT_TX_PIN):';
+                    hintSerial.textContent = isEn ? 'nRF52840 UARTE / Bit-Bang pin (e.g. P0_00)' : 'Пин nRF52840 (например P0_00)';
+                    if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'P0_00';
+                } else if (activeMcu === 'baikal') {
+                    lblSerial.textContent = isEn ? 'Communication Pin (SPLIT_TX_PIN):' : 'Пин связи (SPLIT_TX_PIN):';
+                    hintSerial.textContent = isEn ? 'Baikal UART pin (e.g. PC6 or PA2)' : 'Пин Байкал UART (например PC6 или PA2)';
+                    if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PC6';
+                }
+            }
+
+            // 3. Step 2 Universal Multi-MCU Split section
+            const multiExtras = document.getElementById('universalMcuExtrasContainer');
+            if (multiExtras && configState.mcu === 'all') {
+                multiExtras.style.display = 'flex';
+                const lblMultiTx = document.getElementById('lblMultiSplitTx');
+                const lblMultiRx = document.getElementById('lblMultiSplitRx');
+                const hintMulti = document.getElementById('hintMultiSplit');
+                const rxGroup = document.getElementById('multiSplitRxGroup');
+                if (currentUniversalMcu === 'milandr') {
+                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin (SPLIT_TX_PIN):' : 'Пин TX (SPLIT_TX_PIN):';
+                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin (SPLIT_RX_PIN):' : 'Пин RX (SPLIT_RX_PIN):';
+                    if (hintMulti) hintMulti.textContent = isEn ? 'Milandr hardware UART requires 2 pins: PF1 (TX) and PF0 (RX).' : 'На Миландере аппаратный UART требует 2 раздельных пина: PF1 (TX) и PF0 (RX).';
+                    if (rxGroup) rxGroup.style.display = 'block';
+                } else if (currentUniversalMcu === 'rp2040') {
+                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'PIO Communication Pin (SPLIT_TX_PIN):' : 'Пин связи PIO (SPLIT_TX_PIN):';
+                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin (Not needed for 1-wire PIO):' : 'Пин RX (не требуется для 1-проводного PIO):';
+                    if (hintMulti) hintMulti.textContent = isEn ? 'RP2040 uses a single GPIO pin for PIO half-duplex.' : 'RP2040 использует 1 провод через аппаратный полудуплексный PIO.';
+                    if (rxGroup) rxGroup.style.display = 'none';
+                } else if (currentUniversalMcu === 'nrf52840') {
+                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin (SPLIT_TX_PIN):' : 'Пин TX (SPLIT_TX_PIN):';
+                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin for Full-Duplex (SPLIT_RX_PIN):' : 'Пин RX при Full-Duplex (SPLIT_RX_PIN):';
+                    if (hintMulti) hintMulti.textContent = isEn ? 'nRF52840 UARTE pin configuration.' : 'Настройки пинов UARTE для nRF52840.';
+                    if (rxGroup) rxGroup.style.display = 'block';
+                } else if (currentUniversalMcu === 'baikal') {
+                    if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin (SPLIT_TX_PIN):' : 'Пин TX (SPLIT_TX_PIN):';
+                    if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin for Full-Duplex (SPLIT_RX_PIN):' : 'Пин RX при Full-Duplex (SPLIT_RX_PIN):';
+                    if (hintMulti) hintMulti.textContent = isEn ? 'Baikal UART pin configuration.' : 'Настройки пинов UART для Байкал.';
+                    if (rxGroup) rxGroup.style.display = 'block';
+                }
+            } else if (multiExtras) {
+                multiExtras.style.display = 'none';
+            }
         }
 
         function init() {
@@ -1159,6 +1312,7 @@
             toggleChordsOptions();
             toggleCustomMacrosOptions();
             toggleLayerHotkeyOptions();
+            updateSplitPinsUI();
             gotoStep(1);
             isPageDirty = false;
         }
@@ -1168,10 +1322,7 @@
             configState.isSplit = isSplit;
             document.getElementById('opt-single').classList.toggle('selected', !isSplit);
             document.getElementById('opt-split').classList.toggle('selected', isSplit);
-            const splitPanel = document.getElementById('splitSettings');
-            if (splitPanel) {
-                splitPanel.style.display = isSplit ? 'flex' : 'none';
-            }
+            updateSplitPinsUI();
             initMatrixGrid();
         }
 
@@ -3378,6 +3529,7 @@ visualElements.push({
                 renderLayerHotkeysUI();
             }
             updateJsonExportLabels();
+            updateSplitPinsUI();
         }
 
         // Apply saved theme & lang on startup
@@ -4410,10 +4562,27 @@ visualElements.push({
             // 3. Split vs Single
             const masterMatch = text.match(/#define\s+MASTER_SIDE\s+(LEFT|RIGHT|AUTO)/);
             const serialMatch = text.match(/#define\s+SERIAL_PIN\s+([A-Za-z0-9_]+)/);
-            if (masterMatch || serialMatch || text.includes('NUM_ROWS_SPLIT')) {
+            const splitTxMatch = text.match(/#define\s+SPLIT_TX_PIN\s+([A-Za-z0-9_]+)/);
+            const splitRxMatch = text.match(/#define\s+SPLIT_RX_PIN\s+([A-Za-z0-9_]+)/);
+            const splitConnMatch = text.match(/#define\s+SPLIT_CONNECTION_TYPE\s+([A-Za-z0-9_]+)/);
+            if (masterMatch || serialMatch || splitTxMatch || text.includes('NUM_ROWS_SPLIT')) {
                 setSplitMode(true);
                 if (masterMatch) document.getElementById('masterSide').value = masterMatch[1];
                 if (serialMatch) document.getElementById('serialPinRP').value = serialMatch[1];
+                if (splitTxMatch) {
+                    document.getElementById('serialPinRP').value = splitTxMatch[1];
+                    const txEl = document.getElementById('splitTxPin');
+                    if (txEl) txEl.value = splitTxMatch[1];
+                }
+                if (splitRxMatch) {
+                    const rxEl = document.getElementById('splitRxPin');
+                    if (rxEl) rxEl.value = splitRxMatch[1];
+                }
+                if (splitConnMatch) {
+                    const uartEl = document.getElementById('splitUartMode');
+                    if (uartEl) uartEl.value = (splitConnMatch[1] === 'SOFT') ? 'bitbang' : 'hardware';
+                }
+                updateSplitPinsUI();
             } else {
                 setSplitMode(false);
             }

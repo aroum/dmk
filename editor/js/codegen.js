@@ -206,33 +206,62 @@ function generateVialJson() {
             if (isSplit) {
                 out += `/* --- Split Keyboard Settings --- */\n`;
                 out += `#define MASTER_SIDE ${masterSide}\n`;
+                const isBitBang = (document.getElementById('splitUartMode')?.value === 'bitbang');
                 if (configState.mcu === 'all') {
                     const rpP = getPlatformPins('rp2040');
                     const milP = getPlatformPins('milandr');
                     const nrfP = getPlatformPins('nrf52840');
                     const baiP = getPlatformPins('baikal');
-                    out += `// Communication modes per platform (HW Half-Duplex, Full-Duplex UART, Soft Bit-Bang)\n`;
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${rpP.splitTx}\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${milP.splitTx}\n`;
-                    out += `    #define SPLIT_RX_PIN          ${milP.splitRx}\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${nrfP.splitTx}\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `    #define SPLIT_TX_PIN          ${baiP.splitTx}\n`;
-                    out += `#endif\n\n`;
+                    if (isBitBang) {
+                        out += `// Communication mode: Software Bit-Bang UART\n`;
+                        out += `#define SPLIT_CONNECTION_TYPE SOFT\n`;
+                        out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
+                        out += `    #define SPLIT_TX_PIN          ${rpP.splitTx}\n`;
+                        out += `#elif defined(MCU_milandr)\n`;
+                        out += `    #define SPLIT_TX_PIN          ${milP.splitTx}\n`;
+                        out += `#elif defined(MCU_nrf52840)\n`;
+                        out += `    #define SPLIT_TX_PIN          ${nrfP.splitTx}\n`;
+                        out += `#elif defined(MCU_baikal)\n`;
+                        out += `    #define SPLIT_TX_PIN          ${baiP.splitTx}\n`;
+                        out += `#endif\n\n`;
+                    } else {
+                        out += `// Communication modes per platform (HW Half-Duplex, Full-Duplex UART, Soft Bit-Bang)\n`;
+                        out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
+                        out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
+                        out += `    #define SPLIT_TX_PIN          ${rpP.splitTx}\n`;
+                        out += `#elif defined(MCU_milandr)\n`;
+                        out += `    #define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
+                        out += `    #define SPLIT_TX_PIN          ${milP.splitTx}\n`;
+                        out += `    #define SPLIT_RX_PIN          ${milP.splitRx}\n`;
+                        out += `#elif defined(MCU_nrf52840)\n`;
+                        out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
+                        out += `    #define SPLIT_TX_PIN          ${nrfP.splitTx}\n`;
+                        out += `#elif defined(MCU_baikal)\n`;
+                        out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
+                        out += `    #define SPLIT_TX_PIN          ${baiP.splitTx}\n`;
+                        out += `#endif\n\n`;
+                    }
                 } else if (configState.mcu === 'milandr') {
-                    out += `#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
-                    out += `#define SPLIT_TX_PIN PF1\n`;
-                    out += `#define SPLIT_RX_PIN PF0\n\n`;
+                    if (isBitBang) {
+                        const sPin = document.getElementById('serialPinRP')?.value || 'PF0';
+                        out += `#define SPLIT_CONNECTION_TYPE SOFT\n`;
+                        out += `#define SPLIT_TX_PIN ${sPin}\n\n`;
+                    } else {
+                        const tx = document.getElementById('splitTxPin')?.value || 'PF1';
+                        const rx = document.getElementById('splitRxPin')?.value || 'PF0';
+                        out += `#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
+                        out += `#define SPLIT_TX_PIN ${tx}\n`;
+                        out += `#define SPLIT_RX_PIN ${rx}\n\n`;
+                    }
                 } else {
-                    out += `#define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                    out += `#define SPLIT_TX_PIN ${document.getElementById('serialPinRP').value || 'GPIO0'}\n\n`;
+                    const sPin = document.getElementById('serialPinRP')?.value || 'GPIO0';
+                    if (isBitBang) {
+                        out += `#define SPLIT_CONNECTION_TYPE SOFT\n`;
+                        out += `#define SPLIT_TX_PIN ${sPin}\n\n`;
+                    } else {
+                        out += `#define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
+                        out += `#define SPLIT_TX_PIN ${sPin}\n\n`;
+                    }
                 }
             }
 
