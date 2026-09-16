@@ -2269,6 +2269,22 @@
             return out.join(', ');
         }
 
+        function getMacroStepList(macro) {
+            if (!macro) return [];
+            if (Array.isArray(macro.stepList)) {
+                return macro.stepList;
+            }
+            macro.stepList = parseMacroStepsToArray(macro.steps || '');
+            return macro.stepList;
+        }
+
+        function syncMacroStepsString(macro) {
+            if (!macro) return '';
+            const list = getMacroStepList(macro);
+            macro.steps = serializeMacroArrayToSteps(list);
+            return macro.steps;
+        }
+
         function renderMacroStepRowHtml(step, sIdx, onActionChange, onKeyChange, onRemove, onChangeKey) {
             const isRu = (currentLanguage !== 'en');
             const actionOptions = getMacroActionTypes().map(a => `<option value="${a.value}" ${step.type === a.value ? 'selected' : ''}>${a.label}</option>`).join('');
@@ -2281,7 +2297,7 @@
                     <select onchange="${onActionChange}" style="padding: 4px 8px; font-size: 0.8rem;">
                         ${actionOptions}
                     </select>
-                    <input type="${isDelay ? 'number' : 'text'}" ${isDelay ? 'placeholder="50"' : `list="allKeycodesList" placeholder="${isRu ? 'Поиск кнопки (Enter, Dot, [, Shift...)' : 'Search key (Enter, Dot, [, Shift...)'}"`} value="${step.key}" oninput="${onKeyChange}" ${changeAttr} style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
+                    <input type="${isDelay ? 'number' : 'text'}" ${isDelay ? 'placeholder="50"' : `list="allKeycodesList" placeholder="${isRu ? 'Поиск кнопки (Enter, Dot, [, Shift...)' : 'Search key (Enter, Dot, [, Shift...)'}"`} value="${step.key || ''}" oninput="${onKeyChange}" ${changeAttr} style="padding: 4px 8px; font-size: 0.85rem; font-family: var(--font-mono);">
                     <button onclick="${onRemove}" style="background: none; border: none; color: var(--danger); cursor: pointer; padding: 2px; font-weight: 700; font-size: 0.9rem;" title="${isRu ? 'Удалить шаг' : 'Delete step'}">✕</button>
                 </div>
             `;
@@ -2306,7 +2322,7 @@
                 card.style.flexDirection = 'column';
                 card.style.gap = '10px';
 
-                const stepsArray = parseMacroStepsToArray(macro.steps || '');
+                const stepsArray = getMacroStepList(macro);
 
                 let stepsRowsHtml = '';
                 if (!isCollapsed) {
@@ -2348,7 +2364,7 @@
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
                             <button class="btn btn-sm" onclick="addMacroStep(${mIdx})" style="padding: 4px 10px; font-size: 0.8rem;">${isRu ? '+ Добавить' : '+ Add'}</button>
-                            <span style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono); max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${macro.steps || ''}</span>
+                            <span id="macro_steps_preview_${mIdx}" style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono); max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${macro.steps || ''}</span>
                         </div>
                     </div>
                 `;
@@ -2357,7 +2373,9 @@
         }
 
         function onMacroStepActionChange(mIdx, sIdx, actionVal) {
-            const steps = parseMacroStepsToArray(configState.customMacros[mIdx].steps || '');
+            const macro = configState.customMacros[mIdx];
+            if (!macro) return;
+            const steps = getMacroStepList(macro);
             if (steps[sIdx]) {
                 steps[sIdx].type = actionVal;
                 if (actionVal === 'DELAY' && isNaN(parseInt(steps[sIdx].key, 10))) {
@@ -2365,32 +2383,41 @@
                 } else if (actionVal !== 'DELAY' && !isNaN(parseInt(steps[sIdx].key, 10))) {
                     steps[sIdx].key = '';
                 }
-                configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
+                syncMacroStepsString(macro);
                 renderCustomMacrosUI();
             }
         }
 
         function onMacroStepKeyChange(mIdx, sIdx, keyVal) {
-            const steps = parseMacroStepsToArray(configState.customMacros[mIdx].steps || '');
+            const macro = configState.customMacros[mIdx];
+            if (!macro) return;
+            const steps = getMacroStepList(macro);
             if (steps[sIdx]) {
-                const resolved = resolveKeycodeFromSearch(keyVal);
-                steps[sIdx].key = resolved || keyVal;
-                configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
+                steps[sIdx].key = keyVal;
+                syncMacroStepsString(macro);
+                const previewEl = document.getElementById(`macro_steps_preview_${mIdx}`);
+                if (previewEl) {
+                    previewEl.textContent = macro.steps || '';
+                }
                 renderPalette(currentPaletteCategory);
             }
         }
 
         function addMacroStep(mIdx) {
-            const steps = parseMacroStepsToArray(configState.customMacros[mIdx].steps || '');
+            const macro = configState.customMacros[mIdx];
+            if (!macro) return;
+            const steps = getMacroStepList(macro);
             steps.push({ type: 'TAP', key: '' });
-            configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
+            syncMacroStepsString(macro);
             renderCustomMacrosUI();
         }
 
         function removeMacroStep(mIdx, sIdx) {
-            const steps = parseMacroStepsToArray(configState.customMacros[mIdx].steps || '');
+            const macro = configState.customMacros[mIdx];
+            if (!macro) return;
+            const steps = getMacroStepList(macro);
             steps.splice(sIdx, 1);
-            configState.customMacros[mIdx].steps = serializeMacroArrayToSteps(steps);
+            syncMacroStepsString(macro);
             renderCustomMacrosUI();
         }
 
@@ -2399,7 +2426,8 @@
             configState.customMacros.push({
                 name: `MC_MACRO_${idx}`,
                 desc: "",
-                steps: ""
+                steps: "",
+                stepList: []
             });
             renderCustomMacrosUI();
             renderPalette(currentPaletteCategory);
