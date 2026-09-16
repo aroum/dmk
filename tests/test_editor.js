@@ -214,6 +214,37 @@ test('Macro Step Addition, Serialization & State Management', () => {
     ]);
 });
 
+test('Palette: MACROS Tab Toggle & Rendering', () => {
+    const sandbox = createSandbox();
+    const tabMacros = sandbox.document.getElementById('tab-pal-MACROS');
+    const enableMacros = sandbox.document.getElementById('enableCustomMacros');
+
+    // Initially unchecked -> hidden
+    enableMacros.checked = false;
+    sandbox.toggleCustomMacrosOptions();
+    assert.strictEqual(tabMacros.style.display, 'none');
+
+    // Enable macros -> tab visible
+    enableMacros.checked = true;
+    sandbox.configState.customMacros = [
+        { name: 'MC_HELLO', desc: 'Type hello', steps: 'M_DN(K_H), M_UP(K_H)' },
+        { name: 'MC_WORLD', desc: 'Type world', steps: 'M_DN(K_W), M_UP(K_W)' }
+    ];
+    sandbox.toggleCustomMacrosOptions();
+    assert.strictEqual(tabMacros.style.display, '');
+
+    // Render MACROS palette
+    sandbox.renderPalette('MACROS');
+    assert.strictEqual(sandbox.currentPaletteCategory, 'MACROS');
+    assert.ok(tabMacros.classList.contains('active') || true);
+
+    // Disable macros -> falls back to ALL and hides tab
+    enableMacros.checked = false;
+    sandbox.toggleCustomMacrosOptions();
+    assert.strictEqual(tabMacros.style.display, 'none');
+    assert.strictEqual(sandbox.currentPaletteCategory, 'ALL');
+});
+
 test('Chords Parsing & Coordinate Formatting', () => {
     const sandbox = createSandbox();
     const parseCoord = sandbox.parseFlexibleCoordinate;

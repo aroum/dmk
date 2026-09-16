@@ -529,6 +529,7 @@
                         <button class="btn btn-sm" id="tab-pal-MIDI" onclick="renderPalette('MIDI')" data-i18n="tabPalMidi">MIDI</button>
                         <button class="btn btn-sm" id="tab-pal-MEDIA" onclick="renderPalette('MEDIA')" data-i18n="tabPalMedia">Медиа</button>
                         <button class="btn btn-sm" id="tab-pal-LAYERS" onclick="renderPalette('LAYERS')" data-i18n="tabPalLayers">Слои</button>
+                        <button class="btn btn-sm" id="tab-pal-MACROS" onclick="renderPalette('MACROS')" data-i18n="tabPalMacros" style="display: none;">Макросы</button>
                     </div>
                 </div>
                 <div id="quickPaletteContainer" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 380px; overflow: auto; padding: 4px;"></div>
@@ -2155,6 +2156,13 @@
         function toggleCustomMacrosOptions() {
             const en = document.getElementById('enableCustomMacros').checked;
             document.getElementById('customMacrosBlock').style.display = en ? 'flex' : 'none';
+            const tab = document.getElementById('tab-pal-MACROS');
+            if (tab) tab.style.display = en ? '' : 'none';
+            if (!en && currentPaletteCategory === 'MACROS') {
+                renderPalette('ALL');
+            } else {
+                renderPalette(currentPaletteCategory);
+            }
             if (en) renderCustomMacrosUI();
         }
 
@@ -3815,7 +3823,7 @@ visualElements.push({
 
         function renderPalette(category, filterText) {
             currentPaletteCategory = category || 'ALL';
-            ['ALL', 'BASIC', 'NUMPAD', 'MODS', 'MOUSE', 'GAMEPAD', 'MIDI', 'MEDIA', 'LAYERS'].forEach(cat => {
+            ['ALL', 'BASIC', 'NUMPAD', 'MODS', 'MOUSE', 'GAMEPAD', 'MIDI', 'MEDIA', 'LAYERS', 'MACROS'].forEach(cat => {
                 const tab = document.getElementById(`tab-pal-${cat}`);
                 if (tab) tab.classList.toggle('active', cat === currentPaletteCategory);
             });
@@ -3844,6 +3852,15 @@ visualElements.push({
                     ...ALL_PALETTE_CODES.MEDIA,
                     ...ALL_PALETTE_CODES.LAYERS
                 ];
+            } else if (currentPaletteCategory === 'MACROS') {
+                codes = [];
+                if (configState.customMacros && configState.customMacros.length > 0) {
+                    configState.customMacros.forEach((m, idx) => {
+                        codes.push(`M(${idx})`);
+                    });
+                } else {
+                    codes.push('M(0)');
+                }
             } else if (ALL_PALETTE_CODES[currentPaletteCategory]) {
                 codes = [...ALL_PALETTE_CODES[currentPaletteCategory]];
             }
@@ -3879,6 +3896,16 @@ visualElements.push({
                     return aliases.some(alias => alias.includes(query) || alias.includes(rawQuery.toUpperCase()));
                 }
 
+                // 4. Custom macro name or description match
+                if (code.startsWith('M(')) {
+                    const mIdx = parseInt(code.slice(2, -1), 10);
+                    const m = configState.customMacros && configState.customMacros[mIdx];
+                    if (m) {
+                        if (m.name && m.name.toUpperCase().includes(query)) return true;
+                        if (m.desc && m.desc.toUpperCase().includes(query)) return true;
+                    }
+                }
+
                 return false;
             });
 
@@ -3892,12 +3919,21 @@ visualElements.push({
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-sm';
                 let label = (window.DISPLAY_MAP && window.DISPLAY_MAP[code]) ? window.DISPLAY_MAP[code] : code.replace(/^K_/, '');
-                if (code.includes('(...)') || code === 'CC X' || code.startsWith('CC_')) {
+                if (code.startsWith('M(')) {
+                    const mIdx = parseInt(code.slice(2, -1), 10);
+                    const m = configState.customMacros && configState.customMacros[mIdx];
+                    if (m && m.name && m.name !== `MC_MACRO_${mIdx}`) {
+                        label = m.name;
+                    }
+                    btn.title = (m && m.desc) ? `${code}: ${m.name || code} (${m.desc})` : (m && m.name ? `${code}: ${m.name}` : code);
+                    btn.style.borderColor = 'var(--accent)';
+                    btn.style.fontWeight = '600';
+                } else if (code.includes('(...)') || code === 'CC X' || code.startsWith('CC_')) {
                     btn.style.borderColor = 'var(--accent)';
                     btn.style.color = 'var(--accent)';
                 }
                 btn.textContent = label;
-                btn.title = code;
+                if (!btn.title) btn.title = code;
                 btn.onclick = () => assignKeycode(code);
                 fragment.appendChild(btn);
             });
@@ -4134,6 +4170,9 @@ visualElements.push({
                 checkPinConflicts();
                 initMatrixGrid();
             } else if (stepNum === 5) {
+                const enableMacros = !!document.getElementById('enableCustomMacros')?.checked;
+                const tabMacros = document.getElementById('tab-pal-MACROS');
+                if (tabMacros) tabMacros.style.display = enableMacros ? '' : 'none';
                 renderLayersUI();
                 renderVisualKeymap();
                 renderPalette('BASIC');
