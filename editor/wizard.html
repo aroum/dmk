@@ -1374,23 +1374,24 @@
             if (configState.activeKeys.length > totalRows) {
                 configState.activeKeys.length = totalRows;
             }
+            const isPatternArray = Array.isArray(customPattern) && customPattern !== configState.activeKeys;
             for (let r = 0; r < totalRows; r++) {
                 if (!Array.isArray(configState.activeKeys[r])) configState.activeKeys[r] = [];
                 while (configState.activeKeys[r].length < totalCols) {
                     const c = configState.activeKeys[r].length;
                     let isActive = true;
-                    if (customPattern && customPattern[r] && typeof customPattern[r][c] !== 'undefined') {
-                        isActive = (customPattern[r][c] === 1);
+                    if (isPatternArray && customPattern[r] && typeof customPattern[r][c] !== 'undefined') {
+                        isActive = Boolean(customPattern[r][c] === 1 || customPattern[r][c] === true);
                     }
                     configState.activeKeys[r].push(isActive);
                 }
                 if (configState.activeKeys[r].length > totalCols) {
                     configState.activeKeys[r].length = totalCols;
                 }
-                if (customPattern) {
+                if (isPatternArray) {
                     for (let c = 0; c < totalCols; c++) {
                         if (customPattern[r] && typeof customPattern[r][c] !== 'undefined') {
-                            configState.activeKeys[r][c] = (customPattern[r][c] === 1);
+                            configState.activeKeys[r][c] = Boolean(customPattern[r][c] === 1 || customPattern[r][c] === true);
                         }
                     }
                 }
@@ -2918,22 +2919,43 @@
         function initKeymapsIfEmpty() {
             const pairs = getActiveLayoutPairs();
             if (!configState.keyGeometry) configState.keyGeometry = [];
-            while (configState.keyGeometry.length < pairs.length) {
-                configState.keyGeometry.push({ w: 1, h: 1, x: 0, y: 0 });
-            }
-            if (configState.keyGeometry.length > pairs.length) {
-                configState.keyGeometry.length = pairs.length;
-            }
+            if (!configState.keyGeomByCoord) configState.keyGeomByCoord = {};
+            if (!configState.keymapByCoord) configState.keymapByCoord = {};
+
+            // Synchronize geometry by coordinate
+            pairs.forEach((p, idx) => {
+                const coordKey = `${p.r},${p.c}`;
+                if (configState.keyGeomByCoord[coordKey]) {
+                    configState.keyGeometry[idx] = { ...configState.keyGeomByCoord[coordKey] };
+                } else if (configState.keyGeometry[idx]) {
+                    configState.keyGeomByCoord[coordKey] = { ...configState.keyGeometry[idx] };
+                } else {
+                    const defaultGeom = { w: 1, h: 1, x: 0, y: 0 };
+                    configState.keyGeometry[idx] = defaultGeom;
+                    configState.keyGeomByCoord[coordKey] = defaultGeom;
+                }
+            });
+            configState.keyGeometry.length = pairs.length;
 
             configState.layers.forEach(l => {
                 if (!configState.keymaps[l]) configState.keymaps[l] = [];
-                while (configState.keymaps[l].length < pairs.length) {
-                    const idx = configState.keymaps[l].length;
-                    configState.keymaps[l].push(l === 'DEF' ? (DEFAULT_ALPHA_PRESET[idx] || "K_TRNS") : "K_TRNS");
-                }
-                if (configState.keymaps[l].length > pairs.length) {
-                    configState.keymaps[l].length = pairs.length;
-                }
+                if (!configState.keymapByCoord[l]) configState.keymapByCoord[l] = {};
+
+                const newLayerKeys = [];
+                pairs.forEach((p, idx) => {
+                    const coordKey = `${p.r},${p.c}`;
+                    if (configState.keymapByCoord[l][coordKey]) {
+                        newLayerKeys.push(configState.keymapByCoord[l][coordKey]);
+                    } else if (configState.keymaps[l][idx]) {
+                        newLayerKeys.push(configState.keymaps[l][idx]);
+                        configState.keymapByCoord[l][coordKey] = configState.keymaps[l][idx];
+                    } else {
+                        const defKey = (l === 'DEF') ? (DEFAULT_ALPHA_PRESET[idx] || "K_TRNS") : "K_TRNS";
+                        newLayerKeys.push(defKey);
+                        configState.keymapByCoord[l][coordKey] = defKey;
+                    }
+                });
+                configState.keymaps[l] = newLayerKeys;
             });
         }
 
@@ -3090,7 +3112,7 @@ visualElements.push({
             const isLight = document.body.classList.contains('light-theme');
             localStorage.setItem('dmk_theme', isLight ? 'light' : 'dark');
             applyLanguage();
-            if (configState.step === 4) initMatrixGrid(configState.activeKeys);
+            if (configState.step === 4) initMatrixGrid();
             if (configState.step === 5) renderVisualKeymap();
         }
 
@@ -3462,6 +3484,10 @@ visualElements.push({
                     if (!configState.keyGeometry[item.id]) configState.keyGeometry[item.id] = { w: 1, h: 1, x: 0, y: 0 };
                     configState.keyGeometry[item.id].x = Math.round(((configState.keyGeometry[item.id].x || 0) + dx) * 100) / 100;
                     configState.keyGeometry[item.id].y = Math.round(((configState.keyGeometry[item.id].y || 0) + dy) * 100) / 100;
+                    if (!configState.keyGeomByCoord) configState.keyGeomByCoord = {};
+                    if (item.r !== undefined && item.c !== undefined) {
+                        configState.keyGeomByCoord[`${item.r},${item.c}`] = { ...configState.keyGeometry[item.id] };
+                    }
                 }
             });
 
@@ -3485,6 +3511,10 @@ visualElements.push({
                     if (!configState.keyGeometry) configState.keyGeometry = [];
                     if (!configState.keyGeometry[item.id]) configState.keyGeometry[item.id] = { w: 1, h: 1, x: 0, y: 0 };
                     configState.keyGeometry[item.id][prop] = val;
+                    if (!configState.keyGeomByCoord) configState.keyGeomByCoord = {};
+                    if (item.r !== undefined && item.c !== undefined) {
+                        configState.keyGeomByCoord[`${item.r},${item.c}`] = { ...configState.keyGeometry[item.id] };
+                    }
                 }
             });
 
@@ -3911,9 +3941,17 @@ visualElements.push({
                 if (!configState.keymaps[curLayer]) {
                     configState.keymaps[curLayer] = [];
                 }
+                if (!configState.keymapByCoord) configState.keymapByCoord = {};
+                if (!configState.keymapByCoord[curLayer]) configState.keymapByCoord[curLayer] = {};
+
+                const pairs = getActiveLayoutPairs();
                 configState.selectedItems.forEach(item => {
                     if (item.type === 'key') {
                         configState.keymaps[curLayer][item.id] = code;
+                        const pair = (item.r !== undefined && item.c !== undefined) ? item : pairs[item.id];
+                        if (pair) {
+                            configState.keymapByCoord[curLayer][`${pair.r},${pair.c}`] = code;
+                        }
                     } else if (item.type === 'enc') {
                         if (!configState.encoderKeymaps) configState.encoderKeymaps = {};
                         if (!configState.encoderKeymaps[curLayer]) configState.encoderKeymaps[curLayer] = [];
@@ -3924,9 +3962,8 @@ visualElements.push({
 
                 // Auto advance if single item selected
                 if (configState.selectedItems.length === 1 && configState.selectedItems[0].type === 'key') {
-                    const total = getActiveLayoutPairs().length;
+                    const total = pairs.length;
                     const nextId = (configState.selectedItems[0].id + 1) % total;
-                    const pairs = getActiveLayoutPairs();
                     if (pairs[nextId]) {
                         selectKeyForInspector(nextId, pairs[nextId].r, pairs[nextId].c);
                     } else {
@@ -3945,11 +3982,18 @@ visualElements.push({
             if (!configState.keymaps[curLayer]) {
                 configState.keymaps[curLayer] = [];
             }
-            configState.keymaps[curLayer][configState.selectedKeyIndex] = code;
-            
-            const total = getActiveLayoutPairs().length;
-            configState.selectedKeyIndex = (configState.selectedKeyIndex + 1) % total;
+            if (!configState.keymapByCoord) configState.keymapByCoord = {};
+            if (!configState.keymapByCoord[curLayer]) configState.keymapByCoord[curLayer] = {};
+
             const pairs = getActiveLayoutPairs();
+            configState.keymaps[curLayer][configState.selectedKeyIndex] = code;
+            if (pairs[configState.selectedKeyIndex]) {
+                const pair = pairs[configState.selectedKeyIndex];
+                configState.keymapByCoord[curLayer][`${pair.r},${pair.c}`] = code;
+            }
+            
+            const total = pairs.length;
+            configState.selectedKeyIndex = (configState.selectedKeyIndex + 1) % total;
             if (pairs[configState.selectedKeyIndex]) {
                 selectKeyForInspector(configState.selectedKeyIndex, pairs[configState.selectedKeyIndex].r, pairs[configState.selectedKeyIndex].c);
             } else {
@@ -4060,7 +4104,7 @@ visualElements.push({
                 checkPinConflicts();
             } else if (stepNum === 4) {
                 checkPinConflicts();
-                initMatrixGrid(configState.activeKeys);
+                initMatrixGrid();
             } else if (stepNum === 5) {
                 renderLayersUI();
                 renderVisualKeymap();
