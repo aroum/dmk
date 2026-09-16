@@ -46,14 +46,14 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
    - Unlocks full feature support: dynamic combos, dynamic macros, and layer-specific rotary encoder mapping.
 
 2. **VIA v3 (protocol version 12, usevia.app)**:
-   - Enabled by adding `#define VIA_V3` in `config.h` (alongside `#define VIAL`).
+   - Enabled via `#define VIA_V3` in `config.h`.
    - Used for connecting to the official [usevia.app](https://usevia.app/) web interface.
    - Reports protocol 12 (`0x000C`) on version requests to unlock VIA v3 menus.
    - Protocol version can also be explicitly overridden using `#define VIA_PROTOCOL_VERSION 0x000C`.
 
 > [!IMPORTANT]
 > **Protocol Choice: Either Vial or VIA v3 (Mutually Exclusive)**:
-> In `config.h` (and via the toggle at the top of Step 5 in the DMK Web Wizard), select **one of the two modes**:
+> In `config.h` (and via the switcher at the top of Step 5 in the DMK Web Wizard), select **strictly one of the two modes**:
 >
 > **Option 1: Vial (Default & Recommended)**
 >
@@ -66,11 +66,10 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 > **Option 2: VIA v3 (Compatibility for usevia.app)**
 >
 > ```c
-> #define VIAL
 > #define VIA_V3
 > ```
 >
-> _Reports VIA Protocol 12 (`0x000C`). Required for the official https://usevia.app web configurator. Adding `VIA_V3` switches the protocol from Vial to Protocol 12._
+> _Reports VIA Protocol 12 (`0x000C`). Required for the official https://usevia.app web configurator._
 
 ---
 

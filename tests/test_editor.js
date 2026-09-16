@@ -680,7 +680,7 @@ test('Protocol Mode Switcher: Vial vs VIA v3', () => {
 
     sandbox.generateConfigCode();
     let configH = sandbox.document.getElementById('configCodeOutput').textContent;
-    assert.ok(configH.includes('#define VIAL'));
+    assert.ok(configH.includes('#define VIAL\n'));
     assert.ok(!configH.includes('#define VIA_V3'));
 
     // Switch to via_v3
@@ -692,6 +692,6 @@ test('Protocol Mode Switcher: Vial vs VIA v3', () => {
 
     sandbox.generateConfigCode();
     configH = sandbox.document.getElementById('configCodeOutput').textContent;
-    assert.ok(configH.includes('#define VIAL'));
+    assert.ok(!configH.includes('#define VIAL\n'));
     assert.ok(configH.includes('#define VIA_V3'));
 });

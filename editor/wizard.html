@@ -20,9 +20,9 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                 <span data-i18n="btnImportConfig">Импорт config.h</span>
             </button>
-            <button class="btn btn-sm" id="btnImportVial" onclick="document.getElementById('importVialFile').click()" title="Загрузить существующий vial.json">
+            <button class="btn btn-sm" id="btnImportVial" onclick="document.getElementById('importVialFile').click()" title="Загрузить существующий *.json">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                <span data-i18n="btnImportVial">Импорт vial.json</span>
+                <span data-i18n="btnImportVial">Импорт *.json</span>
             </button>
 
             <button class="btn btn-sm" id="btnThemeToggle" onclick="toggleTheme()" title="Переключить тему (Светлая / Тёмная)">🌓 Тема</button>
@@ -39,7 +39,7 @@
             </div>
             <div class="step-item" onclick="gotoStep(2)">
                 <span class="step-number">2</span>
-                <span>Матрица & Пины</span>
+                <span>Пины</span>
             </div>
             <div class="step-item" onclick="gotoStep(3)">
                 <span class="step-number">3</span>
@@ -51,7 +51,7 @@
             </div>
             <div class="step-item" onclick="gotoStep(5)">
                 <span class="step-number">5</span>
-                <span>Vial & Раскладка</span>
+                <span>Раскладка</span>
             </div>
             <div class="step-item" onclick="gotoStep(6)">
                 <span class="step-number">6</span>
@@ -144,14 +144,14 @@
 
             <div class="nav-actions">
                 <div></div>
-                <button class="btn btn-primary" onclick="gotoStep(2)">Далее: Матрица и пины &rarr;</button>
+                <button class="btn btn-primary" onclick="gotoStep(2)">Далее: Пины &rarr;</button>
             </div>
         </div>
 
         <!-- Step 2: Matrix & Pins -->
         <div class="card" id="step-2" style="display: none;">
             <div class="card-header">
-                <h2 data-i18n="s2Title">Матрица и пины</h2>
+                <h2 data-i18n="s2Title">Пины</h2>
                 <p data-i18n="s2Desc">Укажите, как кнопки физически подключены к портам микроконтроллера.</p>
             </div>
 
@@ -434,29 +434,25 @@
 
             <div class="nav-actions">
                 <button class="btn" onclick="gotoStep(3)">&larr; Назад</button>
-                <button class="btn btn-primary" onclick="gotoStep(5)">Далее: Vial & Раскладка &rarr;</button>
+                <button class="btn btn-primary" onclick="gotoStep(5)">Далее: Раскладка &rarr;</button>
             </div>
         </div>
 
-        <!-- Step 5: Vial Visual Layout & Layers Keymap Designer -->
+        <!-- Step 5: Visual Layout & Layers Keymap Designer -->
         <div class="card" id="step-5" style="display: none;">
             <div class="card-header">
-                <h2 data-i18n="s5Title">Vial & Раскладка</h2>
-                <p data-i18n="s5Desc">Настройте слои клавиш и визуальное отображение в Vial GUI.</p>
+                <h2 data-i18n="s5Title">Раскладка</h2>
+                <p data-i18n="s5Desc">Настройте слои клавиш и визуальное отображение раскладки.</p>
             </div>
 
             <!-- Protocol Mode Switcher (Vial vs VIA v3) -->
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--bg); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <span style="font-weight: 700; font-size: 0.85rem;" data-i18n="protocolLabel">Режим конфигуратора:</span>
                     <div style="display: inline-flex; background: var(--panel-header); padding: 3px; border-radius: 6px; border: 1px solid var(--border); gap: 4px;">
-                        <button type="button" class="btn btn-sm active" id="btnProtoVial" onclick="setProtocolMode('vial')" style="padding: 5px 14px; font-weight: 600; font-size: 0.8rem;">Vial (vial.rocks)</button>
-                        <button type="button" class="btn btn-sm" id="btnProtoVia" onclick="setProtocolMode('via_v3')" style="padding: 5px 14px; font-weight: 600; font-size: 0.8rem;">VIA v3 (usevia.app)</button>
+                        <button type="button" class="btn btn-sm active" id="btnProtoVial" onclick="setProtocolMode('vial')" style="padding: 5px 14px; font-weight: 600; font-size: 0.8rem;">Vial</button>
+                        <button type="button" class="btn btn-sm" id="btnProtoVia" onclick="setProtocolMode('via_v3')" style="padding: 5px 14px; font-weight: 600; font-size: 0.8rem;">VIA v3</button>
                     </div>
-                </div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">
-                    <span id="hintProtoVial" data-i18n="hintProtoVial">✓ Vial: протокол v9, встроенный vial.json, макросы и комбо (vial.rocks)</span>
-                    <span id="hintProtoVia" data-i18n="hintProtoVia" style="display: none;">✓ VIA v3: протокол v12 для официального веб-клиента usevia.app</span>
                 </div>
             </div>
 
@@ -1166,11 +1162,6 @@
             const btnVia = document.getElementById('btnProtoVia');
             if (btnVial) btnVial.classList.toggle('active', !isVia);
             if (btnVia) btnVia.classList.toggle('active', isVia);
-
-            const hintVial = document.getElementById('hintProtoVial');
-            const hintVia = document.getElementById('hintProtoVia');
-            if (hintVial) hintVial.style.display = isVia ? 'none' : 'inline';
-            if (hintVia) hintVia.style.display = isVia ? 'inline' : 'none';
 
             const selectEl = document.getElementById('vialProtocolMode');
             if (selectEl) selectEl.value = proto;

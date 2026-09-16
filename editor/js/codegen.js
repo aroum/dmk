@@ -173,12 +173,11 @@ function generateVialJson() {
             if (enableVial) {
                 const proto = configState.protocolMode || configState.vialProtocol || document.getElementById('vialProtocolMode')?.value || 'vial';
                 out += `// === Vial / VIA GUI Configuration ===\n`;
-                out += `#ifndef VIAL\n`;
-                out += `#define VIAL\n`;
-                out += `#endif\n`;
                 if (proto === 'via_v3') {
                     out += `// Protocol 12 for usevia.app\n`;
                     out += `#define VIA_V3\n`;
+                } else {
+                    out += `#define VIAL\n`;
                 }
                 out += `#define VIAL_KEYBOARD_NAME "${vialName}"\n`;
                 out += `#define VIAL_VENDOR_ID ${vialVid}\n`;
