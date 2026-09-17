@@ -911,25 +911,12 @@
 
             const finalErrorHtml = errorHtmlParts.join('<br>');
 
-            if (noticeEl && detailsEl) {
-                if (hasIssues) {
-                    noticeEl.style.display = 'flex';
-                    detailsEl.innerHTML = finalErrorHtml;
-                } else {
-                    noticeEl.style.display = 'none';
-                    detailsEl.innerHTML = '';
+            [[noticeEl, detailsEl], [noticeEl3, detailsEl3]].forEach(([notice, details]) => {
+                if (notice && details) {
+                    notice.style.display = hasIssues ? 'flex' : 'none';
+                    details.innerHTML = hasIssues ? finalErrorHtml : '';
                 }
-            }
-
-            if (noticeEl3 && detailsEl3) {
-                if (hasIssues) {
-                    noticeEl3.style.display = 'flex';
-                    detailsEl3.innerHTML = finalErrorHtml;
-                } else {
-                    noticeEl3.style.display = 'none';
-                    detailsEl3.innerHTML = '';
-                }
-            }
+            });
 
             return hasIssues;
         }
@@ -1381,43 +1368,15 @@
         ];
 
         function toggleFeatureSubsystem(feat, enabled) {
-            if (feat === 'mouse') {
-                configState.enableMouse = enabled;
-                const el2 = document.getElementById('s5EnableMouse');
-                if (el2) el2.checked = enabled;
-                const tab = document.getElementById('tab-pal-MOUSE');
-                if (tab) tab.style.display = enabled ? '' : 'none';
-                if (!enabled && currentPaletteCategory === 'MOUSE') {
-                    renderPalette('ALL');
-                } else if (currentPaletteCategory === 'ALL') {
-                    renderPalette('ALL');
-                }
-            } else if (feat === 'gamepad') {
-                configState.enableGamepad = enabled;
-                const el2 = document.getElementById('s5EnableGamepad');
-                if (el2) el2.checked = enabled;
-                const tab = document.getElementById('tab-pal-GAMEPAD');
-                if (tab) tab.style.display = enabled ? '' : 'none';
-                if (!enabled && currentPaletteCategory === 'GAMEPAD') {
-                    renderPalette('ALL');
-                } else if (currentPaletteCategory === 'ALL') {
-                    renderPalette('ALL');
-                }
-            } else if (feat === 'midi') {
-                configState.enableMidi = enabled;
-                const el2 = document.getElementById('s5EnableMidi');
-                if (el2) el2.checked = enabled;
-                const tab = document.getElementById('tab-pal-MIDI');
-                if (tab) tab.style.display = enabled ? '' : 'none';
-                if (!enabled && currentPaletteCategory === 'MIDI') {
-                    renderPalette('ALL');
-                } else if (currentPaletteCategory === 'ALL') {
-                    renderPalette('ALL');
-                }
-            } else if (feat === 'led') {
-                configState.enableLed = enabled;
-                const el2 = document.getElementById('s5EnableLed');
-                if (el2) el2.checked = enabled;
+            const cap = feat.toUpperCase();
+            const camelKey = `enable${feat[0].toUpperCase()}${feat.slice(1)}`;
+            configState[camelKey] = enabled;
+            const el = document.getElementById(`s5Enable${feat[0].toUpperCase()}${feat.slice(1)}`);
+            if (el) el.checked = enabled;
+            const tab = document.getElementById(`tab-pal-${cap}`);
+            if (tab) tab.style.display = enabled ? '' : 'none';
+            if (feat !== 'led' && ((!enabled && currentPaletteCategory === cap) || currentPaletteCategory === 'ALL')) {
+                renderPalette('ALL');
             }
         }
 
@@ -1655,11 +1614,7 @@
                 }
                 markDirty();
                 configState.layers.push(cleanName);
-                const activeCount = getActiveLayoutPairs().length;
-                configState.keymaps[cleanName] = [];
-                for (let i = 0; i < activeCount; i++) {
-                    configState.keymaps[cleanName].push("K_TRNS");
-                }
+                configState.keymaps[cleanName] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
                 selectLayer(cleanName);
                 renderPalette(currentPaletteCategory);
             });
@@ -1707,11 +1662,7 @@
             if (!confirm(msg)) return;
 
             saveUndoState();
-            const activeCount = getActiveLayoutPairs().length;
-            configState.keymaps[curLayer] = [];
-            for (let i = 0; i < activeCount; i++) {
-                configState.keymaps[curLayer].push("K_TRNS");
-            }
+            configState.keymaps[curLayer] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
             if (configState.encoderKeymaps && configState.encoderKeymaps[curLayer]) {
                 configState.encoderKeymaps[curLayer] = configState.encoderKeymaps[curLayer].map(() => ({ cw: "K_TRNS", ccw: "K_TRNS" }));
             }
@@ -1905,11 +1856,7 @@
 
                 if (!configState.layers.includes(target)) {
                     configState.layers.push(target);
-                    const activeCount = getActiveLayoutPairs().length;
-                    configState.keymaps[target] = [];
-                    for (let i = 0; i < activeCount; i++) {
-                        configState.keymaps[target].push("K_TRNS");
-                    }
+                    configState.keymaps[target] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
                     renderLayersUI();
                 }
                 callback(`${modifierType}(${target})`);
@@ -1991,11 +1938,7 @@
                     }
                     if (!configState.layers.includes(target)) {
                         configState.layers.push(target);
-                        const activeCount = getActiveLayoutPairs().length;
-                        configState.keymaps[target] = [];
-                        for (let i = 0; i < activeCount; i++) {
-                            configState.keymaps[target].push("K_TRNS");
-                        }
+                        configState.keymaps[target] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
                         renderLayersUI();
                     }
                     callback(`OS(${target})`);
@@ -4335,12 +4278,7 @@ visualElements.push({
                 item.classList.toggle('completed', s < stepNum);
             });
 
-            if (stepNum === 2) {
-                if (document.getElementById('enableEncoders')?.checked) {
-                    updateEncoderInputs();
-                }
-                checkPinConflicts();
-            } else if (stepNum === 3) {
+            if (stepNum === 2 || stepNum === 3) {
                 if (document.getElementById('enableEncoders')?.checked) {
                     updateEncoderInputs();
                 }
@@ -4516,11 +4454,7 @@ visualElements.push({
                 loadedSomething = true;
             }
 
-            if (text.includes('#define MATRIX_ACTIVE_LOW')) {
-                document.getElementById('matrixPolarity').value = 'ACTIVE_LOW';
-            } else {
-                document.getElementById('matrixPolarity').value = 'NORMAL';
-            }
+            document.getElementById('matrixPolarity').value = text.includes('#define MATRIX_ACTIVE_LOW') ? 'ACTIVE_LOW' : 'NORMAL';
 
             const debMatch = text.match(/#define\s+DEBOUNCE\s+(\d+)/);
             if (debMatch) document.getElementById('debounceMs').value = parseInt(debMatch[1], 10);
@@ -4544,16 +4478,10 @@ visualElements.push({
             }
 
             // 6. Subsystems / Feature flags
-            const noMouse = /#define\s+NO_MOUSE\b/.test(text);
-            const noGamepad = /#define\s+NO_GAMEPAD\b/.test(text);
-            const noMidi = /#define\s+NO_MIDI\b/.test(text);
-            const noLed = /#define\s+NO_LED\b/.test(text);
+            ['mouse', 'gamepad', 'midi', 'led'].forEach(f => {
+                toggleFeatureSubsystem(f, !new RegExp(`#define\\s+NO_${f.toUpperCase()}\\b`).test(text));
+            });
             const noRgb = /#define\s+NO_RGB\b/.test(text);
-
-            toggleFeatureSubsystem('mouse', !noMouse);
-            toggleFeatureSubsystem('gamepad', !noGamepad);
-            toggleFeatureSubsystem('midi', !noMidi);
-            toggleFeatureSubsystem('led', !noLed);
 
             // 7. RGB
             const rgbNumMatch = text.match(/#define\s+RGB_NUM\s+(\d+)/);
@@ -4562,11 +4490,10 @@ visualElements.push({
                 document.getElementById('enableRgb').checked = true;
                 document.getElementById('rgbCount').value = parseInt(rgbNumMatch[1], 10);
                 if (rgbPinMatch) document.getElementById('rgbPin').value = rgbPinMatch[1];
-                toggleRgbOptions();
             } else if (noRgb) {
                 document.getElementById('enableRgb').checked = false;
-                toggleRgbOptions();
             }
+            toggleRgbOptions();
 
             // 7. Encoders
             const encAMatch = text.match(/#define\s+ENCODER_PINS_A\s+\{([^}]+)\}/);
@@ -4613,15 +4540,6 @@ visualElements.push({
                         }
                     });
 
-                    // If oldGeomMap wasn't populated earlier, capture it now
-                    if (Object.keys(oldGeomMap).length === 0 && configState.keyGeometry) {
-                        const oldPairs = getActiveLayoutPairs();
-                        oldPairs.forEach((p, idx) => {
-                            if (configState.keyGeometry[idx]) {
-                                oldGeomMap[`${p.r},${p.c}`] = configState.keyGeometry[idx];
-                            }
-                        });
-                    }
 
                     // Update rowPins and colPins inputs according to reqRows and reqCols
                     if (reqRows > 0) {

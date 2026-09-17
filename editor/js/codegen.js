@@ -158,11 +158,10 @@ function generateVialJson() {
             }
 
             // Modular Subsystem Disables
-            const featureDisables = [];
-            if (configState.enableMouse === false) featureDisables.push('#define NO_MOUSE');
-            if (configState.enableGamepad === false) featureDisables.push('#define NO_GAMEPAD');
-            if (configState.enableMidi === false) featureDisables.push('#define NO_MIDI');
-            if (configState.enableLed === false) featureDisables.push('#define NO_LED');
+            const featureDisables = [
+                ['enableMouse', 'NO_MOUSE'], ['enableGamepad', 'NO_GAMEPAD'],
+                ['enableMidi', 'NO_MIDI'], ['enableLed', 'NO_LED']
+            ].filter(([k]) => configState[k] === false).map(([, def]) => `#define ${def}`);
             if (!enableRgb) featureDisables.push('#define NO_RGB');
 
             if (featureDisables.length > 0) {

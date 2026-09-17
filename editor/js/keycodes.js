@@ -2,12 +2,6 @@
         const DISPLAY_MAP = {
             K_TRNS: "▽",
             K_NO: "✕",
-            K_A: "A", K_B: "B", K_C: "C", K_D: "D", K_E: "E", K_F: "F", K_G: "G",
-            K_H: "H", K_I: "I", K_J: "J", K_K: "K", K_L: "L", K_M: "M", K_N: "N",
-            K_O: "O", K_P: "P", K_Q: "Q", K_R: "R", K_S: "S", K_T: "T", K_U: "U",
-            K_V: "V", K_W: "W", K_X: "X", K_Y: "Y", K_Z: "Z",
-            K_1: "1", K_2: "2", K_3: "3", K_4: "4", K_5: "5",
-            K_6: "6", K_7: "7", K_8: "8", K_9: "9", K_0: "0",
             K_ESC: "ESC",
             K_TAB: "↹",
             K_SPC: "␣",
@@ -167,6 +161,8 @@
         };
 
         // Generators for repetitive keycode labels (reducing dictionary bloat)
+        for (let i = 65; i <= 90; i++) DISPLAY_MAP[`K_${String.fromCharCode(i)}`] = String.fromCharCode(i);
+        for (let i = 0; i <= 9; i++) DISPLAY_MAP[`K_${i}`] = `${i}`;
         for (let i = 1; i <= 24; i++) DISPLAY_MAP[`K_F${i}`] = `F${i}`;
         for (let i = 0; i <= 9; i++) DISPLAY_MAP[`K_KP${i}`] = `N${i}`;
         for (let i = 1; i <= 32; i++) DISPLAY_MAP[`GP_BTN${i}`] = `GP ${i}`;
