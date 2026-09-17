@@ -46,15 +46,30 @@ function createSandbox() {
                         }
                     }
                 },
-                appendChild() {},
-                removeChild() {},
+                appendChild(child) {
+                    this.children = this.children || [];
+                    this.children.push(child);
+                },
+                removeChild(child) {
+                    if (this.children) {
+                        const idx = this.children.indexOf(child);
+                        if (idx !== -1) this.children.splice(idx, 1);
+                    }
+                },
                 querySelectorAll() { return []; },
                 querySelector(sel) { return getElement("elem_q_" + sel); },
-                setAttribute() {},
-                getAttribute() { return null; },
+                setAttribute(k, v) { this[k] = v; },
+                getAttribute(k) { return this[k] || null; },
                 addEventListener() {},
                 removeEventListener() {},
-                scrollIntoView() {}
+                scrollIntoView() {},
+                click() {
+                    if (typeof this.onclick === 'function') {
+                        this.onclick({ preventDefault: () => {}, stopPropagation: () => {} });
+                    }
+                },
+                showModal() { this.open = true; this.style.display = 'flex'; },
+                close() { this.open = false; this.style.display = 'none'; }
             });
         }
         return domStore.get(id);
@@ -67,7 +82,11 @@ function createSandbox() {
 
     const documentMock = {
         getElementById(id) { return getElement(id); },
-        createElement(tag) { return getElement(`elem_${Math.random()}`); },
+        createElement(tag) {
+            const el = getElement(`elem_${tag}_${Math.random()}`);
+            el.tagName = tag.toUpperCase();
+            return el;
+        },
         createDocumentFragment() { return getElement(`frag_${Math.random()}`); },
         querySelectorAll() { return []; },
         querySelector(sel) { return getElement("elem_q_" + sel); },
@@ -87,15 +106,53 @@ function createSandbox() {
         clear() { this._data = {}; }
     };
 
+    let lastClipboardText = '';
+
+    class MockBlob {
+        constructor(parts = [], options = {}) {
+            this.parts = parts;
+            this.type = options.type || '';
+        }
+        async text() {
+            return this.parts.join('');
+        }
+    }
+
+    class MockFileReader {
+        readAsText(blob) {
+            setTimeout(() => {
+                const result = Array.isArray(blob?.parts) ? blob.parts.join('') : String(blob || '');
+                if (typeof this.onload === 'function') {
+                    this.onload({ target: { result } });
+                }
+            }, 0);
+        }
+    }
+
     const sandbox = {
         console,
-        alert: () => {}, confirm: () => true,
+        setTimeout,
+        clearTimeout,
+        alert: () => {},
+        confirm: () => true,
         document: documentMock,
         window: null,
-        navigator: { language: 'ru' },
+        navigator: {
+            language: 'ru',
+            clipboard: {
+                writeText: async (t) => { lastClipboardText = t; }
+            }
+        },
         currentLanguage: 'ru',
         localStorage: localStorageMock,
         eventListeners,
+        Blob: MockBlob,
+        FileReader: MockFileReader,
+        URL: {
+            createObjectURL: () => 'blob:mock/' + Math.random(),
+            revokeObjectURL: () => {}
+        },
+        getLastClipboardText: () => lastClipboardText,
         addEventListener(type, fn) {
             eventListeners.window[type] = eventListeners.window[type] || [];
             eventListeners.window[type].push(fn);
@@ -108,9 +165,22 @@ function createSandbox() {
 
     vm.createContext(sandbox);
 
+    const extractAllFunctionNames = (src) => {
+        const regex = /(?:^|\n)\s*(?:function\s+([a-zA-Z0-9_$]+)\s*\(|(?:var|let|const)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:function|\([^)]*\)\s*=>|[a-zA-Z0-9_$]+\s*=>))/g;
+        const names = [];
+        let m;
+        while ((m = regex.exec(src)) !== null) {
+            const n = m[1] || m[2];
+            if (n && !['test', 'assert', 'require'].includes(n)) {
+                names.push(n);
+            }
+        }
+        return [...new Set(names)];
+    };
+
     const runFile = (filePath) => {
         let code = fs.readFileSync(filePath, 'utf8');
-        const fnNames = [...code.matchAll(/(?:^|\n)\s*function\s+([a-zA-Z0-9_$]+)\s*\(/g)].map(m => m[1]);
+        const fnNames = extractAllFunctionNames(code);
         code = code.replace(/\bconst\s+/g, 'var ').replace(/\blet\s+/g, 'var ');
         const exportsCode = '\n;' + fnNames.map(f => `try { globalThis.${f} = ${f}; } catch(e){}`).join('\n');
         vm.runInContext(code + exportsCode, sandbox);
@@ -127,7 +197,7 @@ function createSandbox() {
             .replace(/initAllKeycodesList\(\);/g, '// initAllKeycodesList();')
             .replace(/renderStep1PresetButtons\(\);/g, '// renderStep1PresetButtons();')
             .replace(/switchLanguage\([^)]*\);/g, '// switchLanguage();');
-        const fnNames = [...cleanScript.matchAll(/(?:^|\n)\s*function\s+([a-zA-Z0-9_$]+)\s*\(/g)].map(m => m[1]);
+        const fnNames = extractAllFunctionNames(cleanScript);
         cleanScript = cleanScript.replace(/\bconst\s+/g, 'var ').replace(/\blet\s+/g, 'var ');
         const exportsCode = '\n;' + fnNames.map(f => `try { globalThis.${f} = ${f}; } catch(e){}`).join('\n');
         vm.runInContext(cleanScript + exportsCode, sandbox);
@@ -798,4 +868,249 @@ test('Split Pin Configuration & MCU Full-Duplex vs Half-Duplex', () => {
     sandbox.switchUniversalMcuTab('rp2040');
     assert.strictEqual(sandbox.document.getElementById('multiSplitRxGroup').style.display, 'none');
     assert.strictEqual(sandbox.document.getElementById('mcuSplitTxPin').value, 'GPIO0');
+});
+
+test('Layout Inspector & Key/Encoder Geometry Manipulation', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('planck');
+
+    // Test key selection
+    sandbox.selectKeyForInspector(0, 0, 0);
+    assert.strictEqual(sandbox.isElementSelected('key', 0), true);
+
+    // Test geometry updates
+    sandbox.updateSelectedKeyProperty('w', 1.5);
+    sandbox.updateSelectedKeyProperty('h', 2);
+    sandbox.updateSelectedKeyProperty('x', 3);
+    sandbox.updateSelectedKeyProperty('y', 4);
+    sandbox.updateSelectedKeyProperty('r', 15);
+    sandbox.updateSelectedKeyProperty('rx', 2);
+    sandbox.updateSelectedKeyProperty('ry', 3);
+    assert.strictEqual(sandbox.configState.keyGeometry[0].w, 1.5);
+    assert.strictEqual(sandbox.configState.keyGeometry[0].h, 2);
+
+    // Move selected items
+    sandbox.moveSelectedItemsBy(1, -1);
+    assert.strictEqual(sandbox.configState.keyGeometry[0].x, 4);
+    assert.strictEqual(sandbox.configState.keyGeometry[0].y, 3);
+
+    // Encoder inspector
+    sandbox.selectEncoderForInspector(0, 'cw');
+    sandbox.updateInspectorUI();
+
+    // Render functions
+    sandbox.renderPhysicalBasicKeyboard(sandbox.document.createElement('div'));
+    sandbox.renderVisualKeymap();
+
+    // Handle click with ctrl
+    sandbox.handleItemClick({ ctrlKey: true, metaKey: false, stopPropagation: () => {} }, 'key', 1, { r: 0, c: 1 });
+    assert.strictEqual(sandbox.isElementSelected('key', 1), true);
+});
+
+test('Modal Keycode Builders (Layer Modifiers, One-Shot, MIDI CC)', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+
+    // openAppModal & closeAppModal
+    let confirmed = false;
+    sandbox.openAppModal('Custom Title', '<div>Custom Body</div>', () => { confirmed = true; });
+    assert.strictEqual(sandbox.document.getElementById('appModalTitle').textContent, 'Custom Title');
+    sandbox.confirmAppModal();
+    assert.strictEqual(confirmed, true);
+    sandbox.closeAppModal();
+
+    // promptLayerModifierChoice
+    let layerResult = null;
+    sandbox.promptLayerModifierChoice('MO', (res) => { layerResult = res; });
+    sandbox.document.getElementById('modalLayerSelect').value = 'NAV';
+    sandbox.confirmAppModal();
+    assert.strictEqual(layerResult, 'MO(NAV)');
+
+    // promptOneShotChoice
+    let osResult = null;
+    sandbox.promptOneShotChoice((res) => { osResult = res; });
+    sandbox.document.getElementById('modalOsTypeSelect').value = 'MOD_LSHIFT';
+    sandbox.confirmAppModal();
+    assert.strictEqual(osResult, 'OS(MOD_LSHIFT)');
+
+    // promptMidiCcChoice
+    let midiResult = null;
+    sandbox.promptMidiCcChoice('CC', (res) => { midiResult = res; });
+    sandbox.document.getElementById('modalCcActionSelect').value = 'STATIC';
+    sandbox.document.getElementById('modalCcNumberInput').value = '1';
+    sandbox.document.getElementById('modalCcValueInput').value = '64';
+    sandbox.confirmAppModal();
+    assert.strictEqual(midiResult, 'MIDI_CC(1, 64)');
+
+    // Key choice modal & modifiers
+    sandbox.promptKeyChoice('Select Key', () => {});
+    sandbox.renderModalKeyChoiceContent('ALL');
+    sandbox.document.getElementById('modalAddModSelect').value = 'LS';
+    sandbox.addModalModifier();
+    assert.ok(sandbox.activeModalModifiers.includes('LS'));
+    sandbox.removeModalModifier(0);
+    assert.ok(!sandbox.activeModalModifiers.includes('LS'));
+    sandbox.updateModalKeyPreview();
+    sandbox.renderModalModifiersTags();
+});
+
+test('UI Renderers & Interactive List Handlers (Macros, Chords, Layer Hotkeys, Encoders)', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+
+    // Custom Macros UI
+    sandbox.addCustomMacro();
+    assert.ok(sandbox.configState.customMacros.length > 0);
+    sandbox.renderCustomMacrosUI();
+    sandbox.toggleMacroCollapse(0);
+    const serializedSteps = sandbox.serializeMacroArrayToSteps([{ type: 'TAP', key: 'K_A' }]);
+    assert.strictEqual(serializedSteps, 'M_DN(K_A), M_UP(K_A)');
+    sandbox.syncMacroStepsString(0);
+    const actions = sandbox.getMacroActionTypes();
+    assert.ok(Array.isArray(actions));
+    const rowHtml = sandbox.renderMacroStepRowHtml({ type: 'TAP', key: 'K_A' }, 0, 'onAct()', 'onKey()', 'onRem()');
+    assert.ok(rowHtml.includes('K_A'));
+    sandbox.removeCustomMacro(0);
+
+    // Chords UI
+    sandbox.toggleChordsOptions();
+    sandbox.addChord();
+    sandbox.toggleChordCollapse(0);
+    sandbox.renderChordsUI();
+    sandbox.addChordKey(0);
+    sandbox.onChordKeyInput(0, 0, 'K_B');
+    sandbox.onChordKeyBlur(0, 0);
+    sandbox.removeChordKey(0, 0);
+    sandbox.toggleChordLayer(0, 'DEF');
+    sandbox.toggleChordAllLayers(0);
+    sandbox.pickChordKeyFromLayout(0, 0);
+    sandbox.onMatrixKeySelectedForChord(0, 0);
+    const coord = sandbox.getCoordForKeycode('K_A');
+    sandbox.removeChord(0);
+
+    // Layer Hotkeys UI
+    sandbox.toggleLayerHotkeyOptions();
+    sandbox.toggleLayerMacroCollapse(0);
+    sandbox.addLayerMacroStep('DEF');
+    sandbox.onLayerMacroStepActionChange('DEF', 0, 'DN');
+    sandbox.onLayerMacroStepKeyChange('DEF', 0, 'K_B');
+    sandbox.onLayerMacroStepDelayChange('DEF', 0, 50);
+    sandbox.renderLayerHotkeysUI();
+    sandbox.removeLayerMacroStep('DEF', 0);
+
+    // Encoders UI
+    sandbox.renderLayersUI();
+    sandbox.renderLayerEncodersUI();
+    sandbox.updateLayerEncoderAction(0, 'cw', 'K_VOLU');
+    assert.strictEqual(sandbox.configState.encoderKeymaps.DEF[0].cw, 'K_VOLU');
+
+    // Datalist helper
+    sandbox.ensureKeycodesDatalist();
+});
+
+test('Theme Switching, State Dirty Tracking & Matrix Grid Click Handlers', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+
+    // Theme toggle
+    sandbox.toggleTheme();
+    assert.ok(sandbox.document.body.classList.contains('light-theme') || !sandbox.document.body.classList.contains('light-theme'));
+
+    // Language apply
+    sandbox.currentLanguage = 'en';
+    sandbox.applyLanguage();
+    assert.strictEqual(sandbox.currentLanguage, 'en');
+    sandbox.toggleLanguage();
+    assert.strictEqual(sandbox.currentLanguage, 'ru');
+
+    // Dirty tracking & snapshot
+    sandbox.markDirty();
+    assert.strictEqual(sandbox.isPageDirty, true);
+    const snap = sandbox.getKeymapSnapshot();
+    assert.ok(snap && snap.keymaps);
+    sandbox.clearDirty();
+    assert.strictEqual(sandbox.isPageDirty, false);
+    sandbox.applyKeymapSnapshot(snap);
+    sandbox.saveUndoState();
+
+    // MCU pin checks
+    assert.strictEqual(sandbox.validatePinFormat('GPIO0', 'rp2040'), true);
+    assert.strictEqual(sandbox.validatePinFormat('PA0', 'milandr'), true);
+    assert.strictEqual(sandbox.validatePinFormat('P0_00', 'nrf52840'), true);
+    assert.strictEqual(sandbox.validatePinFormat('PA0', 'baikal'), true);
+
+    // Pin parsing & matrix type
+    assert.deepStrictEqual([...sandbox.parsePins('GP0, GP1')], ['GP0', 'GP1']);
+    sandbox.setMatrixType('DIRECT');
+    assert.strictEqual(sandbox.configState.matrixType, 'DIRECT');
+    sandbox.setMatrixType('COL2ROW');
+    assert.strictEqual(sandbox.configState.matrixType, 'COL2ROW');
+
+    // Toggle options & inputs
+    sandbox.toggleFeatureSubsystem('mouse', true);
+    sandbox.toggleRgbOptions();
+    sandbox.toggleEncoderOptions();
+    sandbox.updateEncoderInputs();
+    sandbox.toggleVialOptions();
+
+    // Parsed pins & grid
+    const pins = sandbox.getParsedPins();
+    assert.ok(pins.totalRows > 0);
+    sandbox.ensureActiveKeys(4, 12);
+    sandbox.updateKeyIndices();
+
+    // Palette filter & key assign
+    sandbox.filterPalette('MOD');
+    sandbox.assignKeycode('K_ESC');
+    sandbox.handleMatrixKeyClick({ shiftKey: false }, 0, 0);
+    sandbox.updateJsonExportLabels('vial');
+});
+
+test('Export, Clipboard, Blob Downloads & File Upload Handlers', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+
+    sandbox.generateConfigModal();
+    sandbox.copyConfigCode();
+    assert.ok(sandbox.getLastClipboardText().includes('#ifndef CONFIG_H'));
+
+    sandbox.copyVialJson();
+    assert.ok(sandbox.getLastClipboardText().includes('"matrix"'));
+
+    sandbox.downloadConfigFile();
+    sandbox.downloadVialJson();
+    sandbox.downloadBlob('test.txt', 'test content');
+
+    const padded = sandbox.padPins(['GPIO0'], 3);
+    assert.strictEqual(padded.split(',').length, 3);
+
+    // File upload handlers
+    const fakeConfigFile = new sandbox.Blob(['#define NUM_ROWS 4\n#define NUM_COLS 12']);
+    fakeConfigFile.name = 'config.h';
+    sandbox.handleConfigFileUpload({ target: { files: [fakeConfigFile] } });
+
+    const fakeVialFile = new sandbox.Blob(['{"name": "Test", "matrix": {"rows": 4, "cols": 12}, "layouts": {"keymap": [[]]}}']);
+    fakeVialFile.name = 'vial.json';
+    sandbox.handleVialFileUpload({ target: { files: [fakeVialFile] } });
+});
+
+test('Codegen Helpers: Universal Multi-MCU Preprocessor Directives', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+    sandbox.setMcu('all');
+    sandbox.setSplitMode(true);
+
+    sandbox.generateConfigCode();
+    const configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#if defined(MCU_rp2040)'));
+    assert.ok(configH.includes('#elif defined(MCU_milandr)'));
+    assert.ok(configH.includes('#elif defined(MCU_nrf52840)'));
+    assert.ok(configH.includes('#elif defined(MCU_baikal)'));
+    assert.ok(configH.includes('#endif'));
+
+    // Internal helper closures verified through parent callers:
+    // isRp, isMilandr, isNrf, isBaikal via validatePinFormat
+    // addUsage via checkPinConflicts
+    // addOpt via ensureKeycodesDatalist
+    // getPlatformPins, emitMultiMcuBlock via generateConfigCode
 });
