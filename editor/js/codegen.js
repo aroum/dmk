@@ -202,44 +202,39 @@ function generateVialJson() {
                 };
             };
 
+            // Helper to generate MCU-specific conditional defines for universal mode
+            const emitMultiMcuBlock = (getter) => {
+                const rpP = getPlatformPins('rp2040');
+                const milP = getPlatformPins('milandr');
+                const nrfP = getPlatformPins('nrf52840');
+                const baiP = getPlatformPins('baikal');
+                return `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n` +
+                    `${getter(rpP, 'rp2040')}\n` +
+                    `#elif defined(MCU_milandr)\n` +
+                    `${getter(milP, 'milandr')}\n` +
+                    `#elif defined(MCU_nrf52840)\n` +
+                    `${getter(nrfP, 'nrf52840')}\n` +
+                    `#elif defined(MCU_baikal)\n` +
+                    `${getter(baiP, 'baikal')}\n` +
+                    `#endif\n\n`;
+            };
+
             // Split settings
             if (isSplit) {
                 out += `/* --- Split Keyboard Settings --- */\n`;
                 out += `#define MASTER_SIDE ${masterSide}\n`;
                 const isBitBang = (document.getElementById('splitUartMode')?.value === 'bitbang');
                 if (configState.mcu === 'all') {
-                    const rpP = getPlatformPins('rp2040');
-                    const milP = getPlatformPins('milandr');
-                    const nrfP = getPlatformPins('nrf52840');
-                    const baiP = getPlatformPins('baikal');
                     if (isBitBang) {
                         out += `// Communication mode: Software Bit-Bang UART\n`;
                         out += `#define SPLIT_CONNECTION_TYPE SOFT\n`;
-                        out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                        out += `    #define SPLIT_TX_PIN          ${rpP.splitTx}\n`;
-                        out += `#elif defined(MCU_milandr)\n`;
-                        out += `    #define SPLIT_TX_PIN          ${milP.splitTx}\n`;
-                        out += `#elif defined(MCU_nrf52840)\n`;
-                        out += `    #define SPLIT_TX_PIN          ${nrfP.splitTx}\n`;
-                        out += `#elif defined(MCU_baikal)\n`;
-                        out += `    #define SPLIT_TX_PIN          ${baiP.splitTx}\n`;
-                        out += `#endif\n\n`;
+                        out += emitMultiMcuBlock(p => `    #define SPLIT_TX_PIN          ${p.splitTx}`);
                     } else {
                         out += `// Communication modes per platform (HW Half-Duplex, Full-Duplex UART, Soft Bit-Bang)\n`;
-                        out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                        out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                        out += `    #define SPLIT_TX_PIN          ${rpP.splitTx}\n`;
-                        out += `#elif defined(MCU_milandr)\n`;
-                        out += `    #define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
-                        out += `    #define SPLIT_TX_PIN          ${milP.splitTx}\n`;
-                        out += `    #define SPLIT_RX_PIN          ${milP.splitRx}\n`;
-                        out += `#elif defined(MCU_nrf52840)\n`;
-                        out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                        out += `    #define SPLIT_TX_PIN          ${nrfP.splitTx}\n`;
-                        out += `#elif defined(MCU_baikal)\n`;
-                        out += `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                        out += `    #define SPLIT_TX_PIN          ${baiP.splitTx}\n`;
-                        out += `#endif\n\n`;
+                        out += emitMultiMcuBlock((p, mcu) => mcu === 'milandr'
+                            ? `    #define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n    #define SPLIT_TX_PIN          ${p.splitTx}\n    #define SPLIT_RX_PIN          ${p.splitRx}`
+                            : `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n    #define SPLIT_TX_PIN          ${p.splitTx}`
+                        );
                     }
                 } else if (configState.mcu === 'milandr') {
                     if (isBitBang) {
@@ -276,42 +271,14 @@ function generateVialJson() {
             if (matrixType === 'DIRECT') {
                 out += `// Direct connection pins\n`;
                 if (configState.mcu === 'all') {
-                    const rpP = getPlatformPins('rp2040');
-                    const milP = getPlatformPins('milandr');
-                    const nrfP = getPlatformPins('nrf52840');
-                    const baiP = getPlatformPins('baikal');
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define DIRECT_PINS { ${rpP.direct.join(', ')} }\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define DIRECT_PINS { ${milP.direct.join(', ')} }\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define DIRECT_PINS { ${nrfP.direct.join(', ')} }\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define DIRECT_PINS { ${baiP.direct.join(', ')} }\n`;
-                    out += `#endif\n\n`;
+                    out += emitMultiMcuBlock(p => `#define DIRECT_PINS { ${p.direct.join(', ')} }`);
                 } else {
                     out += `#define DIRECT_PINS { ${document.getElementById('directPins').value} }\n\n`;
                 }
             } else {
                 out += `// Row and column pins\n`;
                 if (configState.mcu === 'all') {
-                    const rpP = getPlatformPins('rp2040');
-                    const milP = getPlatformPins('milandr');
-                    const nrfP = getPlatformPins('nrf52840');
-                    const baiP = getPlatformPins('baikal');
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define ROW_PINS { ${rpP.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${rpP.cols.join(', ')} }\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define ROW_PINS { ${milP.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${milP.cols.join(', ')} }\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define ROW_PINS { ${nrfP.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${nrfP.cols.join(', ')} }\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define ROW_PINS { ${baiP.rows.join(', ')} }\n`;
-                    out += `#define COL_PINS { ${baiP.cols.join(', ')} }\n`;
-                    out += `#endif\n\n`;
+                    out += emitMultiMcuBlock(p => `#define ROW_PINS { ${p.rows.join(', ')} }\n#define COL_PINS { ${p.cols.join(', ')} }`);
                 } else {
                     out += `#define ROW_PINS { ${rows.join(', ')} }\n`;
                     out += `#define COL_PINS { ${cols.join(', ')} }\n\n`;
@@ -323,19 +290,7 @@ function generateVialJson() {
                 out += `/* --- RGB Backlight --- */\n`;
                 out += `#define RGB_NUM ${rgbCount}\n`;
                 if (configState.mcu === 'all') {
-                    const rpP = getPlatformPins('rp2040');
-                    const milP = getPlatformPins('milandr');
-                    const nrfP = getPlatformPins('nrf52840');
-                    const baiP = getPlatformPins('baikal');
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define RGB_PIN ${rpP.rgb}\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define RGB_PIN ${milP.rgb}\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define RGB_PIN ${nrfP.rgb}\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define RGB_PIN ${baiP.rgb}\n`;
-                    out += `#endif\n\n`;
+                    out += emitMultiMcuBlock(p => `#define RGB_PIN ${p.rgb}`);
                 } else {
                     out += `#define RGB_PIN ${rgbPin}\n\n`;
                 }
@@ -345,23 +300,10 @@ function generateVialJson() {
             if (enableEnc) {
                 out += `/* --- Rotary Encoders --- */\n`;
                 if (configState.mcu === 'all') {
-                    const rpP = getPlatformPins('rp2040');
-                    const milP = getPlatformPins('milandr');
-                    const nrfP = getPlatformPins('nrf52840');
-                    const baiP = getPlatformPins('baikal');
-                    out += `#if defined(MCU_rp2040) || defined(MCU_rp2350)\n`;
-                    out += `#define ENCODER_PINS_A { ${rpP.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${rpP.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#elif defined(MCU_milandr)\n`;
-                    out += `#define ENCODER_PINS_A { ${milP.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${milP.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#elif defined(MCU_nrf52840)\n`;
-                    out += `#define ENCODER_PINS_A { ${nrfP.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${nrfP.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#elif defined(MCU_baikal)\n`;
-                    out += `#define ENCODER_PINS_A { ${baiP.encA.slice(0, encCount).join(', ')} }\n`;
-                    out += `#define ENCODER_PINS_B { ${baiP.encB.slice(0, encCount).join(', ')} }\n`;
-                    out += `#endif\n`;
+                    out += emitMultiMcuBlock(p =>
+                        `#define ENCODER_PINS_A { ${p.encA.slice(0, encCount).join(', ')} }\n` +
+                        `#define ENCODER_PINS_B { ${p.encB.slice(0, encCount).join(', ')} }`
+                    ).trimEnd() + '\n';
                 } else if (encA.length > 0) {
                     out += `#define ENCODER_PINS_A { ${encA.join(', ')} }\n`;
                     out += `#define ENCODER_PINS_B { ${encB.join(', ')} }\n`;

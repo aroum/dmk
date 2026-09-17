@@ -642,8 +642,8 @@
         </div>
 
         <!-- In-App Modal Dialog for Layer Modifiers & Visual Actions -->
-        <div id="appModalOverlay" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
-            <div id="appModalBox" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 22px; width: 90%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 16px;">
+        <dialog id="appModalOverlay" class="app-modal">
+            <div id="appModalBox">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <h3 id="appModalTitle" style="font-size: 1rem; font-weight: 600; color: var(--text); margin: 0;">Выбор слоя</h3>
                     <button class="btn btn-sm" onclick="closeAppModal()" style="padding: 2px 8px; line-height: 1;">✕</button>
@@ -654,7 +654,7 @@
                     <button class="btn btn-sm btn-primary" onclick="confirmAppModal()" id="btnAppModalConfirm">Применить</button>
                 </div>
             </div>
-        </div>
+        </dialog>
     </main>
 
     <!-- Modular Editor Scripts (compatible with htmlpreview.github.io CORS proxy) -->
@@ -745,19 +745,27 @@
         const redoStack = [];
         const MAX_HISTORY_STATES = 30;
 
+        const getKeymapSnapshot = () => ({
+            keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
+            keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
+            encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
+        });
+
+        const applyKeymapSnapshot = (s) => {
+            if (!s) return;
+            configState.keymaps = s.keymaps;
+            configState.keymapByCoord = s.keymapByCoord || {};
+            configState.encoderKeymaps = s.encoderKeymaps || {};
+            renderVisualKeymap();
+            renderLayerEncodersUI();
+        };
+
         function saveUndoState() {
             markDirty();
             try {
-                const snapshot = {
-                    keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
-                    keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
-                    encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
-                };
-                undoStack.push(snapshot);
-                if (undoStack.length > MAX_HISTORY_STATES) {
-                    undoStack.shift();
-                }
-                redoStack.length = 0; // Clear redo history on new action
+                undoStack.push(getKeymapSnapshot());
+                if (undoStack.length > MAX_HISTORY_STATES) undoStack.shift();
+                redoStack.length = 0;
             } catch (e) {
                 console.error("Failed to save undo state", e);
             }
@@ -767,18 +775,8 @@
             if (undoStack.length === 0) return;
             markDirty();
             try {
-                const currentSnapshot = {
-                    keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
-                    keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
-                    encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
-                };
-                redoStack.push(currentSnapshot);
-                const previous = undoStack.pop();
-                configState.keymaps = previous.keymaps;
-                configState.keymapByCoord = previous.keymapByCoord || {};
-                configState.encoderKeymaps = previous.encoderKeymaps;
-                renderVisualKeymap();
-                renderLayerEncodersUI();
+                redoStack.push(getKeymapSnapshot());
+                applyKeymapSnapshot(undoStack.pop());
             } catch (e) {
                 console.error("Failed to undo keymap", e);
             }
@@ -788,18 +786,8 @@
             if (redoStack.length === 0) return;
             markDirty();
             try {
-                const currentSnapshot = {
-                    keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
-                    keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
-                    encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
-                };
-                undoStack.push(currentSnapshot);
-                const nextState = redoStack.pop();
-                configState.keymaps = nextState.keymaps;
-                configState.keymapByCoord = nextState.keymapByCoord || {};
-                configState.encoderKeymaps = nextState.encoderKeymaps;
-                renderVisualKeymap();
-                renderLayerEncodersUI();
+                undoStack.push(getKeymapSnapshot());
+                applyKeymapSnapshot(redoStack.pop());
             } catch (e) {
                 console.error("Failed to redo keymap", e);
             }
@@ -1860,12 +1848,20 @@
             document.getElementById('appModalContent').innerHTML = contentHtml;
             appModalCallback = onConfirm;
             const overlay = document.getElementById('appModalOverlay');
-            overlay.style.display = 'flex';
+            if (overlay.showModal) {
+                overlay.showModal();
+            } else {
+                overlay.style.display = 'flex';
+            }
         }
 
         function closeAppModal() {
             const overlay = document.getElementById('appModalOverlay');
-            overlay.style.display = 'none';
+            if (overlay.close) {
+                overlay.close();
+            } else {
+                overlay.style.display = 'none';
+            }
             appModalCallback = null;
         }
 
@@ -2978,31 +2974,8 @@
                 ALL_PALETTE_CODES.MODS.forEach(k => { if (!k.includes('...')) addOpt(k); });
                 ALL_PALETTE_CODES.MEDIA.forEach(k => addOpt(k));
 
-                // Add shifted symbol keycodes directly
-                const shiftedSymbols = [
-                    { sym: '>', kc: 'LS(K_DOT)' },
-                    { sym: '<', kc: 'LS(K_COMM)' },
-                    { sym: '+', kc: 'LS(K_EQL)' },
-                    { sym: '_', kc: 'LS(K_MINS)' },
-                    { sym: '&', kc: 'LS(K_7)' },
-                    { sym: '#', kc: 'LS(K_3)' },
-                    { sym: '@', kc: 'LS(K_2)' },
-                    { sym: '!', kc: 'LS(K_1)' },
-                    { sym: '$', kc: 'LS(K_4)' },
-                    { sym: '%', kc: 'LS(K_5)' },
-                    { sym: '^', kc: 'LS(K_6)' },
-                    { sym: '*', kc: 'LS(K_8)' },
-                    { sym: '(', kc: 'LS(K_9)' },
-                    { sym: ')', kc: 'LS(K_0)' },
-                    { sym: '{', kc: 'LS(K_LBRC)' },
-                    { sym: '}', kc: 'LS(K_RBRC)' },
-                    { sym: '|', kc: 'LS(K_BSLS)' },
-                    { sym: ':', kc: 'LS(K_SCLN)' },
-                    { sym: '"', kc: 'LS(K_QUOT)' },
-                    { sym: '?', kc: 'LS(K_SLSH)' },
-                    { sym: '~', kc: 'LS(K_GRV)' }
-                ];
-                shiftedSymbols.forEach(s => addOpt(s.kc, `${s.sym} (${s.kc})`));
+                // Add shifted symbol keycodes directly from SYMBOL_KEY_MAP
+                Object.entries(SYMBOL_KEY_MAP).forEach(([sym, kc]) => addOpt(kc, `${sym} (${kc})`));
 
                 // Add modifier combinations & One-Shot modifiers
                 ["LC(K_C)", "LC(K_V)", "LC(K_Z)", "LC(K_A)", "LC(K_X)", "LS(K_A)", "LA(K_TAB)", "LG(K_SPC)", "LG(LS(K_S))", "HYPER(K_A)", "MEH(K_A)", "OS_SHIFT", "OS_CTRL", "OS_ALT", "OS_GUI", "OS_HYPER"].forEach(k => addOpt(k));
@@ -3917,36 +3890,16 @@ visualElements.push({
             [{w: 1.25}, "Ctrl", {w: 1.25}, "Win", {w: 1.25}, "Alt", {a: 7, w: 6.25, code: "K_SPC"}, "Space", {a: 4, w: 1.25, code: "K_RALT"}, "Alt", {w: 1.25, code: "K_RGUI"}, "Win", {w: 1.25}, "Menu", {w: 1.25, code: "K_RCTRL"}, "Ctrl", {x: 0.25}, "←", "↓", "→", {x: 0.25, w: 2, code: "K_KP0"}, "0", {code: "K_KP_DOT"}, "."]
         ];
 
-        const KLE_LABEL_MAP = {
-            "Esc": "K_ESC",
-            "PrtSc": "K_PSCR", "ScrLk": "K_SCRL", "Pause": "K_PAUS", "Pause\nBreak": "K_PAUS",
+        const KLE_SPECIAL_MAP = {
+            "Esc": "K_ESC", "Tab": "K_TAB", "Enter": "K_ENT", "Backspace": "K_BSPC", "Space": "K_SPC", "": "K_SPC",
+            "Ctrl": "K_LCTRL", "Shift": "K_LSHIFT", "Alt": "K_LALT", "Win": "K_LGUI", "Menu": "K_MENU",
+            "Caps Lock": "K_CAPS", "PrtSc": "K_PSCR", "ScrLk": "K_SCRL", "Pause": "K_PAUS", "Pause\nBreak": "K_PAUS",
+            "Ins": "K_INS", "Del": "K_DEL", "Home": "K_HOME", "End": "K_END", "PgUp": "K_PGUP", "PgDn": "K_PGDN",
+            "←": "K_LEFT", "→": "K_RIGHT", "↑": "K_UP", "↓": "K_DOWN",
             "Calc": "K_CALC", "Mute": "K_MUTE", "Vol-": "K_VOLD", "Vol+": "K_VOLU",
-            "~\n`": "K_GRV",
-            "!\n1": "K_1", "@\n2": "K_2", "#\n3": "K_3", "$\n4": "K_4", "%\n5": "K_5",
-            "^\n6": "K_6", "&\n7": "K_7", "*\n8": "K_8", "(\n9": "K_9", ")\n0": "K_0",
-            "_\n-": "K_MINS", "+\n=": "K_EQL", "Backspace": "K_BSPC",
-            "Ins": "K_INS", "Insert": "K_INS", "Home": "K_HOME", "PgUp": "K_PGUP",
-            "Num\nLock": "K_NLCK", "Num Lock": "K_NLCK", "/": "K_KP_SLASH", "*": "K_KP_ASTERISK", "-": "K_KP_MINUS",
-            "Tab": "K_TAB",
-            "Q": "K_Q", "W": "K_W", "E": "K_E", "R": "K_R", "T": "K_T",
-            "Y": "K_Y", "U": "K_U", "I": "K_I", "O": "K_O", "P": "K_P",
-            "{\n[": "K_LBRC", "}\n]": "K_RBRC", "|\n\\": "K_BSLS",
-            "Del": "K_DEL", "Delete": "K_DEL", "End": "K_END", "PgDn": "K_PGDN",
-            "7": "K_KP7", "8": "K_KP8", "9": "K_KP9", "+": "K_KP_PLUS",
-            "Caps Lock": "K_CAPS",
-            "A": "K_A", "S": "K_S", "D": "K_D", "F": "K_F", "G": "K_G",
-            "H": "K_H", "J": "K_J", "K": "K", "L": "K_L",
-            ":\n;": "K_SCLN", "\"\n'": "K_QUOT", "Enter": "K_ENT",
-            "4": "K_KP4", "5": "K_KP5", "6": "K_KP6",
-            "Shift": "K_LSHIFT",
-            "Z": "K_Z", "X": "K_X", "C": "K_C", "V": "K_V", "B": "K_B", "N": "K_N", "M": "K_M",
-            "<\n,": "K_COMM", ">\n.": "K_DOT", "?\n/": "K_SLSH",
-            "↑": "K_UP",
-            "1": "K_KP1", "2": "K_KP2", "3": "K_KP3", "↵": "K_KP_ENTER",
-            "Ctrl": "K_LCTRL", "Win": "K_LGUI", "Alt": "K_LALT", "Space": "K_SPC", "": "K_SPC",
-            "Menu": "K_MENU",
-            "←": "K_LEFT", "↓": "K_DOWN", "→": "K_RIGHT",
-            "0": "K_KP0", ".": "K_KP_DOT"
+            "Num\nLock": "K_NLCK", "Num Lock": "K_NLCK", "/": "K_KP_SLASH", "*": "K_KP_ASTERISK", "-": "K_KP_MINUS", "+": "K_KP_PLUS", "↵": "K_KP_ENTER", ".": "K_KP_DOT",
+            "0": "K_KP0", "1": "K_KP1", "2": "K_KP2", "3": "K_KP3", "4": "K_KP4", "5": "K_KP5", "6": "K_KP6", "7": "K_KP7", "8": "K_KP8", "9": "K_KP9",
+            "{\n[": "K_LBRC", "}\n]": "K_RBRC", "|\n\\": "K_BSLS", ":\n;": "K_SCLN", "\"\n'": "K_QUOT", "<\n,": "K_COMM", ">\n.": "K_DOT", "?\n/": "K_SLSH", "_\n-": "K_MINS", "+\n=": "K_EQL", "~\n`": "K_GRV"
         };
 
         function renderPhysicalBasicKeyboard(container) {
@@ -3975,7 +3928,9 @@ visualElements.push({
                     } else if (typeof item === 'string') {
                         let finalCode = current_code;
                         if (!finalCode) {
-                            if (KLE_LABEL_MAP[item]) finalCode = KLE_LABEL_MAP[item];
+                            if (KLE_SPECIAL_MAP[item]) finalCode = KLE_SPECIAL_MAP[item];
+                            else if (item.includes('\n')) finalCode = `K_${item.split('\n')[1]}`;
+                            else if (/^[A-Z0-9]$/i.test(item)) finalCode = `K_${item.toUpperCase()}`;
                             else if (item.startsWith('F') && parseInt(item.slice(1), 10)) finalCode = `K_${item}`;
                             else finalCode = `K_${item.toUpperCase().replace(/\s+/g, '_')}`;
                         }
@@ -4418,15 +4373,18 @@ visualElements.push({
             });
         }
 
-        function downloadConfigFile() {
-            const code = document.getElementById('configCodeOutput').textContent;
-            const blob = new Blob([code], { type: 'text/x-c;charset=utf-8;' });
+        function downloadBlob(filename, content, type = 'text/plain;charset=utf-8;') {
+            const blob = new Blob([content], { type });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'config.h';
+            a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
+        }
+
+        function downloadConfigFile() {
+            downloadBlob('config.h', document.getElementById('configCodeOutput').textContent, 'text/x-c;charset=utf-8;');
         }
 
         function copyVialJson() {
@@ -4440,52 +4398,42 @@ visualElements.push({
 
         function downloadVialJson() {
             const isVia = (configState.vialProtocol === 'via_v3' || configState.protocolMode === 'via_v3');
-            const jsonFileName = isVia ? 'via.json' : 'vial.json';
-            const json = document.getElementById('vialJsonOutput').textContent;
-            const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = jsonFileName;
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadBlob(isVia ? 'via.json' : 'vial.json', document.getElementById('vialJsonOutput').textContent, 'application/json;charset=utf-8;');
         }
 
         // =========================================================================
         // Import & Auto-Fill from config.h / vial.json
         // =========================================================================
-        function handleConfigFileUpload(e) {
+        const padPins = (pins, targetCount) => {
+            const res = pins.slice(0, targetCount);
+            while (res.length < targetCount) res.push(`GPIO${res.length}`);
+            return res.join(', ');
+        };
+
+        async function handleConfigFileUpload(e) {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const text = evt.target.result;
-                    parseAndApplyConfigH(text, file.name);
-                } catch (err) {
-                    alert("Ошибка чтения config.h: " + err.message);
-                } finally {
-                    e.target.value = '';
-                }
-            };
-            reader.readAsText(file);
+            try {
+                const text = await file.text();
+                parseAndApplyConfigH(text, file.name);
+            } catch (err) {
+                alert("Ошибка чтения config.h: " + err.message);
+            } finally {
+                e.target.value = '';
+            }
         }
 
-        function handleVialFileUpload(e) {
+        async function handleVialFileUpload(e) {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const json = JSON.parse(evt.target.result);
-                    parseAndApplyVialJson(json, file.name);
-                } catch (err) {
-                    alert("Ошибка чтения JSON файла: " + err.message);
-                } finally {
-                    e.target.value = '';
-                }
-            };
-            reader.readAsText(file);
+            try {
+                const json = JSON.parse(await file.text());
+                parseAndApplyVialJson(json, file.name);
+            } catch (err) {
+                alert("Ошибка чтения JSON файла: " + err.message);
+            } finally {
+                e.target.value = '';
+            }
         }
 
         function parseAndApplyConfigH(text, filename) {
@@ -4676,24 +4624,11 @@ visualElements.push({
                     }
 
                     // Update rowPins and colPins inputs according to reqRows and reqCols
-                    let rows = parsePins(document.getElementById('rowPins').value);
                     if (reqRows > 0) {
-                        if (rows.length > reqRows) {
-                            rows = rows.slice(0, reqRows);
-                        } else {
-                            while (rows.length < reqRows) rows.push(`GPIO${rows.length}`);
-                        }
-                        document.getElementById('rowPins').value = rows.join(', ');
+                        document.getElementById('rowPins').value = padPins(parsePins(document.getElementById('rowPins').value), reqRows);
                     }
-
-                    let cols = parsePins(document.getElementById('colPins').value);
                     if (reqCols > 0) {
-                        if (cols.length > reqCols) {
-                            cols = cols.slice(0, reqCols);
-                        } else {
-                            while (cols.length < reqCols) cols.push(`GPIO${cols.length}`);
-                        }
-                        document.getElementById('colPins').value = cols.join(', ');
+                        document.getElementById('colPins').value = padPins(parsePins(document.getElementById('colPins').value), reqCols);
                     }
 
                     const { totalRows, totalCols } = getParsedPins();
@@ -4860,15 +4795,8 @@ visualElements.push({
 
                 // Set row and col pins placeholder count if needed
                 if (maxRows > 0 && maxCols > 0) {
-                    const existingRows = parsePins(document.getElementById('rowPins').value);
-                    const existingCols = parsePins(document.getElementById('colPins').value);
-                    const rowPins = [...existingRows];
-                    while (rowPins.length < maxRows) rowPins.push(`GPIO${rowPins.length}`);
-                    const colPins = [...existingCols];
-                    while (colPins.length < maxCols) colPins.push(`GPIO${colPins.length}`);
-
-                    document.getElementById('rowPins').value = rowPins.slice(0, maxRows).join(', ');
-                    document.getElementById('colPins').value = colPins.slice(0, maxCols).join(', ');
+                    document.getElementById('rowPins').value = padPins(parsePins(document.getElementById('rowPins').value), maxRows);
+                    document.getElementById('colPins').value = padPins(parsePins(document.getElementById('colPins').value), maxCols);
 
                     configState.activeKeys = [];
                     for (let r = 0; r < maxRows; r++) {

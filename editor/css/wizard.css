@@ -820,6 +820,30 @@
             stroke-linejoin: round;
         }
 
+        /* Dialog Modal */
+        .app-modal {
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: auto;
+            max-width: 500px;
+            width: 90%;
+        }
+        .app-modal::backdrop {
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+        }
+        #appModalBox {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 22px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .stepper { flex-direction: column; }
