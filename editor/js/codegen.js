@@ -154,7 +154,10 @@ function generateVialJson() {
 
             if (configState.mcu && configState.mcu !== 'all') {
                 out += `// Default target microcontroller for DMK build system\n`;
-                out += `#define DEFAULT_MCU ${configState.mcu}\n\n`;
+                const defMcu = (configState.mcu === 'rp2040')
+                    ? (configState.rpDefaultMcu || 'rp2040')
+                    : configState.mcu;
+                out += `#define DEFAULT_MCU ${defMcu}\n\n`;
             }
 
             // Modular Subsystem Disables

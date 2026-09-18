@@ -104,6 +104,24 @@
                 </div>
             </div>
 
+            <!-- RP2040 vs RP2350 default MCU target selection on Step 1 -->
+            <div class="form-group" id="rpDefaultMcuContainer" style="display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-top: -6px;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text);" id="lblRpDefaultMcu" data-i18n="rpDefaultMcuLabel">Микроконтроллер по умолчанию для сборки:</label>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; background: var(--bg); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border);">
+                        <input type="radio" name="rpDefaultMcuRadio" id="radioRp2040" value="rp2040" checked onchange="setRpDefaultMcu('rp2040')">
+                        <span style="font-weight: 600;">RP2040</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="subRp2040Desc" data-i18n="optRp2040Sub">(2 ядра Cortex-M0+, 30 GPIO)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; background: var(--bg); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border);">
+                        <input type="radio" name="rpDefaultMcuRadio" id="radioRp2350" value="rp2350" onchange="setRpDefaultMcu('rp2350')">
+                        <span style="font-weight: 600;">RP2350</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="subRp2350Desc" data-i18n="optRp2350Sub">(2 ядра Cortex-M33 / Hazard3, до 48 GPIO)</span>
+                    </label>
+                </div>
+                <span class="hint" id="hintRpDefaultMcu" data-i18n="rpDefaultMcuHint">Определяет директиву #define DEFAULT_MCU при компиляции. Оба чипа полностью поддерживаются DMK.</span>
+            </div>
+
             <div class="form-group">
                 <label data-i18n="formFactorLabel">Форм-фактор клавиатуры:</label>
                 <div class="option-grid">
@@ -138,7 +156,7 @@
                     <!-- Single pin communication (for 1-wire modes) -->
                     <div class="form-group" id="splitSinglePinGroup">
                         <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи:</label>
-                        <input type="text" id="serialPinRP" value="GPIO1" placeholder="Для RP2040 (например GPIO1)" oninput="markDirty()">
+                        <input type="text" id="serialPinRP" list="availablePinsList" value="GPIO1" placeholder="Для RP2040 (например GPIO1)" oninput="markDirty()">
                         <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
                     </div>
                 </div>
@@ -147,12 +165,12 @@
                 <div id="splitDualPinsGroup" class="grid-2" style="display: none;">
                     <div class="form-group">
                         <label id="lblSplitTxPin" data-i18n="splitTxPinLabel">Пин TX:</label>
-                        <input type="text" id="splitTxPin" value="PF1" placeholder="PF1" oninput="markDirty()">
+                        <input type="text" id="splitTxPin" list="availablePinsList" value="PF1" placeholder="PF1" oninput="markDirty()">
                         <span class="hint" id="hintSplitTxPin" data-i18n="splitTxPinHint">Линия передачи данных</span>
                     </div>
                     <div class="form-group">
                         <label id="lblSplitRxPin" data-i18n="splitRxPinLabel">Пин RX:</label>
-                        <input type="text" id="splitRxPin" value="PF0" placeholder="PF0" oninput="markDirty()">
+                        <input type="text" id="splitRxPin" list="availablePinsList" value="PF0" placeholder="PF0" oninput="markDirty()">
                         <span class="hint" id="hintSplitRxPin" data-i18n="splitRxPinHint">Линия приёма данных</span>
                     </div>
                 </div>
@@ -209,11 +227,11 @@
                 <div class="grid-2">
                     <div class="form-group">
                         <label id="lblRowPins" data-i18n="rowPinsLabel">Пины строк через запятую:</label>
-                        <input type="text" id="rowPins" value="GPIO4, GPIO5, GPIO6, GPIO7" placeholder="Например: GPIO4, GPIO5, GPIO6, GPIO7" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="rowPins" list="availablePinsList" value="GPIO4, GPIO5, GPIO6, GPIO7" placeholder="Например: GPIO4, GPIO5, GPIO6, GPIO7" oninput="saveCurrentMcuPinState()">
                     </div>
                     <div class="form-group">
                         <label id="lblColPins" data-i18n="colPinsLabel">Пины колонок через запятую:</label>
-                        <input type="text" id="colPins" value="GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" placeholder="Например: GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="colPins" list="availablePinsList" value="GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" placeholder="Например: GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" oninput="saveCurrentMcuPinState()">
                         <span class="hint" data-i18n="colPinsHint">Для сплит-клавиатур указываются пины на одну половину.</span>
                     </div>
                 </div>
@@ -234,11 +252,11 @@
                 <div class="grid-2">
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 0.75rem;" id="lblMultiSplitTx">Пин TX:</label>
-                        <input type="text" id="mcuSplitTxPin" value="GPIO0" oninput="saveCurrentMcuPinState(); markDirty();">
+                        <input type="text" id="mcuSplitTxPin" list="availablePinsList" value="GPIO0" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                     <div class="form-group" style="margin: 0;" id="multiSplitRxGroup">
                         <label style="font-size: 0.75rem;" id="lblMultiSplitRx">Пин RX:</label>
-                        <input type="text" id="mcuSplitRxPin" value="GPIO1" oninput="saveCurrentMcuPinState(); markDirty();">
+                        <input type="text" id="mcuSplitRxPin" list="availablePinsList" value="GPIO1" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                 </div>
                 <div style="font-size: 0.72rem; color: var(--text-muted);" id="hintMultiSplit"></div>
@@ -332,7 +350,7 @@
                         </div>
                         <div class="form-group">
                             <label data-i18n="rgbPinLabel">Пин данных подсветки (RGB_PIN):</label>
-                            <input type="text" id="rgbPin" value="GPIO0" placeholder="Например: GPIO0" oninput="saveCurrentMcuPinState()">
+                            <input type="text" id="rgbPin" list="availablePinsList" value="GPIO0" placeholder="Например: GPIO0" oninput="saveCurrentMcuPinState()">
                         </div>
                     </div>
                 </div>
@@ -983,7 +1001,175 @@
 
         // Multi-MCU per-platform pin configurations for Universal mode derived from MCU_DEFAULTS
         configState.multiMcuPins = structuredClone(MCU_DEFAULTS);
+        configState.rpDefaultMcu = 'rp2040';
         let currentUniversalMcu = 'rp2040';
+
+        const MCU_AVAILABLE_PINS = {
+            rp2040: [
+                { pin: "GPIO0", label: "UART0 TX, I2C0 SDA, PWM0 A, PIO" },
+                { pin: "GPIO1", label: "UART0 RX, I2C0 SCL, PWM0 B, PIO" },
+                { pin: "GPIO2", label: "SPI0 SCK, I2C1 SDA, PWM1 A, PIO" },
+                { pin: "GPIO3", label: "SPI0 TX, I2C1 SCL, PWM1 B, PIO" },
+                { pin: "GPIO4", label: "UART1 TX, I2C0 SDA, PWM2 A, PIO" },
+                { pin: "GPIO5", label: "UART1 RX, I2C0 SCL, PWM2 B, PIO" },
+                { pin: "GPIO6", label: "SPI0 SCK, I2C1 SDA, PWM3 A, PIO" },
+                { pin: "GPIO7", label: "SPI0 TX, I2C1 SCL, PWM3 B, PIO" },
+                { pin: "GPIO8", label: "SPI1 RX, UART1 TX, PWM4 A, PIO" },
+                { pin: "GPIO9", label: "SPI1 CSn, UART1 RX, PWM4 B, PIO" },
+                { pin: "GPIO10", label: "SPI1 SCK, I2C1 SDA, PWM5 A, PIO" },
+                { pin: "GPIO11", label: "SPI1 TX, I2C1 SCL, PWM5 B, PIO" },
+                { pin: "GPIO12", label: "SPI1 RX, UART0 TX, PWM6 A, PIO" },
+                { pin: "GPIO13", label: "SPI1 CSn, UART0 RX, PWM6 B, PIO" },
+                { pin: "GPIO14", label: "SPI1 SCK, I2C1 SDA, PWM7 A, PIO" },
+                { pin: "GPIO15", label: "SPI1 TX, I2C1 SCL, PWM7 B, PIO" },
+                { pin: "GPIO16", label: "SPI0 RX, UART0 TX, PWM0 A, PIO" },
+                { pin: "GPIO17", label: "SPI0 CSn, UART0 RX, PWM0 B, PIO" },
+                { pin: "GPIO18", label: "SPI0 SCK, I2C1 SDA, PWM1 A, PIO" },
+                { pin: "GPIO19", label: "SPI0 TX, I2C1 SCL, PWM1 B, PIO" },
+                { pin: "GPIO20", label: "UART1 TX, I2C0 SDA, PWM2 A, PIO" },
+                { pin: "GPIO21", label: "UART1 RX, I2C0 SCL, PWM2 B, PIO" },
+                { pin: "GPIO22", label: "SPI0 SCK, I2C1 SDA, PWM3 A, PIO" },
+                { pin: "GPIO23", label: "Power Save, PWM3 B, PIO" },
+                { pin: "GPIO24", label: "VBUS Sense, PWM4 A, PIO" },
+                { pin: "GPIO25", label: "Onboard LED, PWM4 B, PIO" },
+                { pin: "GPIO26", label: "ADC0, I2C1 SDA, PWM5 A" },
+                { pin: "GPIO27", label: "ADC1, I2C1 SCL, PWM5 B" },
+                { pin: "GPIO28", label: "ADC2, UART0 TX, PWM6 A" },
+                { pin: "GPIO29", label: "ADC3, UART0 RX, PWM6 B" }
+            ],
+            rp2350_extra: Array.from({ length: 18 }, (_, i) => {
+                const idx = 30 + i;
+                const isAdc = idx >= 40 && idx <= 47;
+                return {
+                    pin: `GPIO${idx}`,
+                    label: isAdc ? `ADC${idx - 40} / QFN-80 Extended GPIO` : 'QFN-80 Extended GPIO'
+                };
+            }),
+            milandr: (() => {
+                const list = [];
+                ['PA', 'PB', 'PC', 'PD', 'PE', 'PF'].forEach(port => {
+                    for (let i = 0; i <= 15; i++) {
+                        let desc = `Порт ${port}`;
+                        if (port === 'PF' && i === 0) desc = 'UART2 RX (Связь половин)';
+                        else if (port === 'PF' && i === 1) desc = 'UART2 TX (Связь половин)';
+                        else if (port === 'PB') desc = 'Порт B (Строки матрицы)';
+                        else if (port === 'PA') desc = 'Порт A (Колонки матрицы)';
+                        else if (port === 'PC' && i === 0) desc = 'Порт C (RGB подсветка)';
+                        list.push({ pin: `${port}${i}`, label: desc });
+                    }
+                });
+                return list;
+            })(),
+            nrf52840: (() => {
+                const list = [];
+                for (let i = 0; i <= 31; i++) {
+                    const pad = String(i).padStart(2, '0');
+                    let desc = 'Port 0 GPIO';
+                    if (i === 0 || i === 1) desc = 'XL1 / XL2 Crystal / GPIO';
+                    else if (i >= 2 && i <= 5) desc = `AIN${i - 2} / Analog Input`;
+                    else if (i === 8) desc = 'UART TX / GPIO';
+                    else if (i === 9 || i === 10) desc = `NFC${i - 8} / GPIO`;
+                    else if (i === 13) desc = 'RGB Data / GPIO';
+                    else if (i === 18) desc = 'RESET / GPIO';
+                    else if (i >= 28) desc = `AIN${i - 24} / Analog Input`;
+                    list.push({ pin: `P0_${pad}`, label: desc });
+                }
+                for (let i = 0; i <= 15; i++) {
+                    const pad = String(i).padStart(2, '0');
+                    list.push({ pin: `P1_${pad}`, label: 'Port 1 GPIO' });
+                }
+                return list;
+            })(),
+            baikal: (() => {
+                const list = [];
+                for (let i = 0; i <= 31; i++) {
+                    list.push({ pin: `GPIO${i}`, label: 'Baikal RISC-V GPIO' });
+                }
+                ['PA', 'PB', 'PC'].forEach(port => {
+                    for (let i = 0; i <= 15; i++) {
+                        list.push({ pin: `${port}${i}`, label: `Порт ${port}` });
+                    }
+                });
+                return list;
+            })()
+        };
+
+        function setRpDefaultMcu(target) {
+            markDirty();
+            configState.rpDefaultMcu = target;
+            const r2040 = document.getElementById('radioRp2040');
+            const r2350 = document.getElementById('radioRp2350');
+            if (r2040) r2040.checked = (target === 'rp2040');
+            if (r2350) r2350.checked = (target === 'rp2350');
+            updateAvailablePinsDatalist();
+            checkPinConflicts();
+        }
+
+        function ensureAvailablePinsDatalist() {
+            let dl = document.getElementById('availablePinsList');
+            if (!dl) {
+                dl = document.createElement('datalist');
+                dl.id = 'availablePinsList';
+                document.body.appendChild(dl);
+            }
+            updateAvailablePinsDatalist();
+        }
+
+        function updateAvailablePinsDatalist() {
+            let dl = document.getElementById('availablePinsList');
+            if (!dl) return;
+            dl.innerHTML = '';
+            if (dl.children) dl.children.length = 0;
+
+            let targetMcu = configState.mcu;
+            if (targetMcu === 'all') {
+                targetMcu = currentUniversalMcu || 'rp2040';
+            }
+
+            let pins = [];
+            if (targetMcu === 'rp2040') {
+                pins = (configState.rpDefaultMcu === 'rp2350')
+                    ? [...MCU_AVAILABLE_PINS.rp2040, ...MCU_AVAILABLE_PINS.rp2350_extra]
+                    : MCU_AVAILABLE_PINS.rp2040;
+            } else if (targetMcu === 'rp2350') {
+                pins = [...MCU_AVAILABLE_PINS.rp2040, ...MCU_AVAILABLE_PINS.rp2350_extra];
+            } else if (MCU_AVAILABLE_PINS[targetMcu]) {
+                pins = MCU_AVAILABLE_PINS[targetMcu];
+            } else {
+                pins = MCU_AVAILABLE_PINS.rp2040;
+            }
+
+            pins.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.pin;
+                if (item.label) opt.label = `${item.pin} — ${item.label}`;
+                dl.appendChild(opt);
+            });
+        }
+
+        function attachCommaPinAutocomplete(inputEl) {
+            if (!inputEl) return;
+            inputEl.setAttribute('list', 'availablePinsList');
+            let lastVal = inputEl.value;
+            inputEl.addEventListener('focus', () => { lastVal = inputEl.value; });
+            inputEl.addEventListener('input', () => {
+                const cur = inputEl.value;
+                if (lastVal.includes(',') && !cur.includes(',')) {
+                    const trimmedLast = lastVal.trim();
+                    const hadTrailingComma = trimmedLast.endsWith(',');
+                    const parts = lastVal.split(',').map(s => s.trim()).filter(Boolean);
+                    if (hadTrailingComma) {
+                        parts.push(cur.trim());
+                    } else if (parts.length > 0) {
+                        parts[parts.length - 1] = cur.trim();
+                    } else {
+                        parts.push(cur.trim());
+                    }
+                    inputEl.value = parts.join(', ');
+                }
+                lastVal = inputEl.value;
+            });
+        }
 
         function saveCurrentMcuPinState() {
             if (configState.mcu === 'all' && configState.multiMcuPins && currentUniversalMcu) {
@@ -1026,6 +1212,9 @@
                 if (el) el.classList.toggle('selected', k === mcu);
             });
 
+            const rpContainer = document.getElementById('rpDefaultMcuContainer');
+            if (rpContainer) rpContainer.style.display = (mcu === 'rp2040') ? 'flex' : 'none';
+
             const isAll = (mcu === 'all');
             const headerTabs = document.getElementById('headerUniversalMcuContainer');
             if (headerTabs) headerTabs.style.display = isAll ? 'flex' : 'none';
@@ -1058,6 +1247,7 @@
                 initMatrixGrid();
             }
 
+            updateAvailablePinsDatalist();
             updateSplitPinsUI();
             checkPinConflicts();
         }
@@ -1115,6 +1305,7 @@
                 updateEncoderInputs();
             }
 
+            updateAvailablePinsDatalist();
             updateSplitPinsUI();
             checkPinConflicts();
         }
@@ -1239,6 +1430,10 @@
             toggleChordsOptions();
             toggleCustomMacrosOptions();
             toggleLayerHotkeyOptions();
+            ensureAvailablePinsDatalist();
+            ['rowPins', 'colPins', 'directPins'].forEach(id => {
+                attachCommaPinAutocomplete(document.getElementById(id));
+            });
             updateSplitPinsUI();
             gotoStep(1);
             isPageDirty = false;
@@ -1416,11 +1611,11 @@
                 row.innerHTML = `
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinA || 'Encoder'} #${i+1} — ${t.encPinALabel || 'Pin A'}:</label>
-                        <input type="text" id="enc_${i}_pinA" value="${pinAVal}" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="enc_${i}_pinA" list="availablePinsList" value="${pinAVal}" oninput="saveCurrentMcuPinState()">
                     </div>
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinB || 'Encoder'} #${i+1} — ${t.encPinBLabel || 'Pin B'}:</label>
-                        <input type="text" id="enc_${i}_pinB" value="${pinBVal}" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="enc_${i}_pinB" list="availablePinsList" value="${pinBVal}" oninput="saveCurrentMcuPinState()">
                     </div>
                 `;
                 container.appendChild(row);
@@ -4363,10 +4558,16 @@ visualElements.push({
             setProtocolMode(isViaV3 ? 'via_v3' : 'vial');
 
             // 2. MCU detection (preserve custom pins / don't reset pins with default MCU pins)
-            if (text.includes('MCU_milandr')) setMcu('milandr', false);
-            else if (text.includes('MCU_nrf52840')) setMcu('nrf52840', false);
-            else if (text.includes('MCU_baikal')) setMcu('baikal', false);
-            else if (text.includes('MCU_rp2040')) setMcu('rp2040', false);
+            const defMcuMatch = text.match(/#define\s+(?:DEFAULT_MCU|MCU_DEFAULT|MCU)\s+["']?([a-zA-Z0-9_]+)["']?/i);
+            const defMcu = defMcuMatch ? defMcuMatch[1].toLowerCase() : null;
+
+            if (text.includes('MCU_milandr') || defMcu === 'milandr') setMcu('milandr', false);
+            else if (text.includes('MCU_nrf52840') || defMcu === 'nrf52840') setMcu('nrf52840', false);
+            else if (text.includes('MCU_baikal') || defMcu === 'baikal') setMcu('baikal', false);
+            else if (text.includes('MCU_rp2040') || text.includes('MCU_rp2350') || defMcu === 'rp2040' || defMcu === 'rp2350') {
+                setMcu('rp2040', false);
+                setRpDefaultMcu(defMcu === 'rp2350' ? 'rp2350' : 'rp2040');
+            }
 
             // 3. Split vs Single
             const masterMatch = text.match(/#define\s+MASTER_SIDE\s+(LEFT|RIGHT|AUTO)/);

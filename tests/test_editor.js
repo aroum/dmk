@@ -1120,3 +1120,69 @@ test('Codegen Helpers: Universal Multi-MCU Preprocessor Directives', () => {
     // addOpt via ensureKeycodesDatalist
     // getPlatformPins, emitMultiMcuBlock via generateConfigCode
 });
+
+test('RP2040 / RP2350 Default MCU Selection & Available Pins Datalist', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+
+    // 1. RP2040 default MCU selection
+    sandbox.setMcu('rp2040');
+    assert.strictEqual(sandbox.configState.mcu, 'rp2040');
+    assert.strictEqual(sandbox.configState.rpDefaultMcu, 'rp2040');
+
+    sandbox.generateConfigCode();
+    let configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define DEFAULT_MCU rp2040'), 'DEFAULT_MCU should be rp2040');
+
+    // Switch to RP2350 default MCU
+    sandbox.setRpDefaultMcu('rp2350');
+    assert.strictEqual(sandbox.configState.rpDefaultMcu, 'rp2350');
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define DEFAULT_MCU rp2350'), 'DEFAULT_MCU should be rp2350');
+
+    // 2. Datalist creation and updates per MCU
+    sandbox.ensureAvailablePinsDatalist();
+    const dl = sandbox.document.getElementById('availablePinsList');
+    assert.ok(dl, 'availablePinsList datalist must exist');
+    assert.ok(dl.children && dl.children.length > 0, 'Pins datalist must contain options');
+
+    // RP2350 has extended pins (GPIO30-47)
+    const hasGpio47 = dl.children.some(opt => opt.value === 'GPIO47');
+    assert.ok(hasGpio47, 'RP2350 must offer GPIO47');
+
+    // Switch to Milandr -> verify Milandr pins (PF0, PF1, etc.)
+    sandbox.setMcu('milandr');
+    sandbox.updateAvailablePinsDatalist();
+    const hasPF0 = dl.children.some(opt => opt.value === 'PF0');
+    const hasNoGpio = !dl.children.some(opt => opt.value === 'GPIO47');
+    assert.ok(hasPF0, 'Milandr must offer PF0');
+    assert.ok(hasNoGpio, 'Milandr must not offer GPIO47');
+
+    // Switch to nRF52840 -> verify P0_00..P0_31 pins
+    sandbox.setMcu('nrf52840');
+    sandbox.updateAvailablePinsDatalist();
+    const hasP0 = dl.children.some(opt => opt.value === 'P0_00');
+    assert.ok(hasP0, 'nRF52840 must offer P0_00');
+
+    // 3. Comma-separated pin autocomplete helper
+    const mockInput = {
+        value: 'GPIO4, GPIO5, ',
+        listeners: {},
+        addEventListener(event, fn) { this.listeners[event] = fn; },
+        setAttribute(k, v) { this[k] = v; }
+    };
+    sandbox.attachCommaPinAutocomplete(mockInput);
+    assert.strictEqual(mockInput.list, 'availablePinsList');
+
+    // Simulate focus and selection from datalist
+    mockInput.listeners['focus']?.();
+    mockInput.value = 'GPIO6'; // Browser replaced whole input
+    mockInput.listeners['input']?.();
+    assert.strictEqual(mockInput.value, 'GPIO4, GPIO5, GPIO6', 'Autocomplete must append to comma list');
+
+    // 4. Import / parse DEFAULT_MCU
+    sandbox.parseAndApplyConfigH('#define DEFAULT_MCU rp2350\n#define NUM_ROWS 4\n#define NUM_COLS 6');
+    assert.strictEqual(sandbox.configState.mcu, 'rp2040');
+    assert.strictEqual(sandbox.configState.rpDefaultMcu, 'rp2350');
+});
