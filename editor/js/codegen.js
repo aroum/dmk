@@ -235,27 +235,16 @@ function generateVialJson() {
                             : `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n    #define SPLIT_TX_PIN          ${p.splitTx}`
                         );
                     }
+                } else if (isBitBang) {
+                    const sPin = document.getElementById('serialPinRP')?.value || (configState.mcu === 'milandr' ? 'PF0' : 'GPIO0');
+                    out += `#define SPLIT_CONNECTION_TYPE SOFT\n#define SPLIT_TX_PIN ${sPin}\n\n`;
                 } else if (configState.mcu === 'milandr') {
-                    if (isBitBang) {
-                        const sPin = document.getElementById('serialPinRP')?.value || 'PF0';
-                        out += `#define SPLIT_CONNECTION_TYPE SOFT\n`;
-                        out += `#define SPLIT_TX_PIN ${sPin}\n\n`;
-                    } else {
-                        const tx = document.getElementById('splitTxPin')?.value || 'PF1';
-                        const rx = document.getElementById('splitRxPin')?.value || 'PF0';
-                        out += `#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n`;
-                        out += `#define SPLIT_TX_PIN ${tx}\n`;
-                        out += `#define SPLIT_RX_PIN ${rx}\n\n`;
-                    }
+                    const tx = document.getElementById('splitTxPin')?.value || 'PF1';
+                    const rx = document.getElementById('splitRxPin')?.value || 'PF0';
+                    out += `#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n#define SPLIT_TX_PIN ${tx}\n#define SPLIT_RX_PIN ${rx}\n\n`;
                 } else {
                     const sPin = document.getElementById('serialPinRP')?.value || 'GPIO0';
-                    if (isBitBang) {
-                        out += `#define SPLIT_CONNECTION_TYPE SOFT\n`;
-                        out += `#define SPLIT_TX_PIN ${sPin}\n\n`;
-                    } else {
-                        out += `#define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n`;
-                        out += `#define SPLIT_TX_PIN ${sPin}\n\n`;
-                    }
+                    out += `#define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n#define SPLIT_TX_PIN ${sPin}\n\n`;
                 }
             }
 

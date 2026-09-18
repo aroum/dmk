@@ -171,7 +171,7 @@
             DISPLAY_MAP[`K_LANG${i}`] = `LANG${i}`;
         }
         const MIDI_NOTE_NAMES_SHORT = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-        const MIDI_NOTE_NAMES_CODE = ["C", "C_SHARP", "D", "D_SHARP", "E", "F", "F_SHARP", "G", "G_SHARP", "A", "A_SHARP", "B"];
+        const MIDI_NOTE_NAMES_CODE = MIDI_NOTE_NAMES_SHORT.map(n => n.replace('#', '_SHARP'));
         for (let oct = 0; oct <= 5; oct++) {
             for (let n = 0; n < 12; n++) {
                 DISPLAY_MAP[`MIDI_NOTE_${MIDI_NOTE_NAMES_CODE[n]}_${oct}`] = `${MIDI_NOTE_NAMES_SHORT[n]}${oct}`;

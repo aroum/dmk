@@ -672,8 +672,6 @@
             mcu: "rp2040",
             isSplit: true,
             masterSide: "LEFT",
-            splitUartMode: "bitbang",
-            serialPin: "GPIO1",
             matrixType: "COL2ROW",
             matrixPolarity: "NORMAL",
             debounceMs: 10,
@@ -693,9 +691,6 @@
             encPinsB: ["GPIO3", "GPIO5"],
             enableVial: true,
             vialProtocol: "vial", // "vial" (Protocol v9) or "via_v3" (Protocol v12)
-            vialName: "DMK Keyboard",
-            vialVid: "0xCAFE",
-            vialPid: "0x4001",
             // Layers & Layout State
             layers: ["DEF", "LOWER", "RAISE"],
             currentLayer: "DEF",
@@ -746,9 +741,9 @@
         const MAX_HISTORY_STATES = 30;
 
         const getKeymapSnapshot = () => ({
-            keymaps: JSON.parse(JSON.stringify(configState.keymaps)),
-            keymapByCoord: JSON.parse(JSON.stringify(configState.keymapByCoord || {})),
-            encoderKeymaps: JSON.parse(JSON.stringify(configState.encoderKeymaps || {}))
+            keymaps: structuredClone(configState.keymaps),
+            keymapByCoord: structuredClone(configState.keymapByCoord || {}),
+            encoderKeymaps: structuredClone(configState.encoderKeymaps || {})
         });
 
         const applyKeymapSnapshot = (s) => {
@@ -987,13 +982,13 @@
         };
 
         // Multi-MCU per-platform pin configurations for Universal mode derived from MCU_DEFAULTS
-        configState.multiMcuPins = JSON.parse(JSON.stringify(MCU_DEFAULTS));
+        configState.multiMcuPins = structuredClone(MCU_DEFAULTS);
         let currentUniversalMcu = 'rp2040';
 
         function saveCurrentMcuPinState() {
             if (configState.mcu === 'all' && configState.multiMcuPins && currentUniversalMcu) {
                 if (!configState.multiMcuPins[currentUniversalMcu]) {
-                    configState.multiMcuPins[currentUniversalMcu] = JSON.parse(JSON.stringify(MCU_DEFAULTS[currentUniversalMcu] || MCU_DEFAULTS.rp2040));
+                    configState.multiMcuPins[currentUniversalMcu] = structuredClone(MCU_DEFAULTS[currentUniversalMcu] || MCU_DEFAULTS.rp2040);
                 }
                 const cur = configState.multiMcuPins[currentUniversalMcu];
                 const rowEl = document.getElementById('rowPins');
@@ -1095,10 +1090,10 @@
 
             // 3. Load pins for target platform
             if (!configState.multiMcuPins) {
-                configState.multiMcuPins = JSON.parse(JSON.stringify(MCU_DEFAULTS));
+                configState.multiMcuPins = structuredClone(MCU_DEFAULTS);
             }
             if (!configState.multiMcuPins[mcu]) {
-                configState.multiMcuPins[mcu] = JSON.parse(JSON.stringify(MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040));
+                configState.multiMcuPins[mcu] = structuredClone(MCU_DEFAULTS[mcu] || MCU_DEFAULTS.rp2040);
             }
             const d = configState.multiMcuPins[mcu];
             if (d) {
@@ -1206,19 +1201,15 @@
                 const rxGroup = document.getElementById('multiSplitRxGroup');
                 if (lblMultiTx) lblMultiTx.textContent = isEn ? 'TX Pin:' : 'Пин TX:';
                 if (lblMultiRx) lblMultiRx.textContent = isEn ? 'RX Pin:' : 'Пин RX:';
-                if (currentUniversalMcu === 'milandr') {
-                    if (hintMulti) hintMulti.textContent = isEn ? 'Milandr hardware UART requires 2 pins: PF1 (TX) and PF0 (RX).' : 'На Миландере аппаратный UART требует 2 раздельных пина: PF1 (TX) и PF0 (RX).';
-                    if (rxGroup) rxGroup.style.display = 'block';
-                } else if (currentUniversalMcu === 'rp2040') {
-                    if (hintMulti) hintMulti.textContent = isEn ? 'RP2040 uses a single GPIO pin for PIO half-duplex.' : 'RP2040 использует 1 провод через аппаратный полудуплексный PIO.';
-                    if (rxGroup) rxGroup.style.display = 'none';
-                } else if (currentUniversalMcu === 'nrf52840') {
-                    if (hintMulti) hintMulti.textContent = isEn ? 'nRF52840 UARTE pin configuration.' : 'Настройки пинов UARTE для nRF52840.';
-                    if (rxGroup) rxGroup.style.display = 'block';
-                } else if (currentUniversalMcu === 'baikal') {
-                    if (hintMulti) hintMulti.textContent = isEn ? 'Baikal UART pin configuration.' : 'Настройки пинов UART для Байкал.';
-                    if (rxGroup) rxGroup.style.display = 'block';
-                }
+                const mcuHints = {
+                    milandr: { rx: 'block', hint: isEn ? 'Milandr hardware UART requires 2 pins: PF1 (TX) and PF0 (RX).' : 'На Миландере аппаратный UART требует 2 раздельных пина: PF1 (TX) и PF0 (RX).' },
+                    rp2040: { rx: 'none', hint: isEn ? 'RP2040 uses a single GPIO pin for PIO half-duplex.' : 'RP2040 использует 1 провод через аппаратный полудуплексный PIO.' },
+                    nrf52840: { rx: 'block', hint: isEn ? 'nRF52840 UARTE pin configuration.' : 'Настройки пинов UARTE для nRF52840.' },
+                    baikal: { rx: 'block', hint: isEn ? 'Baikal UART pin configuration.' : 'Настройки пинов UART для Байкал.' }
+                };
+                const info = mcuHints[currentUniversalMcu] || mcuHints.rp2040;
+                if (hintMulti) hintMulti.textContent = info.hint;
+                if (rxGroup) rxGroup.style.display = info.rx;
             } else if (multiExtras) {
                 multiExtras.style.display = 'none';
             }
@@ -1226,32 +1217,22 @@
 
         function init() {
             // Explicitly sync checkboxes with initial state
-            const encEl = document.getElementById('enableEncoders');
-            if (encEl) {
-                encEl.checked = configState.enableEncoders || false;
-            }
-            const rgbEl = document.getElementById('enableRgb');
-            if (rgbEl) {
-                rgbEl.checked = configState.enableRgb || false;
-            }
-            const chordsEl = document.getElementById('enableChords');
-            if (chordsEl) {
-                chordsEl.checked = false;
-            }
-            const customMacrosEl = document.getElementById('enableCustomMacros');
-            if (customMacrosEl) {
-                customMacrosEl.checked = false;
-            }
-            const layerHotkeysEl = document.getElementById('enableLayerHotkeys');
-            if (layerHotkeysEl) {
-                layerHotkeysEl.checked = false;
-            }
+            [
+                ['enableEncoders', configState.enableEncoders],
+                ['enableRgb', configState.enableRgb],
+                ['enableChords', false],
+                ['enableCustomMacros', false],
+                ['enableLayerHotkeys', false]
+            ].forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) el.checked = Boolean(val);
+            });
 
             applyLanguage();
-            toggleFeatureSubsystem('mouse', configState.enableMouse !== false);
-            toggleFeatureSubsystem('gamepad', configState.enableGamepad !== false);
-            toggleFeatureSubsystem('midi', configState.enableMidi !== false);
-            toggleFeatureSubsystem('led', configState.enableLed !== false);
+            ['mouse', 'gamepad', 'midi', 'led'].forEach(f => {
+                const key = 'enable' + f.charAt(0).toUpperCase() + f.slice(1);
+                toggleFeatureSubsystem(f, configState[key] !== false);
+            });
             initMatrixGrid();
             toggleEncoderOptions();
             toggleRgbOptions();
@@ -1823,6 +1804,14 @@
             closeAppModal();
         }
 
+        function ensureLayerExists(target) {
+            if (!configState.layers.includes(target)) {
+                configState.layers.push(target);
+                configState.keymaps[target] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
+                renderLayersUI();
+            }
+        }
+
         function promptLayerModifierChoice(modifierType, callback) {
             const isRu = (currentLanguage !== 'en');
             const layers = configState.layers;
@@ -1854,11 +1843,7 @@
                     target = rawVal || layers[0];
                 }
 
-                if (!configState.layers.includes(target)) {
-                    configState.layers.push(target);
-                    configState.keymaps[target] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
-                    renderLayersUI();
-                }
+                ensureLayerExists(target);
                 callback(`${modifierType}(${target})`);
             });
 
@@ -1936,11 +1921,7 @@
                         const rawVal = (document.getElementById('modalOsLayerInput').value || '').trim().toUpperCase().replace(/\s+/g, '_');
                         target = rawVal || layers[0];
                     }
-                    if (!configState.layers.includes(target)) {
-                        configState.layers.push(target);
-                        configState.keymaps[target] = Array(getActiveLayoutPairs().length).fill("K_TRNS");
-                        renderLayersUI();
-                    }
+                    ensureLayerExists(target);
                     callback(`OS(${target})`);
                 } else if (type === 'MOD_MEH') {
                     callback('OS(MOD_LCTRL | MOD_LSHIFT | MOD_LALT)');
@@ -2963,10 +2944,7 @@
 
         function parseLayerMacroSteps(layerName) {
             if (!configState.layerTriggerMacros) configState.layerTriggerMacros = {};
-            if (!Array.isArray(configState.layerTriggerMacros[layerName])) {
-                configState.layerTriggerMacros[layerName] = [];
-            }
-            return configState.layerTriggerMacros[layerName];
+            return (configState.layerTriggerMacros[layerName] ||= []);
         }
 
         function renderLayerHotkeysUI() {
@@ -3331,59 +3309,35 @@ visualElements.push({
                 if (span && stepNames[idx]) span.textContent = stepNames[idx];
             });
 
-            // Navigation Buttons
-            const navS1 = document.querySelector('#step-1 .nav-actions button.btn-primary');
-            if (navS1) navS1.innerHTML = `${t.btnNextPins} ${ICONS.arrowRight}`;
-            const navS2Back = document.querySelector('#step-2 .nav-actions button:first-child');
-            if (navS2Back) navS2Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
-            const navS2Next = document.querySelector('#step-2 .nav-actions button.btn-primary');
-            if (navS2Next) navS2Next.innerHTML = `${t.btnNextLighting} ${ICONS.arrowRight}`;
-            const navS3Back = document.querySelector('#step-3 .nav-actions button:first-child');
-            if (navS3Back) navS3Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
-            const navS3Next = document.querySelector('#step-3 .nav-actions button.btn-primary');
-            if (navS3Next) navS3Next.innerHTML = `${t.btnNextGrid} ${ICONS.arrowRight}`;
-            const navS4Back = document.querySelector('#step-4 .nav-actions button:first-child');
-            if (navS4Back) navS4Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
-            const navS4Next = document.querySelector('#step-4 .nav-actions button.btn-primary');
-            if (navS4Next) navS4Next.innerHTML = `${t.btnNextLayout} ${ICONS.arrowRight}`;
-            const navS5Back = document.querySelector('#step-5 .nav-actions button:first-child');
-            if (navS5Back) navS5Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBack}`;
-            const navS5Next = document.querySelector('#step-5 .nav-actions button.btn-primary');
-            if (navS5Next) navS5Next.innerHTML = `${t.btnGenerateFiles} ${ICONS.arrowRight}`;
-            const navS6Back = document.querySelector('#step-6 .nav-actions button:first-child');
-            if (navS6Back) navS6Back.innerHTML = `${ICONS.arrowLeft} ${t.btnBackSettings}`;
-
-            // Buttons inside Steps
-            const btnSelAll = document.querySelector('#step-4 button[onclick="selectAllGridKeys(true)"]');
-            if (btnSelAll) btnSelAll.innerHTML = `${ICONS.check} ${t.btnSelectAll}`;
-            const btnClrAll = document.querySelector('#step-4 button[onclick="selectAllGridKeys(false)"]');
-            if (btnClrAll) btnClrAll.innerHTML = `${ICONS.trash} ${t.btnClearAll}`;
-
-            const btnUndoEl = document.getElementById('btnUndo');
-            if (btnUndoEl) btnUndoEl.innerHTML = `${ICONS.undo} ${t.btnUndo || 'Undo'}`;
-            const btnRedoEl = document.getElementById('btnRedo');
-            if (btnRedoEl) btnRedoEl.innerHTML = `${ICONS.redo} ${t.btnRedo || 'Redo'}`;
-
-            const btnAddL = document.querySelector('#step-5 button[onclick="addCustomLayer()"]');
-            if (btnAddL) btnAddL.innerHTML = `${ICONS.plus} ${t.btnAddLayer}`;
-            const btnDupL = document.querySelector('#step-5 button[onclick="duplicateCurrentLayer()"]');
-            if (btnDupL) btnDupL.innerHTML = `${ICONS.copy} ${t.btnDupLayer}`;
-            const btnClrL = document.querySelector('#step-5 button[onclick="clearCurrentLayer()"]');
-            if (btnClrL) btnClrL.innerHTML = `${ICONS.trash} ${t.btnClearLayer}`;
-            const btnRenL = document.querySelector('#step-5 button[onclick="renameCurrentLayer()"]');
-            if (btnRenL) btnRenL.innerHTML = `${ICONS.edit} ${t.btnRenameLayer}`;
-            const btnRemL = document.querySelector('#step-5 button[onclick="removeCurrentLayer()"]');
-            if (btnRemL) btnRemL.innerHTML = `${ICONS.trash} ${t.btnRemoveLayer}`;
-
-            const btnCopyC = document.querySelector('button[onclick="copyConfigCode()"]');
-            if (btnCopyC) btnCopyC.innerHTML = `${ICONS.copy} ${t.copyConfig}`;
-            const btnDownC = document.querySelector('button[onclick="downloadConfigFile()"]');
-            if (btnDownC) btnDownC.innerHTML = `${ICONS.download} ${t.downloadConfig}`;
-
-            const btnCopyV = document.querySelector('button[onclick="copyVialJson()"]');
-            if (btnCopyV) btnCopyV.innerHTML = `${ICONS.copy} ${t.copyVial}`;
-            const btnDownV = document.querySelector('button[onclick="downloadVialJson()"]');
-            if (btnDownV) btnDownV.innerHTML = `${ICONS.download} ${t.downloadVial}`;
+            // Navigation and Action Buttons with Icons
+            [
+                ['#step-1 .nav-actions button.btn-primary', `${t.btnNextPins} ${ICONS.arrowRight}`],
+                ['#step-2 .nav-actions button:first-child', `${ICONS.arrowLeft} ${t.btnBack}`],
+                ['#step-2 .nav-actions button.btn-primary', `${t.btnNextLighting} ${ICONS.arrowRight}`],
+                ['#step-3 .nav-actions button:first-child', `${ICONS.arrowLeft} ${t.btnBack}`],
+                ['#step-3 .nav-actions button.btn-primary', `${t.btnNextGrid} ${ICONS.arrowRight}`],
+                ['#step-4 .nav-actions button:first-child', `${ICONS.arrowLeft} ${t.btnBack}`],
+                ['#step-4 .nav-actions button.btn-primary', `${t.btnNextLayout} ${ICONS.arrowRight}`],
+                ['#step-5 .nav-actions button:first-child', `${ICONS.arrowLeft} ${t.btnBack}`],
+                ['#step-5 .nav-actions button.btn-primary', `${t.btnGenerateFiles} ${ICONS.arrowRight}`],
+                ['#step-6 .nav-actions button:first-child', `${ICONS.arrowLeft} ${t.btnBackSettings}`],
+                ['#step-4 button[onclick="selectAllGridKeys(true)"]', `${ICONS.check} ${t.btnSelectAll}`],
+                ['#step-4 button[onclick="selectAllGridKeys(false)"]', `${ICONS.trash} ${t.btnClearAll}`],
+                ['#btnUndo', `${ICONS.undo} ${t.btnUndo || 'Undo'}`],
+                ['#btnRedo', `${ICONS.redo} ${t.btnRedo || 'Redo'}`],
+                ['#step-5 button[onclick="addCustomLayer()"]', `${ICONS.plus} ${t.btnAddLayer}`],
+                ['#step-5 button[onclick="duplicateCurrentLayer()"]', `${ICONS.copy} ${t.btnDupLayer}`],
+                ['#step-5 button[onclick="clearCurrentLayer()"]', `${ICONS.trash} ${t.btnClearLayer}`],
+                ['#step-5 button[onclick="renameCurrentLayer()"]', `${ICONS.edit} ${t.btnRenameLayer}`],
+                ['#step-5 button[onclick="removeCurrentLayer()"]', `${ICONS.trash} ${t.btnRemoveLayer}`],
+                ['button[onclick="copyConfigCode()"]', `${ICONS.copy} ${t.copyConfig}`],
+                ['button[onclick="downloadConfigFile()"]', `${ICONS.download} ${t.downloadConfig}`],
+                ['button[onclick="copyVialJson()"]', `${ICONS.copy} ${t.copyVial}`],
+                ['button[onclick="downloadVialJson()"]', `${ICONS.download} ${t.downloadVial}`]
+            ].forEach(([sel, html]) => {
+                const el = document.querySelector(sel);
+                if (el) el.innerHTML = html;
+            });
 
             // Refresh Inspector Key Coordinate text based on current selection
             const inspectorEl = document.getElementById('inspectorKeyCoord');
@@ -4303,12 +4257,14 @@ visualElements.push({
             gotoStep(6);
         }
 
-        function copyConfigCode() {
-            const t = I18N[currentLanguage];
-            const code = document.getElementById('configCodeOutput').textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                alert(currentLanguage === 'en' ? "config.h copied to clipboard!" : "config.h успешно скопирован в буфер обмена!");
+        function copyTextWithFeedback(text, filename) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert(currentLanguage === 'en' ? `${filename} copied to clipboard!` : `${filename} успешно скопирован в буфер обмена!`);
             });
+        }
+
+        function copyConfigCode() {
+            copyTextWithFeedback(document.getElementById('configCodeOutput').textContent, 'config.h');
         }
 
         function downloadBlob(filename, content, type = 'text/plain;charset=utf-8;') {
@@ -4327,11 +4283,7 @@ visualElements.push({
 
         function copyVialJson() {
             const isVia = (configState.vialProtocol === 'via_v3' || configState.protocolMode === 'via_v3');
-            const jsonFileName = isVia ? 'via.json' : 'vial.json';
-            const json = document.getElementById('vialJsonOutput').textContent;
-            navigator.clipboard.writeText(json).then(() => {
-                alert(currentLanguage === 'en' ? `${jsonFileName} copied to clipboard!` : `${jsonFileName} успешно скопирован в буфер обмена!`);
-            });
+            copyTextWithFeedback(document.getElementById('vialJsonOutput').textContent, isVia ? 'via.json' : 'vial.json');
         }
 
         function downloadVialJson() {

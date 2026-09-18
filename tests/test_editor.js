@@ -133,6 +133,7 @@ function createSandbox() {
         console,
         setTimeout,
         clearTimeout,
+        structuredClone: (typeof structuredClone !== 'undefined') ? structuredClone : (x) => JSON.parse(JSON.stringify(x)),
         alert: () => {},
         confirm: () => true,
         document: documentMock,
@@ -922,6 +923,8 @@ test('Modal Keycode Builders (Layer Modifiers, One-Shot, MIDI CC)', () => {
     // promptLayerModifierChoice
     let layerResult = null;
     sandbox.promptLayerModifierChoice('MO', (res) => { layerResult = res; });
+    sandbox.ensureLayerExists('EXTRA_TEST_LAYER');
+    assert.ok(sandbox.configState.layers.includes('EXTRA_TEST_LAYER'));
     sandbox.document.getElementById('modalLayerSelect').value = 'NAV';
     sandbox.confirmAppModal();
     assert.strictEqual(layerResult, 'MO(NAV)');
@@ -1076,6 +1079,9 @@ test('Export, Clipboard, Blob Downloads & File Upload Handlers', () => {
 
     sandbox.copyVialJson();
     assert.ok(sandbox.getLastClipboardText().includes('"matrix"'));
+
+    sandbox.copyTextWithFeedback('test note', 'note.txt');
+    assert.strictEqual(sandbox.getLastClipboardText(), 'test note');
 
     sandbox.downloadConfigFile();
     sandbox.downloadVialJson();
