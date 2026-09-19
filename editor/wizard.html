@@ -157,10 +157,9 @@
                     </div>
                 </div>
                 <!-- Single pin communication (for 1-wire modes) -->
-                <div class="form-group" id="splitSinglePinGroup">
-                    <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи:</label>
-                    <input type="text" id="serialPinRP" autocomplete="off" value="GPIO1" placeholder="GPIO1" oninput="markDirty()">
-                    <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
+                <div class="form-group" id="splitSinglePinGroup" style="max-width: calc(50% - 8px);">
+                    <label id="lblSerialPin" data-i18n="serialPinLabel" style="display: block;">Пин связи:</label>
+                    <input type="text" id="serialPinRP" autocomplete="off" value="GPIO1" placeholder="GPIO1" oninput="markDirty()" style="display: block; width: 100%;">
                 </div>
 
                 <!-- Dual communication pins for Milandr / Full-Duplex UART -->
@@ -168,12 +167,10 @@
                     <div class="form-group">
                         <label id="lblSplitTxPin" data-i18n="splitTxPinLabel">Пин TX:</label>
                         <input type="text" id="splitTxPin" autocomplete="off" value="PF1" placeholder="PF1" oninput="markDirty()">
-                        <span class="hint" id="hintSplitTxPin" data-i18n="splitTxPinHint">Линия передачи данных</span>
                     </div>
                     <div class="form-group">
                         <label id="lblSplitRxPin" data-i18n="splitRxPinLabel">Пин RX:</label>
                         <input type="text" id="splitRxPin" autocomplete="off" value="PF0" placeholder="PF0" oninput="markDirty()">
-                        <span class="hint" id="hintSplitRxPin" data-i18n="splitRxPinHint">Линия приёма данных</span>
                     </div>
                 </div>
             </div>
@@ -922,14 +919,34 @@
             }
 
             if (configState.isSplit) {
+                const uartMode = document.getElementById('splitUartMode')?.value || 'hardware';
                 if (configState.mcu === 'all') {
                     const txPin = document.getElementById('mcuSplitTxPin')?.value;
                     const rxPin = document.getElementById('mcuSplitRxPin')?.value;
                     addUsage(txPin, t.pinUsageSplitTx || 'Split TX');
                     if (rxPin && rxPin !== txPin) addUsage(rxPin, t.pinUsageSplitRx || 'Split RX');
+                } else if (activeMcu === 'milandr' && uartMode === 'hardware') {
+                    const txPin = document.getElementById('splitTxPin')?.value;
+                    const rxPin = document.getElementById('splitRxPin')?.value;
+                    addUsage(txPin, t.pinUsageSplitTx || 'Split TX');
+                    addUsage(rxPin, t.pinUsageSplitRx || 'Split RX');
                 } else {
                     const sPin = document.getElementById('serialPinRP')?.value;
                     addUsage(sPin, t.pinUsageSplitSerial || 'Split Serial');
+                }
+            }
+
+            const hardwarePinErrors = [];
+            if (configState.isSplit && (document.getElementById('splitUartMode')?.value === 'hardware')) {
+                if (activeMcu === 'milandr') {
+                    const tx = normalizePinName(document.getElementById('splitTxPin')?.value || '', 'milandr');
+                    const rx = normalizePinName(document.getElementById('splitRxPin')?.value || '', 'milandr');
+                    const isValidMdr = (tx === 'PF1' && rx === 'PF0') || (tx === 'PA7' && rx === 'PA6');
+                    if (!isValidMdr) {
+                        hardwarePinErrors.push(t.errMilandrHwUart || 'Миландр: для Hardware UART поддерживаются только пары PF1 (TX) + PF0 (RX) или PA7 (TX) + PA6 (RX).');
+                    }
+                } else if (activeMcu === 'baikal') {
+                    hardwarePinErrors.push(t.errBaikalHwUart || 'Байкал BE-U1000: аппаратный UART для сплита не поддерживается прошивкой, используйте Bit-Bang UART.');
                 }
             }
 
@@ -971,7 +988,7 @@
             }
 
             const conflicts = Object.keys(pinUsage).filter(p => pinUsage[p].length > 1);
-            const hasIssues = (conflicts.length > 0) || (invalidPins.length > 0);
+            const hasIssues = (conflicts.length > 0) || (invalidPins.length > 0) || (hardwarePinErrors.length > 0);
 
             const mcuHints = {
                 rp2040: 'GPIO0–GPIO29 / GPIO47',
@@ -998,6 +1015,12 @@
                 errorHtmlParts.push(`<strong>${t.pinInvalidSubheader || 'Некорректный формат пинов для'} ${activeMcu.toUpperCase()} (${t.pinExpected || 'ожидается:'} ${currentMcuHint}):</strong>`);
                 invalidPins.forEach(item => {
                     errorHtmlParts.push(`• <strong>${item.pin}</strong> (${item.label})`);
+                });
+            }
+            if (hardwarePinErrors.length > 0) {
+                if (errorHtmlParts.length > 0) errorHtmlParts.push('');
+                hardwarePinErrors.forEach(err => {
+                    errorHtmlParts.push(`• <strong>${err}</strong>`);
                 });
             }
 
@@ -1804,23 +1827,18 @@
                 }
             }
 
-            // Labels and hints for single pin on Step 1
+            // Labels for single pin on Step 1
             const lblSerial = document.getElementById('lblSerialPin');
-            const hintSerial = document.getElementById('hintSerialPin');
             const serialInput = document.getElementById('serialPinRP');
-            if (lblSerial && hintSerial && serialInput) {
+            if (lblSerial && serialInput) {
                 lblSerial.textContent = isEn ? 'Communication Pin:' : 'Пин связи:';
                 if (isMilandr) {
-                    hintSerial.textContent = isEn ? 'Milandr 1-wire UART pin, e.g. PF0' : '1-проводной пин Миландра, например PF0';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PF0';
                 } else if (activeMcu === 'rp2040') {
-                    hintSerial.textContent = isEn ? 'RP2040 / RP2350 communication pin' : 'Пин связи RP2040 / RP2350';
                     if (!serialInput.value || serialInput.value.startsWith('P')) serialInput.value = 'GPIO1';
                 } else if (activeMcu === 'nrf52840') {
-                    hintSerial.textContent = isEn ? 'nRF52840 pin, e.g. P0_00' : 'Пин nRF52840, например P0_00';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'P0_00';
                 } else if (activeMcu === 'baikal') {
-                    hintSerial.textContent = isEn ? 'Baikal UART pin, e.g. PC6 or PA2' : 'Пин Байкал UART, например PC6 или PA2';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PC6';
                 }
             }

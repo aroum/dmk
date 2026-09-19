@@ -873,6 +873,28 @@ test('Split Pin Configuration & MCU Full-Duplex vs Half-Duplex', () => {
     assert.ok(configH.includes('#define SPLIT_CONNECTION_TYPE SOFT'));
     assert.ok(configH.includes('#define SPLIT_TX_PIN PF0'));
 
+    // Hardware UART validation checks
+    sandbox.setMcu('milandr');
+    sandbox.document.getElementById('splitUartMode').value = 'hardware';
+    sandbox.document.getElementById('splitTxPin').value = 'PF5'; // Invalid
+    sandbox.document.getElementById('splitRxPin').value = 'PF0';
+    let hasIssues = sandbox.checkPinConflicts();
+    assert.strictEqual(hasIssues, true);
+    assert.ok(sandbox.document.getElementById('pinConflictDetails').innerHTML.includes('Миландр: для Hardware UART'));
+
+    // Valid Milandr HW UART
+    sandbox.document.getElementById('splitTxPin').value = 'PF1';
+    sandbox.document.getElementById('splitRxPin').value = 'PF0';
+    hasIssues = sandbox.checkPinConflicts();
+    assert.strictEqual(hasIssues, false);
+
+    // Baikal HW UART not supported
+    sandbox.setMcu('baikal');
+    sandbox.document.getElementById('splitUartMode').value = 'hardware';
+    hasIssues = sandbox.checkPinConflicts();
+    assert.strictEqual(hasIssues, true);
+    assert.ok(sandbox.document.getElementById('pinConflictDetails').innerHTML.includes('Байкал BE-U1000'));
+
     // 4. Universal Mode Header Tabs and Split Extras
     sandbox.setMcu('all');
     assert.strictEqual(sandbox.document.getElementById('headerUniversalMcuContainer').style.display, 'flex');
