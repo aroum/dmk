@@ -13,6 +13,7 @@ const CODEGEN_JS_PATH = path.join(ROOT_DIR, 'editor', 'js', 'codegen.js');
 const KEYCODES_JS_PATH = path.join(ROOT_DIR, 'editor', 'js', 'keycodes.js');
 const PRESETS_JS_PATH = path.join(ROOT_DIR, 'editor', 'js', 'presets.js');
 const I18N_JS_PATH = path.join(ROOT_DIR, 'editor', 'js', 'i18n.js');
+const CONFIG_PARSER_JS_PATH = path.join(ROOT_DIR, 'editor', 'js', 'config_parser.js');
 
 function createSandbox() {
     const domStore = new Map();
@@ -206,6 +207,7 @@ function createSandbox() {
     runFile(I18N_JS_PATH);
     runFile(KEYCODES_JS_PATH);
     runFile(PRESETS_JS_PATH);
+    runFile(CONFIG_PARSER_JS_PATH);
 
     const wizardHtml = fs.readFileSync(WIZARD_HTML_PATH, 'utf8');
     const scriptMatch = wizardHtml.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
@@ -888,12 +890,41 @@ test('Split Pin Configuration & MCU Full-Duplex vs Half-Duplex', () => {
     hasIssues = sandbox.checkPinConflicts();
     assert.strictEqual(hasIssues, false);
 
-    // Baikal HW UART not supported
+    // Baikal HW UART testing
     sandbox.setMcu('baikal');
     sandbox.document.getElementById('splitUartMode').value = 'hardware';
+    sandbox.updateSplitPinsUI();
+    assert.strictEqual(sandbox.document.getElementById('splitSinglePinGroup').style.display, 'none');
+    assert.strictEqual(sandbox.document.getElementById('splitDualPinsGroup').style.display, 'grid');
+    assert.strictEqual(sandbox.document.getElementById('splitTxPin').value, 'PC6');
+    assert.strictEqual(sandbox.document.getElementById('splitRxPin').value, 'PC7');
+
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX'));
+    assert.ok(configH.includes('#define SPLIT_TX_PIN PC6'));
+    assert.ok(configH.includes('#define SPLIT_RX_PIN PC7'));
+
+    // Valid Baikal HW UART
+    hasIssues = sandbox.checkPinConflicts();
+    assert.strictEqual(hasIssues, false);
+
+    // Invalid Baikal HW UART
+    sandbox.document.getElementById('splitTxPin').value = 'PC0';
+    sandbox.document.getElementById('splitRxPin').value = 'PC1';
     hasIssues = sandbox.checkPinConflicts();
     assert.strictEqual(hasIssues, true);
-    assert.ok(sandbox.document.getElementById('pinConflictDetails').innerHTML.includes('Байкал BE-U1000'));
+    assert.ok(sandbox.document.getElementById('pinConflictDetails').innerHTML.includes('Байкал BE-U1000: для Hardware UART'));
+
+    // Baikal Bit-Bang Split
+    sandbox.document.getElementById('splitUartMode').value = 'bitbang';
+    sandbox.updateSplitPinsUI();
+    assert.strictEqual(sandbox.document.getElementById('splitSinglePinGroup').style.display, 'block');
+    assert.strictEqual(sandbox.document.getElementById('splitDualPinsGroup').style.display, 'none');
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define SPLIT_CONNECTION_TYPE SOFT'));
+    assert.ok(configH.includes('#define SPLIT_TX_PIN PC6'));
 
     // 4. Universal Mode Header Tabs and Split Extras
     sandbox.setMcu('all');

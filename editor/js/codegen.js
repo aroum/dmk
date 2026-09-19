@@ -235,17 +235,19 @@ function generateVialJson() {
                         out += emitMultiMcuBlock(p => `    #define SPLIT_TX_PIN          ${p.splitTx}`);
                     } else {
                         out += `// Communication modes per platform (HW Half-Duplex, Full-Duplex UART, Soft Bit-Bang)\n`;
-                        out += emitMultiMcuBlock((p, mcu) => mcu === 'milandr'
+                        out += emitMultiMcuBlock((p, mcu) => (mcu === 'milandr' || mcu === 'baikal')
                             ? `    #define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n    #define SPLIT_TX_PIN          ${p.splitTx}\n    #define SPLIT_RX_PIN          ${p.splitRx}`
                             : `    #define SPLIT_CONNECTION_TYPE HW_HALF_DUPLEX\n    #define SPLIT_TX_PIN          ${p.splitTx}`
                         );
                     }
                 } else if (isBitBang) {
-                    const sPin = document.getElementById('serialPinRP')?.value || (configState.mcu === 'milandr' ? 'PF0' : 'GPIO0');
+                    const sPin = document.getElementById('serialPinRP')?.value || (configState.mcu === 'milandr' ? 'PF0' : (configState.mcu === 'baikal' ? 'PC6' : 'GPIO0'));
                     out += `#define SPLIT_CONNECTION_TYPE SOFT\n#define SPLIT_TX_PIN ${sPin}\n\n`;
-                } else if (configState.mcu === 'milandr') {
-                    const tx = document.getElementById('splitTxPin')?.value || 'PF1';
-                    const rx = document.getElementById('splitRxPin')?.value || 'PF0';
+                } else if (configState.mcu === 'milandr' || configState.mcu === 'baikal') {
+                    const defTx = (configState.mcu === 'milandr') ? 'PF1' : 'PC6';
+                    const defRx = (configState.mcu === 'milandr') ? 'PF0' : 'PC7';
+                    const tx = document.getElementById('splitTxPin')?.value || defTx;
+                    const rx = document.getElementById('splitRxPin')?.value || defRx;
                     out += `#define SPLIT_CONNECTION_TYPE HW_FULL_DUPLEX\n#define SPLIT_TX_PIN ${tx}\n#define SPLIT_RX_PIN ${rx}\n\n`;
                 } else {
                     const sPin = document.getElementById('serialPinRP')?.value || 'GPIO0';

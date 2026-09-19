@@ -1,3 +1,5 @@
+const makePattern = (rows, cols) => Array.from({ length: rows }, () => Array(cols).fill(1));
+
 const PRESETS = {
             corne: {
                 name: "Corne DMK",
@@ -40,15 +42,7 @@ const PRESETS = {
                 enableRgb: false,
                 rgbCount: 0,
                 enableEncoders: false,
-                pattern: [
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1],
-                    [1,1,1,1,1,1]
-                ]
+                pattern: makePattern(7, 6)
             },
             nizkoteno: {
                 name: "Nizkoteno 10",
@@ -69,11 +63,6 @@ const PRESETS = {
                 enableRgb: true,
                 rgbCount: 48,
                 rgbPin: "GPIO0",
-                pattern: [
-                    [1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1]
-                ]
+                pattern: makePattern(4, 12)
             }
         };

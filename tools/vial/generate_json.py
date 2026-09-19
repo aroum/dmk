@@ -19,23 +19,15 @@ def parse_config(config_path, extra_defs=None):
     if extra_defs:
         content = "\n".join(f"#define {d}" for d in extra_defs) + "\n" + content
 
-    # Strip multi-line comments
-    content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
-    # Strip single-line comments
-    lines = []
-    for line in content.splitlines():
-        line = re.sub(r"//.*$", "", line)
-        lines.append(line)
-    text = "\n".join(lines)
+    # Strip C/C++ comments
+    text = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
+    text = re.sub(r"//.*$", "", text, flags=re.MULTILINE)
 
-    # Simple macro extractor
-    defs = {}
-    for m in re.finditer(r"^[ \t]*#define[ \t]+([A-Za-z0-9_]+)(?:[ \t]+([^\r\n]*))?", text, flags=re.MULTILINE):
-        name = m.group(1)
-        val = m.group(2).strip() if m.group(2) else "1"
-        # Handle line continuations
-        defs[name] = val
-
+    # Extract all #define directives
+    defs = {
+        name: (val.strip() if val else "1")
+        for name, val in re.findall(r"^[ \t]*#define[ \t]+([A-Za-z0-9_]+)(?:[ \t]+([^\r\n]*))?", text, re.MULTILINE)
+    }
     return defs, text
 
 
