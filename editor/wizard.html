@@ -318,7 +318,7 @@
             <div id="pinConflictNotice" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 12px; font-size: 0.82rem; color: #fca5a5; flex-direction: column; gap: 4px;">
                 <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
                     <span>⚠️</span>
-                    <span id="pinConflictTitle">Обнаружен конфликт пинов:</span>
+                    <span id="pinConflictTitle" data-i18n="pinConflictTitle">Обнаружен конфликт пинов:</span>
                 </div>
                 <div id="pinConflictDetails"></div>
             </div>
@@ -434,7 +434,7 @@
             <div id="pinConflictNoticeStep3" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-radius: 6px; padding: 12px; font-size: 0.82rem; color: #fca5a5; flex-direction: column; gap: 4px;">
                 <div style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
                     <span>⚠️</span>
-                    <span id="pinConflictTitleStep3">Обнаружены ошибки или конфликты пинов:</span>
+                    <span id="pinConflictTitleStep3" data-i18n="pinConflictTitleStep3">Обнаружены ошибки или конфликты пинов:</span>
                 </div>
                 <div id="pinConflictDetailsStep3"></div>
             </div>
@@ -913,30 +913,30 @@
 
             if (configState.matrixType === 'DIRECT') {
                 const dPins = parsePins(document.getElementById('directPins')?.value);
-                dPins.forEach((p, idx) => addUsage(p, `${t.directPinsLabel || 'Direct Key'} #${idx + 1}`));
+                dPins.forEach((p, idx) => addUsage(p, `${t.pinUsageDirect || 'Прямая клавиша'} #${idx + 1}`));
             } else {
                 const rPins = parsePins(document.getElementById('rowPins')?.value);
                 const cPins = parsePins(document.getElementById('colPins')?.value);
-                rPins.forEach((p, idx) => addUsage(p, `${t.rowPinsLabel || 'Row'} #${idx + 1}`));
-                cPins.forEach((p, idx) => addUsage(p, `${t.colPinsLabel || 'Col'} #${idx + 1}`));
+                rPins.forEach((p, idx) => addUsage(p, `${t.pinUsageRow || 'Строка'} #${idx + 1}`));
+                cPins.forEach((p, idx) => addUsage(p, `${t.pinUsageCol || 'Колонка'} #${idx + 1}`));
             }
 
             if (configState.isSplit) {
                 if (configState.mcu === 'all') {
                     const txPin = document.getElementById('mcuSplitTxPin')?.value;
                     const rxPin = document.getElementById('mcuSplitRxPin')?.value;
-                    addUsage(txPin, 'Split TX Pin');
-                    if (rxPin && rxPin !== txPin) addUsage(rxPin, 'Split RX Pin');
+                    addUsage(txPin, t.pinUsageSplitTx || 'Split TX');
+                    if (rxPin && rxPin !== txPin) addUsage(rxPin, t.pinUsageSplitRx || 'Split RX');
                 } else {
                     const sPin = document.getElementById('serialPinRP')?.value;
-                    addUsage(sPin, 'Split Serial Pin');
+                    addUsage(sPin, t.pinUsageSplitSerial || 'Split Serial');
                 }
             }
 
             const enableRgb = document.getElementById('enableRgb')?.checked;
             if (enableRgb) {
                 const rgbPin = document.getElementById('rgbPin')?.value;
-                addUsage(rgbPin, 'RGB Data Pin');
+                addUsage(rgbPin, t.pinUsageRgb || 'Подсветка RGB');
             }
 
             const enableEnc = document.getElementById('enableEncoders')?.checked;
@@ -945,8 +945,8 @@
                 for (let i = 0; i < encCount; i++) {
                     const pA = document.getElementById(`enc_${i}_pinA`)?.value;
                     const pB = document.getElementById(`enc_${i}_pinB`)?.value;
-                    addUsage(pA, `Encoder #${i + 1} Pin A`);
-                    addUsage(pB, `Encoder #${i + 1} Pin B`);
+                    addUsage(pA, `${t.pinUsageEncoder || 'Энкодер'} #${i + 1} Pin A`);
+                    addUsage(pB, `${t.pinUsageEncoder || 'Энкодер'} #${i + 1} Pin B`);
                 }
             }
 
@@ -954,13 +954,19 @@
             if (enableLed) {
                 if (Array.isArray(configState.ledRows) && configState.ledRows.length > 0) {
                     configState.ledRows.forEach((row, idx) => {
-                        if (row.pin) addUsage(row.pin, `LED #${idx + 1} (${row.action || 'indicator'})`);
+                        const actionName = (row.action === 'caps') ? 'Caps Lock'
+                            : (row.action === 'num') ? 'Num Lock'
+                            : (row.action === 'scroll') ? 'Scroll Lock'
+                            : (row.action === 'debug') ? (t.ledActionDebug || 'Отладка / Heartbeat')
+                            : (row.action === 'activity') ? (t.ledActionActivity || 'Активность клавиш')
+                            : (t.ledActionNone || 'Индикатор');
+                        if (row.pin) addUsage(row.pin, `${t.pinUsageLed || 'Индикатор LED'} #${idx + 1} (${actionName})`);
                     });
                 } else {
                     const lPins = parsePins(document.getElementById('ledPins')?.value);
-                    lPins.forEach((p, idx) => addUsage(p, `LED #${idx + 1}`));
+                    lPins.forEach((p, idx) => addUsage(p, `${t.pinUsageLed || 'Индикатор LED'} #${idx + 1}`));
                     const actPin = document.getElementById('ledActivityPin')?.value;
-                    if (actPin) addUsage(actPin, 'LED Activity Pin');
+                    if (actPin) addUsage(actPin, t.pinUsageLedActivity || 'LED Activity');
                 }
             }
 
@@ -977,15 +983,19 @@
             const currentMcuHint = mcuHints[activeMcu] || mcuHints.rp2040;
 
             const errorHtmlParts = [];
+            const showSubheaders = (conflicts.length > 0 && invalidPins.length > 0);
+
             if (conflicts.length > 0) {
-                errorHtmlParts.push(`<strong>${currentLanguage === 'en' ? 'Pin conflicts (assigned to multiple functions):' : 'Конфликты пинов (назначены одновременно):'}</strong>`);
+                if (showSubheaders) {
+                    errorHtmlParts.push(`<strong>${t.pinConflictSubheader || 'Конфликты пинов (назначены одновременно):'}</strong>`);
+                }
                 conflicts.forEach(p => {
                     errorHtmlParts.push(`• <strong>${p}</strong>: ${pinUsage[p].join(', ')}`);
                 });
             }
             if (invalidPins.length > 0) {
-                if (errorHtmlParts.length > 0) errorHtmlParts.push('');
-                errorHtmlParts.push(`<strong>${currentLanguage === 'en' ? `Invalid pin format for ${activeMcu.toUpperCase()} (expected: ${currentMcuHint}):` : `Некорректный формат пинов для ${activeMcu.toUpperCase()} (ожидается: ${currentMcuHint}):`}</strong>`);
+                if (showSubheaders && errorHtmlParts.length > 0) errorHtmlParts.push('');
+                errorHtmlParts.push(`<strong>${t.pinInvalidSubheader || 'Некорректный формат пинов для'} ${activeMcu.toUpperCase()} (${t.pinExpected || 'ожидается:'} ${currentMcuHint}):</strong>`);
                 invalidPins.forEach(item => {
                     errorHtmlParts.push(`• <strong>${item.pin}</strong> (${item.label})`);
                 });
@@ -4258,6 +4268,9 @@ visualElements.push({
             }
             updateJsonExportLabels();
             updateSplitPinsUI();
+            if (typeof checkPinConflicts === 'function') {
+                checkPinConflicts();
+            }
         }
 
         // Apply saved theme & lang on startup

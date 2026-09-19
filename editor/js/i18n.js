@@ -237,7 +237,23 @@ const ICONS = {
                 downloadConfig: 'Скачать config.h',
                 copyVial: 'Копировать vial.json',
                 downloadVial: 'Download vial.json',
-                btnBackSettings: 'Вернуться к настройкам'
+                btnBackSettings: 'Вернуться к настройкам',
+
+                // Pin conflicts & validation
+                pinConflictTitle: 'Обнаружен конфликт пинов:',
+                pinConflictTitleStep3: 'Обнаружены ошибки или конфликты пинов:',
+                pinConflictSubheader: 'Конфликты пинов (назначены одновременно):',
+                pinInvalidSubheader: 'Некорректный формат пинов для',
+                pinExpected: 'ожидается:',
+                pinUsageRow: 'Строка',
+                pinUsageCol: 'Колонка',
+                pinUsageDirect: 'Прямая клавиша',
+                pinUsageSplitSerial: 'Split Serial',
+                pinUsageSplitTx: 'Split TX',
+                pinUsageSplitRx: 'Split RX',
+                pinUsageRgb: 'Подсветка RGB',
+                pinUsageEncoder: 'Энкодер',
+                pinUsageLed: 'Индикатор LED'
             },
             en: {
                 themeLight: 'Light',
@@ -461,6 +477,22 @@ const ICONS = {
                 downloadConfig: 'Download config.h',
                 copyVial: 'Copy vial.json',
                 downloadVial: 'Download vial.json',
-                btnBackSettings: 'Return to Settings'
+                btnBackSettings: 'Return to Settings',
+
+                // Pin conflicts & validation
+                pinConflictTitle: 'Pin conflicts detected:',
+                pinConflictTitleStep3: 'Pin errors or conflicts detected:',
+                pinConflictSubheader: 'Pin conflicts (assigned to multiple functions):',
+                pinInvalidSubheader: 'Invalid pin format for',
+                pinExpected: 'expected:',
+                pinUsageRow: 'Row',
+                pinUsageCol: 'Column',
+                pinUsageDirect: 'Direct Key',
+                pinUsageSplitSerial: 'Split Serial',
+                pinUsageSplitTx: 'Split TX',
+                pinUsageSplitRx: 'Split RX',
+                pinUsageRgb: 'RGB Data',
+                pinUsageEncoder: 'Encoder',
+                pinUsageLed: 'Status LED'
             }
         };
