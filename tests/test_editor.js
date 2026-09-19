@@ -1193,6 +1193,30 @@ test('RP2040 / RP2350 Default MCU Selection & Available Pins Datalist', () => {
     mockInput.listeners['input']?.();
     assert.strictEqual(mockInput.value, 'GPIO4, GPIO5, GPIO6', 'Autocomplete must append to comma list');
 
+    // 3a. Deletion must NOT resurrect or duplicate pins
+    // Backspace past comma
+    mockInput.value = 'GPIO4';
+    mockInput.listeners['input']?.({ inputType: 'deleteContentBackward' });
+    assert.strictEqual(mockInput.value, 'GPIO4', 'Backspace past comma must keep single GPIO4, no duplication');
+
+    // Cmd+Backspace / Cmd+A Delete (clearing input)
+    mockInput.value = '';
+    mockInput.listeners['input']?.({ inputType: 'deleteHardLineBackward' });
+    assert.strictEqual(mockInput.value, '', 'Cmd+Backspace must clear input, never restore previous pins');
+
+    mockInput.value = 'GPIO4, GPIO5';
+    mockInput.listeners['input']?.({ inputType: 'insertText' });
+    mockInput.value = '';
+    mockInput.listeners['input']?.({ inputType: 'deleteContentBackward' });
+    assert.strictEqual(mockInput.value, '', 'Cmd+A Delete must clear input without restoring');
+
+    // Partial typing/editing must not trigger datalist append
+    mockInput.value = 'GPIO4, GPIO5';
+    mockInput.listeners['input']?.({ inputType: 'insertText' });
+    mockInput.value = 'GPI';
+    mockInput.listeners['input']?.({ inputType: 'insertText' });
+    assert.strictEqual(mockInput.value, 'GPI', 'Typing partial pin must not restore old comma list');
+
     // 4. Import / parse DEFAULT_MCU
     sandbox.parseAndApplyConfigH('#define DEFAULT_MCU rp2350\n#define NUM_ROWS 4\n#define NUM_COLS 6');
     assert.strictEqual(sandbox.configState.mcu, 'rp2040');

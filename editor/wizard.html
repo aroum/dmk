@@ -1198,25 +1198,77 @@
             });
         }
 
+        function isKnownDatalistPin(pin) {
+            if (!pin || typeof pin !== 'string') return false;
+            const clean = pin.trim().toUpperCase();
+            if (!clean) return false;
+            const dl = document.getElementById('availablePinsList');
+            if (dl && dl.children) {
+                for (let i = 0; i < dl.children.length; i++) {
+                    const optVal = (dl.children[i].value || '').toUpperCase();
+                    if (optVal === clean) return true;
+                }
+            }
+            if (/^GPIO\d+$/i.test(clean) || /^P[A-F]\d+$/i.test(clean) || /^P[01]_\d+$/i.test(clean)) {
+                return true;
+            }
+            return false;
+        }
+
         function attachCommaPinAutocomplete(inputEl) {
             if (!inputEl) return;
             inputEl.setAttribute('list', 'availablePinsList');
             let lastVal = inputEl.value;
             inputEl.addEventListener('focus', () => { lastVal = inputEl.value; });
-            inputEl.addEventListener('input', () => {
+            inputEl.addEventListener('input', (e) => {
                 const cur = inputEl.value;
-                if (lastVal.includes(',') && !cur.includes(',')) {
-                    const trimmedLast = lastVal.trim();
-                    const hadTrailingComma = trimmedLast.endsWith(',');
-                    const parts = lastVal.split(',').map(s => s.trim()).filter(Boolean);
-                    if (hadTrailingComma) {
-                        parts.push(cur.trim());
-                    } else if (parts.length > 0) {
-                        parts[parts.length - 1] = cur.trim();
-                    } else {
-                        parts.push(cur.trim());
+
+                // 1. If this is any deletion, cut, or undo event, NEVER modify inputEl.value!
+                if (e && e.inputType) {
+                    if (e.inputType.startsWith('delete') || e.inputType === 'historyUndo' || e.inputType === 'historyRedo' || e.inputType === 'deleteByCut') {
+                        lastVal = cur;
+                        return;
                     }
-                    inputEl.value = parts.join(', ');
+                    if (e.inputType === 'insertText' || e.inputType === 'insertFromPaste') {
+                        lastVal = cur;
+                        return;
+                    }
+                }
+
+                // 2. If input was cleared or is empty/whitespace, NEVER restore previous value!
+                if (!cur || !cur.trim()) {
+                    lastVal = cur;
+                    return;
+                }
+
+                // 3. If the new value is shorter and is a substring/prefix of lastVal, user deleted characters
+                if (cur.length < lastVal.length && (lastVal.includes(cur) || lastVal.startsWith(cur))) {
+                    lastVal = cur;
+                    return;
+                }
+
+                // 4. Only intercept when lastVal had commas, cur does NOT have commas,
+                // and cur is an actual pin selected from the datalist (e.g. insertReplacementText or known pin not already in lastVal)
+                if (lastVal.includes(',') && !cur.includes(',')) {
+                    const isReplacement = (e && e.inputType === 'insertReplacementText');
+                    const isKnownPin = isKnownDatalistPin(cur.trim());
+
+                    if (isReplacement || (isKnownPin && !lastVal.includes(cur.trim()))) {
+                        const trimmedLast = lastVal.trim();
+                        const hadTrailingComma = trimmedLast.endsWith(',');
+                        const parts = lastVal.split(',').map(s => s.trim()).filter(Boolean);
+                        if (hadTrailingComma) {
+                            parts.push(cur.trim());
+                        } else if (parts.length > 0) {
+                            parts[parts.length - 1] = cur.trim();
+                        } else {
+                            parts.push(cur.trim());
+                        }
+                        inputEl.value = parts.join(', ');
+                        if (typeof saveCurrentMcuPinState === 'function') {
+                            saveCurrentMcuPinState();
+                        }
+                    }
                 }
                 lastVal = inputEl.value;
             });
