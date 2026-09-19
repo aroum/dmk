@@ -173,7 +173,7 @@ function generateVialJson() {
             }
 
             if (enableVial) {
-                const proto = configState.protocolMode || configState.vialProtocol || document.getElementById('vialProtocolMode')?.value || 'vial';
+                const proto = configState.vialProtocol || document.getElementById('vialProtocolMode')?.value || 'vial';
                 out += `// === Vial / VIA GUI Configuration ===\n`;
                 if (proto === 'via_v3') {
                     out += `// Protocol 12 for usevia.app\n`;
@@ -199,6 +199,8 @@ function generateVialJson() {
                     splitTx: multi.splitTx || def.splitTx || def.serial || 'GPIO0',
                     splitRx: multi.splitRx || def.splitRx || 'GPIO1',
                     rgb: multi.rgb || def.rgb || 'GPIO0',
+                    ledPins: (multi.ledPins && multi.ledPins.length) ? multi.ledPins : (def.ledPins || ['GPIO25']),
+                    ledActivity: multi.ledActivity !== undefined ? multi.ledActivity : (def.ledActivity || ''),
                     encA: (multi.encA && multi.encA.length) ? multi.encA : def.encA,
                     encB: (multi.encB && multi.encB.length) ? multi.encB : def.encB
                 };
@@ -285,6 +287,71 @@ function generateVialJson() {
                 } else {
                     out += `#define RGB_PIN ${rgbPin}\n\n`;
                 }
+            }
+
+            // Status LEDs
+            const enableLed = (configState.enableLed !== false) && (document.getElementById('s5EnableLed')?.checked !== false);
+            if (enableLed) {
+                let ledPins = [];
+                let ledDebug = 'none';
+                let ledCaps = 'none';
+                let ledNum = 'none';
+                let ledScroll = 'none';
+                let ledActivity = '';
+
+                if (Array.isArray(configState.ledRows) && configState.ledRows.length > 0) {
+                    configState.ledRows.forEach((row, idx) => {
+                        if (!row.pin) return;
+                        if (row.action === 'activity') {
+                            ledActivity = row.pin;
+                        } else {
+                            const pIdx = ledPins.length;
+                            ledPins.push(row.pin);
+                            if (row.action === 'debug' && ledDebug === 'none') ledDebug = String(pIdx);
+                            else if (row.action === 'caps' && ledCaps === 'none') ledCaps = String(pIdx);
+                            else if (row.action === 'num' && ledNum === 'none') ledNum = String(pIdx);
+                            else if (row.action === 'scroll' && ledScroll === 'none') ledScroll = String(pIdx);
+                        }
+                    });
+                } else {
+                    ledPins = (typeof parsePins === 'function')
+                        ? parsePins(document.getElementById('ledPins')?.value || (configState.ledPins || ['GPIO25']).join(', '))
+                        : (configState.ledPins || ['GPIO25']);
+                    ledDebug = (document.getElementById('ledDebugPin')?.value !== undefined)
+                        ? document.getElementById('ledDebugPin').value
+                        : (configState.ledDebug !== undefined ? String(configState.ledDebug) : '0');
+                    ledCaps = (document.getElementById('ledCapsPin')?.value !== undefined)
+                        ? document.getElementById('ledCapsPin').value
+                        : (configState.ledCaps !== undefined ? String(configState.ledCaps) : 'none');
+                    ledNum = (document.getElementById('ledNumPin')?.value !== undefined)
+                        ? document.getElementById('ledNumPin').value
+                        : (configState.ledNum !== undefined ? String(configState.ledNum) : 'none');
+                    ledScroll = (document.getElementById('ledScrollPin')?.value !== undefined)
+                        ? document.getElementById('ledScrollPin').value
+                        : (configState.ledScroll !== undefined ? String(configState.ledScroll) : 'none');
+                    ledActivity = (document.getElementById('ledActivityPin')?.value !== undefined)
+                        ? document.getElementById('ledActivityPin').value.trim()
+                        : (configState.ledActivityPin || '');
+                }
+
+                out += `/* --- Status LEDs --- */\n`;
+                if (configState.mcu === 'all') {
+                    out += emitMultiMcuBlock(p => {
+                        let b = `#define LED_PINS { ${(p.ledPins || ['GPIO25']).join(', ')} }`;
+                        if (p.ledActivity) b += `\n#define LED_ACTIVITY_PIN ${p.ledActivity}`;
+                        return b;
+                    });
+                } else {
+                    if (ledPins.length > 0) {
+                        out += `#define LED_PINS { ${ledPins.join(', ')} }\n`;
+                    }
+                    if (ledActivity) out += `#define LED_ACTIVITY_PIN ${ledActivity}\n`;
+                }
+                if (ledDebug !== 'none' && ledDebug !== '') out += `#define LED_DEBUG ${ledDebug}\n`;
+                if (ledCaps !== 'none' && ledCaps !== '') out += `#define LED_HID_CAPS_LOCK ${ledCaps}\n`;
+                if (ledNum !== 'none' && ledNum !== '') out += `#define LED_HID_NUM_LOCK ${ledNum}\n`;
+                if (ledScroll !== 'none' && ledScroll !== '') out += `#define LED_HID_SCROLL_LOCK ${ledScroll}\n`;
+                out += `\n`;
             }
 
             // Encoders

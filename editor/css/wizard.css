@@ -86,14 +86,6 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .brand span {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: var(--bg);
-            padding: 2px 8px;
-            border-radius: 9999px;
-            border: 1px solid var(--border);
-        }
 
         .header-actions {
             display: flex;
@@ -415,11 +407,6 @@
             gap: 16px;
         }
 
-        .grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 16px;
-        }
 
         /* Preset Cards / Option Pickers */
         .option-grid {
@@ -648,39 +635,6 @@
             pointer-events: none;
         }
 
-        /* Physical Keyboard Palette Styling */
-        .palette-kb-wrapper {
-            display: flex;
-            gap: 16px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            padding: 8px 4px;
-            user-select: none;
-        }
-
-        .palette-kb-main {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .palette-kb-nav {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .palette-kb-numpad {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .palette-kb-row {
-            display: flex;
-            gap: 4px;
-            align-items: center;
-        }
 
         .palette-key {
             height: 38px;
@@ -844,9 +798,121 @@
             gap: 16px;
         }
 
-        /* Responsive */
+        /* Popover Hints on Hover for Option Boxes */
+        .option-box {
+            position: relative;
+        }
+
+        .option-box .desc {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            line-height: 1.35;
+            width: max-content;
+            max-width: 280px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+            z-index: 100;
+        }
+
+        .option-box .desc::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: var(--panel) transparent transparent transparent;
+        }
+
+        .option-box:hover .desc {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Responsive Improvements */
         @media (max-width: 768px) {
-            .stepper { flex-direction: column; }
-            .step-item { border-right: none; border-bottom: 1px solid var(--border); text-align: left; justify-content: flex-start; }
-            .grid-2 { grid-template-columns: 1fr; }
+            header {
+                padding: 10px 14px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            main {
+                padding: 12px;
+            }
+            .card {
+                padding: 14px;
+            }
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .stepper {
+                flex-direction: column;
+            }
+            .step-item {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                text-align: left;
+                justify-content: flex-start;
+                padding: 10px 12px;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .option-grid {
+                grid-template-columns: 1fr;
+            }
+            .option-grid-5 {
+                grid-template-columns: 1fr 1fr;
+            }
+            .layout-controls {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .layout-controls > div:last-child {
+                margin-left: 0 !important;
+                width: 100%;
+                justify-content: space-between;
+            }
+            .matrix-grid-wrapper {
+                padding: 12px 6px;
+            }
+            .code-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .code-header > div {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            .nav-actions {
+                flex-direction: column-reverse;
+                gap: 10px;
+                align-items: stretch;
+            }
+            .nav-actions .btn {
+                width: 100%;
+                text-align: center;
+                justify-content: center;
+            }
         }

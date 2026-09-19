@@ -37,6 +37,10 @@
                 <span data-i18n="btnImportVial">Импорт *.json</span>
             </button>
 
+            <a class="btn btn-sm" id="btnDocsLink" href="https://github.com/aroum/dmk/blob/main/README_ru.md" target="_blank" rel="noopener noreferrer" title="Документация по прошивке DMK" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                <span data-i18n="btnDocs">Документация</span>
+            </a>
             <button class="btn btn-sm" id="btnThemeToggle" onclick="toggleTheme()" title="Переключить тему (Светлая / Тёмная)">🌓 Тема</button>
             <button class="btn btn-sm" id="btnLangToggle" onclick="toggleLanguage()" title="Переключить язык (RU / EN)">🌐 RU</button>
         </div>
@@ -80,7 +84,7 @@
 
             <div class="form-group">
                 <label data-i18n="kbNameLabel">Название клавиатуры:</label>
-                <input type="text" id="kbName" value="My DMK Keyboard" placeholder="Например: Corne, Sweep, Dactyl..." data-i18n-ph="kbNamePlaceholder">
+                <input type="text" id="kbName" value="My_DMK_Keyboard" placeholder="Например: Corne, Sweep, Dactyl..." data-i18n-ph="kbNamePlaceholder">
             </div>
 
             <div class="form-group">
@@ -111,12 +115,10 @@
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; background: var(--bg); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border);">
                         <input type="radio" name="rpDefaultMcuRadio" id="radioRp2040" value="rp2040" checked onchange="setRpDefaultMcu('rp2040')">
                         <span style="font-weight: 600;">RP2040</span>
-                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="subRp2040Desc" data-i18n="optRp2040Sub">(2 ядра Cortex-M0+, 30 GPIO)</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; background: var(--bg); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border);">
                         <input type="radio" name="rpDefaultMcuRadio" id="radioRp2350" value="rp2350" onchange="setRpDefaultMcu('rp2350')">
                         <span style="font-weight: 600;">RP2350</span>
-                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="subRp2350Desc" data-i18n="optRp2350Sub">(2 ядра Cortex-M33 / Hazard3, до 48 GPIO)</span>
                     </label>
                 </div>
                 <span class="hint" id="hintRpDefaultMcu" data-i18n="rpDefaultMcuHint">Определяет директиву #define DEFAULT_MCU при компиляции. Оба чипа полностью поддерживаются DMK.</span>
@@ -137,28 +139,28 @@
             </div>
 
             <div id="splitSettings" style="display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; flex-direction: column; gap: 14px;">
-                <div class="form-group">
-                    <label data-i18n="masterSideLabel">Сторона подключения USB (Master):</label>
-                    <select id="masterSide">
-                        <option value="LEFT" selected data-i18n="masterLeft">Левая половина (LEFT)</option>
-                        <option value="RIGHT" data-i18n="masterRight">Правая половина (RIGHT)</option>
-                        <option value="AUTO" data-i18n="masterAuto">Автоопределение (VBUS Sense)</option>
-                    </select>
-                </div>
                 <div class="grid-2">
+                    <div class="form-group">
+                        <label data-i18n="masterSideLabel">Сторона подключения USB:</label>
+                        <select id="masterSide">
+                            <option value="LEFT" selected data-i18n="masterLeft">Левая половина</option>
+                            <option value="RIGHT" data-i18n="masterRight">Правая половина</option>
+                            <option value="AUTO" data-i18n="masterAuto">Автоопределение</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label data-i18n="splitModeLabel">Режим связи между половинами:</label>
                         <select id="splitUartMode" onchange="updateSplitPinsUI(); markDirty();">
-                            <option value="bitbang" data-i18n="uartBitbang">Bit-Bang UART (программный полудуплекс, 1 GPIO)</option>
-                            <option value="hardware" selected data-i18n="uartHardware">Hardware PIO UART (аппаратный полудуплекс, 1 GPIO)</option>
+                            <option value="bitbang" data-i18n="uartBitbang">Bit-Bang UART (программный)</option>
+                            <option value="hardware" selected data-i18n="uartHardware">Hardware PIO UART (аппаратный)</option>
                         </select>
                     </div>
-                    <!-- Single pin communication (for 1-wire modes) -->
-                    <div class="form-group" id="splitSinglePinGroup">
-                        <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи:</label>
-                        <input type="text" id="serialPinRP" list="availablePinsList" value="GPIO1" placeholder="Для RP2040 (например GPIO1)" oninput="markDirty()">
-                        <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
-                    </div>
+                </div>
+                <!-- Single pin communication (for 1-wire modes) -->
+                <div class="form-group" id="splitSinglePinGroup">
+                    <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи:</label>
+                    <input type="text" id="serialPinRP" list="availablePinsList" value="GPIO1" placeholder="GPIO1" oninput="markDirty()">
+                    <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
                 </div>
 
                 <!-- Dual communication pins for Milandr / Full-Duplex UART -->
@@ -177,7 +179,7 @@
             </div>
 
             <div class="form-group">
-                <label data-i18n="presetsLabel">Быстрый пресет раскладки (по желанию):</label>
+                <label data-i18n="presetsLabel">Пресеты:</label>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <span class="preset-badge" onclick="applyPreset('corne')" data-i18n="presetCorne">Corne (42 клавиши, сплит)</span>
                     <span class="preset-badge" onclick="applyPreset('kabarga')" data-i18n="presetKabarga">Kabarga (42 клавиши, моноблок)</span>
@@ -204,13 +206,13 @@
                 <label data-i18n="matrixTypeLabel">Тип матрицы переключателей:</label>
                 <div class="option-grid">
                     <div class="option-box selected" id="opt-col2row" onclick="setMatrixType('COL2ROW')">
-                        <div class="title" data-i18n="mCol2RowTitle">COL2ROW (Диоды на строках)</div>
+                        <div class="title" data-i18n="mCol2RowTitle">COL2ROW — Диоды на строках</div>
                     </div>
                     <div class="option-box" id="opt-row2col" onclick="setMatrixType('ROW2COL')">
-                        <div class="title" data-i18n="mRow2ColTitle">ROW2COL (Диоды на колонках)</div>
+                        <div class="title" data-i18n="mRow2ColTitle">ROW2COL — Диоды на колонках</div>
                     </div>
                     <div class="option-box" id="opt-direct" onclick="setMatrixType('DIRECT')">
-                        <div class="title" data-i18n="mDirectTitle">DIRECT (Прямое подключение)</div>
+                        <div class="title" data-i18n="mDirectTitle">DIRECT — Прямое подключение</div>
                     </div>
                 </div>
             </div>
@@ -349,8 +351,8 @@
                             <input type="number" id="rgbCount" value="42" min="1" max="200" oninput="saveCurrentMcuPinState()">
                         </div>
                         <div class="form-group">
-                            <label data-i18n="rgbPinLabel">Пин данных подсветки (RGB_PIN):</label>
-                            <input type="text" id="rgbPin" list="availablePinsList" value="GPIO0" placeholder="Например: GPIO0" oninput="saveCurrentMcuPinState()">
+                            <label data-i18n="rgbPinLabel">Пин данных подсветки:</label>
+                            <input type="text" id="rgbPin" list="availablePinsList" value="GPIO0" placeholder="GPIO0" oninput="saveCurrentMcuPinState()">
                         </div>
                     </div>
                 </div>
@@ -360,7 +362,7 @@
             <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
                 <div>
                     <div style="font-weight: 600;" data-i18n="subsystemsConfigTitle">Модульные подсистемы прошивки</div>
-                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" data-i18n="subsystemsConfigDesc">Отключение неиспользуемых драйверов экономит память микроконтроллера (Flash/RAM) и исключает лишние USB HID дескрипторы.</p>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" data-i18n="subsystemsConfigDesc">Отключение неиспользуемых драйверов экономит память микроконтроллера и исключает лишние USB HID дескрипторы.</p>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
@@ -382,10 +384,23 @@
                 </div>
             </div>
 
-            <!-- Vial / VIA GUI Section -->
+            <!-- Status LEDs Dynamic Table Section -->
+            <div id="ledOptionsBlock" style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <div style="font-weight: 600;" data-i18n="ledSectionTitle">Настройка индикаторов LED</div>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;" data-i18n="ledSectionDesc">Назначьте светодиоды: для каждого укажите пин и действие (отладка, Caps Lock, Num Lock, активность и др.).</p>
+                </div>
+                <!-- Dynamic list container -->
+                <div id="ledRowsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                <div>
+                    <button type="button" class="btn btn-sm" id="btnAddLedRow" onclick="addLedRow()" data-i18n="btnAddLedRow">+ Добавить индикатор</button>
+                </div>
+            </div>
+
+            <!-- Vial / VIA Section -->
             <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <label data-i18n="vialLabel" style="font-weight: 600;">Поддержка Vial / VIA GUI</label>
+                    <label data-i18n="vialLabel" style="font-weight: 600;">Поддержка Vial / VIA</label>
                     <input type="checkbox" id="enableVial" checked onchange="toggleVialOptions()" style="width: 18px; height: 18px; cursor: pointer;">
                 </div>
 
@@ -394,8 +409,8 @@
                         <div class="form-group">
                             <label data-i18n="vialProtocolLabel">Протокол конфигуратора:</label>
                             <select id="vialProtocolMode" onchange="setProtocolMode(this.value)">
-                                <option value="vial" selected data-i18n="vialProtoVial">Vial (Протокол v9, встроенный vial.json, макросы, комбо)</option>
-                                <option value="via_v3" data-i18n="vialProtoViaV3">VIA v3 (Протокол v12, usevia.app)</option>
+                                <option value="vial" selected data-i18n="vialProtoVial">Vial (v9)</option>
+                                <option value="via_v3" data-i18n="vialProtoViaV3">VIA v3 (v12)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -591,7 +606,7 @@
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div>
                         <label data-i18n="chordsLabel" style="font-weight: 600; font-size: 0.9rem;">Аккорды</label>
-                        <p data-i18n="chordsDesc" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Одновременное зажатие 2–4 клавиш для отправки сочетания или вызова функции (например: JK = Esc, SD = Ctrl+C).</p>
+                        <p data-i18n="chordsDesc" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Одновременное зажатие нескольких клавиш для отправки сочетания или вызова функции (например: JK = Esc, SD = Ctrl+C).</p>
                     </div>
                     <input type="checkbox" id="enableChords" onchange="toggleChordsOptions()" style="width: 18px; height: 18px; cursor: pointer;">
                 </div>
@@ -627,9 +642,15 @@
 
         <!-- Step 6: Final config.h & Layout JSON Output -->
         <div class="card" id="step-6" style="display: none;">
-            <div class="card-header">
-                <h2 data-i18n="s6Title">Экспорт</h2>
-                <p data-i18n="s6Desc">Скопируйте или скачайте сгенерированные файлы в папку вашей клавиатуры.</p>
+            <div class="card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                <div>
+                    <h2 data-i18n="s6Title">Экспорт</h2>
+                    <p data-i18n="s6Desc">Скопируйте или скачайте сгенерированные файлы в папку вашей клавиатуры.</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="btnDownloadZipRepo" onclick="downloadRepositoryZip()" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 10px 18px; box-shadow: 0 2px 10px var(--accent-glow);" title="Готовый репозиторий для сборки прошивки на GitHub: распакуйте, создайте репозиторий на GitHub, запушьте код — и GitHub Actions автоматически соберёт готовую прошивку .uf2/.hex.">
+                    <svg class="icon icon-stroke" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span data-i18n="btnDownloadZip">Скачать ZIP репозиторий</span>
+                </button>
             </div>
 
             <div class="code-container">
@@ -701,6 +722,12 @@
             enableGamepad: true,
             enableMidi: true,
             enableLed: true,
+            ledPins: ["GPIO25"],
+            ledDebug: 0,
+            ledCaps: "none",
+            ledNum: "none",
+            ledScroll: "none",
+            ledActivityPin: "",
             enableRgb: true,
             rgbCount: 42,
             rgbPin: "GPIO0",
@@ -895,6 +922,20 @@
                 }
             }
 
+            const enableLed = document.getElementById('s5EnableLed')?.checked ?? configState.enableLed;
+            if (enableLed) {
+                if (Array.isArray(configState.ledRows) && configState.ledRows.length > 0) {
+                    configState.ledRows.forEach((row, idx) => {
+                        if (row.pin) addUsage(row.pin, `LED #${idx + 1} (${row.action || 'indicator'})`);
+                    });
+                } else {
+                    const lPins = parsePins(document.getElementById('ledPins')?.value);
+                    lPins.forEach((p, idx) => addUsage(p, `LED #${idx + 1}`));
+                    const actPin = document.getElementById('ledActivityPin')?.value;
+                    if (actPin) addUsage(actPin, 'LED Activity Pin');
+                }
+            }
+
             const conflicts = Object.keys(pinUsage).filter(p => pinUsage[p].length > 1);
             const hasIssues = (conflicts.length > 0) || (invalidPins.length > 0);
 
@@ -942,6 +983,8 @@
                 splitTx: "GPIO0",
                 splitRx: "GPIO1",
                 rgb: "GPIO0",
+                ledPins: ["GPIO25"],
+                ledActivity: "",
                 rows: ["GPIO4", "GPIO5", "GPIO6", "GPIO7"],
                 cols: ["GPIO29", "GPIO28", "GPIO27", "GPIO26", "GPIO22", "GPIO20"],
                 direct: ["GPIO9", "GPIO8", "GPIO6", "GPIO5", "GPIO10", "GPIO7", "GPIO4", "GPIO2", "GPIO1", "GPIO3"],
@@ -954,6 +997,8 @@
                 splitTx: "PF1",
                 splitRx: "PF0",
                 rgb: "PC0",
+                ledPins: ["PA4"],
+                ledActivity: "",
                 rows: ["PB0", "PB1", "PB2", "PB3"],
                 cols: ["PA0", "PA1", "PA2", "PA3", "PA4", "PA5"],
                 direct: ["PE0", "PE1", "PE2", "PE3", "PE4", "PD0", "PD1", "PD2", "PA3", "PD4"],
@@ -966,6 +1011,8 @@
                 splitTx: "P0_00",
                 splitRx: "P0_01",
                 rgb: "P0_13",
+                ledPins: ["P0_15"],
+                ledActivity: "",
                 rows: ["P0_00", "P0_01", "P0_02", "P0_03"],
                 cols: ["P0_04", "P0_05", "P0_06", "P0_07", "P0_08", "P0_09"],
                 direct: ["P0_06", "P0_08", "P1_00", "P0_24", "P0_09", "P0_11", "P0_22", "P0_17", "P0_10", "P0_20"],
@@ -978,6 +1025,8 @@
                 splitTx: "PC6",
                 splitRx: "PC7",
                 rgb: "GPIO25",
+                ledPins: ["GPIO24"],
+                ledActivity: "",
                 rows: ["GPIO0", "GPIO1", "GPIO2", "GPIO3"],
                 cols: ["GPIO4", "GPIO5", "GPIO6", "GPIO7", "GPIO8", "GPIO9"],
                 direct: ["GPIO0", "GPIO1", "GPIO2", "GPIO3", "GPIO4", "GPIO5", "GPIO6", "GPIO7", "GPIO8", "GPIO9"],
@@ -990,6 +1039,8 @@
                 splitTx: "GPIO0",
                 splitRx: "GPIO1",
                 rgb: "GPIO0",
+                ledPins: ["GPIO25"],
+                ledActivity: "",
                 rows: ["GPIO4", "GPIO5", "GPIO6", "GPIO7"],
                 cols: ["GPIO29", "GPIO28", "GPIO27", "GPIO26", "GPIO22", "GPIO20"],
                 direct: ["GPIO9", "GPIO8", "GPIO6", "GPIO5", "GPIO10", "GPIO7", "GPIO4", "GPIO2", "GPIO1", "GPIO3"],
@@ -1190,6 +1241,11 @@
                 const rgbEl = document.getElementById('rgbPin');
                 if (rgbEl && rgbEl.value.trim()) cur.rgb = rgbEl.value.trim();
 
+                const ledPinsEl = document.getElementById('ledPins');
+                if (ledPinsEl) cur.ledPins = parsePins(ledPinsEl.value);
+                const ledActEl = document.getElementById('ledActivityPin');
+                if (ledActEl) cur.ledActivity = ledActEl.value.trim();
+
                 const encCount = parseInt(document.getElementById('encCount')?.value, 10) || 0;
                 if (!cur.encA) cur.encA = [];
                 if (!cur.encB) cur.encB = [];
@@ -1235,6 +1291,11 @@
                 const rxEl = document.getElementById('splitRxPin');
                 if (rxEl) rxEl.value = defs.splitRx || 'PF0';
                 document.getElementById('rgbPin').value = defs.rgb;
+                const ledPinsEl = document.getElementById('ledPins');
+                if (ledPinsEl) ledPinsEl.value = (defs.ledPins || ['GPIO25']).join(', ');
+                const ledActEl = document.getElementById('ledActivityPin');
+                if (ledActEl) ledActEl.value = defs.ledActivity || '';
+                updateLedRoleSelects();
                 if (configState.matrixType === 'DIRECT') {
                     document.getElementById('directPins').value = defs.direct.join(', ');
                 } else {
@@ -1299,6 +1360,11 @@
                 if (splitRxEl) splitRxEl.value = d.splitRx || 'GPIO1';
                 const rgbEl = document.getElementById('rgbPin');
                 if (rgbEl) rgbEl.value = d.rgb || 'GPIO0';
+                const ledPinsEl = document.getElementById('ledPins');
+                if (ledPinsEl) ledPinsEl.value = (d.ledPins || ['GPIO25']).join(', ');
+                const ledActEl = document.getElementById('ledActivityPin');
+                if (ledActEl) ledActEl.value = d.ledActivity || '';
+                updateLedRoleSelects();
             }
 
             if (document.getElementById('enableEncoders')?.checked) {
@@ -1368,10 +1434,10 @@
             if (lblSerial && hintSerial && serialInput) {
                 lblSerial.textContent = isEn ? 'Communication Pin:' : 'Пин связи:';
                 if (isMilandr) {
-                    hintSerial.textContent = isEn ? 'Milandr Bit-Bang 1-wire pin, e.g. PF0' : 'Программный 1-проводной пин Миландра, например PF0';
+                    hintSerial.textContent = isEn ? 'Milandr 1-wire UART pin, e.g. PF0' : '1-проводной пин Миландра, например PF0';
                     if (!serialInput.value || serialInput.value.startsWith('GPIO')) serialInput.value = 'PF0';
                 } else if (activeMcu === 'rp2040') {
-                    hintSerial.textContent = isEn ? '1-wire PIO / Bit-Bang pin, e.g. GPIO0 or GPIO1' : '1-проводной пин PIO или Bit-Bang, например GPIO0 или GPIO1';
+                    hintSerial.textContent = isEn ? 'RP2040 / RP2350 communication pin' : 'Пин связи RP2040 / RP2350';
                     if (!serialInput.value || serialInput.value.startsWith('P')) serialInput.value = 'GPIO1';
                 } else if (activeMcu === 'nrf52840') {
                     hintSerial.textContent = isEn ? 'nRF52840 pin, e.g. P0_00' : 'Пин nRF52840, например P0_00';
@@ -1406,6 +1472,15 @@
             }
         }
 
+        function sanitizeKeyboardName(name) {
+            if (!name) return '';
+            // Replace spaces, %, and other invalid path/C-identifier characters with underscores
+            return name
+                .replace(/[\s%\\/:*?"<>|#&{}'!`+=;@^~,.]+/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_/, '');
+        }
+
         function init() {
             // Explicitly sync checkboxes with initial state
             [
@@ -1427,14 +1502,42 @@
             initMatrixGrid();
             toggleEncoderOptions();
             toggleRgbOptions();
+            toggleLedOptions();
             toggleChordsOptions();
             toggleCustomMacrosOptions();
             toggleLayerHotkeyOptions();
             ensureAvailablePinsDatalist();
-            ['rowPins', 'colPins', 'directPins'].forEach(id => {
+            ['rowPins', 'colPins', 'directPins', 'ledPins'].forEach(id => {
                 attachCommaPinAutocomplete(document.getElementById(id));
             });
             updateSplitPinsUI();
+
+            const kbNameInput = document.getElementById('kbName');
+            const vialNameInput = document.getElementById('vialName');
+            if (kbNameInput && vialNameInput) {
+                let vialManuallyEdited = false;
+                vialNameInput.addEventListener('input', () => {
+                    vialManuallyEdited = (vialNameInput.value !== kbNameInput.value);
+                });
+                kbNameInput.addEventListener('input', () => {
+                    const sanitized = sanitizeKeyboardName(kbNameInput.value);
+                    if (kbNameInput.value !== sanitized) {
+                        const start = kbNameInput.selectionStart;
+                        const end = kbNameInput.selectionEnd;
+                        kbNameInput.value = sanitized;
+                        if (typeof kbNameInput.setSelectionRange === 'function' && start !== null && end !== null) {
+                            kbNameInput.setSelectionRange(start, end);
+                        }
+                    }
+                    if (!vialManuallyEdited) {
+                        vialNameInput.value = kbNameInput.value;
+                    }
+                });
+                if (!vialNameInput.value || vialNameInput.value === 'DMK Custom') {
+                    vialNameInput.value = kbNameInput.value;
+                }
+            }
+
             gotoStep(1);
             isPageDirty = false;
         }
@@ -1508,6 +1611,8 @@
             if (!p) return;
 
             document.getElementById('kbName').value = p.name;
+            const vialNameEl = document.getElementById('vialName');
+            if (vialNameEl) vialNameEl.value = p.name;
             setSplitMode(p.isSplit);
             setMatrixType(p.matrixType);
 
@@ -1551,8 +1656,211 @@
             if (el) el.checked = enabled;
             const tab = document.getElementById(`tab-pal-${cap}`);
             if (tab) tab.style.display = enabled ? '' : 'none';
-            if (feat !== 'led' && ((!enabled && currentPaletteCategory === cap) || currentPaletteCategory === 'ALL')) {
+            if (feat === 'led') {
+                toggleLedOptions();
+            } else if ((!enabled && currentPaletteCategory === cap) || currentPaletteCategory === 'ALL') {
                 renderPalette('ALL');
+            }
+        }
+
+        function toggleLedOptions() {
+            const en = document.getElementById('s5EnableLed')?.checked ?? configState.enableLed;
+            const block = document.getElementById('ledOptionsBlock');
+            if (block) block.style.display = en ? 'flex' : 'none';
+            if (en) {
+                if (!configState.ledRows || !Array.isArray(configState.ledRows) || configState.ledRows.length === 0) {
+                    configState.ledRows = [{ pin: '', action: 'none' }];
+                }
+                renderLedRows();
+            }
+            checkPinConflicts();
+        }
+
+        function ensureLedRowsState() {
+            if (!configState.ledRows || !Array.isArray(configState.ledRows)) {
+                configState.ledRows = [];
+                const legacyPins = configState.ledPins;
+                if (legacyPins && legacyPins.length > 0) {
+                    legacyPins.forEach((p, idx) => {
+                        let act = 'none';
+                        if (configState.ledDebug === idx || (configState.ledDebug === undefined && idx === 0)) act = 'debug';
+                        else if (configState.ledCaps === idx) act = 'caps';
+                        else if (configState.ledNum === idx) act = 'num';
+                        else if (configState.ledScroll === idx) act = 'scroll';
+                        configState.ledRows.push({ pin: p, action: act });
+                    });
+                    if (configState.ledActivityPin) {
+                        configState.ledRows.push({ pin: configState.ledActivityPin, action: 'activity' });
+                    }
+                }
+            }
+            if (configState.ledRows.length === 0) {
+                configState.ledRows.push({ pin: '', action: 'none' });
+            }
+        }
+
+        function renderLedRows() {
+            ensureLedRowsState();
+            const list = document.getElementById('ledRowsList');
+            if (!list) return;
+            const t = I18N[currentLanguage] || I18N.ru;
+
+            const actions = [
+                { value: 'debug', label: t.ledActionDebug || 'Отладка / Heartbeat' },
+                { value: 'caps', label: t.ledActionCaps || 'Caps Lock' },
+                { value: 'num', label: t.ledActionNum || 'Num Lock' },
+                { value: 'scroll', label: t.ledActionScroll || 'Scroll Lock' },
+                { value: 'activity', label: t.ledActionActivity || 'Активность нажатий' },
+                { value: 'none', label: t.ledActionNone || 'Без действия' }
+            ];
+
+            let html = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr 36px; gap: 8px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); padding-bottom: 2px;">
+                    <div>${t.ledTablePinCol || 'Пин'}</div>
+                    <div>${t.ledTableActionCol || 'Действие'}</div>
+                    <div></div>
+                </div>
+            `;
+
+            configState.ledRows.forEach((row, idx) => {
+                const optHtml = actions.map(a => `<option value="${a.value}" ${row.action === a.value ? 'selected' : ''}>${a.label}</option>`).join('');
+                html += `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 36px; gap: 8px; align-items: center;" data-led-idx="${idx}">
+                        <input type="text" class="led-row-pin" list="availablePinsList" value="${row.pin || ''}" placeholder="GPIO25" oninput="updateLedRow(${idx}, 'pin', this.value)" style="margin: 0;">
+                        <select class="led-row-action" onchange="updateLedRow(${idx}, 'action', this.value)" style="margin: 0;">
+                            ${optHtml}
+                        </select>
+                        <button type="button" class="btn btn-sm" onclick="removeLedRow(${idx})" title="Удалить индикатор" style="padding: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--danger, #ef4444);">✕</button>
+                    </div>
+                `;
+            });
+
+            list.innerHTML = html;
+            syncLedStateFromRows();
+        }
+
+        function addLedRow() {
+            markDirty();
+            ensureLedRowsState();
+            configState.ledRows.push({ pin: '', action: 'none' });
+            renderLedRows();
+            checkPinConflicts();
+        }
+
+        function removeLedRow(idx) {
+            markDirty();
+            ensureLedRowsState();
+            configState.ledRows.splice(idx, 1);
+            if (configState.ledRows.length === 0) {
+                configState.ledRows.push({ pin: '', action: 'none' });
+            }
+            renderLedRows();
+            checkPinConflicts();
+        }
+
+        function updateLedRow(idx, field, val) {
+            markDirty();
+            ensureLedRowsState();
+            if (configState.ledRows[idx]) {
+                configState.ledRows[idx][field] = (field === 'pin') ? val.trim() : val;
+            }
+            syncLedStateFromRows();
+            checkPinConflicts();
+        }
+
+        function syncLedStateFromRows() {
+            ensureLedRowsState();
+            const pins = [];
+            let debugIdx = 'none';
+            let capsIdx = 'none';
+            let numIdx = 'none';
+            let scrollIdx = 'none';
+            let actPin = '';
+
+            configState.ledRows.forEach(row => {
+                const p = (row.pin || '').trim();
+                if (!p) return;
+                if (row.action === 'activity') {
+                    actPin = p;
+                    return;
+                }
+                let idx = pins.indexOf(p);
+                if (idx === -1) {
+                    pins.push(p);
+                    idx = pins.length - 1;
+                }
+                if (row.action === 'debug') debugIdx = idx;
+                else if (row.action === 'caps') capsIdx = idx;
+                else if (row.action === 'num') numIdx = idx;
+                else if (row.action === 'scroll') scrollIdx = idx;
+            });
+
+            configState.ledPins = pins;
+            configState.ledDebug = debugIdx;
+            configState.ledCaps = capsIdx;
+            configState.ledNum = numIdx;
+            configState.ledScroll = scrollIdx;
+            configState.ledActivityPin = actPin;
+
+            // Sync hidden/legacy DOM inputs if present to avoid breaking backward compatibility
+            const ledPinsEl = document.getElementById('ledPins');
+            if (ledPinsEl) ledPinsEl.value = pins.join(', ');
+            const ledActEl = document.getElementById('ledActivityPin');
+            if (ledActEl) ledActEl.value = actPin;
+            const ledDebugEl = document.getElementById('ledDebugPin');
+            if (ledDebugEl) ledDebugEl.value = String(debugIdx);
+            const ledCapsEl = document.getElementById('ledCapsPin');
+            if (ledCapsEl) ledCapsEl.value = String(capsIdx);
+            const ledNumEl = document.getElementById('ledNumPin');
+            if (ledNumEl) ledNumEl.value = String(numIdx);
+            const ledScrollEl = document.getElementById('ledScrollPin');
+            if (ledScrollEl) ledScrollEl.value = String(scrollIdx);
+
+            if (configState.mcu === 'all') {
+                saveCurrentMcuPinState();
+            }
+        }
+
+        // Backward compatibility helpers for legacy tests and external integrations
+        function updateLedRoleSelects() {
+            // no-op or sync if legacy inputs exist
+        }
+
+        function onLedPinsInput() {
+            const el = document.getElementById('ledPins');
+            if (el && el.value) {
+                const pins = parsePins(el.value);
+                configState.ledRows = pins.map((p, i) => ({
+                    pin: p,
+                    action: (i === 0 ? 'debug' : 'none')
+                }));
+                syncLedStateFromRows();
+                renderLedRows();
+            }
+        }
+
+        function onLedRoleChange() {
+            const debugVal = document.getElementById('ledDebugPin')?.value;
+            const capsVal = document.getElementById('ledCapsPin')?.value;
+            const numVal = document.getElementById('ledNumPin')?.value;
+            const scrollVal = document.getElementById('ledScrollPin')?.value;
+            const actVal = document.getElementById('ledActivityPin')?.value;
+
+            if (Array.isArray(configState.ledRows)) {
+                configState.ledRows.forEach((row, idx) => {
+                    if (debugVal !== undefined && debugVal === String(idx)) row.action = 'debug';
+                    else if (capsVal !== undefined && capsVal === String(idx)) row.action = 'caps';
+                    else if (numVal !== undefined && numVal === String(idx)) row.action = 'num';
+                    else if (scrollVal !== undefined && scrollVal === String(idx)) row.action = 'scroll';
+                    else if (row.action !== 'activity') row.action = 'none';
+                });
+                if (actVal) {
+                    const actRow = configState.ledRows.find(r => r.action === 'activity');
+                    if (actRow) actRow.pin = actVal;
+                    else configState.ledRows.push({ pin: actVal, action: 'activity' });
+                }
+                syncLedStateFromRows();
+                renderLedRows();
             }
         }
 
@@ -3475,6 +3783,15 @@ visualElements.push({
             if (themeBtn) themeBtn.innerHTML = `${ICONS.theme} ${isLight ? t.themeLight : t.themeDark}`;
             const langBtn = document.getElementById('btnLangToggle');
             if (langBtn) langBtn.innerHTML = `${ICONS.globe} ${t.langToggle}`;
+            const docsLink = document.getElementById('btnDocsLink');
+            if (docsLink) {
+                docsLink.href = (currentLanguage === 'ru')
+                    ? 'https://github.com/aroum/dmk/blob/main/README_ru.md'
+                    : 'https://github.com/aroum/dmk/blob/main/README.md';
+                docsLink.title = (currentLanguage === 'ru')
+                    ? 'Документация по прошивке DMK на GitHub'
+                    : 'DMK Firmware Documentation on GitHub';
+            }
 
             // Search input placeholder
             if (document.getElementById('paletteSearchInput')) {
@@ -4487,6 +4804,221 @@ visualElements.push({
         }
 
         // =========================================================================
+        // Standalone GitHub Repository ZIP Builder (Pure JS, zero external deps)
+        // =========================================================================
+        function buildZipFile(files) {
+            function crc32(buf) {
+                let table = crc32.table;
+                if (!table) {
+                    table = new Uint32Array(256);
+                    for (let i = 0; i < 256; i++) {
+                        let c = i;
+                        for (let k = 0; k < 8; k++) {
+                            c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+                        }
+                        table[i] = c >>> 0;
+                    }
+                    crc32.table = table;
+                }
+                let crc = 0xFFFFFFFF;
+                for (let i = 0; i < buf.length; i++) {
+                    crc = table[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+                }
+                return (crc ^ 0xFFFFFFFF) >>> 0;
+            }
+
+            const enc = new TextEncoder();
+            const entries = [];
+            let offset = 0;
+
+            for (const f of files) {
+                const nameBytes = enc.encode(f.name);
+                const dataBytes = (typeof f.data === 'string') ? enc.encode(f.data) : f.data;
+                const crc = crc32(dataBytes);
+                const size = dataBytes.length;
+
+                // Local file header (30 bytes + name + data)
+                const localHeader = new Uint8Array(30 + nameBytes.length);
+                const lView = new DataView(localHeader.buffer);
+                lView.setUint32(0, 0x04034b50, true);
+                lView.setUint16(4, 20, true); // version needed
+                lView.setUint16(6, 0x0800, true); // utf-8 flag
+                lView.setUint16(8, 0, true); // no compression (stored)
+                lView.setUint16(10, 0, true); // mod time
+                lView.setUint16(12, 0, true); // mod date
+                lView.setUint32(14, crc, true);
+                lView.setUint32(18, size, true);
+                lView.setUint32(22, size, true);
+                lView.setUint16(26, nameBytes.length, true);
+                lView.setUint16(28, 0, true); // extra length
+                localHeader.set(nameBytes, 30);
+
+                entries.push({
+                    nameBytes,
+                    dataBytes,
+                    crc,
+                    size,
+                    offset,
+                    localHeader
+                });
+
+                offset += localHeader.length + dataBytes.length;
+            }
+
+            let centralDirSize = 0;
+            const centralRecords = [];
+
+            for (const e of entries) {
+                // Central directory file header (46 bytes + name)
+                const cHeader = new Uint8Array(46 + e.nameBytes.length);
+                const cView = new DataView(cHeader.buffer);
+                cView.setUint32(0, 0x02014b50, true);
+                cView.setUint16(4, 20, true); // version made by
+                cView.setUint16(6, 20, true); // version needed
+                cView.setUint16(8, 0x0800, true); // utf-8 flag
+                cView.setUint16(10, 0, true); // no compression
+                cView.setUint16(12, 0, true);
+                cView.setUint16(14, 0, true);
+                cView.setUint32(16, e.crc, true);
+                cView.setUint32(20, e.size, true);
+                cView.setUint32(24, e.size, true);
+                cView.setUint16(28, e.nameBytes.length, true);
+                cView.setUint16(30, 0, true); // extra
+                cView.setUint16(32, 0, true); // comment length
+                cView.setUint16(34, 0, true); // disk start
+                cView.setUint16(36, 0, true); // internal attr
+                cView.setUint32(38, 0, true); // external attr
+                cView.setUint32(42, e.offset, true); // relative offset of local header
+                cHeader.set(e.nameBytes, 46);
+
+                centralRecords.push(cHeader);
+                centralDirSize += cHeader.length;
+            }
+
+            // End of central directory record (22 bytes)
+            const eocd = new Uint8Array(22);
+            const eView = new DataView(eocd.buffer);
+            eView.setUint32(0, 0x06054b50, true);
+            eView.setUint16(4, 0, true); // disk #
+            eView.setUint16(6, 0, true); // disk with CD
+            eView.setUint16(8, entries.length, true); // entries on disk
+            eView.setUint16(10, entries.length, true); // total entries
+            eView.setUint32(12, centralDirSize, true); // central dir size
+            eView.setUint32(16, offset, true); // offset of central dir
+            eView.setUint16(20, 0, true); // comment len
+
+            const parts = [];
+            for (const e of entries) {
+                parts.push(e.localHeader);
+                parts.push(e.dataBytes);
+            }
+            for (const cr of centralRecords) {
+                parts.push(cr);
+            }
+            parts.push(eocd);
+
+            return new Blob(parts, { type: 'application/zip' });
+        }
+
+        function downloadRepositoryZip() {
+            generateConfigCode();
+            generateVialJson();
+
+            const rawName = document.getElementById('kbName')?.value.trim() || 'my_keyboard';
+            const cleanName = rawName.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'my_keyboard';
+            const targetMcu = (configState.mcu === 'all')
+                ? (configState.rpDefaultMcu || 'rp2040')
+                : configState.mcu;
+            const isVia = (configState.vialProtocol === 'via_v3' || configState.protocolMode === 'via_v3');
+            const jsonFileName = isVia ? 'via.json' : 'vial.json';
+
+            const configHContent = document.getElementById('configCodeOutput').textContent;
+            const vialJsonContent = document.getElementById('vialJsonOutput').textContent;
+
+            const extraBuildArgs = (targetMcu === 'rp2040' || targetMcu === 'rp2350' || targetMcu === 'nrf52840') ? '-c --uf2' : '-c';
+
+            const workflowYaml = `name: Build DMK Firmware (${rawName})
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Firmware for ${cleanName} (${targetMcu})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Toolchain and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build Firmware
+        run: |
+          chmod +x build_all.sh
+          ./build_all.sh -b ${cleanName} --mcu ${targetMcu} ${extraBuildArgs}
+
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${cleanName}-${targetMcu}
+          path: |
+            build/dmk_*
+          if-no-files-found: error
+`;
+
+            const readmeContent = `# ${rawName} — DMK Firmware Repository
+
+Сгенерировано с помощью веб-конфигуратора DMK Keyboard Wizard.
+
+## Автоматическая сборка через GitHub Actions
+1. Создайте пустой репозиторий на [GitHub](https://github.com/new).
+2. Распакуйте этот архив в локальную папку.
+3. Инициализируйте и запушьте репозиторий:
+\`\`\`bash
+git init -b main
+git add .
+git commit -m "feat: initial keyboard configuration for ${cleanName}"
+git remote add origin https://github.com/<YOUR_USERNAME>/<REPO_NAME>.git
+git push -u origin main
+\`\`\`
+4. Перейдите во вкладку **Actions** вашего GitHub репозитория. Сборка запустится автоматически, и готовый файл прошивки появится в разделе **Artifacts** (например \`dmk_${cleanName}.uf2\`).
+
+## Локальная сборка
+Если вы компилируете в локальном клоне \`dmk\`:
+\`\`\`bash
+./build_all.sh -b ${cleanName} --mcu ${targetMcu} ${extraBuildArgs}
+\`\`\`
+`;
+
+            const files = [
+                { name: `.github/workflows/build_${cleanName}.yml`, data: workflowYaml },
+                { name: `keyboards/${cleanName}/config.h`, data: configHContent },
+                { name: `keyboards/${cleanName}/${jsonFileName}`, data: vialJsonContent },
+                { name: `README.md`, data: readmeContent }
+            ];
+
+            const zipBlob = buildZipFile(files);
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${cleanName}_repo.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // =========================================================================
         // Import & Auto-Fill from config.h / vial.json
         // =========================================================================
         const padPins = (pins, targetCount) => {
@@ -4634,6 +5166,39 @@ visualElements.push({
             ['mouse', 'gamepad', 'midi', 'led'].forEach(f => {
                 toggleFeatureSubsystem(f, !new RegExp(`#define\\s+NO_${f.toUpperCase()}\\b`).test(text));
             });
+            const noLed = /#define\s+NO_LED\b/.test(text);
+            const ledPinsMatch = text.match(/#define\s+LED_PINS\s+\{([^}]+)\}/);
+            const ledDebugMatch = text.match(/#define\s+LED_DEBUG\s+(\d+)/);
+            const ledCapsMatch = text.match(/#define\s+LED_HID_CAPS_LOCK\s+(\d+)/);
+            const ledNumMatch = text.match(/#define\s+LED_HID_NUM_LOCK\s+(\d+)/);
+            const ledScrollMatch = text.match(/#define\s+LED_HID_SCROLL_LOCK\s+(\d+)/);
+            const ledActMatch = text.match(/#define\s+LED_ACTIVITY_PIN\s+([A-Za-z0-9_]+)/);
+
+            if (!noLed && (ledPinsMatch || ledActMatch)) {
+                loadedSomething = true;
+                const importedPins = ledPinsMatch ? parsePins(ledPinsMatch[1]) : [];
+                const dIdx = ledDebugMatch ? parseInt(ledDebugMatch[1], 10) : -1;
+                const cIdx = ledCapsMatch ? parseInt(ledCapsMatch[1], 10) : -1;
+                const nIdx = ledNumMatch ? parseInt(ledNumMatch[1], 10) : -1;
+                const sIdx = ledScrollMatch ? parseInt(ledScrollMatch[1], 10) : -1;
+
+                configState.ledRows = [];
+                importedPins.forEach((pin, idx) => {
+                    let act = 'none';
+                    if (idx === dIdx) act = 'debug';
+                    else if (idx === cIdx) act = 'caps';
+                    else if (idx === nIdx) act = 'num';
+                    else if (idx === sIdx) act = 'scroll';
+                    configState.ledRows.push({ pin, action: act });
+                });
+                if (ledActMatch) {
+                    configState.ledRows.push({ pin: ledActMatch[1].trim(), action: 'activity' });
+                }
+                syncLedStateFromRows();
+                renderLedRows();
+            }
+            toggleLedOptions();
+
             const noRgb = /#define\s+NO_RGB\b/.test(text);
 
             // 7. RGB

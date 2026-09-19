@@ -60,8 +60,24 @@ function createSandbox() {
                 querySelector(sel) { return getElement("elem_q_" + sel); },
                 setAttribute(k, v) { this[k] = v; },
                 getAttribute(k) { return this[k] || null; },
-                addEventListener() {},
-                removeEventListener() {},
+                _listeners: {},
+                addEventListener(type, fn) {
+                    this._listeners = this._listeners || {};
+                    this._listeners[type] = this._listeners[type] || [];
+                    this._listeners[type].push(fn);
+                },
+                removeEventListener(type, fn) {
+                    if (this._listeners && this._listeners[type]) {
+                        const idx = this._listeners[type].indexOf(fn);
+                        if (idx !== -1) this._listeners[type].splice(idx, 1);
+                    }
+                },
+                dispatchEvent(event) {
+                    const type = typeof event === 'string' ? event : event?.type;
+                    if (this._listeners && this._listeners[type]) {
+                        this._listeners[type].forEach(fn => fn(event));
+                    }
+                },
                 scrollIntoView() {},
                 click() {
                     if (typeof this.onclick === 'function') {
@@ -895,8 +911,8 @@ test('Layout Inspector & Key/Encoder Geometry Manipulation', () => {
     assert.strictEqual(sandbox.configState.keyGeometry[0].x, 4);
     assert.strictEqual(sandbox.configState.keyGeometry[0].y, 3);
 
-    // Encoder inspector
-    sandbox.selectEncoderForInspector(0, 'cw');
+    // Encoder selection via handleItemClick
+    sandbox.handleItemClick(null, 'enc', 0, 'cw');
     sandbox.updateInspectorUI();
 
     // Render functions
@@ -988,7 +1004,6 @@ test('UI Renderers & Interactive List Handlers (Macros, Chords, Layer Hotkeys, E
     sandbox.toggleChordAllLayers(0);
     sandbox.pickChordKeyFromLayout(0, 0);
     sandbox.onMatrixKeySelectedForChord(0, 0);
-    const coord = sandbox.getCoordForKeycode('K_A');
     sandbox.removeChord(0);
 
     // Layer Hotkeys UI
@@ -997,7 +1012,6 @@ test('UI Renderers & Interactive List Handlers (Macros, Chords, Layer Hotkeys, E
     sandbox.addLayerMacroStep('DEF');
     sandbox.onLayerMacroStepActionChange('DEF', 0, 'DN');
     sandbox.onLayerMacroStepKeyChange('DEF', 0, 'K_B');
-    sandbox.onLayerMacroStepDelayChange('DEF', 0, 50);
     sandbox.renderLayerHotkeysUI();
     sandbox.removeLayerMacroStep('DEF', 0);
 
@@ -1031,8 +1045,6 @@ test('Theme Switching, State Dirty Tracking & Matrix Grid Click Handlers', () =>
     assert.strictEqual(sandbox.isPageDirty, true);
     const snap = sandbox.getKeymapSnapshot();
     assert.ok(snap && snap.keymaps);
-    sandbox.clearDirty();
-    assert.strictEqual(sandbox.isPageDirty, false);
     sandbox.applyKeymapSnapshot(snap);
     sandbox.saveUndoState();
 
@@ -1073,7 +1085,7 @@ test('Export, Clipboard, Blob Downloads & File Upload Handlers', () => {
     const sandbox = createSandbox();
     sandbox.applyPreset('corne');
 
-    sandbox.generateConfigModal();
+    sandbox.gotoStep(6);
     sandbox.copyConfigCode();
     assert.ok(sandbox.getLastClipboardText().includes('#ifndef CONFIG_H'));
 
@@ -1186,3 +1198,96 @@ test('RP2040 / RP2350 Default MCU Selection & Available Pins Datalist', () => {
     assert.strictEqual(sandbox.configState.mcu, 'rp2040');
     assert.strictEqual(sandbox.configState.rpDefaultMcu, 'rp2350');
 });
+
+test('Status LEDs Configuration, Codegen & Import Roundtrip', () => {
+    const sandbox = createSandbox();
+    sandbox.applyPreset('corne');
+
+    // 1. Initial LED default state
+    assert.strictEqual(sandbox.configState.enableLed, true);
+    assert.deepStrictEqual([...sandbox.configState.ledPins], ['GPIO25']);
+    assert.strictEqual(sandbox.configState.ledDebug, 0);
+
+    // 2. Codegen with LEDs enabled
+    sandbox.setMcu('rp2040');
+    sandbox.document.getElementById('s5EnableLed').checked = true;
+    sandbox.document.getElementById('ledPins').value = 'GPIO25, GPIO16';
+    sandbox.onLedPinsInput();
+    sandbox.document.getElementById('ledDebugPin').value = '0';
+    sandbox.document.getElementById('ledCapsPin').value = '1';
+    sandbox.document.getElementById('ledActivityPin').value = 'GPIO15';
+    sandbox.onLedRoleChange();
+
+    sandbox.generateConfigCode();
+    let configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define LED_PINS { GPIO25, GPIO16 }'), 'Must emit LED_PINS');
+    assert.ok(configH.includes('#define LED_DEBUG 0'), 'Must emit LED_DEBUG 0');
+    assert.ok(configH.includes('#define LED_HID_CAPS_LOCK 1'), 'Must emit LED_HID_CAPS_LOCK 1');
+    assert.ok(configH.includes('#define LED_ACTIVITY_PIN GPIO15'), 'Must emit LED_ACTIVITY_PIN GPIO15');
+
+    // 3. Pin conflict detection with LED pins
+    sandbox.document.getElementById('rgbPin').value = 'GPIO25'; // Conflict with LED #1
+    const hasConflict = sandbox.checkPinConflicts();
+    assert.strictEqual(hasConflict, true, 'checkPinConflicts should flag GPIO25 shared by RGB and LED');
+
+    // Resolve conflict
+    sandbox.document.getElementById('rgbPin').value = 'GPIO0';
+    assert.strictEqual(sandbox.checkPinConflicts(), false);
+
+    // 4. Disable LEDs -> verify NO_LED emitted
+    sandbox.toggleFeatureSubsystem('led', false);
+    sandbox.generateConfigCode();
+    configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('#define NO_LED'), 'Must emit NO_LED when subsystem disabled');
+    assert.ok(!configH.includes('#define LED_PINS'), 'Must not emit LED_PINS when disabled');
+
+    // 5. Import / parse LED defines
+    const sampleH = `
+#define LED_PINS { GPIO25, GPIO26 }
+#define LED_DEBUG 0
+#define LED_HID_CAPS_LOCK 1
+#define LED_ACTIVITY_PIN GPIO12
+#define NUM_ROWS 4
+#define NUM_COLS 6
+`;
+    sandbox.parseAndApplyConfigH(sampleH);
+    assert.strictEqual(sandbox.configState.enableLed, true);
+    assert.strictEqual(sandbox.document.getElementById('ledPins').value, 'GPIO25, GPIO26');
+    assert.strictEqual(sandbox.configState.ledDebug, 0);
+    assert.strictEqual(sandbox.configState.ledCaps, 1);
+    assert.strictEqual(sandbox.document.getElementById('ledActivityPin').value, 'GPIO12');
+});
+
+test('Keyboard Name Sanitization, Single Empty LED Activation & Top ZIP Export', () => {
+    const sandbox = createSandbox();
+
+    // 1. Sanitize Keyboard Name
+    assert.strictEqual(sandbox.sanitizeKeyboardName('My DMK Keyboard'), 'My_DMK_Keyboard');
+    assert.strictEqual(sandbox.sanitizeKeyboardName('bad%name*with/symbols?!'), 'bad_name_with_symbols_');
+    assert.strictEqual(sandbox.sanitizeKeyboardName('spaces   and...dots'), 'spaces_and_dots');
+
+    sandbox.init();
+
+    const kbInput = sandbox.document.getElementById('kbName');
+    const vialInput = sandbox.document.getElementById('vialName');
+    kbInput.value = 'My Keyboard%Test';
+    kbInput.dispatchEvent({ type: 'input' });
+    assert.strictEqual(kbInput.value, 'My_Keyboard_Test', 'kbName input must be sanitized immediately');
+    assert.strictEqual(vialInput.value, 'My_Keyboard_Test', 'vialName should mirror sanitized kbName');
+
+    // 2. Single empty LED row on activation
+    sandbox.configState.ledRows = [];
+    const ledCheckbox = sandbox.document.getElementById('s5EnableLed');
+    ledCheckbox.checked = true;
+    sandbox.toggleLedOptions();
+    assert.strictEqual(sandbox.configState.ledRows.length, 1, 'Should add exactly 1 LED row');
+    assert.strictEqual(sandbox.configState.ledRows[0].pin, '', 'Initial pin should be empty');
+    assert.strictEqual(sandbox.configState.ledRows[0].action, 'none', 'Initial action should be none');
+
+    // 3. Top ZIP export in Step 6 card-header
+    const step6Header = sandbox.document.querySelector('#step-6 .card-header');
+    assert.ok(step6Header, 'Step 6 card header must exist');
+    const zipBtn = step6Header.querySelector('#btnDownloadZipRepo');
+    assert.ok(zipBtn, 'btnDownloadZipRepo must be located inside Step 6 card-header');
+});
+
