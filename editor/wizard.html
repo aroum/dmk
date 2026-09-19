@@ -1450,24 +1450,23 @@
                 const val = inputEl.value || '';
                 const selStart = (inputEl.selectionStart !== null && inputEl.selectionStart !== undefined) ? inputEl.selectionStart : val.length;
                 const beforeCursor = val.slice(0, selStart);
-                const lastComma = beforeCursor.lastIndexOf(',');
-                const tokenStart = (lastComma === -1) ? 0 : lastComma + 1;
-                const afterCursor = val.slice(selStart);
-                const nextComma = afterCursor.indexOf(',');
-                const tokenEnd = (nextComma === -1) ? val.length : selStart + nextComma;
+                const commasBefore = beforeCursor.split(',').length - 1;
 
-                const currentToken = val.slice(tokenStart, tokenEnd).trim();
-
-                if (currentToken && isKnownDatalistPin(currentToken)) {
-                    const prefix = val.slice(0, tokenEnd).trim();
-                    const suffix = val.slice(tokenEnd).trim();
-                    const sep = prefix.length > 0 ? ', ' : '';
-                    inputEl.value = prefix + sep + pin + (suffix.length > 0 ? ', ' + suffix : '');
+                const parts = val.split(',').map(s => s.trim());
+                if (commasBefore < parts.length) {
+                    parts[commasBefore] = pin;
                 } else {
-                    const prefix = val.slice(0, tokenStart);
-                    const suffix = val.slice(tokenEnd);
-                    const sep = (prefix.length > 0 && !prefix.endsWith(', ') && !prefix.endsWith(',')) ? ', ' : (prefix.endsWith(',') ? ' ' : '');
-                    inputEl.value = prefix + sep + pin + suffix;
+                    parts.push(pin);
+                }
+
+                const cleaned = parts.filter((p, i) => p.length > 0 || i === commasBefore);
+                inputEl.value = cleaned.join(', ');
+
+                const prefixLength = cleaned.slice(0, commasBefore).join(', ').length + (commasBefore > 0 ? 2 : 0) + pin.length;
+                if (typeof inputEl.setSelectionRange === 'function') {
+                    try {
+                        inputEl.setSelectionRange(prefixLength, prefixLength);
+                    } catch (_) {}
                 }
             }
 

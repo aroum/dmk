@@ -1337,7 +1337,7 @@ test('Smart Pin Autocomplete & Suggestion Dropdown', () => {
 
     // 2. Multi-pin autocomplete (rowPins)
     const rowInput = sandbox.document.getElementById('rowPins');
-    rowInput.value = 'GPIO0, GPIO1';
+    rowInput.value = 'GPIO0, GPIO1, ';
     rowInput.selectionStart = rowInput.value.length;
     rowInput.selectionEnd = rowInput.value.length;
     rowInput.dispatchEvent({ type: 'focus' });
@@ -1353,6 +1353,42 @@ test('Smart Pin Autocomplete & Suggestion Dropdown', () => {
     rowInput.dispatchEvent({ type: 'input' });
     const matchingPins = sandbox.smartDropdownItems.map(it => it.pin);
     assert.ok(matchingPins.every(p => p.toLowerCase().includes('gp2') || p.replace('GPIO', 'GP').toLowerCase().includes('gp2')), 'All filtered items must match query GP2');
+
+    // 4. Replacing middle token in multi-pin input (e.g. GPIO5 -> GPIO25)
+    rowInput.value = 'GPIO24, GPIO5, GPIO6, GPIO7, GPIO21';
+    // Cursor on 'GPIO5' (index 12)
+    rowInput.selectionStart = 12;
+    rowInput.selectionEnd = 12;
+    rowInput.dispatchEvent({ type: 'focus' });
+    sandbox.selectSmartPinItem('GPIO25');
+    assert.strictEqual(
+        rowInput.value,
+        'GPIO24, GPIO25, GPIO6, GPIO7, GPIO21',
+        'Replacing middle token must replace cleanly without duplicates or double commas'
+    );
+
+    // 5. Replacing first token in multi-pin input
+    rowInput.selectionStart = 2;
+    rowInput.selectionEnd = 2;
+    rowInput.dispatchEvent({ type: 'focus' });
+    sandbox.selectSmartPinItem('GPIO0');
+    assert.strictEqual(
+        rowInput.value,
+        'GPIO0, GPIO25, GPIO6, GPIO7, GPIO21',
+        'Replacing first token must replace cleanly'
+    );
+
+    // 6. Filling an empty token between commas
+    rowInput.value = 'GPIO0, , GPIO6';
+    rowInput.selectionStart = 7;
+    rowInput.selectionEnd = 7;
+    rowInput.dispatchEvent({ type: 'focus' });
+    sandbox.selectSmartPinItem('GPIO1');
+    assert.strictEqual(
+        rowInput.value,
+        'GPIO0, GPIO1, GPIO6',
+        'Filling empty slot between commas must produce clean list'
+    );
 });
 
 
