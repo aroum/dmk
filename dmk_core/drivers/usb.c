@@ -46,7 +46,6 @@ void usb_process_key(uint16_t keycode, bool pressed) {
     // Handle Consumer / Media keys (Volume, Play/Pause, Brightness, etc.)
     if (keycode & KEY_CONSUMER_FLAG) {
         uint16_t usage = keycode & ~KEY_CONSUMER_FLAG;
-        extern USB_Result USB_HID_SendConsumerReport(uint16_t usage);
         USB_HID_SendConsumerReport(pressed ? usage : 0);
         return;
     }
@@ -64,21 +63,20 @@ void usb_process_key(uint16_t keycode, bool pressed) {
         }
         // Handle standard 6KRO keycodes
         else if (keycode != 0) {
+            int empty_idx = -1;
             bool found = false;
             for (int i = 0; i < 6; i++) {
                 if (current_report.Keycodes[i] == (uint8_t)keycode) {
                     found = true;
                     break;
                 }
-            }
-            if (!found) {
-                for (int i = 0; i < 6; i++) {
-                    if (current_report.Keycodes[i] == 0) {
-                        current_report.Keycodes[i] = (uint8_t)keycode;
-                        report_changed = true;
-                        break;
-                    }
+                if (empty_idx < 0 && current_report.Keycodes[i] == 0) {
+                    empty_idx = i;
                 }
+            }
+            if (!found && empty_idx >= 0) {
+                current_report.Keycodes[empty_idx] = (uint8_t)keycode;
+                report_changed = true;
             }
         }
     } else {
@@ -109,42 +107,8 @@ void usb_process_key(uint16_t keycode, bool pressed) {
 }
 
 #ifdef MIDI_USB
-#if defined(MCU_milandr)
-extern USB_Result USB_MIDI_SendPacket(const uint8_t *packet);
-static inline void midi_write(const uint8_t *pkt) {
-    USB_MIDI_SendPacket(pkt);
-}
-#else
-#undef KEYBOARD_MODIFIER_LEFTCTRL
-#undef KEYBOARD_MODIFIER_LEFTSHIFT
-#undef KEYBOARD_MODIFIER_LEFTALT
-#undef KEYBOARD_MODIFIER_LEFTGUI
-#undef KEYBOARD_MODIFIER_RIGHTCTRL
-#undef KEYBOARD_MODIFIER_RIGHTSHIFT
-#undef KEYBOARD_MODIFIER_RIGHTALT
-#undef KEYBOARD_MODIFIER_RIGHTGUI
-#undef HID_USAGE_CONSUMER_PLAY_PAUSE
-#undef HID_USAGE_CONSUMER_SCAN_NEXT
-#undef HID_USAGE_CONSUMER_SCAN_PREVIOUS
-#undef HID_USAGE_CONSUMER_STOP
-#undef HID_USAGE_CONSUMER_MUTE
-#undef HID_USAGE_CONSUMER_VOLUME_UP
-#undef HID_USAGE_CONSUMER_VOLUME_DOWN
-#undef HID_USAGE_CONSUMER_FAST_FORWARD
-#undef HID_USAGE_CONSUMER_REWIND
-#undef HID_USAGE_CONSUMER_EJECT
-#undef HID_USAGE_CONSUMER_AL_CC_CONFIG
-#undef HID_USAGE_CONSUMER_AL_EMAIL
-#undef HID_USAGE_CONSUMER_AL_CALCULATOR
-#undef HID_USAGE_CONSUMER_AL_LOCAL_BROWSER
-#undef HID_USAGE_CONSUMER_AC_SEARCH
-#undef HID_USAGE_CONSUMER_AC_HOME
-#undef HID_USAGE_CONSUMER_AC_BACK
-#undef HID_USAGE_CONSUMER_AC_FORWARD
-#undef HID_USAGE_CONSUMER_AC_STOP
-#undef HID_USAGE_CONSUMER_AC_REFRESH
-#undef HID_USAGE_CONSUMER_AC_BOOKMARKS
 #include "tusb.h"
+
 static inline void midi_write(const uint8_t *pkt) {
     tud_midi_packet_write(pkt);
 }
@@ -158,7 +122,6 @@ void tud_midi_rx_cb(uint8_t itf) {
         }
     }
 }
-#endif
 
 void usb_send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {
     uint8_t packet[4] = {0x09, 0x90 | (chan & 0x0F), note & 0x7F, vel & 0x7F};

@@ -12,9 +12,6 @@ static const pin_t led_pins[] = LED_PINS;
 #define LED_COUNT (sizeof(led_pins) / sizeof(led_pins[0]))
 #endif
 
-#define Board_GPIO_Init()                                                                                              \
-    do {                                                                                                               \
-    } while (0)
 static inline void Board_LED_On(void) {
 #ifdef LED_PINS
 #ifdef LED_DEBUG
@@ -46,8 +43,6 @@ static bool led_heartbeat_state = false;
  * @brief Initialize configured status and lock LED GPIO pins as outputs.
  */
 void led_init(void) {
-    Board_GPIO_Init();
-
 #ifdef LED_PINS
     for (uint32_t i = 0; i < LED_COUNT; i++) {
         hal_gpio_init(led_pins[i]);
@@ -57,18 +52,6 @@ void led_init(void) {
 #endif
 
     led_initialized = true;
-}
-
-/**
- * @brief Trigger a non-blocking activity blink on the debug LED.
- */
-void led_blink(void) {
-    if (!led_initialized) {
-        return;
-    }
-    Board_LED_On();
-    blink_until = xTaskGetTickCount() + pdMS_TO_TICKS(25);
-    is_blinking = true;
 }
 
 /**

@@ -10,11 +10,6 @@ extern "C" {
 
 #define KEY_CONSUMER_FLAG 0x8000
 
-typedef struct {
-    uint16_t keycode;
-    uint8_t pressed;
-} key_event_t;
-
 /**
  * @brief Initialize USB hardware controller and endpoints.
  */

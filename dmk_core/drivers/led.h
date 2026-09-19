@@ -20,9 +20,6 @@ void led_init(void);
 void led_update(TickType_t now);
 TickType_t led_check_timeouts(TickType_t now);
 
-// Makes pi pico led blink
-void led_blink(void);
-
 // Turns debug LED on
 void led_on(void);
 
@@ -46,7 +43,6 @@ static inline TickType_t led_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
 }
-static inline void led_blink(void) {}
 static inline void led_on(void) {}
 static inline void led_off(void) {}
 static inline void led_set_hid_state(uint8_t state) {

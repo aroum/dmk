@@ -1,16 +1,6 @@
 #include "app_usb_hid.h"
 #include "config.h"
 
-// Undefine conflicting definitions before including TinyUSB headers
-#undef KEYBOARD_MODIFIER_LEFTCTRL
-#undef KEYBOARD_MODIFIER_LEFTSHIFT
-#undef KEYBOARD_MODIFIER_LEFTALT
-#undef KEYBOARD_MODIFIER_LEFTGUI
-#undef KEYBOARD_MODIFIER_RIGHTCTRL
-#undef KEYBOARD_MODIFIER_RIGHTSHIFT
-#undef KEYBOARD_MODIFIER_RIGHTALT
-#undef KEYBOARD_MODIFIER_RIGHTGUI
-
 #include "FreeRTOS.h"
 #include "task.h"
 #include "tusb.h"
@@ -79,7 +69,7 @@ static void usb_device_task(void *pvParameters) {
     }
 }
 
-USB_Result USB_HID_Init(void) {
+bool USB_HID_Init(void) {
 #if defined(MCU_nrf52840)
     NVIC_SetPriority(USBD_IRQn, 2);
 
@@ -116,10 +106,10 @@ USB_Result USB_HID_Init(void) {
 #else
     xTaskCreate(usb_device_task, "usbd", 512, NULL, 3, &s_usb_task_handle);
 #endif
-    return USB_SUCCESS;
+    return (s_usb_task_handle != NULL);
 }
 
-USB_Result USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
+bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {
@@ -127,16 +117,16 @@ USB_Result USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
                 if (s_usb_task_handle) {
                     xTaskNotifyGive(s_usb_task_handle);
                 }
-                return USB_SUCCESS;
+                return true;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1));
         timeout--;
     }
-    return USB_ERR_BUSY;
+    return false;
 }
 
-USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
+bool USB_HID_SendConsumerReport(uint16_t usage) {
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {
@@ -144,16 +134,16 @@ USB_Result USB_HID_SendConsumerReport(uint16_t usage) {
                 if (s_usb_task_handle) {
                     xTaskNotifyGive(s_usb_task_handle);
                 }
-                return USB_SUCCESS;
+                return true;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1));
         timeout--;
     }
-    return USB_ERR_BUSY;
+    return false;
 }
 
-USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
+bool USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {
@@ -161,17 +151,17 @@ USB_Result USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t w
                 if (s_usb_task_handle) {
                     xTaskNotifyGive(s_usb_task_handle);
                 }
-                return USB_SUCCESS;
+                return true;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1));
         timeout--;
     }
-    return USB_ERR_BUSY;
+    return false;
 }
 
-USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat,
-                                     uint32_t buttons) {
+bool USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat,
+                               uint32_t buttons) {
     int timeout = 50; // 50ms timeout
     while (timeout > 0) {
         if (tud_hid_ready()) {
@@ -179,26 +169,11 @@ USB_Result USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, in
                 if (s_usb_task_handle) {
                     xTaskNotifyGive(s_usb_task_handle);
                 }
-                return USB_SUCCESS;
+                return true;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1));
         timeout--;
     }
-    return USB_ERR_BUSY;
-}
-
-USB_Result USB_HID_Reset(void) {
-    return USB_SUCCESS;
-}
-
-USB_Result USB_HID_GetDescriptor(uint16_t wVALUE, uint16_t wINDEX, uint16_t wLENGTH) {
-    (void)wVALUE;
-    (void)wINDEX;
-    (void)wLENGTH;
-    return USB_SUCCESS;
-}
-
-USB_Result USB_HID_ClassRequest(void) {
-    return USB_SUCCESS;
+    return false;
 }
