@@ -910,9 +910,80 @@
                 gap: 10px;
                 align-items: stretch;
             }
-            .nav-actions .btn {
-                width: 100%;
-                text-align: center;
-                justify-content: center;
-            }
+        }
+
+        /* Smart Pin Autocomplete Dropdown */
+        #smartPinDropdown {
+            position: absolute;
+            display: none;
+            max-height: 260px;
+            overflow-y: auto;
+            background: var(--card-bg, #1e1e2e);
+            border: 1px solid var(--primary, #6366f1);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(16px);
+            padding: 4px;
+            font-family: inherit;
+            font-size: 13px;
+            min-width: 240px;
+            max-width: 420px;
+            z-index: 100000;
+        }
+
+        .pin-suggest-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 7px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.12s ease, color 0.12s ease;
+            color: var(--text, #e2e8f0);
+        }
+
+        .pin-suggest-item:hover,
+        .pin-suggest-item.active {
+            background: var(--primary, #6366f1);
+            color: #ffffff;
+        }
+
+        .pin-suggest-name {
+            font-weight: 700;
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .pin-suggest-desc {
+            font-size: 11px;
+            opacity: 0.75;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+            text-align: right;
+        }
+
+        .pin-suggest-item:hover .pin-suggest-desc,
+        .pin-suggest-item.active .pin-suggest-desc {
+            opacity: 0.95;
+            color: #ffffff;
+        }
+
+        .pin-suggest-used {
+            font-size: 10px;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .pin-suggest-item:hover .pin-suggest-used,
+        .pin-suggest-item.active .pin-suggest-used {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
         }

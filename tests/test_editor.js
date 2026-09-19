@@ -1315,3 +1315,43 @@ test('Keyboard Name Sanitization, Single Empty LED Activation & Top ZIP Export',
     assert.ok(zipBtn, 'btnDownloadZipRepo must be located inside Step 6 card-header');
 });
 
+test('Smart Pin Autocomplete & Suggestion Dropdown', () => {
+    const sandbox = createSandbox();
+    sandbox.init();
+
+    const dd = sandbox.document.getElementById('smartPinDropdown');
+    assert.ok(dd, 'smartPinDropdown container must exist in DOM');
+
+    // 1. Single pin autocomplete (rgbPin)
+    const rgbInput = sandbox.document.getElementById('rgbPin');
+    rgbInput.value = '';
+    rgbInput.dispatchEvent({ type: 'focus' });
+    assert.strictEqual(dd.style.display, 'block', 'Dropdown should be displayed on focus');
+    assert.ok(sandbox.smartDropdownItems.length > 0, 'Should have pin items in dropdown');
+
+    // Select GPIO16
+    sandbox.selectSmartPinItem('GPIO16');
+    assert.strictEqual(rgbInput.value, 'GPIO16', 'Single-pin input should take selected pin');
+    assert.strictEqual(dd.style.display, 'none', 'Dropdown should close after selection');
+
+    // 2. Multi-pin autocomplete (rowPins)
+    const rowInput = sandbox.document.getElementById('rowPins');
+    rowInput.value = 'GPIO0, GPIO1';
+    rowInput.selectionStart = rowInput.value.length;
+    rowInput.selectionEnd = rowInput.value.length;
+    rowInput.dispatchEvent({ type: 'focus' });
+    assert.strictEqual(dd.style.display, 'block');
+
+    sandbox.selectSmartPinItem('GPIO2');
+    assert.strictEqual(rowInput.value, 'GPIO0, GPIO1, GPIO2', 'Multi-pin input should append comma-separated pin');
+
+    // 3. Filtering by query
+    rowInput.value = 'GPIO0, GPIO1, GP2';
+    rowInput.selectionStart = rowInput.value.length;
+    rowInput.selectionEnd = rowInput.value.length;
+    rowInput.dispatchEvent({ type: 'input' });
+    const matchingPins = sandbox.smartDropdownItems.map(it => it.pin);
+    assert.ok(matchingPins.every(p => p.toLowerCase().includes('gp2') || p.replace('GPIO', 'GP').toLowerCase().includes('gp2')), 'All filtered items must match query GP2');
+});
+
+

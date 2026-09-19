@@ -833,9 +833,37 @@
             }
         }
 
+        function normalizePinName(pin, mcu) {
+            if (!pin || typeof pin !== 'string') return '';
+            let p = pin.trim().toUpperCase();
+            if (!p || p === 'NONE' || p === 'NO_PIN') return p;
+
+            const targetMcu = (mcu === 'all') ? (currentUniversalMcu || 'rp2040') : (mcu || 'rp2040');
+
+            // For RP2040 / RP2350: allow bare numbers e.g. "19" -> "GPIO19", or "GP19" -> "GPIO19"
+            if (targetMcu === 'rp2040' || targetMcu === 'rp2350') {
+                if (/^([0-9]|[1-3][0-9]|4[0-7])$/.test(p)) {
+                    return `GPIO${p}`;
+                }
+                if (/^GP([0-9]|[1-3][0-9]|4[0-7])$/.test(p)) {
+                    return `GPIO${p.slice(2)}`;
+                }
+            }
+            // For Baikal: allow bare numbers e.g. "19" -> "GPIO19" or "GP19" -> "GPIO19"
+            if (targetMcu === 'baikal') {
+                if (/^([0-9]|[12][0-9]|3[01])$/.test(p)) {
+                    return `GPIO${p}`;
+                }
+                if (/^GP([0-9]|[12][0-9]|3[01])$/.test(p)) {
+                    return `GPIO${p.slice(2)}`;
+                }
+            }
+            return p;
+        }
+
         function validatePinFormat(pin, mcu) {
             if (!pin) return true;
-            const p = pin.trim().toUpperCase();
+            const p = normalizePinName(pin, mcu);
             if (!p || p === 'NONE' || p === 'NO_PIN') return true;
 
             const isRp = (pinName) => /^GPIO([0-9]|[1-3][0-9]|4[0-7])$/i.test(pinName);
@@ -870,7 +898,7 @@
 
             const addUsage = (pin, label) => {
                 if (!pin) return;
-                const clean = pin.trim().toUpperCase();
+                const clean = normalizePinName(pin, activeMcu);
                 if (!clean || clean === 'NONE' || clean === 'NO_PIN') return;
 
                 if (!validatePinFormat(clean, activeMcu)) {
@@ -1215,45 +1243,277 @@
             return false;
         }
 
-        function attachCommaPinAutocomplete(inputEl) {
+        function getCurrentMcuPins() {
+            let targetMcu = configState.mcu;
+            if (targetMcu === 'all') {
+                targetMcu = currentUniversalMcu || 'rp2040';
+            }
+
+            if (targetMcu === 'rp2040') {
+                return (configState.rpDefaultMcu === 'rp2350')
+                    ? [...MCU_AVAILABLE_PINS.rp2040, ...MCU_AVAILABLE_PINS.rp2350_extra]
+                    : MCU_AVAILABLE_PINS.rp2040;
+            } else if (targetMcu === 'rp2350') {
+                return [...MCU_AVAILABLE_PINS.rp2040, ...MCU_AVAILABLE_PINS.rp2350_extra];
+            } else if (MCU_AVAILABLE_PINS[targetMcu]) {
+                return MCU_AVAILABLE_PINS[targetMcu];
+            }
+            return MCU_AVAILABLE_PINS.rp2040;
+        }
+
+        function filterPinsForCurrentMcu(query) {
+            const pins = getCurrentMcuPins();
+            const q = (query || '').trim().toLowerCase();
+
+            if (!q) {
+                return pins;
+            }
+
+            const numOnly = q.replace(/\D/g, '');
+
+            const scored = [];
+            pins.forEach(item => {
+                const pinName = item.pin.toLowerCase();
+                const pinNum = item.pin.replace(/\D/g, '');
+                const label = (item.label || '').toLowerCase();
+                let score = 0;
+
+                if (pinName === q) {
+                    score = 100;
+                } else if (numOnly && pinNum === numOnly) {
+                    score = 90;
+                } else if (pinName.startsWith(q)) {
+                    score = 80;
+                } else if (numOnly && pinNum.startsWith(numOnly)) {
+                    score = 70;
+                } else if (pinName.includes(q)) {
+                    score = 60;
+                } else if (label.includes(q)) {
+                    score = 50;
+                }
+
+                if (score > 0) {
+                    scored.push({ item, score });
+                }
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            return scored.map(s => s.item);
+        }
+
+        let activeSmartInput = null;
+        let activeSmartIsMulti = false;
+        let activeSmartIndex = -1;
+        let smartDropdownItems = [];
+
+        function ensureSmartPinDropdown() {
+            let dd = document.getElementById('smartPinDropdown');
+            if (!dd) {
+                dd = document.createElement('div');
+                dd.id = 'smartPinDropdown';
+                document.body.appendChild(dd);
+
+                dd.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                });
+            }
+            return dd;
+        }
+
+        function hideSmartPinDropdown() {
+            const dd = document.getElementById('smartPinDropdown');
+            if (dd) {
+                dd.style.display = 'none';
+                dd.innerHTML = '';
+            }
+            activeSmartInput = null;
+            activeSmartIndex = -1;
+            smartDropdownItems = [];
+        }
+
+        function updateSmartDropdownActiveItem() {
+            const dd = document.getElementById('smartPinDropdown');
+            if (!dd) return;
+            const items = dd.querySelectorAll('.pin-suggest-item');
+            items.forEach((item, idx) => {
+                const isActive = (idx === activeSmartIndex);
+                item.classList.toggle('active', isActive);
+                if (isActive) {
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        }
+
+        function showSmartPinDropdown(inputEl, isMulti) {
+            if (!inputEl) return;
+            activeSmartInput = inputEl;
+            activeSmartIsMulti = isMulti;
+
+            const dd = ensureSmartPinDropdown();
+
+            const val = inputEl.value || '';
+            let token = val.trim();
+            if (isMulti) {
+                const selStart = (inputEl.selectionStart !== null && inputEl.selectionStart !== undefined) ? inputEl.selectionStart : val.length;
+                const beforeCursor = val.slice(0, selStart);
+                const lastComma = beforeCursor.lastIndexOf(',');
+                const tokenStart = (lastComma === -1) ? 0 : lastComma + 1;
+                const afterCursor = val.slice(selStart);
+                const nextComma = afterCursor.indexOf(',');
+                const tokenEnd = (nextComma === -1) ? val.length : selStart + nextComma;
+                token = val.slice(tokenStart, tokenEnd).trim();
+            }
+
+            const matches = filterPinsForCurrentMcu(token);
+            if (!matches || matches.length === 0) {
+                hideSmartPinDropdown();
+                return;
+            }
+
+            smartDropdownItems = matches.slice(0, 15);
+            activeSmartIndex = 0;
+
+            const currentUsages = {};
+            const activeMcu = (configState.mcu === 'all') ? (currentUniversalMcu || 'rp2040') : (configState.mcu || 'rp2040');
+            const collectUsage = (pin, label) => {
+                if (!pin) return;
+                const p = normalizePinName(pin, activeMcu);
+                if (p) currentUsages[p] = label;
+            };
+            parsePins(document.getElementById('rowPins')?.value).forEach((p, i) => collectUsage(p, `Row #${i+1}`));
+            parsePins(document.getElementById('colPins')?.value).forEach((p, i) => collectUsage(p, `Col #${i+1}`));
+            parsePins(document.getElementById('directPins')?.value).forEach((p, i) => collectUsage(p, `Direct #${i+1}`));
+            collectUsage(document.getElementById('rgbPin')?.value, 'RGB');
+            collectUsage(document.getElementById('serialPinRP')?.value, 'Split Serial');
+
+            dd.innerHTML = '';
+            smartDropdownItems.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'pin-suggest-item' + (idx === 0 ? ' active' : '');
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'pin-suggest-name';
+                nameSpan.textContent = item.pin;
+
+                const rightBox = document.createElement('div');
+                rightBox.style.display = 'flex';
+                rightBox.style.alignItems = 'center';
+                rightBox.style.gap = '8px';
+
+                if (currentUsages[item.pin]) {
+                    const usedSpan = document.createElement('span');
+                    usedSpan.className = 'pin-suggest-used';
+                    usedSpan.textContent = currentUsages[item.pin];
+                    rightBox.appendChild(usedSpan);
+                }
+
+                if (item.label) {
+                    const descSpan = document.createElement('span');
+                    descSpan.className = 'pin-suggest-desc';
+                    descSpan.textContent = item.label;
+                    descSpan.title = `${item.pin} — ${item.label}`;
+                    rightBox.appendChild(descSpan);
+                }
+
+                div.appendChild(nameSpan);
+                div.appendChild(rightBox);
+
+                div.addEventListener('click', () => {
+                    selectSmartPinItem(item.pin);
+                });
+
+                dd.appendChild(div);
+            });
+
+            const rect = (typeof inputEl.getBoundingClientRect === 'function')
+                ? inputEl.getBoundingClientRect()
+                : { left: 0, bottom: 0, width: 240 };
+            const scrollX = window.scrollX || window.pageXOffset || 0;
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            
+            dd.style.left = `${rect.left + scrollX}px`;
+            dd.style.top = `${rect.bottom + scrollY + 4}px`;
+            dd.style.minWidth = `${Math.max(rect.width || 240, 240)}px`;
+            dd.style.display = 'block';
+        }
+
+        let suppressSmartFocus = false;
+
+        function selectSmartPinItem(pin) {
+            if (!activeSmartInput) return;
+            const inputEl = activeSmartInput;
+            const isMulti = activeSmartIsMulti;
+
+            if (!isMulti) {
+                inputEl.value = pin;
+            } else {
+                const val = inputEl.value || '';
+                const selStart = (inputEl.selectionStart !== null && inputEl.selectionStart !== undefined) ? inputEl.selectionStart : val.length;
+                const beforeCursor = val.slice(0, selStart);
+                const lastComma = beforeCursor.lastIndexOf(',');
+                const tokenStart = (lastComma === -1) ? 0 : lastComma + 1;
+                const afterCursor = val.slice(selStart);
+                const nextComma = afterCursor.indexOf(',');
+                const tokenEnd = (nextComma === -1) ? val.length : selStart + nextComma;
+
+                const currentToken = val.slice(tokenStart, tokenEnd).trim();
+
+                if (currentToken && isKnownDatalistPin(currentToken)) {
+                    const prefix = val.slice(0, tokenEnd).trim();
+                    const suffix = val.slice(tokenEnd).trim();
+                    const sep = prefix.length > 0 ? ', ' : '';
+                    inputEl.value = prefix + sep + pin + (suffix.length > 0 ? ', ' + suffix : '');
+                } else {
+                    const prefix = val.slice(0, tokenStart);
+                    const suffix = val.slice(tokenEnd);
+                    const sep = (prefix.length > 0 && !prefix.endsWith(', ') && !prefix.endsWith(',')) ? ', ' : (prefix.endsWith(',') ? ' ' : '');
+                    inputEl.value = prefix + sep + pin + suffix;
+                }
+            }
+
+            hideSmartPinDropdown();
+            suppressSmartFocus = true;
+            try {
+                if (typeof Event !== 'undefined') {
+                    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                } else if (typeof inputEl.dispatchEvent === 'function') {
+                    inputEl.dispatchEvent({ type: 'input' });
+                    inputEl.dispatchEvent({ type: 'change' });
+                }
+                if (typeof saveCurrentMcuPinState === 'function') {
+                    saveCurrentMcuPinState();
+                }
+                if (typeof inputEl.focus === 'function') {
+                    inputEl.focus();
+                }
+            } finally {
+                suppressSmartFocus = false;
+            }
+        }
+
+        function attachSmartPinAutocomplete(inputEl, isMulti = false) {
             if (!inputEl) return;
             inputEl.setAttribute('list', 'availablePinsList');
+
             let lastVal = inputEl.value;
-            inputEl.addEventListener('focus', () => { lastVal = inputEl.value; });
+            inputEl.addEventListener('focus', () => {
+                if (suppressSmartFocus) return;
+                lastVal = inputEl.value;
+                showSmartPinDropdown(inputEl, isMulti);
+            });
+
             inputEl.addEventListener('input', (e) => {
+                if (suppressSmartFocus) return;
                 const cur = inputEl.value;
 
-                // 1. If this is any deletion, cut, or undo event, NEVER modify inputEl.value!
-                if (e && e.inputType) {
-                    if (e.inputType.startsWith('delete') || e.inputType === 'historyUndo' || e.inputType === 'historyRedo' || e.inputType === 'deleteByCut') {
-                        lastVal = cur;
-                        return;
-                    }
-                    if (e.inputType === 'insertText' || e.inputType === 'insertFromPaste') {
-                        lastVal = cur;
-                        return;
-                    }
-                }
-
-                // 2. If input was cleared or is empty/whitespace, NEVER restore previous value!
-                if (!cur || !cur.trim()) {
-                    lastVal = cur;
-                    return;
-                }
-
-                // 3. If the new value is shorter and is a substring/prefix of lastVal, user deleted characters
-                if (cur.length < lastVal.length && (lastVal.includes(cur) || lastVal.startsWith(cur))) {
-                    lastVal = cur;
-                    return;
-                }
-
-                // 4. Only intercept when lastVal had commas, cur does NOT have commas,
-                // and cur is an actual pin selected from the datalist (e.g. insertReplacementText or known pin not already in lastVal)
-                if (lastVal.includes(',') && !cur.includes(',')) {
+                // Support for headless / browser datalist replacement events
+                if (isMulti && lastVal.includes(',') && !cur.includes(',')) {
                     const isReplacement = (e && e.inputType === 'insertReplacementText');
                     const isKnownPin = isKnownDatalistPin(cur.trim());
+                    const isDelete = (e && e.inputType && (e.inputType.startsWith('delete') || e.inputType === 'historyUndo' || e.inputType === 'historyRedo' || e.inputType === 'deleteByCut'));
 
-                    if (isReplacement || (isKnownPin && !lastVal.includes(cur.trim()))) {
+                    if (!isDelete && (isReplacement || (isKnownPin && !lastVal.includes(cur.trim())))) {
                         const trimmedLast = lastVal.trim();
                         const hadTrailingComma = trimmedLast.endsWith(',');
                         const parts = lastVal.split(',').map(s => s.trim()).filter(Boolean);
@@ -1271,7 +1531,58 @@
                     }
                 }
                 lastVal = inputEl.value;
+
+                showSmartPinDropdown(inputEl, isMulti);
             });
+
+            inputEl.addEventListener('keydown', (e) => {
+                const dd = document.getElementById('smartPinDropdown');
+                if (!dd || dd.style.display === 'none' || smartDropdownItems.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeSmartIndex = (activeSmartIndex + 1) % smartDropdownItems.length;
+                    updateSmartDropdownActiveItem();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeSmartIndex = (activeSmartIndex - 1 + smartDropdownItems.length) % smartDropdownItems.length;
+                    updateSmartDropdownActiveItem();
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    if (activeSmartIndex >= 0 && activeSmartIndex < smartDropdownItems.length) {
+                        e.preventDefault();
+                        selectSmartPinItem(smartDropdownItems[activeSmartIndex].pin);
+                    }
+                } else if (e.key === 'Escape') {
+                    hideSmartPinDropdown();
+                }
+            });
+
+            inputEl.addEventListener('blur', () => {
+                setTimeout(() => {
+                    hideSmartPinDropdown();
+                    const activeMcu = (configState.mcu === 'all') ? (currentUniversalMcu || 'rp2040') : (configState.mcu || 'rp2040');
+                    if (isMulti) {
+                        const parts = parsePins(inputEl.value);
+                        if (parts.length > 0) {
+                            const normalized = parts.map(p => normalizePinName(p, activeMcu));
+                            if (normalized.join(', ') !== parts.join(', ')) {
+                                inputEl.value = normalized.join(', ');
+                                saveCurrentMcuPinState();
+                            }
+                        }
+                    } else if (inputEl.value && inputEl.value.trim()) {
+                        const norm = normalizePinName(inputEl.value.trim(), activeMcu);
+                        if (norm !== inputEl.value.trim()) {
+                            inputEl.value = norm;
+                            saveCurrentMcuPinState();
+                        }
+                    }
+                }, 200);
+            });
+        }
+
+        function attachCommaPinAutocomplete(inputEl) {
+            attachSmartPinAutocomplete(inputEl, true);
         }
 
         function saveCurrentMcuPinState() {
@@ -1559,8 +1870,11 @@
             toggleCustomMacrosOptions();
             toggleLayerHotkeyOptions();
             ensureAvailablePinsDatalist();
-            ['rowPins', 'colPins', 'directPins', 'ledPins'].forEach(id => {
-                attachCommaPinAutocomplete(document.getElementById(id));
+            ['rowPins', 'colPins', 'directPins'].forEach(id => {
+                attachSmartPinAutocomplete(document.getElementById(id), true);
+            });
+            ['serialPinRP', 'splitTxPin', 'splitRxPin', 'mcuSplitTxPin', 'mcuSplitRxPin', 'rgbPin', 'ledPins', 'ledActivityPin'].forEach(id => {
+                attachSmartPinAutocomplete(document.getElementById(id), false);
             });
             updateSplitPinsUI();
 
@@ -1788,6 +2102,9 @@
             });
 
             list.innerHTML = html;
+            list.querySelectorAll('.led-row-pin').forEach(input => {
+                attachSmartPinAutocomplete(input, false);
+            });
             syncLedStateFromRows();
         }
 
@@ -1979,6 +2296,8 @@
                     </div>
                 `;
                 container.appendChild(row);
+                attachSmartPinAutocomplete(document.getElementById(`enc_${i}_pinA`), false);
+                attachSmartPinAutocomplete(document.getElementById(`enc_${i}_pinB`), false);
             }
             checkPinConflicts();
             renderLayerEncodersUI();
