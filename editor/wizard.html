@@ -159,7 +159,7 @@
                 <!-- Single pin communication (for 1-wire modes) -->
                 <div class="form-group" id="splitSinglePinGroup">
                     <label id="lblSerialPin" data-i18n="serialPinLabel">Пин связи:</label>
-                    <input type="text" id="serialPinRP" list="availablePinsList" value="GPIO1" placeholder="GPIO1" oninput="markDirty()">
+                    <input type="text" id="serialPinRP" autocomplete="off" value="GPIO1" placeholder="GPIO1" oninput="markDirty()">
                     <span class="hint" id="hintSerialPin" data-i18n="serialPinHint">Однопроводная линия данных</span>
                 </div>
 
@@ -167,12 +167,12 @@
                 <div id="splitDualPinsGroup" class="grid-2" style="display: none;">
                     <div class="form-group">
                         <label id="lblSplitTxPin" data-i18n="splitTxPinLabel">Пин TX:</label>
-                        <input type="text" id="splitTxPin" list="availablePinsList" value="PF1" placeholder="PF1" oninput="markDirty()">
+                        <input type="text" id="splitTxPin" autocomplete="off" value="PF1" placeholder="PF1" oninput="markDirty()">
                         <span class="hint" id="hintSplitTxPin" data-i18n="splitTxPinHint">Линия передачи данных</span>
                     </div>
                     <div class="form-group">
                         <label id="lblSplitRxPin" data-i18n="splitRxPinLabel">Пин RX:</label>
-                        <input type="text" id="splitRxPin" list="availablePinsList" value="PF0" placeholder="PF0" oninput="markDirty()">
+                        <input type="text" id="splitRxPin" autocomplete="off" value="PF0" placeholder="PF0" oninput="markDirty()">
                         <span class="hint" id="hintSplitRxPin" data-i18n="splitRxPinHint">Линия приёма данных</span>
                     </div>
                 </div>
@@ -229,11 +229,11 @@
                 <div class="grid-2">
                     <div class="form-group">
                         <label id="lblRowPins" data-i18n="rowPinsLabel">Пины строк через запятую:</label>
-                        <input type="text" id="rowPins" list="availablePinsList" value="GPIO4, GPIO5, GPIO6, GPIO7" placeholder="Например: GPIO4, GPIO5, GPIO6, GPIO7" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="rowPins" autocomplete="off" value="GPIO4, GPIO5, GPIO6, GPIO7" placeholder="Например: GPIO4, GPIO5, GPIO6, GPIO7" oninput="saveCurrentMcuPinState()">
                     </div>
                     <div class="form-group">
                         <label id="lblColPins" data-i18n="colPinsLabel">Пины колонок через запятую:</label>
-                        <input type="text" id="colPins" list="availablePinsList" value="GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" placeholder="Например: GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="colPins" autocomplete="off" value="GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" placeholder="Например: GPIO29, GPIO28, GPIO27, GPIO26, GPIO22, GPIO20" oninput="saveCurrentMcuPinState()">
                         <span class="hint" data-i18n="colPinsHint">Для сплит-клавиатур указываются пины на одну половину.</span>
                     </div>
                 </div>
@@ -254,11 +254,11 @@
                 <div class="grid-2">
                     <div class="form-group" style="margin: 0;">
                         <label style="font-size: 0.75rem;" id="lblMultiSplitTx">Пин TX:</label>
-                        <input type="text" id="mcuSplitTxPin" list="availablePinsList" value="GPIO0" oninput="saveCurrentMcuPinState(); markDirty();">
+                        <input type="text" id="mcuSplitTxPin" autocomplete="off" value="GPIO0" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                     <div class="form-group" style="margin: 0;" id="multiSplitRxGroup">
                         <label style="font-size: 0.75rem;" id="lblMultiSplitRx">Пин RX:</label>
-                        <input type="text" id="mcuSplitRxPin" list="availablePinsList" value="GPIO1" oninput="saveCurrentMcuPinState(); markDirty();">
+                        <input type="text" id="mcuSplitRxPin" autocomplete="off" value="GPIO1" oninput="saveCurrentMcuPinState(); markDirty();">
                     </div>
                 </div>
                 <div style="font-size: 0.72rem; color: var(--text-muted);" id="hintMultiSplit"></div>
@@ -352,7 +352,7 @@
                         </div>
                         <div class="form-group">
                             <label data-i18n="rgbPinLabel">Пин данных подсветки:</label>
-                            <input type="text" id="rgbPin" list="availablePinsList" value="GPIO0" placeholder="GPIO0" oninput="saveCurrentMcuPinState()">
+                            <input type="text" id="rgbPin" autocomplete="off" value="GPIO0" placeholder="GPIO0" oninput="saveCurrentMcuPinState()">
                         </div>
                     </div>
                 </div>
@@ -1494,7 +1494,12 @@
 
         function attachSmartPinAutocomplete(inputEl, isMulti = false) {
             if (!inputEl) return;
-            inputEl.setAttribute('list', 'availablePinsList');
+            if (typeof inputEl.removeAttribute === 'function') {
+                inputEl.removeAttribute('list');
+            }
+            if (typeof inputEl.setAttribute === 'function') {
+                inputEl.setAttribute('autocomplete', 'off');
+            }
 
             let lastVal = inputEl.value;
             inputEl.addEventListener('focus', () => {
@@ -2092,7 +2097,7 @@
                 const optHtml = actions.map(a => `<option value="${a.value}" ${row.action === a.value ? 'selected' : ''}>${a.label}</option>`).join('');
                 html += `
                     <div style="display: grid; grid-template-columns: 1fr 1fr 36px; gap: 8px; align-items: center;" data-led-idx="${idx}">
-                        <input type="text" class="led-row-pin" list="availablePinsList" value="${row.pin || ''}" placeholder="GPIO25" oninput="updateLedRow(${idx}, 'pin', this.value)" style="margin: 0;">
+                        <input type="text" class="led-row-pin" autocomplete="off" value="${row.pin || ''}" placeholder="GPIO25" oninput="updateLedRow(${idx}, 'pin', this.value)" style="margin: 0;">
                         <select class="led-row-action" onchange="updateLedRow(${idx}, 'action', this.value)" style="margin: 0;">
                             ${optHtml}
                         </select>
@@ -2288,11 +2293,11 @@
                 row.innerHTML = `
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinA || 'Encoder'} #${i+1} — ${t.encPinALabel || 'Pin A'}:</label>
-                        <input type="text" id="enc_${i}_pinA" list="availablePinsList" value="${pinAVal}" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="enc_${i}_pinA" autocomplete="off" value="${pinAVal}" oninput="saveCurrentMcuPinState()">
                     </div>
                     <div class="form-group" style="margin: 0;">
                         <label>${t.encPinB || 'Encoder'} #${i+1} — ${t.encPinBLabel || 'Pin B'}:</label>
-                        <input type="text" id="enc_${i}_pinB" list="availablePinsList" value="${pinBVal}" oninput="saveCurrentMcuPinState()">
+                        <input type="text" id="enc_${i}_pinB" autocomplete="off" value="${pinBVal}" oninput="saveCurrentMcuPinState()">
                     </div>
                 `;
                 container.appendChild(row);

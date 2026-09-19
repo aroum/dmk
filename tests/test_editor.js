@@ -1182,10 +1182,11 @@ test('RP2040 / RP2350 Default MCU Selection & Available Pins Datalist', () => {
         value: 'GPIO4, GPIO5, ',
         listeners: {},
         addEventListener(event, fn) { this.listeners[event] = fn; },
-        setAttribute(k, v) { this[k] = v; }
+        setAttribute(k, v) { this[k] = v; },
+        removeAttribute(k) { delete this[k]; }
     };
     sandbox.attachCommaPinAutocomplete(mockInput);
-    assert.strictEqual(mockInput.list, 'availablePinsList');
+    assert.strictEqual(mockInput.autocomplete, 'off');
 
     // Simulate focus and selection from datalist
     mockInput.listeners['focus']?.();

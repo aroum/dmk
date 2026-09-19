@@ -918,17 +918,40 @@
             display: none;
             max-height: 260px;
             overflow-y: auto;
-            background: var(--card-bg, #1e1e2e);
-            border: 1px solid var(--primary, #6366f1);
+            background: var(--panel);
+            border: 1px solid var(--border-active);
             border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
             backdrop-filter: blur(16px);
             padding: 4px;
             font-family: inherit;
             font-size: 13px;
-            min-width: 240px;
-            max-width: 420px;
+            min-width: 260px;
+            max-width: 440px;
             z-index: 100000;
+        }
+
+        body.light-theme #smartPinDropdown {
+            background: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+        }
+
+        #smartPinDropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #smartPinDropdown::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #smartPinDropdown::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        #smartPinDropdown::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
 
         .pin-suggest-item {
@@ -940,12 +963,12 @@
             border-radius: 6px;
             cursor: pointer;
             transition: background 0.12s ease, color 0.12s ease;
-            color: var(--text, #e2e8f0);
+            color: var(--text);
         }
 
         .pin-suggest-item:hover,
         .pin-suggest-item.active {
-            background: var(--primary, #6366f1);
+            background: var(--accent);
             color: #ffffff;
         }
 
@@ -954,28 +977,28 @@
             font-family: "JetBrains Mono", Consolas, monospace;
             font-size: 13px;
             flex-shrink: 0;
+            color: inherit;
         }
 
         .pin-suggest-desc {
             font-size: 11px;
-            opacity: 0.75;
+            color: var(--text-muted);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 200px;
+            max-width: 220px;
             text-align: right;
         }
 
         .pin-suggest-item:hover .pin-suggest-desc,
         .pin-suggest-item.active .pin-suggest-desc {
-            opacity: 0.95;
-            color: #ffffff;
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .pin-suggest-used {
             font-size: 10px;
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: 600;
