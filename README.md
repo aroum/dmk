@@ -55,11 +55,11 @@ Below is a comparison of the codebase size of DMK and other firmwares. Measured 
 
 | Project                                                | Language | SLOC   | Relative to DMK |
 | :----------------------------------------------------- | :------- | :----- | :-------------- |
-| **DMK** (~8.1K core + ~1.4K platforms)                 | C        | ~9.5K  | 1×              |
-| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 2.6×            |
-| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 3.5×            |
-| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 5.7×            |
-| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 8.0×            |
+| **DMK** (~7.4K core + ~1.7K platforms)                 | C        | ~9.1K  | 1×              |
+| [ZMK](https://github.com/zmkfirmware/zmk) (app)        | C        | ~24.5K | 2.7×            |
+| [TMK](https://github.com/tmk/tmk_keyboard) (tmk\_core) | C        | ~33K   | 3.6×            |
+| [RMK](https://github.com/HaoboGu/rmk)                  | Rust     | ~54K   | 5.9×            |
+| [QMK / Vial-QMK](https://github.com/vial-kb/vial-qmk)  | C        | ~76K   | 8.4×            |
 
 ---
 
