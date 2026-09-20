@@ -38,6 +38,7 @@ static void activate_hold(HTTracker *tracker) {
         keyboard_send_modifiers(target, true);
 }
 
+#if DMK_PERMISSIVE_HOLD_ENABLED
 void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
     for (int i = 0; i < MAX_HT_TRACKERS; i++) {
         if (ht_trackers[i].state == HT_STATE_PRESSED &&
@@ -46,6 +47,7 @@ void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
         }
     }
 }
+#endif
 
 TickType_t hold_tap_check_timeouts(TickType_t now) {
     if (s_active_ht_count == 0) {

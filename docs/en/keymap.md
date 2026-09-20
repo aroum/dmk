@@ -364,18 +364,16 @@ In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` 
 // (activation of layer or modifier).
 #define TAPPING_TERM_DEFAULT 200
 
-// Analogous to "Flavors" (Priority modes for Hold-Tap):
-// ZMK has hold-preferred, tap-preferred, and balanced. In C:
-
-// 1 - hold-preferred: Modifier/layer activates immediately upon hold.
-// 0 - tap-preferred: If pressed and released within TAPPING_TERM,
-//     sends keycode (kc) even if a neighboring key is pressed.
-#define HOLD_TAP_TAP_PREFERRED 1 
-
-// Permissive Hold:
-// If enabled (1), pressing and releasing another key during hold
-// of our HT key activates "Hold" immediately without waiting 200ms.
-#define PERMISSIVE_HOLD 1
+// Priority modes for Hold-Tap:
+// - Default (no flags defined): Tap-Preferred. If pressed and released within
+//   TAPPING_TERM, sends keycode (kc) even if another key is pressed.
+//   This prevents accidental modifier triggers during fast typing / rolling.
+// - HOLD_TAP_TAP_PREFERRED 1: Explicitly enforces Tap-Preferred mode.
+// - PERMISSIVE_HOLD 1: Enables Permissive Hold. Pressing another key while
+//   the HT key is held immediately resolves the HT key to "Hold" without
+//   waiting for the 200ms timeout (useful for faster shortcut execution).
+#define PERMISSIVE_HOLD 0
+#define HOLD_TAP_TAP_PREFERRED 1
 
 // [Universal Hold-Tap Macro]
 // Replaces both &mt and &lt from ZMK.
