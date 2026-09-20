@@ -42,6 +42,9 @@ static inline TickType_t hold_tap_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
 }
+static inline bool hold_tap_has_active(void) {
+    return false;
+}
 #else
 // Initialize the hold-tap tracker pool
 void hold_tap_init(void);
@@ -54,6 +57,9 @@ void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col);
 
 // Check timeouts for all active hold-tap keys; returns ticks until next deadline or portMAX_DELAY
 TickType_t hold_tap_check_timeouts(TickType_t now);
+
+// Returns true if there are pending Hold-Tap keys waiting for tap/hold resolution
+bool hold_tap_has_active(void);
 #endif
 
 #ifdef __cplusplus

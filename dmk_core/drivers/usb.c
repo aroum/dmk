@@ -106,6 +106,79 @@ void usb_process_key(uint16_t keycode, bool pressed) {
     }
 }
 
+/**
+ * @brief Batch process modifier keys: atomically update modifier bitmask and transmit to host.
+ */
+void usb_process_modifiers(uint8_t mod_mask, bool pressed) {
+    if (mod_mask == 0) {
+        return;
+    }
+    bool report_changed = false;
+    if (pressed) {
+        if ((current_report.Modifier & mod_mask) != mod_mask) {
+            current_report.Modifier |= mod_mask;
+            report_changed = true;
+        }
+    } else {
+        if (current_report.Modifier & mod_mask) {
+            current_report.Modifier &= ~mod_mask;
+            report_changed = true;
+        }
+    }
+    if (report_changed) {
+        USB_HID_SendReport(&current_report);
+    }
+}
+
+/**
+ * @brief Batch process modified key: atomically update modifiers and keycode in a single HID report.
+ */
+void usb_process_key_with_modifiers(uint8_t mod_mask, uint8_t keycode, bool pressed) {
+    bool report_changed = false;
+
+    if (pressed) {
+        if (mod_mask != 0 && (current_report.Modifier & mod_mask) != mod_mask) {
+            current_report.Modifier |= mod_mask;
+            report_changed = true;
+        }
+        if (keycode != 0) {
+            int empty_idx = -1;
+            bool found = false;
+            for (int i = 0; i < 6; i++) {
+                if (current_report.Keycodes[i] == keycode) {
+                    found = true;
+                    break;
+                }
+                if (empty_idx < 0 && current_report.Keycodes[i] == 0) {
+                    empty_idx = i;
+                }
+            }
+            if (!found && empty_idx >= 0) {
+                current_report.Keycodes[empty_idx] = keycode;
+                report_changed = true;
+            }
+        }
+    } else {
+        if (keycode != 0) {
+            for (int i = 0; i < 6; i++) {
+                if (current_report.Keycodes[i] == keycode) {
+                    current_report.Keycodes[i] = 0;
+                    report_changed = true;
+                    break;
+                }
+            }
+        }
+        if (mod_mask != 0 && (current_report.Modifier & mod_mask)) {
+            current_report.Modifier &= ~mod_mask;
+            report_changed = true;
+        }
+    }
+
+    if (report_changed) {
+        USB_HID_SendReport(&current_report);
+    }
+}
+
 #ifdef MIDI_USB
 #include "tusb.h"
 

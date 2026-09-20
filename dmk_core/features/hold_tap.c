@@ -10,6 +10,7 @@
 #endif
 
 static HTTracker ht_trackers[MAX_HT_TRACKERS];
+static uint8_t s_active_ht_count = 0;
 
 extern void keyboard_send_key(uint16_t keycode, bool pressed);
 extern void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
@@ -18,9 +19,17 @@ extern void oneshot_on_tap_key(void);
 
 void hold_tap_init(void) {
     memset(ht_trackers, 0, sizeof(ht_trackers));
+    s_active_ht_count = 0;
+}
+
+bool hold_tap_has_active(void) {
+    return s_active_ht_count > 0;
 }
 
 static void activate_hold(HTTracker *tracker) {
+    if (tracker->state == HT_STATE_PRESSED && s_active_ht_count > 0) {
+        s_active_ht_count--;
+    }
     tracker->state = HT_STATE_HOLD;
     uint8_t target = (tracker->keycode >> 8) & 0xFF;
     if (target < 16)
@@ -39,6 +48,9 @@ void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
 }
 
 TickType_t hold_tap_check_timeouts(TickType_t now) {
+    if (s_active_ht_count == 0) {
+        return portMAX_DELAY;
+    }
     TickType_t min_remaining = portMAX_DELAY;
     for (int i = 0; i < MAX_HT_TRACKERS; i++) {
         if (ht_trackers[i].state == HT_STATE_PRESSED) {
@@ -69,6 +81,7 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                                              .press_time = xTaskGetTickCount(),
                                              .timeout_ticks = pdMS_TO_TICKS(ms ? ms : TAPPING_TERM_DEFAULT),
                                              .state = HT_STATE_PRESSED};
+                s_active_ht_count++;
                 break;
             }
         }
@@ -79,6 +92,9 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                 uint8_t kc = ht_trackers[i].keycode & 0xFF;
 
                 if (ht_trackers[i].state == HT_STATE_PRESSED) {
+                    if (s_active_ht_count > 0) {
+                        s_active_ht_count--;
+                    }
                     oneshot_send_lazy_mods();
                     keyboard_send_key(kc, true);
                     keyboard_send_key(kc, false);

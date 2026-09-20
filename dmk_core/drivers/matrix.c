@@ -181,6 +181,14 @@ static void init_pins(const pin_t *pins, size_t count, bool is_output, bool idle
     }
 }
 
+#if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW)
+static hal_gpio_snapshot_t prev_row_snapshots[MATRIX_NUM_DRV];
+static uint8_t active_debounce_per_drv[MATRIX_NUM_DRV] = {0};
+#elif (MATRIX_TYPE == DIRECT)
+static hal_gpio_snapshot_t prev_direct_snapshot;
+static uint8_t active_direct_debounce = 0;
+#endif
+
 /**
  * @brief Initialize matrix GPIO pins and default electrical states (pull-ups/pull-downs).
  */
@@ -188,11 +196,21 @@ void matrix_init(void) {
 #if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW)
     init_pins(MATRIX_DRV_PINS, MATRIX_NUM_DRV, true, MATRIX_DRV_IDL, false);
     init_pins(MATRIX_SENSE_PINS, MATRIX_NUM_SENSE, false, 0, MATRIX_PULL_UP);
+    for (size_t i = 0; i < MATRIX_NUM_DRV; ++i) {
+        prev_row_snapshots[i].p0 = 0xFFFFFFFF;
+        prev_row_snapshots[i].p1 = 0xFFFFFFFF;
+        prev_row_snapshots[i].p2 = 0xFFFFFFFF;
+        active_debounce_per_drv[i] = 1; // Force initial scan
+    }
 #elif (MATRIX_TYPE == MH3SS2)
     init_pins(columns_gpios, CUR_NUM_COLS, true, 0, false);
     init_pins(rows_gpios, CUR_NUM_ROWS, false, 0, false);
 #elif (MATRIX_TYPE == DIRECT)
     init_pins(direct_pins, CUR_NUM_KEYS, false, 0, DIRECT_PULL_UP);
+    prev_direct_snapshot.p0 = 0xFFFFFFFF;
+    prev_direct_snapshot.p1 = 0xFFFFFFFF;
+    prev_direct_snapshot.p2 = 0xFFFFFFFF;
+    active_direct_debounce = 1; // Force initial scan
 #endif
 }
 
@@ -235,14 +253,21 @@ static uint32_t s_active_pressed_count = 0;
  * Immediately dispatches switch state transitions on contact (0ms latency),
  * then locks out physical chatter for DEBOUNCE_TICKS.
  */
-static inline void debounce_filter(uint8_t *counter, size_t key_idx, uint8_t col, uint8_t row, bool raw_state) {
+static inline void debounce_filter(uint8_t *counter, size_t key_idx, uint8_t col, uint8_t row, bool raw_state,
+                                   uint8_t *active_debounce_cnt) {
     if (*counter > 0) {
         (*counter)--;
+        if (*counter == 0 && active_debounce_cnt && *active_debounce_cnt > 0) {
+            (*active_debounce_cnt)--;
+        }
     } else {
         bool debounced = get_debounced_bit(key_idx);
         if (raw_state != debounced) {
             set_debounced_bit(key_idx, raw_state);
             *counter = DEBOUNCE_TICKS;
+            if (active_debounce_cnt) {
+                (*active_debounce_cnt)++;
+            }
             if (raw_state) {
                 s_active_pressed_count++;
             } else if (s_active_pressed_count > 0) {
@@ -258,19 +283,20 @@ static inline void debounce_filter(uint8_t *counter, size_t key_idx, uint8_t col
 #if (MATRIX_TYPE != DIRECT)
 static inline void matrix_update_key(uint8_t col, uint8_t row, bool raw_state) {
     size_t idx = (size_t)col * NUM_ROWS + row;
-    debounce_filter(&debounce_counters[col][row], idx, col, row, raw_state);
+    debounce_filter(&debounce_counters[col][row], idx, col, row, raw_state, NULL);
 }
 #endif
 
 #if (MATRIX_TYPE == DIRECT)
 static inline void matrix_update_direct_key(uint8_t key_idx, bool raw_state) {
-    debounce_filter(&debounce_counters[key_idx], key_idx, key_idx, 0, raw_state);
+    debounce_filter(&debounce_counters[key_idx], key_idx, key_idx, 0, raw_state, &active_direct_debounce);
 }
 #endif
 
 /**
  * @brief Performs a full scan of the keyboard matrix or direct pins.
  * Uses 1-cycle port snapshot to sample all sense pins simultaneously without bus overhead.
+ * Employs early exit: if port snapshot is unchanged and no keys are debouncing, skips column loop.
  */
 void matrix_scan(void) {
 #if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW)
@@ -278,9 +304,25 @@ void matrix_scan(void) {
         hal_gpio_put(MATRIX_DRV_PINS[d], MATRIX_DRV_ACT);
         matrix_settle_delay();
         hal_gpio_snapshot_t snapshot = hal_gpio_snapshot();
+
+        // Early-exit check: if snapshot is unchanged and no keys are debouncing for this drive line
+        if (snapshot.p0 == prev_row_snapshots[d].p0 && snapshot.p1 == prev_row_snapshots[d].p1 &&
+            snapshot.p2 == prev_row_snapshots[d].p2 && active_debounce_per_drv[d] == 0) {
+            hal_gpio_put(MATRIX_DRV_PINS[d], MATRIX_DRV_IDL);
+            continue;
+        }
+
+        prev_row_snapshots[d] = snapshot;
+
         for (uint32_t s = 0; s < MATRIX_NUM_SENSE; ++s) {
             bool raw = MATRIX_READ_SNAPSHOT(snapshot, MATRIX_SENSE_PINS[s]);
-            MATRIX_DISPATCH_KEY(d, s, raw);
+#if (MATRIX_TYPE == ROW2COL)
+            debounce_filter(&debounce_counters[s][d], (size_t)s * NUM_ROWS + d, (uint8_t)s, (uint8_t)d, raw,
+                            &active_debounce_per_drv[d]);
+#elif (MATRIX_TYPE == COL2ROW)
+            debounce_filter(&debounce_counters[d][s], (size_t)d * NUM_ROWS + s, (uint8_t)d, (uint8_t)s, raw,
+                            &active_debounce_per_drv[d]);
+#endif
         }
         hal_gpio_put(MATRIX_DRV_PINS[d], MATRIX_DRV_IDL);
     }
@@ -307,6 +349,11 @@ void matrix_scan(void) {
     }
 #elif (MATRIX_TYPE == DIRECT)
     hal_gpio_snapshot_t snapshot = hal_gpio_snapshot();
+    if (snapshot.p0 == prev_direct_snapshot.p0 && snapshot.p1 == prev_direct_snapshot.p1 &&
+        snapshot.p2 == prev_direct_snapshot.p2 && active_direct_debounce == 0) {
+        return;
+    }
+    prev_direct_snapshot = snapshot;
     for (uint32_t k = 0; k < CUR_NUM_KEYS; ++k) {
         matrix_update_direct_key((uint8_t)k, DIRECT_READ_SNAPSHOT(snapshot, direct_pins[k]));
     }

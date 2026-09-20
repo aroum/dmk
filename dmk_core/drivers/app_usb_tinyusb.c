@@ -3,6 +3,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "task_internal.h"
 #include "tusb.h"
 
 #if defined(MCU_rp2350)
@@ -50,8 +51,8 @@ void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
     }
 }
 
-static void usb_device_task(void *pvParameters) {
-    (void)pvParameters;
+static void usb_device_task(void *param) {
+    (void)param;
     s_usb_task_handle = xTaskGetCurrentTaskHandle();
     while (1) {
         tud_task();
@@ -65,7 +66,7 @@ static void usb_device_task(void *pvParameters) {
         extern void vial_flush_pending_report(void);
         vial_flush_pending_report();
 #endif
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10));
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2));
     }
 }
 
@@ -102,15 +103,18 @@ bool USB_HID_Init(void) {
     NVIC_SetPriority(USB_IRQn, 6);
 #endif
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
-    s_usb_task_handle = xTaskCreateStatic(usb_device_task, "usbd", 512, NULL, 3, s_usb_task_stack, &s_usb_task_tcb);
+    s_usb_task_handle = xTaskCreateStatic(usb_device_task, "usbd", 512, NULL, TASK_PRIO_USBD, s_usb_task_stack, &s_usb_task_tcb);
 #else
-    xTaskCreate(usb_device_task, "usbd", 512, NULL, 3, &s_usb_task_handle);
+    xTaskCreate(usb_device_task, "usbd", 512, NULL, TASK_PRIO_USBD, &s_usb_task_handle);
 #endif
     return (s_usb_task_handle != NULL);
 }
 
 bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
-    int timeout = 50; // 50ms timeout
+    if (!tud_mounted() || tud_suspended()) {
+        return false;
+    }
+    int timeout = 5; // Reduced from 50ms to 5ms to prevent blocking keyboard scanning
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_keyboard_report(1, report->Modifier, (uint8_t *)report->Keycodes)) {
@@ -127,7 +131,10 @@ bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
 }
 
 bool USB_HID_SendConsumerReport(uint16_t usage) {
-    int timeout = 50; // 50ms timeout
+    if (!tud_mounted() || tud_suspended()) {
+        return false;
+    }
+    int timeout = 5; // Reduced from 50ms to 5ms
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_report(2, &usage, sizeof(usage))) {
@@ -144,7 +151,10 @@ bool USB_HID_SendConsumerReport(uint16_t usage) {
 }
 
 bool USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
-    int timeout = 50; // 50ms timeout
+    if (!tud_mounted() || tud_suspended()) {
+        return false;
+    }
+    int timeout = 2; // Reduced from 50ms to 2ms for non-blocking mouse updates
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_mouse_report(3, buttons, x, y, wheel, pan)) {
@@ -162,7 +172,10 @@ bool USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, 
 
 bool USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat,
                                uint32_t buttons) {
-    int timeout = 50; // 50ms timeout
+    if (!tud_mounted() || tud_suspended()) {
+        return false;
+    }
+    int timeout = 5; // Reduced from 50ms to 5ms
     while (timeout > 0) {
         if (tud_hid_ready()) {
             if (tud_hid_gamepad_report(4, x, y, z, rz, rx, ry, hat, buttons)) {

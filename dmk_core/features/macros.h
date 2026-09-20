@@ -19,6 +19,9 @@ static inline TickType_t macros_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
 }
+static inline bool macros_has_active(void) {
+    return false;
+}
 static inline void macros_run_layer_triggers(uint8_t new_layer) {
     (void)new_layer;
 }
@@ -28,6 +31,9 @@ bool macros_process_key(uint32_t key, bool pressed);
 
 // Periodic check for active non-blocking macro playback delay steps
 TickType_t macros_check_timeouts(TickType_t now);
+
+// Returns true if a macro is currently playing back
+bool macros_has_active(void);
 
 // Execute all macros whose layer_trigger matches the newly activated layer.
 // Called automatically by the layer subsystem on every layer change.

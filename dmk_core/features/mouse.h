@@ -37,6 +37,7 @@ bool mouse_process_key(uint32_t key, bool pressed);
  * @return Next deadline timeout in ticks (or portMAX_DELAY if no mouse motion).
  */
 TickType_t mouse_check_timeouts(TickType_t now);
+bool mouse_has_active(void);
 
 /* -------------------------------------------------------------------------- */
 /* Direct API for Trackballs, Optical Sensors (PMW3360/3389), Encoders, Modules */
@@ -61,6 +62,9 @@ static inline bool mouse_process_key(uint32_t key, bool pressed) {
 static inline TickType_t mouse_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
+}
+static inline bool mouse_has_active(void) {
+    return false;
 }
 static inline void mouse_move(int8_t dx, int8_t dy) {
     (void)dx;

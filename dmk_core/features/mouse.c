@@ -260,8 +260,12 @@ static int16_t calculate_speed(uint32_t elapsed_ms) {
     return speed;
 }
 
+bool mouse_has_active(void) {
+    return (s_mouse.move_keys != 0 || s_mouse.scroll_keys != 0);
+}
+
 TickType_t mouse_check_timeouts(TickType_t now) {
-    if (s_mouse.move_keys == 0 && s_mouse.scroll_keys == 0) {
+    if (!mouse_has_active()) {
         return portMAX_DELAY;
     }
 

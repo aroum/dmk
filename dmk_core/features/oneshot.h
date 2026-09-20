@@ -44,6 +44,9 @@ static inline TickType_t oneshot_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
 }
+static inline bool oneshot_has_active(void) {
+    return false;
+}
 #else
 // Initialize the One-Shot subsystem
 void oneshot_init(void);
@@ -66,6 +69,9 @@ void oneshot_on_tap_key(void);
 
 // Check timeouts for all active One-Shot keys; returns ticks until next deadline or portMAX_DELAY
 TickType_t oneshot_check_timeouts(TickType_t now);
+
+// Returns true if there are active One-Shot keys pending release/timeout
+bool oneshot_has_active(void);
 #endif
 
 #ifdef __cplusplus

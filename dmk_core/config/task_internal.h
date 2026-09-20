@@ -12,6 +12,7 @@
 // RGB runs as a background task.
 #define TASK_PRIO_RGB 1
 #define TASK_PRIO_KEYBOARD 2
+#define TASK_PRIO_USBD 2
 #define TASK_PRIO_MATRIX 3
 
 // Tailored task stack sizes (in words, 1 word = 4 bytes on 32-bit Cortex-M)

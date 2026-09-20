@@ -40,13 +40,17 @@ static void macros_play(const Macro *macro) {
     s_delay_deadline = 0;
 }
 
+bool macros_has_active(void) {
+    return s_active_macro != NULL;
+}
+
 /**
  * @brief Periodic service of macro playback steps and delays.
  * @param now Current FreeRTOS tick count.
  * @return Ticks until next required macro execution, or portMAX_DELAY if idle.
  */
 TickType_t macros_check_timeouts(TickType_t now) {
-    if (!s_active_macro) {
+    if (!macros_has_active()) {
         return portMAX_DELAY;
     }
 

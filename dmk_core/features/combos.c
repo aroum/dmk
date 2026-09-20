@@ -80,7 +80,18 @@ void chords_flush(void) {
     s_keys_count = 0;
 }
 
+bool combos_has_active(void) {
+#if defined(CHORDS_COUNT) || defined(VIAL)
+    return s_keys_count > 0;
+#else
+    return false;
+#endif
+}
+
 TickType_t combos_check_timeouts(TickType_t now) {
+    if (!combos_has_active()) {
+        return portMAX_DELAY;
+    }
     TickType_t min_remaining = portMAX_DELAY;
 #if defined(CHORDS_COUNT) || defined(VIAL)
     if (s_keys_count > 0) {
@@ -193,6 +204,39 @@ static bool process_vial_release(uint8_t row, uint8_t col) {
 }
 #endif
 
+static bool is_key_in_any_combo(uint8_t row, uint8_t col, uint16_t via_kc) {
+#ifdef VIAL
+    if (via_kc != 0) {
+        for (int i = 0; i < VIAL_COMBO_ENTRIES; i++) {
+            vial_combo_entry_t *c = &vial_combos[i];
+            if (c->output != 0) {
+                for (int k = 0; k < 4; k++) {
+                    if (c->input[k] == via_kc) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+#endif
+#ifdef CHORDS_COUNT
+    uint8_t cur_layer = layers_get_active();
+    for (uint8_t c = 0; c < CHORDS_COUNT; ++c) {
+        const Chord *chord = &my_chords[c];
+        for (uint8_t k = 0; k < chord->key_count; ++k) {
+            if (chord->keys[k].row == row && chord->keys[k].col == col &&
+                chord->keys[k].layer == cur_layer) {
+                return true;
+            }
+        }
+    }
+#endif
+    (void)row;
+    (void)col;
+    (void)via_kc;
+    return false;
+}
+
 bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now) {
     if (!pressed) {
 #ifdef VIAL
@@ -236,14 +280,24 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
     }
 
     if (pressed) {
-        if (s_keys_count < MAX_BUFFERED_KEYS) {
-            uint16_t via_kc = 0;
+        uint16_t via_kc = 0;
 #ifdef VIAL
-            int16_t ki = keyboard_get_flat_key_index(row, col);
-            if (ki >= 0) {
-                via_kc = to_via_keycode(dynamic_keymap[0][ki]);
-            }
+        int16_t ki = keyboard_get_flat_key_index(row, col);
+        if (ki >= 0) {
+            via_kc = to_via_keycode(dynamic_keymap[0][ki]);
+        }
 #endif
+
+        // Zero-delay fast-path: if this key does not participate in any active combo or chord,
+        // bypass combo buffering completely and send immediately to USB (0ms latency).
+        if (!is_key_in_any_combo(row, col, via_kc)) {
+            if (s_keys_count > 0) {
+                chords_flush();
+            }
+            return false;
+        }
+
+        if (s_keys_count < MAX_BUFFERED_KEYS) {
             s_keys[s_keys_count++] = (combo_key_t){.row = row,
                                                    .col = col,
                                                    .layer = layers_get_active(),

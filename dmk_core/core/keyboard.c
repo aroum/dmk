@@ -102,11 +102,7 @@ void keyboard_send_modifiers(uint8_t mod_mask, bool pressed) {
         mod_mask = 1 << (mod_mask - 0xE0);
     }
 
-    for (uint8_t i = 0; i < 8; i++) {
-        if (mod_mask & (1 << i)) {
-            keyboard_send_key(0xE0 + i, pressed);
-        }
-    }
+    usb_process_modifiers(mod_mask, pressed);
 }
 
 /**
@@ -214,13 +210,7 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
     if ((key & 0xFF000000) == DMK_MK) {
         uint8_t mod_mask = (uint8_t)((key >> 8) & 0xFF);
         uint8_t kc = (uint8_t)(key & 0xFF);
-        if (pressed) {
-            keyboard_send_modifiers(mod_mask, true);
-            keyboard_send_key(kc, true);
-        } else {
-            keyboard_send_key(kc, false);
-            keyboard_send_modifiers(mod_mask, false);
-        }
+        usb_process_key_with_modifiers(mod_mask, kc, pressed);
         return;
     }
 
@@ -269,15 +259,15 @@ void keyboard_check(void) {
     // 1. Process active timeouts and determine earliest wakeup deadline
     TickType_t next_deadline = portMAX_DELAY;
     TickType_t r;
-    if ((r = hold_tap_check_timeouts(now)) < next_deadline)
+    if (hold_tap_has_active() && (r = hold_tap_check_timeouts(now)) < next_deadline)
         next_deadline = r;
-    if ((r = oneshot_check_timeouts(now)) < next_deadline)
+    if (oneshot_has_active() && (r = oneshot_check_timeouts(now)) < next_deadline)
         next_deadline = r;
-    if ((r = combos_check_timeouts(now)) < next_deadline)
+    if (combos_has_active() && (r = combos_check_timeouts(now)) < next_deadline)
         next_deadline = r;
-    if ((r = mouse_check_timeouts(now)) < next_deadline)
+    if (mouse_has_active() && (r = mouse_check_timeouts(now)) < next_deadline)
         next_deadline = r;
-    if ((r = macros_check_timeouts(now)) < next_deadline)
+    if (macros_has_active() && (r = macros_check_timeouts(now)) < next_deadline)
         next_deadline = r;
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
     if ((r = encoder_check_timeouts(now)) < next_deadline)
