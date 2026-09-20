@@ -1454,4 +1454,26 @@ test('Smart Pin Autocomplete & Suggestion Dropdown', () => {
     );
 });
 
+test('Codegen: Hold-Tap Keycodes in Keymap', () => {
+    const sandbox = createSandbox();
+    sandbox.init();
+
+    sandbox.configState.kbName = 'HT_Test';
+    sandbox.configState.mcu = 'rp2040';
+    sandbox.configState.rowPins = ['GPIO0'];
+    sandbox.configState.colPins = ['GPIO1'];
+    sandbox.configState.activeKeys = [[true]];
+    sandbox.configState.keymaps = { DEF: ['HT(K_LCTL, K_A)'] };
+
+    sandbox.document.getElementById('kbName').value = 'HT_Test';
+    sandbox.document.getElementById('mcuSelect').value = 'rp2040';
+    sandbox.document.getElementById('rowPins').value = 'GPIO0';
+    sandbox.document.getElementById('colPins').value = 'GPIO1';
+
+    sandbox.generateConfigCode();
+    const configH = sandbox.document.getElementById('configCodeOutput').textContent;
+    assert.ok(configH.includes('HT(K_LCTL, K_A)'), 'Hold-Tap keycode must be included in generated keymap');
+});
+
+
 
