@@ -443,6 +443,12 @@ function(build_keyboard KEYBOARD_NAME)
     # Note: Keyboard configuration and keymaps are fully defined in config.h
     
     target_link_libraries(${TARGET_NAME} PRIVATE ${PLATFORM_LIBS})
+    target_link_options(${TARGET_NAME} PRIVATE -Wl,--gc-sections)
+
+    if(MCU STREQUAL "rp2040")
+        target_compile_options(${TARGET_NAME} PRIVATE -flto)
+        target_link_options(${TARGET_NAME} PRIVATE -flto -mcpu=cortex-m0plus -mthumb -Wl,-u,__wrap_putchar -Wl,-u,__wrap_puts)
+    endif()
     
     # Add compile definitions
     target_compile_definitions(${TARGET_NAME} PRIVATE "MCU_${MCU}")

@@ -106,6 +106,7 @@ set(PLATFORM_SRC
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/class/hid/hid_device.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/portable/bmcu/dcd_bmcu.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/bmcu/family.c"
+    "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/board.c"
 )
 
 # Platform libraries

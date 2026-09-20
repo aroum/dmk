@@ -169,6 +169,16 @@
 */
 #endif
 
+#ifndef traceISR_ENTER
+#define traceISR_ENTER()
+#endif
+#ifndef traceISR_EXIT
+#define traceISR_EXIT()
+#endif
+#ifndef traceISR_EXIT_TO_SCHEDULER
+#define traceISR_EXIT_TO_SCHEDULER()
+#endif
+
 #if FREE_RTOS_KERNEL_SMP // set by the RP2040 SMP port of FreeRTOS
 /* SMP port only */
 #define configNUM_CORES 2

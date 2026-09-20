@@ -18,7 +18,7 @@
 #elif defined(MCU_nrf52840)
 #define SERIAL_PIN P0_00
 #elif defined(MCU_baikal)
-#define SERIAL_PIN GPIO0
+#define SERIAL_PIN P0_00
 #endif
 
 /* --- Matrix Settings --- */
@@ -37,8 +37,8 @@
 #define ROW_PINS {P0_00, P0_01, P0_02, P0_03}
 #define COL_PINS {P0_04, P0_05, P0_06, P0_07, P0_08, P0_09}
 #elif defined(MCU_baikal)
-#define ROW_PINS {GPIO0, GPIO1, GPIO2, GPIO3}
-#define COL_PINS {GPIO4, GPIO5, GPIO6, GPIO7, GPIO8, GPIO9}
+#define ROW_PINS {P0_00, P0_01, P0_02, P0_03}
+#define COL_PINS {P0_04, P0_05, P0_06, P0_07, P0_08, P0_09}
 #endif
 
 /* --- RGB Backlight --- */
@@ -49,7 +49,7 @@
 #elif defined(MCU_nrf52840)
 #define RGB_PIN P0_13
 #elif defined(MCU_baikal)
-#define RGB_PIN GPIO25
+#define RGB_PIN P1_09
 #endif
 
 /* --- Keymap Matrix --- */

@@ -41,7 +41,12 @@ if(DEFINE)
         endif()
     endforeach()
 endif()
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "MinSizeRel" CACHE STRING "Choose the type of build" FORCE)
+endif()
+
 add_compile_definitions("MCU_${MCU}")
+add_compile_options(-Os -ffunction-sections -fdata-sections)
 
 
 
