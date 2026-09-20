@@ -209,10 +209,20 @@ function createSandbox() {
     runFile(PRESETS_JS_PATH);
     runFile(CONFIG_PARSER_JS_PATH);
 
-    const wizardHtml = fs.readFileSync(WIZARD_HTML_PATH, 'utf8');
-    const scriptMatch = wizardHtml.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
-    if (scriptMatch) {
-        let cleanScript = scriptMatch[1]
+    const WIZARD_APP_JS_PATH = path.join(ROOT_DIR, 'editor', 'js', 'wizard_app.js');
+    let wizardScriptContent = '';
+    if (fs.existsSync(WIZARD_APP_JS_PATH)) {
+        wizardScriptContent = fs.readFileSync(WIZARD_APP_JS_PATH, 'utf8');
+    } else {
+        const wizardHtml = fs.readFileSync(WIZARD_HTML_PATH, 'utf8');
+        const scriptMatch = wizardHtml.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
+        if (scriptMatch) {
+            wizardScriptContent = scriptMatch[1];
+        }
+    }
+
+    if (wizardScriptContent) {
+        let cleanScript = wizardScriptContent
             .replace(/initAllKeycodesList\(\);/g, '// initAllKeycodesList();')
             .replace(/renderStep1PresetButtons\(\);/g, '// renderStep1PresetButtons();')
             .replace(/switchLanguage\([^)]*\);/g, '// switchLanguage();');
