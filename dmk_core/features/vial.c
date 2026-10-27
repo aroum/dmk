@@ -23,11 +23,8 @@ static const pin_t _enc_a_tmp[] = ENCODER_PINS_A;
     (0x4D4B5649u ^ ((uint32_t)(NUM_ROWS) << 24) ^ ((uint32_t)(NUM_COLS) << 16) ^ ((uint32_t)(NUM_KEYS) << 8) ^         \
      _NUM_ENC ^ 0xFEEDC00Lu)
 
-#define DYNAMIC_KEYMAP_MACRO_COUNT 16
-#define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 2048
-
-uint8_t dynamic_macro_buffer[DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE];
-vial_combo_entry_t vial_combos[VIAL_COMBO_ENTRIES];
+// Single unified storage buffer in RAM (eliminates duplicate 3.8KB staging buffer)
+vial_storage_t vial_storage __attribute__((aligned(4)));
 
 #ifdef MCU_milandr
 #include "MDR32FxQI_eeprom.h"
@@ -35,10 +32,6 @@ vial_combo_entry_t vial_combos[VIAL_COMBO_ENTRIES];
 
 #define EEPROM_STORAGE_ADDR 0x0801F000
 #endif
-
-// Dynamic keymap array in RAM, initialized from static keymap on startup
-uint32_t dynamic_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][NUM_KEYS];
-uint32_t dynamic_encoder_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][4][2];
 
 // Declarations of static layout structures and counts from keyboard.c/config.h
 extern const uint32_t keymap[][NUM_KEYS];
@@ -235,23 +228,13 @@ uint32_t from_via_keycode(uint16_t via_key) {
     return K_NULL;
 }
 
-#pragma pack(push, 1)
-typedef struct {
-    uint32_t magic;
-    uint32_t keymap[DYNAMIC_KEYMAP_MAX_LAYERS][NUM_KEYS];
-    uint32_t encoder_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][4][2];
-    uint8_t rgb_cfg[8];
-    uint8_t macro_buffer[DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE];
-    vial_combo_entry_t combos[VIAL_COMBO_ENTRIES];
-} vial_storage_data_t;
-#pragma pack(pop)
-
-typedef union {
-    vial_storage_data_t data;
-    uint8_t padding[((sizeof(vial_storage_data_t) + 255) / 256) * 256];
-} vial_storage_t;
+#define VIAL_EEPROM_SAVE_DELAY_MS 500
+static volatile bool s_eeprom_dirty = false;
+static volatile TickType_t s_eeprom_dirty_time = 0;
 
 static void vial_storage_init_default(void) {
+    memset(&vial_storage, 0, sizeof(vial_storage));
+    vial_storage.data.magic = VIAL_EEPROM_MAGIC;
     size_t layers = keymap_layers > DYNAMIC_KEYMAP_MAX_LAYERS ? DYNAMIC_KEYMAP_MAX_LAYERS : keymap_layers;
     for (size_t l = 0; l < layers; l++) {
         for (size_t k = 0; k < NUM_KEYS; k++) {
@@ -270,52 +253,40 @@ static void vial_storage_init_default(void) {
             }
         }
     }
-    memset(dynamic_macro_buffer, 0, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-    memset(vial_combos, 0, sizeof(vial_combos));
-}
-
-static void vial_storage_unpack(const vial_storage_data_t *src) {
-    memcpy(dynamic_keymap, src->keymap, sizeof(dynamic_keymap));
-    memcpy(dynamic_encoder_keymap, src->encoder_keymap, sizeof(dynamic_encoder_keymap));
-    rgb_set_config(src->rgb_cfg);
-    memcpy(dynamic_macro_buffer, src->macro_buffer, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-    memcpy(vial_combos, src->combos, sizeof(vial_combos));
-}
-
-static void vial_storage_pack(vial_storage_data_t *dst) {
-    dst->magic = VIAL_EEPROM_MAGIC;
-    memcpy(dst->keymap, dynamic_keymap, sizeof(dynamic_keymap));
-    memcpy(dst->encoder_keymap, dynamic_encoder_keymap, sizeof(dynamic_encoder_keymap));
-    rgb_get_config(dst->rgb_cfg);
-    memcpy(dst->macro_buffer, dynamic_macro_buffer, DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE);
-    memcpy(dst->combos, vial_combos, sizeof(vial_combos));
 }
 
 #ifdef MCU_milandr
 static void vial_eeprom_load(void) {
     const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)EEPROM_STORAGE_ADDR;
     if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
-        vial_storage_unpack(flash_storage);
+        memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
+        rgb_set_config(vial_storage.data.rgb_cfg);
     } else {
         vial_storage_init_default();
     }
 }
 
-static __RAMFUNC void vial_eeprom_save(void) {
-    static vial_storage_t temp_buf;
-    vial_storage_pack(&temp_buf.data);
-
+static __RAMFUNC void vial_eeprom_write_flash(void) {
     RST_CLK_PCLKcmd(RST_CLK_PCLK_EEPROM, ENABLE);
     EEPROM_SetLatency(EEPROM_Latency_3);
     __disable_irq();
 
     EEPROM_ErasePage(EEPROM_STORAGE_ADDR, EEPROM_Main_Bank_Select);
-    const uint32_t *src_words = (const uint32_t *)&temp_buf.data;
+    const uint32_t *src_words = (const uint32_t *)&vial_storage.data;
     for (size_t i = 0; i < sizeof(vial_storage_data_t) / 4; i++) {
         EEPROM_ProgramWord(EEPROM_STORAGE_ADDR + (i * 4), EEPROM_Main_Bank_Select, src_words[i]);
     }
     EEPROM_UpdateDCache();
     __enable_irq();
+}
+
+static void vial_eeprom_save_now(void) {
+    vial_storage.data.magic = VIAL_EEPROM_MAGIC;
+    rgb_get_config(vial_storage.data.rgb_cfg);
+    if (memcmp((const void *)EEPROM_STORAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
+        return;
+    }
+    vial_eeprom_write_flash();
 }
 #endif
 
@@ -328,20 +299,23 @@ static __RAMFUNC void vial_eeprom_save(void) {
 static void vial_eeprom_load(void) {
     const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
     if (flash_storage->data.magic == VIAL_EEPROM_MAGIC) {
-        vial_storage_unpack(&flash_storage->data);
+        memcpy(&vial_storage.data, &flash_storage->data, sizeof(vial_storage_data_t));
+        rgb_set_config(vial_storage.data.rgb_cfg);
     } else {
         vial_storage_init_default();
     }
 }
 
-static void vial_eeprom_save(void) {
-    static vial_storage_t temp_buf;
-    memset(&temp_buf, 0, sizeof(temp_buf));
-    vial_storage_pack(&temp_buf.data);
-
+static void vial_eeprom_save_now(void) {
+    vial_storage.data.magic = VIAL_EEPROM_MAGIC;
+    rgb_get_config(vial_storage.data.rgb_cfg);
+    const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
+    if (memcmp(&flash_storage->data, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
+        return;
+    }
     uint32_t ints = save_and_disable_interrupts();
     flash_range_erase(FLASH_STORAGE_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_program(FLASH_STORAGE_OFFSET, (const uint8_t *)&temp_buf, sizeof(temp_buf));
+    flash_range_program(FLASH_STORAGE_OFFSET, (const uint8_t *)&vial_storage, sizeof(vial_storage));
     restore_interrupts(ints);
 }
 #endif
@@ -350,10 +324,26 @@ static void vial_eeprom_save(void) {
 static inline void vial_eeprom_load(void) {
     vial_storage_init_default();
 }
-static inline void vial_eeprom_save(void) {}
+static inline void vial_eeprom_save_now(void) {}
 #endif
 
+static void vial_eeprom_save(void) {
+    s_eeprom_dirty_time = xTaskGetTickCount();
+    s_eeprom_dirty = true;
+}
+
+void vial_eeprom_task(void) {
+    if (s_eeprom_dirty) {
+        TickType_t now = xTaskGetTickCount();
+        if ((now - s_eeprom_dirty_time) >= pdMS_TO_TICKS(VIAL_EEPROM_SAVE_DELAY_MS)) {
+            s_eeprom_dirty = false;
+            vial_eeprom_save_now();
+        }
+    }
+}
+
 void vial_init(void) {
+    s_eeprom_dirty = false;
     vial_eeprom_load();
 }
 
@@ -411,8 +401,10 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
                 for (uint8_t c = 0; c < NUM_COLS; c++) {
                     if (matrix_is_pressed(r, c)) {
                         uint8_t byte_idx = row_size - 1 - (c / 8);
-                        uint8_t bit_idx = c % 8;
-                        response[2 + (r * row_size) + byte_idx] |= (1 << bit_idx);
+                        uint8_t offset = 2 + (r * row_size) + byte_idx;
+                        if (offset < 32) {
+                            response[offset] |= (uint8_t)(1U << (c % 8));
+                        }
                     }
                 }
             }
@@ -467,6 +459,9 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     case VIA_DYNAMIC_KEYMAP_GET_BUFFER: {
         uint16_t offset = ((uint16_t)request[1] << 8) | request[2];
         uint8_t size = request[3];
+        if (size > 28) {
+            size = 28;
+        }
         uint16_t start = offset / 2;
         uint8_t count = size / 2;
         for (uint8_t i = 0; i < count; i++) {
@@ -486,6 +481,9 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     case VIA_DYNAMIC_KEYMAP_SET_BUFFER: {
         uint16_t offset = ((uint16_t)request[1] << 8) | request[2];
         uint8_t size = request[3];
+        if (size > 28) {
+            size = 28;
+        }
         uint16_t start = offset / 2;
         uint8_t count = size / 2;
         for (uint8_t i = 0; i < count; i++) {
@@ -531,30 +529,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     }
 
     case VIA_EEPROM_RESET: {
-        size_t layers = keymap_layers;
-        if (layers > DYNAMIC_KEYMAP_MAX_LAYERS) {
-            layers = DYNAMIC_KEYMAP_MAX_LAYERS;
-        }
-        for (size_t l = 0; l < layers; l++) {
-            for (size_t k = 0; k < NUM_KEYS; k++) {
-                dynamic_keymap[l][k] = keymap[l][k];
-            }
-        }
-        for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
-            for (size_t e = 0; e < 4; e++) {
-                for (size_t d = 0; d < 2; d++) {
-#if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
-                    if (l < layers && e < encoder_get_count()) {
-                        dynamic_encoder_keymap[l][e][d] = encoder_keymap_get_static(l, e, d);
-                    } else {
-                        dynamic_encoder_keymap[l][e][d] = K_TRNS;
-                    }
-#else
-                    dynamic_encoder_keymap[l][e][d] = K_TRNS;
-#endif
-                }
-            }
-        }
+        vial_storage_init_default();
         vial_eeprom_save();
         break;
     }
@@ -674,7 +649,10 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     case VIA_DYNAMIC_KEYMAP_MACRO_GET_BUFFER: {
         uint16_t offset = ((uint16_t)request[1] << 8) | request[2];
         uint8_t size = request[3];
-        if (offset + size <= DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE) {
+        if (size > 28) {
+            size = 28;
+        }
+        if ((uint32_t)offset + size <= DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE) {
             memcpy(&response[4], &dynamic_macro_buffer[offset], size);
         }
         break;
@@ -683,7 +661,10 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     case VIA_DYNAMIC_KEYMAP_MACRO_SET_BUFFER: {
         uint16_t offset = ((uint16_t)request[1] << 8) | request[2];
         uint8_t size = request[3];
-        if (offset + size <= DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE) {
+        if (size > 28) {
+            size = 28;
+        }
+        if ((uint32_t)offset + size <= DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE) {
             memcpy(&dynamic_macro_buffer[offset], &request[4], size);
             vial_eeprom_save();
         }
@@ -867,27 +848,157 @@ static void send_event(uint16_t kc, bool pressed) {
     keyboard_send_key(kc, pressed);
 }
 
-static void tap_key(uint16_t kc) {
-    send_event(kc, true);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    send_event(kc, false);
-    vTaskDelay(pdMS_TO_TICKS(10));
+typedef struct {
+    uint16_t kc;
+    uint8_t pressed;
+    uint8_t delay_ms;
+} vial_macro_uop_t;
+
+static uint16_t s_macro_offset = DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE;
+static TickType_t s_macro_deadline = 0;
+static vial_macro_uop_t s_uops[4];
+static uint8_t s_uop_head = 0;
+static uint8_t s_uop_count = 0;
+
+static void push_uop(uint16_t kc, uint8_t pressed, uint8_t delay_ms) {
+    if (s_uop_count < 4) {
+        s_uops[s_uop_count++] = (vial_macro_uop_t){.kc = kc, .pressed = pressed, .delay_ms = delay_ms};
+    }
 }
 
-static void send_ascii(char c) {
+static void queue_tap_key(uint16_t kc) {
+    push_uop(kc, 1, 10);
+    push_uop(kc, 0, 10);
+}
+
+static void queue_ascii(char c) {
     bool shift = false;
     uint16_t kc = ascii_to_keycode(c, &shift);
     if (kc) {
         if (shift) {
-            send_event(0xE1, true); // Left Shift
-            vTaskDelay(pdMS_TO_TICKS(5));
+            push_uop(0xE1, 1, 5);
         }
-        tap_key(kc);
+        queue_tap_key(kc);
         if (shift) {
-            send_event(0xE1, false);
-            vTaskDelay(pdMS_TO_TICKS(5));
+            push_uop(0xE1, 0, 5);
         }
     }
+}
+
+bool vial_macro_has_active(void) {
+    return (s_uop_head < s_uop_count) ||
+           (s_macro_offset < DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE && dynamic_macro_buffer[s_macro_offset] != 0) ||
+           (s_macro_deadline != 0);
+}
+
+TickType_t vial_macro_check_timeouts(TickType_t now) {
+    if (s_macro_deadline != 0) {
+        if ((int32_t)(now - s_macro_deadline) < 0) {
+            return (s_macro_deadline - now);
+        }
+        s_macro_deadline = 0;
+    }
+
+    const uint16_t end = DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE;
+    while (s_uop_head < s_uop_count || (s_macro_offset < end && dynamic_macro_buffer[s_macro_offset] != 0)) {
+        if (s_uop_head < s_uop_count) {
+            vial_macro_uop_t uop = s_uops[s_uop_head++];
+            if (s_uop_head >= s_uop_count) {
+                s_uop_head = 0;
+                s_uop_count = 0;
+            }
+            send_event(uop.kc, uop.pressed != 0);
+            if (uop.delay_ms > 0) {
+                TickType_t ticks = pdMS_TO_TICKS(uop.delay_ms);
+                if (ticks == 0) {
+                    ticks = 1;
+                }
+                s_macro_deadline = now + ticks;
+                return ticks;
+            }
+            continue;
+        }
+
+        uint8_t c = dynamic_macro_buffer[s_macro_offset++];
+        if (c == 0) {
+            s_macro_offset = end;
+            break;
+        }
+
+        if (c == 1) { // SS_QMK_PREFIX
+            if (s_macro_offset >= end) {
+                s_macro_offset = end;
+                break;
+            }
+            uint8_t action = dynamic_macro_buffer[s_macro_offset++];
+            if (action == 0) {
+                s_macro_offset = end;
+                break;
+            }
+
+            if (action == 1 || action == 2 || action == 3) { // SS_TAP_CODE, SS_DOWN_CODE, SS_UP_CODE
+                if (s_macro_offset >= end) {
+                    s_macro_offset = end;
+                    break;
+                }
+                uint8_t kc = dynamic_macro_buffer[s_macro_offset++];
+                if (kc == 0) {
+                    s_macro_offset = end;
+                    break;
+                }
+                if (action == 1) {
+                    queue_tap_key(kc);
+                } else if (action == 2) {
+                    send_event(kc, true);
+                } else {
+                    send_event(kc, false);
+                }
+            } else if (action == 5 || action == 6 || action == 7) { // VIAL_MACRO_EXT_TAP, DOWN, UP
+                if (s_macro_offset + 1 >= end) {
+                    s_macro_offset = end;
+                    break;
+                }
+                uint16_t kc = dynamic_macro_buffer[s_macro_offset] |
+                              ((uint16_t)dynamic_macro_buffer[s_macro_offset + 1] << 8);
+                s_macro_offset += 2;
+                if (kc > 0xFF00) {
+                    kc = (kc & 0xFF) << 8;
+                }
+                if (action == 5) {
+                    queue_tap_key(kc);
+                } else if (action == 6) {
+                    send_event(kc, true);
+                } else {
+                    send_event(kc, false);
+                }
+            } else if (action == 4) { // SS_DELAY_CODE
+                if (s_macro_offset + 1 >= end) {
+                    s_macro_offset = end;
+                    break;
+                }
+                uint8_t d0 = dynamic_macro_buffer[s_macro_offset++];
+                uint8_t d1 = dynamic_macro_buffer[s_macro_offset++];
+                if (d0 == 0 || d1 == 0) {
+                    s_macro_offset = end;
+                    break;
+                }
+                uint32_t ms = (uint32_t)(d0 - 1) + (uint32_t)(d1 - 1) * 255u;
+                if (ms > 0) {
+                    TickType_t ticks = pdMS_TO_TICKS(ms);
+                    if (ticks == 0) {
+                        ticks = 1;
+                    }
+                    s_macro_deadline = now + ticks;
+                    return ticks;
+                }
+            }
+        } else {
+            queue_ascii((char)c);
+        }
+    }
+
+    s_macro_offset = end;
+    return portMAX_DELAY;
 }
 
 void vial_macro_send(uint8_t id) {
@@ -895,10 +1006,21 @@ void vial_macro_send(uint8_t id) {
         return;
     }
 
-    uint32_t offset = 0;
-    uint32_t end = DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE;
+    while (s_uop_head < s_uop_count) {
+        vial_macro_uop_t uop = s_uops[s_uop_head++];
+        if (!uop.pressed) {
+            send_event(uop.kc, false);
+        }
+    }
+    s_uop_head = 0;
+    s_uop_count = 0;
+    s_macro_deadline = 0;
+
+    uint16_t offset = 0;
+    const uint16_t end = DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE;
     while (id > 0) {
         if (offset >= end) {
+            s_macro_offset = end;
             return;
         }
         if (dynamic_macro_buffer[offset] == 0) {
@@ -908,63 +1030,12 @@ void vial_macro_send(uint8_t id) {
     }
 
     if (offset >= end || dynamic_macro_buffer[offset] == 0) {
+        s_macro_offset = end;
         return;
     }
 
-    while (offset < end) {
-        uint8_t c = dynamic_macro_buffer[offset++];
-        if (c == 0) {
-            break;
-        }
-
-        if (c == 1) { // SS_QMK_PREFIX
-            if (offset >= end)
-                break;
-            uint8_t action = dynamic_macro_buffer[offset++];
-            if (action == 0)
-                break;
-
-            if (action == 1 || action == 2 || action == 3) { // SS_TAP_CODE, SS_DOWN_CODE, SS_UP_CODE
-                if (offset >= end)
-                    break;
-                uint8_t kc = dynamic_macro_buffer[offset++];
-                if (kc == 0)
-                    break;
-                if (action == 1)
-                    tap_key(kc);
-                else if (action == 2)
-                    send_event(kc, true);
-                else if (action == 3)
-                    send_event(kc, false);
-            } else if (action == 5 || action == 6 ||
-                       action == 7) { // VIAL_MACRO_EXT_TAP, VIAL_MACRO_EXT_DOWN, VIAL_MACRO_EXT_UP
-                if (offset + 1 >= end)
-                    break;
-                uint16_t kc = dynamic_macro_buffer[offset] | ((uint16_t)dynamic_macro_buffer[offset + 1] << 8);
-                offset += 2;
-                if (kc > 0xFF00) {
-                    kc = (kc & 0xFF) << 8;
-                }
-                if (action == 5)
-                    tap_key(kc);
-                else if (action == 6)
-                    send_event(kc, true);
-                else if (action == 7)
-                    send_event(kc, false);
-            } else if (action == 4) { // SS_DELAY_CODE
-                if (offset + 1 >= end)
-                    break;
-                uint8_t d0 = dynamic_macro_buffer[offset++];
-                uint8_t d1 = dynamic_macro_buffer[offset++];
-                if (d0 == 0 || d1 == 0)
-                    break;
-                uint32_t ms = (d0 - 1) + (d1 - 1) * 255;
-                vTaskDelay(pdMS_TO_TICKS(ms));
-            }
-        } else {
-            send_ascii((char)c);
-        }
-    }
+    s_macro_offset = offset;
+    vial_macro_check_timeouts(xTaskGetTickCount());
 }
 
 #endif // VIAL

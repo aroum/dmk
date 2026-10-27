@@ -15,7 +15,6 @@ extern void keyboard_send_key(uint16_t keycode, bool pressed);
 #ifndef VIAL
 extern const Macro keyboard_macros[];
 extern const uint8_t keyboard_macros_count;
-#endif
 
 static const Macro *s_active_macro = NULL;
 static uint8_t s_active_step = 0;
@@ -39,9 +38,14 @@ static void macros_play(const Macro *macro) {
     s_active_step = 0;
     s_delay_deadline = 0;
 }
+#endif
 
 bool macros_has_active(void) {
+#ifdef VIAL
+    return vial_macro_has_active();
+#else
     return s_active_macro != NULL;
+#endif
 }
 
 /**
@@ -50,6 +54,9 @@ bool macros_has_active(void) {
  * @return Ticks until next required macro execution, or portMAX_DELAY if idle.
  */
 TickType_t macros_check_timeouts(TickType_t now) {
+#ifdef VIAL
+    return vial_macro_check_timeouts(now);
+#else
     if (!macros_has_active()) {
         return portMAX_DELAY;
     }
@@ -77,6 +84,7 @@ TickType_t macros_check_timeouts(TickType_t now) {
 
     s_active_macro = NULL;
     return portMAX_DELAY;
+#endif
 }
 
 /**
