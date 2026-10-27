@@ -43,6 +43,14 @@ void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
 void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed);
 
 /**
+ * @brief Record a resolved keycode for a pressed physical switch so release uses the same keycode even if layers change.
+ * @param row Matrix row index
+ * @param col Matrix col index
+ * @param key Resolved 32-bit keycode
+ */
+void keyboard_record_pressed_key(uint8_t row, uint8_t col, uint32_t key);
+
+/**
  * @brief Reset MCU and jump to platform bootloader.
  */
 void bootloader_jump(void);

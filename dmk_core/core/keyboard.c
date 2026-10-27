@@ -58,7 +58,7 @@ typedef struct {
 #define MAX_ACTIVE_KEYS 8
 static active_key_t s_active_keys[MAX_ACTIVE_KEYS];
 
-static void record_pressed_key(uint8_t row, uint8_t col, uint32_t key) {
+void keyboard_record_pressed_key(uint8_t row, uint8_t col, uint32_t key) {
     for (uint8_t i = 0; i < MAX_ACTIVE_KEYS; i++) {
         if (s_active_keys[i].key == 0) {
             s_active_keys[i].row = row;
@@ -316,7 +316,7 @@ void keyboard_check(void) {
 
                 // Resolve key from active layer stack
                 uint32_t key = layers_lookup_key(row, col);
-                record_pressed_key(row, col, key);
+                keyboard_record_pressed_key(row, col, key);
 
                 // Notify One-Shot subsystem of key press
                 oneshot_on_key_press(key);

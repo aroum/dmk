@@ -9,6 +9,7 @@
 // General C includes
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 // Project includes
 #include "config.h"
@@ -193,6 +194,8 @@ static uint8_t active_direct_debounce = 0;
  * @brief Initialize matrix GPIO pins and default electrical states (pull-ups/pull-downs).
  */
 void matrix_init(void) {
+    memset(debounce_counters, 0, sizeof(debounce_counters));
+    memset(debounced_bits, 0, sizeof(debounced_bits));
 #if (MATRIX_TYPE == ROW2COL) || (MATRIX_TYPE == COL2ROW)
     init_pins(MATRIX_DRV_PINS, MATRIX_NUM_DRV, true, MATRIX_DRV_IDL, false);
     init_pins(MATRIX_SENSE_PINS, MATRIX_NUM_SENSE, false, 0, MATRIX_PULL_UP);
@@ -200,7 +203,7 @@ void matrix_init(void) {
         prev_row_snapshots[i].p0 = 0xFFFFFFFF;
         prev_row_snapshots[i].p1 = 0xFFFFFFFF;
         prev_row_snapshots[i].p2 = 0xFFFFFFFF;
-        active_debounce_per_drv[i] = 1; // Force initial scan
+        active_debounce_per_drv[i] = 0;
     }
 #elif (MATRIX_TYPE == MH3SS2)
     init_pins(columns_gpios, CUR_NUM_COLS, true, 0, false);
@@ -210,7 +213,7 @@ void matrix_init(void) {
     prev_direct_snapshot.p0 = 0xFFFFFFFF;
     prev_direct_snapshot.p1 = 0xFFFFFFFF;
     prev_direct_snapshot.p2 = 0xFFFFFFFF;
-    active_direct_debounce = 1; // Force initial scan
+    active_direct_debounce = 0;
 #endif
 }
 
@@ -220,7 +223,7 @@ void matrix_init(void) {
  */
 void matrix_send_event(matrix_event_t *matrix_event) {
 #if defined(NUM_ROWS_SPLIT) && defined(NUM_COLS_SPLIT)
-#if defined(RIGHT)
+#if defined(RIGHT) || defined(SPLIT_RIGHT)
     // Right half shifts its column indices to avoid collision with the left half
     matrix_event->col += SPLIT_COL_OFFSET;
 #endif

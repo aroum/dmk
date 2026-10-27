@@ -1,6 +1,7 @@
 #include "combos.h"
 #include "FreeRTOS.h"
 #include "config.h"
+#include "keyboard.h"
 #include "keys.h"
 #include "layers.h"
 #include "queue.h"
@@ -73,6 +74,7 @@ void chords_flush(void) {
     for (uint8_t b = 0; b < s_keys_count; ++b) {
         if (!s_keys[b].consumed) {
             uint32_t key = layers_lookup_key(s_keys[b].row, s_keys[b].col);
+            keyboard_record_pressed_key(s_keys[b].row, s_keys[b].col, key);
             oneshot_on_key_press(key);
             process_key_event(s_keys[b].row, s_keys[b].col, key, true);
         }
@@ -254,38 +256,20 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
         }
 #endif
 
-        // 2. If a buffered key was released before combo timeout (quick tap), flush press first
-        for (int p = 0; p < s_keys_count; p++) {
+        // 2. If a buffered key was released before combo timeout (quick tap), flush pending keys in order first
+        for (uint8_t p = 0; p < s_keys_count; p++) {
             if (s_keys[p].row == row && s_keys[p].col == col) {
-                if (!s_keys[p].consumed) {
-                    uint32_t key = layers_lookup_key(row, col);
-                    oneshot_on_key_press(key);
-                    process_key_event(row, col, key, true);
-                }
-                memmove(&s_keys[p], &s_keys[p + 1], (s_keys_count - 1 - p) * sizeof(combo_key_t));
-                s_keys_count--;
-                break;
-            }
-        }
-
-#ifdef CHORDS_COUNT
-        for (uint8_t b = 0; b < s_keys_count; ++b) {
-            if (s_keys[b].row == row && s_keys[b].col == col) {
                 chords_flush();
                 break;
             }
         }
-#endif
         return false;
     }
 
     if (pressed) {
         uint16_t via_kc = 0;
 #ifdef VIAL
-        int16_t ki = keyboard_get_flat_key_index(row, col);
-        if (ki >= 0) {
-            via_kc = to_via_keycode(dynamic_keymap[0][ki]);
-        }
+        via_kc = to_via_keycode(layers_lookup_key(row, col));
 #endif
 
         // Zero-delay fast-path: if this key does not participate in any active combo or chord,

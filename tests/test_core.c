@@ -311,6 +311,16 @@ static void test_usb_hid_reports_and_zero_queue(void) {
     }
     assert(found_c == false);
 
+    // Releasing a composite key must preserve held physical modifiers
+    usb_process_modifiers(MOD_LSHIFT, true);
+    assert(s_last_sent_report.Modifier == MOD_LSHIFT);
+    usb_process_key_with_modifiers(MOD_LSHIFT | MOD_LCTRL, K_V, true);
+    assert(s_last_sent_report.Modifier == (MOD_LSHIFT | MOD_LCTRL));
+    usb_process_key_with_modifiers(MOD_LSHIFT | MOD_LCTRL, K_V, false);
+    assert(s_last_sent_report.Modifier == MOD_LSHIFT);
+    usb_process_modifiers(MOD_LSHIFT, false);
+    assert(s_last_sent_report.Modifier == 0);
+
     printf("  ✔ test_usb_hid_reports_and_zero_queue passed\n");
 }
 

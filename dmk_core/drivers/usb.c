@@ -22,6 +22,44 @@
 
 // Active keyboard report cache sent to host on change
 static USB_HID_KeyboardReport_TypeDef current_report;
+static uint8_t s_real_mods = 0;
+static uint8_t s_weak_mods = 0;
+
+static bool sync_report_modifiers(void) {
+    uint8_t combined = s_real_mods | s_weak_mods;
+    if (current_report.Modifier != combined) {
+        current_report.Modifier = combined;
+        return true;
+    }
+    return false;
+}
+
+static bool add_key_to_report(uint8_t keycode) {
+    int empty_idx = -1;
+    for (int i = 0; i < KEY_REPORT_SIZE; i++) {
+        if (current_report.Keycodes[i] == keycode) {
+            return false;
+        }
+        if (empty_idx < 0 && current_report.Keycodes[i] == 0) {
+            empty_idx = i;
+        }
+    }
+    if (empty_idx >= 0) {
+        current_report.Keycodes[empty_idx] = keycode;
+        return true;
+    }
+    return false;
+}
+
+static bool del_key_from_report(uint8_t keycode) {
+    for (int i = 0; i < KEY_REPORT_SIZE; i++) {
+        if (current_report.Keycodes[i] == keycode) {
+            current_report.Keycodes[i] = 0;
+            return true;
+        }
+    }
+    return false;
+}
 
 /**
  * @brief Initialize USB HID stack and clear initial keyboard report buffers.
@@ -29,10 +67,12 @@ static USB_HID_KeyboardReport_TypeDef current_report;
 void usb_init(void) {
     USB_HID_Init();
 
+    s_real_mods = 0;
+    s_weak_mods = 0;
     current_report.ReportID = 1;
     current_report.Modifier = 0;
     current_report.Reserved = 0;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < KEY_REPORT_SIZE; i++) {
         current_report.Keycodes[i] = 0;
     }
 }
@@ -52,52 +92,16 @@ void usb_process_key(uint16_t keycode, bool pressed) {
 
     bool report_changed = false;
 
-    if (pressed) {
-        // Handle 8 standard HID modifier keys (0xE0..0xE7)
-        if (keycode >= 0xE0 && keycode <= 0xE7) {
-            uint8_t mod_bit = 1 << (keycode - 0xE0);
-            if (!(current_report.Modifier & mod_bit)) {
-                current_report.Modifier |= mod_bit;
-                report_changed = true;
-            }
+    if (keycode >= 0xE0 && keycode <= 0xE7) {
+        uint8_t mod_bit = (uint8_t)(1U << (keycode - 0xE0));
+        if (pressed) {
+            s_real_mods |= mod_bit;
+        } else {
+            s_real_mods &= ~mod_bit;
         }
-        // Handle standard 6KRO keycodes
-        else if (keycode != 0) {
-            int empty_idx = -1;
-            bool found = false;
-            for (int i = 0; i < 6; i++) {
-                if (current_report.Keycodes[i] == (uint8_t)keycode) {
-                    found = true;
-                    break;
-                }
-                if (empty_idx < 0 && current_report.Keycodes[i] == 0) {
-                    empty_idx = i;
-                }
-            }
-            if (!found && empty_idx >= 0) {
-                current_report.Keycodes[empty_idx] = (uint8_t)keycode;
-                report_changed = true;
-            }
-        }
-    } else {
-        // Handle modifier key release
-        if (keycode >= 0xE0 && keycode <= 0xE7) {
-            uint8_t mod_bit = 1 << (keycode - 0xE0);
-            if (current_report.Modifier & mod_bit) {
-                current_report.Modifier &= ~mod_bit;
-                report_changed = true;
-            }
-        }
-        // Handle standard keycode release
-        else if (keycode != 0) {
-            for (int i = 0; i < 6; i++) {
-                if (current_report.Keycodes[i] == (uint8_t)keycode) {
-                    current_report.Keycodes[i] = 0;
-                    report_changed = true;
-                    break;
-                }
-            }
-        }
+        report_changed = sync_report_modifiers();
+    } else if (keycode != 0) {
+        report_changed = pressed ? add_key_to_report((uint8_t)keycode) : del_key_from_report((uint8_t)keycode);
     }
 
     // Only send over USB if report payload changed (saves bus bandwidth)
@@ -113,19 +117,12 @@ void usb_process_modifiers(uint8_t mod_mask, bool pressed) {
     if (mod_mask == 0) {
         return;
     }
-    bool report_changed = false;
     if (pressed) {
-        if ((current_report.Modifier & mod_mask) != mod_mask) {
-            current_report.Modifier |= mod_mask;
-            report_changed = true;
-        }
+        s_real_mods |= mod_mask;
     } else {
-        if (current_report.Modifier & mod_mask) {
-            current_report.Modifier &= ~mod_mask;
-            report_changed = true;
-        }
+        s_real_mods &= ~mod_mask;
     }
-    if (report_changed) {
+    if (sync_report_modifiers()) {
         USB_HID_SendReport(&current_report);
     }
 }
@@ -134,47 +131,18 @@ void usb_process_modifiers(uint8_t mod_mask, bool pressed) {
  * @brief Batch process modified key: atomically update modifiers and keycode in a single HID report.
  */
 void usb_process_key_with_modifiers(uint8_t mod_mask, uint8_t keycode, bool pressed) {
-    bool report_changed = false;
-
     if (pressed) {
-        if (mod_mask != 0 && (current_report.Modifier & mod_mask) != mod_mask) {
-            current_report.Modifier |= mod_mask;
-            report_changed = true;
-        }
-        if (keycode != 0) {
-            int empty_idx = -1;
-            bool found = false;
-            for (int i = 0; i < 6; i++) {
-                if (current_report.Keycodes[i] == keycode) {
-                    found = true;
-                    break;
-                }
-                if (empty_idx < 0 && current_report.Keycodes[i] == 0) {
-                    empty_idx = i;
-                }
-            }
-            if (!found && empty_idx >= 0) {
-                current_report.Keycodes[empty_idx] = keycode;
-                report_changed = true;
-            }
-        }
+        s_weak_mods |= mod_mask;
     } else {
-        if (keycode != 0) {
-            for (int i = 0; i < 6; i++) {
-                if (current_report.Keycodes[i] == keycode) {
-                    current_report.Keycodes[i] = 0;
-                    report_changed = true;
-                    break;
-                }
-            }
-        }
-        if (mod_mask != 0 && (current_report.Modifier & mod_mask)) {
-            current_report.Modifier &= ~mod_mask;
-            report_changed = true;
-        }
+        s_weak_mods &= ~mod_mask;
+    }
+    bool mod_changed = sync_report_modifiers();
+    bool key_changed = false;
+    if (keycode != 0) {
+        key_changed = pressed ? add_key_to_report(keycode) : del_key_from_report(keycode);
     }
 
-    if (report_changed) {
+    if (mod_changed || key_changed) {
         USB_HID_SendReport(&current_report);
     }
 }
