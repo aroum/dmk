@@ -87,7 +87,7 @@ set(PLATFORM_LIBS
 function(platform_post_build TARGET_NAME)
     pico_add_extra_outputs(${TARGET_NAME})
     if(RGB_ENABLED)
-        target_sources(${TARGET_NAME} PRIVATE "${PLATFORM_DIR}/pio/WS2812.cpp")
+        target_sources(${TARGET_NAME} PRIVATE "${PLATFORM_DIR}/pio/ws2812.c")
         pico_generate_pio_header(${TARGET_NAME} "${PLATFORM_DIR}/pio/WS2812.pio")
     endif()
     if(SPLIT_ENABLED)

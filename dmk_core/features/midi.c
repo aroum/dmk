@@ -202,7 +202,7 @@ bool dmk_midi_process_keycode(uint32_t key, bool pressed) {
             break;
         case MIDI_VELOCITY_0 ... MIDI_VELOCITY_10:
             if (pressed) {
-                midi_config.velocity = (uint8_t)((key - MIDI_VELOCITY_0) * 12.7f);
+                midi_config.velocity = (uint8_t)(((key - MIDI_VELOCITY_0) * 127u) / 10u);
             }
             break;
         case MIDI_VELOCITY_DOWN:

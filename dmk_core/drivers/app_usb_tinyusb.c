@@ -64,7 +64,9 @@ static void usb_device_task(void *param) {
 #endif
 #ifdef VIAL
         extern void vial_flush_pending_report(void);
+        extern void vial_eeprom_task(void);
         vial_flush_pending_report();
+        vial_eeprom_task();
 #endif
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2));
     }
@@ -72,7 +74,7 @@ static void usb_device_task(void *param) {
 
 bool USB_HID_Init(void) {
 #if defined(MCU_nrf52840)
-    NVIC_SetPriority(USBD_IRQn, 2);
+    NVIC_SetPriority(USBD_IRQn, 5);
 
     ret_code_t clk_ret = nrf_drv_clock_init();
     if (clk_ret == NRF_SUCCESS || clk_ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED) {
@@ -110,83 +112,52 @@ bool USB_HID_Init(void) {
     return (s_usb_task_handle != NULL);
 }
 
-bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
+static bool usb_hid_wait_ready(int timeout_ms) {
     if (!tud_mounted() || tud_suspended()) {
         return false;
     }
-    int timeout = 5; // Reduced from 50ms to 5ms to prevent blocking keyboard scanning
-    while (timeout > 0) {
+    while (timeout_ms > 0) {
         if (tud_hid_ready()) {
-            if (tud_hid_keyboard_report(1, report->Modifier, (uint8_t *)report->Keycodes)) {
-                if (s_usb_task_handle) {
-                    xTaskNotifyGive(s_usb_task_handle);
-                }
-                return true;
-            }
+            return true;
         }
         vTaskDelay(pdMS_TO_TICKS(1));
-        timeout--;
+        timeout_ms--;
     }
-    return false;
+    return tud_hid_ready();
+}
+
+static bool usb_hid_complete_send(bool sent) {
+    if (sent && s_usb_task_handle) {
+        xTaskNotifyGive(s_usb_task_handle);
+    }
+    return sent;
+}
+
+bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
+    if (!usb_hid_wait_ready(5)) {
+        return false;
+    }
+    return usb_hid_complete_send(tud_hid_keyboard_report(1, report->Modifier, (uint8_t *)report->Keycodes));
 }
 
 bool USB_HID_SendConsumerReport(uint16_t usage) {
-    if (!tud_mounted() || tud_suspended()) {
+    if (!usb_hid_wait_ready(5)) {
         return false;
     }
-    int timeout = 5; // Reduced from 50ms to 5ms
-    while (timeout > 0) {
-        if (tud_hid_ready()) {
-            if (tud_hid_report(2, &usage, sizeof(usage))) {
-                if (s_usb_task_handle) {
-                    xTaskNotifyGive(s_usb_task_handle);
-                }
-                return true;
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(1));
-        timeout--;
-    }
-    return false;
+    return usb_hid_complete_send(tud_hid_report(2, &usage, sizeof(usage)));
 }
 
 bool USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
-    if (!tud_mounted() || tud_suspended()) {
+    if (!usb_hid_wait_ready(2)) {
         return false;
     }
-    int timeout = 2; // Reduced from 50ms to 2ms for non-blocking mouse updates
-    while (timeout > 0) {
-        if (tud_hid_ready()) {
-            if (tud_hid_mouse_report(3, buttons, x, y, wheel, pan)) {
-                if (s_usb_task_handle) {
-                    xTaskNotifyGive(s_usb_task_handle);
-                }
-                return true;
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(1));
-        timeout--;
-    }
-    return false;
+    return usb_hid_complete_send(tud_hid_mouse_report(3, buttons, x, y, wheel, pan));
 }
 
 bool USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat,
                                uint32_t buttons) {
-    if (!tud_mounted() || tud_suspended()) {
+    if (!usb_hid_wait_ready(5)) {
         return false;
     }
-    int timeout = 5; // Reduced from 50ms to 5ms
-    while (timeout > 0) {
-        if (tud_hid_ready()) {
-            if (tud_hid_gamepad_report(4, x, y, z, rz, rx, ry, hat, buttons)) {
-                if (s_usb_task_handle) {
-                    xTaskNotifyGive(s_usb_task_handle);
-                }
-                return true;
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(1));
-        timeout--;
-    }
-    return false;
+    return usb_hid_complete_send(tud_hid_gamepad_report(4, x, y, z, rz, rx, ry, hat, buttons));
 }
