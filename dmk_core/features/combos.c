@@ -334,6 +334,9 @@ bool combos_process_event(uint8_t row, uint8_t col, bool pressed, TickType_t now
 
 void combos_init(void) {}
 void chords_flush(void) {}
+bool combos_has_active(void) {
+    return false;
+}
 TickType_t combos_check_timeouts(TickType_t now) {
     (void)now;
     return portMAX_DELAY;
@@ -347,3 +350,4 @@ bool combos_process_event(uint8_t r, uint8_t c, bool p, TickType_t now) {
 }
 
 #endif
+
