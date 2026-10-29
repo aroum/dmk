@@ -1,13 +1,13 @@
 /*
 Abstract: Linker script for MDR32F9Q2I (DFU Bootloader compatible)
-120 Kb FLASH (8 Kb offset) + 32 Kb RAM 
+124 Kb FLASH (4 Kb offset) + 32 Kb RAM 
 */
 
 ENTRY(Reset_Handler);
 
 MEMORY
 {
-FLASH(rx) : ORIGIN = 0x08002000, LENGTH = 120K
+FLASH(rx) : ORIGIN = 0x08001000, LENGTH = 124K
 RAM(xrw)  : ORIGIN = 0x20000000, LENGTH = 32K
 }
 
