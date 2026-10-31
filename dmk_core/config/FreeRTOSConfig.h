@@ -49,16 +49,13 @@
 #define configTICK_RATE_HZ ((TickType_t)1000)
 #define configMAX_PRIORITIES 4
 #define configMINIMAL_STACK_SIZE (configSTACK_DEPTH_TYPE)128
-#ifndef TICK_TYPE_WIDTH_16_BITS
-#define TICK_TYPE_WIDTH_16_BITS 1
-#endif
-#ifndef TICK_TYPE_WIDTH_32_BITS
-#define TICK_TYPE_WIDTH_32_BITS 2
-#endif
-#ifndef TICK_TYPE_WIDTH_64_BITS
-#define TICK_TYPE_WIDTH_64_BITS 3
-#endif
+#if defined(MCU_baikal)
+#ifndef configTICK_TYPE_WIDTH_IN_BITS
 #define configTICK_TYPE_WIDTH_IN_BITS TICK_TYPE_WIDTH_32_BITS
+#endif
+#else
+#define configUSE_16_BIT_TICKS 0
+#endif
 
 /* CPU clock speed – platform specific */
 #if defined(MCU_nrf52840)
@@ -232,6 +229,16 @@
 #define configTICK_CORE 0
 #endif
 
+/* Tick type width definitions for FreeRTOS ports expecting V11+ definitions */
+#ifndef TICK_TYPE_WIDTH_16_BITS
+#define TICK_TYPE_WIDTH_16_BITS 1
+#endif
+#ifndef TICK_TYPE_WIDTH_32_BITS
+#define TICK_TYPE_WIDTH_32_BITS 2
+#endif
+#ifndef configTICK_TYPE_WIDTH_IN_BITS
+#define configTICK_TYPE_WIDTH_IN_BITS TICK_TYPE_WIDTH_32_BITS
+#endif
 
 /* Lightweight assert without dragging in newlib libc abort/assert strings */
 #define configASSERT(x)                                                                                                \
