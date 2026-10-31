@@ -3,8 +3,8 @@
  *  @file       bmcu_rom1_dsp.h
  *  @author     Baikal electronics SDK team
  *  @brief      ROM1 (DSP functions) header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * 
  *  File content:
  *      - copy of bear_dsp_math_types.h to prevent dependence from dsp-lib code

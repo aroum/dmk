@@ -3,8 +3,8 @@
  *  @file       bmcu_gpio.c
  *  @author     Baikal electronics SDK team
  *  @brief      General-Purpose Input/Output (GPIO) module driver
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * 
  *  File content:
  *      - GPIO Init/Deinit functions implementation

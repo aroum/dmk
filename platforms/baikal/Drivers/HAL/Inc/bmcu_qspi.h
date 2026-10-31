@@ -3,8 +3,8 @@
  *  @file       bmcu_qspi.h
  *  @author     Baikal electronics SDK team
  *  @brief      Quad SPI (QSPI) module driver header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  *
  *  File content:
  *      - QSPI related constants, type definitions and enumerations
@@ -117,7 +117,7 @@ typedef enum{
  *          data is right-justified before writing into the transmit FIFO.
  *          The transmit logic ignores the upper unused bits when
  *          transmitting the data.
- * @see     QSPI_SetDataFrameSize(), QSPI_GetFrameSize()
+ * @see     QSPI_SetDataFrameSize(), QSPI_GetDataFrameSize()
  */
 typedef enum {
     QSPI_DATA_FRAME_SIZE_4  = QSPI_CTRLR0_DFS_32_04_BIT, /*!< 4-bit serial data transfer */
@@ -406,6 +406,31 @@ typedef enum {
     QSPI_IT_MST = 5         /*!< Multi-Master Contention */
 } QSPI_IT_TypeDef;
 
+#if defined (BE_U1000)
+/**
+ * @typedef
+ * @brief   Selecting the content of xip_cmd_byte
+ *          Content of mode bits in fast read or xip qspi operations
+ * @see     QSPI_SelectCMDContent(), QSPI_GetSelectedContent()
+ */
+typedef enum {
+    QSPI_XIP_CONTENT_8H     = QSPI_XIP_CMD_CMD_SEL_8h,
+    QSPI_XIP_CONTENT_BYTE0  = QSPI_XIP_CMD_CMD_SEL_BYTE0,
+    QSPI_XIP_CONTENT_BYTE1  = QSPI_XIP_CMD_CMD_SEL_BYTE1,
+    QSPI_XIP_CONTENT_BYTE2  = QSPI_XIP_CMD_CMD_SEL_BYTE2
+} QSPI_XIP_CMD_SEL_TypeDef;
+
+/**
+ * @typedef
+ * @brief   Selecting the location of addition byte
+ * @see     QSPI_SelectCMDContent(), QSPI_GetSelectedContent()
+ */
+typedef enum {
+    QSPI_XIP_ADDR_THEN_BYTE  = QSPI_XIP_CMD_S2R_ADDR_THEN_BYTE,
+    QSPI_XIP_BYTE_THEN_ADDR  = QSPI_XIP_CMD_S2R_BYTE_THEN_ADDR
+
+} QSPI_XIP_Addition_Byte_Location_TypeDef;
+#endif
 
 /**
  * @typedef
@@ -569,7 +594,7 @@ QSPI_GetTransferMode (QSPI_TypeDef *QSPIx) {
  * @param   DataFrameSize data frame size
  * @note    It is incorrect to execute this function when the QSPI is enabled
  * @retval  None
- * @see     QSPI_GetFrameSize()
+ * @see     QSPI_GetDataFrameSize()
  */
 __STATIC_INLINE void
 QSPI_SetDataFrameSize (QSPI_TypeDef *QSPIx, QSPI_DataFrameSize_TypeDef DataFrameSize) {
@@ -584,7 +609,7 @@ QSPI_SetDataFrameSize (QSPI_TypeDef *QSPIx, QSPI_DataFrameSize_TypeDef DataFrame
  * @see     QSPI_SetDataFrameSize()
  */
 __STATIC_INLINE QSPI_DataFrameSize_TypeDef
-QSPI_GetFrameSize (QSPI_TypeDef *QSPIx) {
+QSPI_GetDataFrameSize (QSPI_TypeDef *QSPIx) {
     return (QSPI_DataFrameSize_TypeDef)(READ_BIT(QSPIx->CTRLR0, QSPI_CTRLR0_DFS_32_Msk));
 }
 
@@ -1421,7 +1446,6 @@ QSPI_SetDMARxDataLvl (QSPI_TypeDef *QSPIx, uint32_t DataLvl) {
     WRITE_REG(QSPIx->DMARDLR, DataLvl);
 }
 
-
 /**
  * @brief   Get DMA Receive data level
  * @param   QSPIx The QSPI instance
@@ -1439,6 +1463,162 @@ QSPI_GetDMARxDataLvl (QSPI_TypeDef *QSPIx) {
     return (uint32_t)(READ_REG(QSPIx->DMARDLR));
 }
 
+#if defined (BE_U1000)
+/**
+ * @brief   Set XIP_CMD register
+ * @param   QSPIx The QSPI instance
+ * @param   xipcmd value of register
+ * @see     QSPI_GetXIPCMD()
+ */
+__STATIC_INLINE void
+QSPI_SetXIPCMD (QSPI_TypeDef *QSPIx, uint32_t xipcmd) {
+    WRITE_REG(QSPIx->XIP_CMD, xipcmd);
+}
+
+/**
+ * @brief   Get XIP_CMD register
+ * @param   QSPIx The QSPI instance
+ * @see     QSPI_SetXIPCMD()
+ */
+__STATIC_INLINE uint32_t
+QSPI_GetXIPCMD (QSPI_TypeDef *QSPIx) {
+     return (uint32_t)(READ_REG(QSPIx->XIP_CMD));
+}
+
+/**
+ * @brief   Enable QSPI addition bits in address in XIP mode
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_AdditionBitsDisable()
+ */
+__STATIC_INLINE void
+QSPI_XIP_AdditionBitsEnable (QSPI_TypeDef *QSPIx) {
+    MODIFY_REG(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_EN_Msk, QSPI_XIP_CMD_CMD_EN_ENABLE);
+}
+
+/**
+ * @brief   Disable QSPI addition bits in address in XIP mode
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_AdditionBitsEnable()
+ */
+__STATIC_INLINE void
+QSPI_XIP_AdditionBitsDisable (QSPI_TypeDef *QSPIx) {
+    MODIFY_REG(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_EN_Msk, QSPI_XIP_CMD_CMD_EN_DISABLE);
+}
+
+/**
+ * @brief   Select the content of addition bits in address in XIP mode
+ * @param   QSPIx The QSPI instance
+ * @param   ContentNumber number of content
+ * @note    It is incorrect to execute this function when the QSPI is enabled
+ * @retval  None
+ * @see     QSPI_XIP_GetSelectedContent()
+ */
+__STATIC_INLINE void
+QSPI_XIP_SelectCMDContent (QSPI_TypeDef *QSPIx, QSPI_XIP_CMD_SEL_TypeDef ContentNumber) {
+    MODIFY_REG(QSPIx->XIP_CMD , QSPI_XIP_CMD_CMD_SEL_Msk, ContentNumber);
+}
+
+/**
+ * @brief   Get the selected content of addition bits in address in XIP mode
+ * @param   QSPIx The QSPI instance
+ * @retval  Selected content 
+ * @see     QSPI_XIP_SelectCMDContent()
+ */
+__STATIC_INLINE QSPI_XIP_CMD_SEL_TypeDef
+QSPI_XIP_GetSelectedContent (QSPI_TypeDef *QSPIx) {
+    return (QSPI_XIP_CMD_SEL_TypeDef)(READ_BIT(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_SEL_Msk));
+}
+
+/**
+ * @brief   Set the insertion location of the additional byte
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_GetLocationAdditionByte()
+ */
+__STATIC_INLINE void
+QSPI_XIP_SetLocationAdditionByte (QSPI_TypeDef *QSPIx, QSPI_XIP_Addition_Byte_Location_TypeDef Location) {
+    MODIFY_REG(QSPIx->XIP_CMD, QSPI_XIP_CMD_S2R_Msk, Location);
+}
+
+/**
+ * @brief   Disable QSPI addition bits in address in XIP mode
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_SetLocationAdditionByte()
+ */
+__STATIC_INLINE QSPI_XIP_Addition_Byte_Location_TypeDef
+QSPI_XIP_GetLocationAdditionByte (QSPI_TypeDef *QSPIx) {
+    return (QSPI_XIP_Addition_Byte_Location_TypeDef)(READ_BIT(QSPIx->XIP_CMD, QSPI_XIP_CMD_S2R_Msk));
+}
+
+/**
+ * @brief   Set the value of the additional byte 0
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_GetByte0Value()
+ */
+__STATIC_INLINE void
+QSPI_XIP_SetByte0Value (QSPI_TypeDef *QSPIx, uint8_t value) {
+    MODIFY_REG(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_BYTE0_Msk, (uint32_t)(value) << QSPI_XIP_CMD_CMD_BYTE0_Pos);
+}
+
+/**
+ * @brief   Get the value of the additional byte 0
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_SetByte0Value()
+ */
+__STATIC_INLINE uint8_t
+QSPI_XIP_GetByte0Value (QSPI_TypeDef *QSPIx) {
+    return (uint8_t)((READ_BIT(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_BYTE0_Msk) >> QSPI_XIP_CMD_CMD_BYTE0_Pos));
+}
+
+/**
+ * @brief   Set the value of the additional byte 1
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_GetByte1Value()
+ */
+__STATIC_INLINE void
+QSPI_XIP_SetByte1Value (QSPI_TypeDef *QSPIx, uint8_t value) {
+    MODIFY_REG(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_BYTE1_Msk, (uint32_t)(value) << QSPI_XIP_CMD_CMD_BYTE1_Pos);
+}
+
+/**
+ * @brief   Get the value of the additional byte 1
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_SetByte1Value()
+ */
+__STATIC_INLINE uint8_t
+QSPI_XIP_GetByte1Value (QSPI_TypeDef *QSPIx) {
+    return (uint8_t)((READ_BIT(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_BYTE1_Msk) >> QSPI_XIP_CMD_CMD_BYTE1_Pos));
+}
+
+/**
+ * @brief   Set the value of the additional byte 2
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_GetByte2Value()
+ */
+__STATIC_INLINE void
+QSPI_XIP_SetByte2Value (QSPI_TypeDef *QSPIx, uint8_t value) {
+    MODIFY_REG(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_BYTE2_Msk, (uint32_t)(value) << QSPI_XIP_CMD_CMD_BYTE2_Pos);
+}
+
+/**
+ * @brief   Get the value of the additional byte 2
+ * @param   QSPIx The QSPI instance
+ * @retval  None
+ * @see     QSPI_XIP_SetByte2Value()
+ */
+__STATIC_INLINE uint8_t
+QSPI_XIP_GetByte2Value (QSPI_TypeDef *QSPIx) {
+    return (uint8_t)((READ_BIT(QSPIx->XIP_CMD, QSPI_XIP_CMD_CMD_BYTE2_Msk) >> QSPI_XIP_CMD_CMD_BYTE2_Pos));
+}
+#endif
 
 /**
  * @brief   Receive 8 bit data from Data Register (Rx FIFO)
@@ -1450,7 +1630,6 @@ __STATIC_INLINE uint8_t
 QSPI_ReceiveData8 (QSPI_TypeDef *QSPIx) {
     return (uint8_t)(READ_REG(QSPIx->DR[0]));
 }
-
 
 /**
  * @brief   Receive 16 bit data from Data Register (Rx FIFO)

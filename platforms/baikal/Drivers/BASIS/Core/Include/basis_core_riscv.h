@@ -3,8 +3,8 @@
  *  @file       basis_core_riscv.h
  *  @author     Baikal electronics SDK team
  *  @brief      BASIS RISC-V common definitions
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -146,8 +146,8 @@ __STATIC_INLINE uint64_t __get_cycle_u(void)
 __STATIC_INLINE void __set_cycle(uint64_t value)
 {
 #if defined(__RV32)
-    volatile uint32_t msb = (volatile uint32_t)((value >> 32) & 0xFFFFFFFFUL);
-    volatile uint32_t lsb = (volatile uint32_t)(value & 0xFFFFFFFFUL);
+    volatile uint32_t msb = (uint32_t)((value >> 32) & 0xFFFFFFFFUL);
+    volatile uint32_t lsb = (uint32_t)(value & 0xFFFFFFFFUL);
 
     CSR_WRITE(CSR_MCYCLE, 0x0UL);
     CSR_WRITE(CSR_MCYCLEH, msb);
@@ -211,8 +211,8 @@ __STATIC_INLINE uint64_t __get_instret_u(void)
 __STATIC_INLINE void __set_instret(uint64_t value)
 {
 #if defined(__RV32)
-    volatile uint32_t msb = (volatile uint32_t)((value >> 32) & 0xFFFFFFFFUL);
-    volatile uint32_t lsb = (volatile uint32_t)(value & 0xFFFFFFFFUL);
+    volatile uint32_t msb = (uint32_t)((value >> 32) & 0xFFFFFFFFUL);
+    volatile uint32_t lsb = (uint32_t)(value & 0xFFFFFFFFUL);
 
     CSR_WRITE(CSR_MINSTRET, 0x0UL);
     CSR_WRITE(CSR_MINSTRETH, msb);
@@ -292,8 +292,8 @@ __STATIC_INLINE uint64_t __get_timecmp(void)
  */
 __STATIC_INLINE void __set_timecmp(uint64_t value)
 {
-    volatile uint32_t msb = (volatile uint32_t)((value >> 32) & 0xFFFFFFFFUL);
-    volatile uint32_t lsb = (volatile uint32_t)(value & 0xFFFFFFFFUL);
+    volatile uint32_t msb = (uint32_t)((value >> 32) & 0xFFFFFFFFUL);
+    volatile uint32_t lsb = (uint32_t)(value & 0xFFFFFFFFUL);
 
     *(volatile uint32_t *)CLINT_MTIMECMP0L = 0xFFFFFFFFUL;  /* No smaller than old value */
     *(volatile uint32_t *)CLINT_MTIMECMP0H = msb;           /* No smaller than new value */
@@ -311,7 +311,12 @@ __STATIC_INLINE void __set_timecmp(uint64_t value)
  * @note Can be executed in User mode or higher privilege mode.
  * @param cycles The number of cycles to delay.
  */
-__STATIC_FORCEINLINE void __delay_cycles(unsigned long cycles)
+#if defined(NDEBUG)
+__STATIC_FORCEINLINE
+#else
+__attribute__((unused)) static
+#endif
+void __delay_cycles(unsigned long cycles)
 {
     __ASM volatile (
         "   rdcycle t0          \n"
@@ -336,7 +341,12 @@ __STATIC_FORCEINLINE void __delay_cycles(unsigned long cycles)
  *          t2 - the current timer value
  * @param   us The number of microseconds to delay.
  */
-__STATIC_FORCEINLINE void __delay_us(unsigned long us)
+#if defined(NDEBUG)
+__STATIC_FORCEINLINE
+#else
+__attribute__((unused)) static
+#endif
+void __delay_us(unsigned long us)
 {
     __ASM volatile (
         "   li t0, %[cycles_per_us] \n"
@@ -366,7 +376,12 @@ __STATIC_FORCEINLINE void __delay_us(unsigned long us)
  *          t2 - the current timer value
  * @param   ms The number of milliseconds to delay.
  */
-__STATIC_FORCEINLINE void __delay_ms(unsigned long ms)
+#if defined(NDEBUG)
+__STATIC_FORCEINLINE
+#else
+__attribute__((unused)) static
+#endif
+void __delay_ms(unsigned long ms)
 {
     __ASM volatile (
         "   li t0, %[cycles_per_ms] \n"

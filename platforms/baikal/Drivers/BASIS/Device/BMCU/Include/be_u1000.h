@@ -3,8 +3,8 @@
  *  @file       be_u1000.h
  *  @author     Baikal electronics SDK team
  *  @brief      BASIS Baikal-UM registers and their fields definitions
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -706,6 +706,7 @@ typedef struct
     __IO uint32_t RX_SAMPLE_DLY;   /* RX Sample Delay                          Address offset: 0xf0 */
     __IO uint32_t SPI_CTRLR0;      /* SPI Control                              Address offset: 0xf4 */
     __IO uint32_t TXD_DRIVE_EDGE;  /* Transmit Drive Edge                      Address offset: 0xf8 */
+    __IO uint32_t XIP_CMD;         /* XIP addition control                     Address offset: 0xfC */    
 } QSPI_TypeDef;
 
 /**
@@ -11372,6 +11373,44 @@ typedef struct
 /** @brief TXD_DRIVE_EDGE[7:0]: TXD Drive edge */
 #define QSPI_TXD_DRIVE_EDGE_TDE_Pos         (0U)
 #define QSPI_TXD_DRIVE_EDGE_TDE_Msk         (0xFFUL << QSPI_TXD_DRIVE_EDGE_TDE_Pos)
+
+/*** Bits definition for XIP_CMD registers  ************************************/
+/** @brief CMD_EN[0]: The bit responsible for changing the address space to the required one, with the necessary bits added to the end of the address phase */
+#define QSPI_XIP_CMD_CMD_EN_Pos                     (0U)
+#define QSPI_XIP_CMD_CMD_EN_Msk                     (0x1UL << QSPI_XIP_CMD_CMD_EN_Pos)
+
+#define QSPI_XIP_CMD_CMD_EN_DISABLE                 (0x0UL << QSPI_XIP_CMD_CMD_EN_Pos)
+#define QSPI_XIP_CMD_CMD_EN_ENABLE                  (0x1UL << QSPI_XIP_CMD_CMD_EN_Pos)
+
+/** @brief CMD_SEL[2:1]: Selecting the content of bk_xip_cmd_byte_w */
+#define QSPI_XIP_CMD_CMD_SEL_Pos                    (1U)
+#define QSPI_XIP_CMD_CMD_SEL_Msk                    (0x3UL << QSPI_XIP_CMD_CMD_SEL_Pos)
+
+#define QSPI_XIP_CMD_CMD_SEL_8h                     (0x00UL << QSPI_XIP_CMD_CMD_SEL_Pos) /*!< content = 8’h0 */
+#define QSPI_XIP_CMD_CMD_SEL_BYTE0                  (0x01UL << QSPI_XIP_CMD_CMD_SEL_Pos)  /*!< content = byte 0 (see [15:8] bits of this register)  */
+#define QSPI_XIP_CMD_CMD_SEL_BYTE1                  (0x02UL << QSPI_XIP_CMD_CMD_SEL_Pos)  /*!< content = byte 1 (see [23:16] bits of this register) */
+#define QSPI_XIP_CMD_CMD_SEL_BYTE2                  (0x03UL << QSPI_XIP_CMD_CMD_SEL_Pos)  /*!< content = byte 2 (see [31:24] bits of this register) */
+
+/** @brief S2R[3]: The place where the extra byte was inserted */
+#define QSPI_XIP_CMD_S2R_Pos                        (3U)
+#define QSPI_XIP_CMD_S2R_Msk                        (0x1UL << QSPI_XIP_CMD_S2R_Pos)
+
+#define QSPI_XIP_CMD_S2R_ADDR_THEN_BYTE             (0x0UL << QSPI_XIP_CMD_S2R_Pos)
+#define QSPI_XIP_CMD_S2R_BYTE_THEN_ADDR             (0x1UL << QSPI_XIP_CMD_S2R_Pos)
+
+/** @brief RSVD[7:4]: reserved bits */
+
+/** @brief CMD_BYTE0[15:8]: Content byte 0  (see CMD_SEL[2:1])*/
+#define QSPI_XIP_CMD_CMD_BYTE0_Pos                  (8U)
+#define QSPI_XIP_CMD_CMD_BYTE0_Msk                  (0xFFUL << QSPI_XIP_CMD_CMD_BYTE0_Pos)
+
+/** @brief CMD_BYTE1[23:16]: Content byte 1  (see CMD_SEL[2:1])*/
+#define QSPI_XIP_CMD_CMD_BYTE1_Pos                  (16U)
+#define QSPI_XIP_CMD_CMD_BYTE1_Msk                  (0xFFUL << QSPI_XIP_CMD_CMD_BYTE1_Pos)
+
+/** @brief CMD_BYTE1[31:24]: Content byte 2  (see CMD_SEL[2:1])*/
+#define QSPI_XIP_CMD_CMD_BYTE2_Pos                  (24U)
+#define QSPI_XIP_CMD_CMD_BYTE2_Msk                  (0xFFUL << QSPI_XIP_CMD_CMD_BYTE2_Pos)
 
 /******************************************************************************/
 /*                      Serial Peripheral Interface (SPI)                     */

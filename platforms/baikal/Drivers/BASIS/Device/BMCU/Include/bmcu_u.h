@@ -3,8 +3,8 @@
  *  @file       bmcu_u.h
  *  @author     Baikal electronics SDK team
  *  @brief      BASIS Baikal-U registers and their fields definitions
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *

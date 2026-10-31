@@ -30,11 +30,13 @@ add_compile_options(
 )
 add_compile_options(-ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
 add_compile_definitions(
-    CORE_BR310S14
+    CORE_BR350S1
+    _RV32_C0_
     BE_U1000
-    configCPU_CLOCK_HZ=80000000
-    configMTIME_BASE_ADDRESS=0
-    configMTIMECMP_BASE_ADDRESS=0
+    configCPU_CLOCK_HZ=1000000
+    configMTIME_BASE_ADDRESS=0x0200BFF8
+    configMTIMECMP_BASE_ADDRESS=0x02004000
+    RAM_ACCESS_OFFSET=0x00
 )
 
 # Default memory sizes (eFlash is 256KB total on BE-U1000)
@@ -62,7 +64,7 @@ set(BAIKAL_DIR "${PLATFORM_DIR}")
 set(PLATFORM_INC
     "${PLATFORM_DIR}"
     "${PLATFORM_DIR}/include"
-    "${DMK_ROOT}/lib/freertos/include"
+    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/include"
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal"
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/chip_specific_extensions/RISCV_no_extensions"
     "${BAIKAL_DIR}/Drivers/BASIS/Core/Include"
@@ -70,6 +72,15 @@ set(PLATFORM_INC
     "${BAIKAL_DIR}/Drivers/HAL/Inc"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw"
+    "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/bmcu"
+)
+
+# Use matching FreeRTOS kernel source files from SDK
+set(FREERTOS_COMMON_SRC
+    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/list.c"
+    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/queue.c"
+    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/tasks.c"
+    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/MemMang/heap_4.c"
 )
 
 # Platform sources
@@ -77,23 +88,23 @@ set(PLATFORM_SRC
     ${FREERTOS_COMMON_SRC}
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/RISC-V_Baikal_SimpleDemo_GCC/startup.S"
+    "${PLATFORM_DIR}/startup.S"
     "${PLATFORM_DIR}/ws2812.c"
     "${PLATFORM_DIR}/split.c"
     "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_gpio.c"
     "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_cru.c"
+    "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_eflash.c"
+    "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_wdt.c"
     "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_adc.c"
     "${BAIKAL_DIR}/Drivers/HAL/Src/bmcu_uart.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/tusb.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/common/tusb_fifo.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/device/usbd_control.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/device/usbd.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/class/hid/hid_device.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/src/portable/bmcu/dcd_bmcu.c"
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/bmcu/family.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/board.c"
 )
 
 # Platform libraries

@@ -2,15 +2,9 @@
  * *****************************************************************************
  *  @file       bmcu_pwma.h
  *  @author     Baikal electronics SDK team
- *  @brief      PWMA module driver header file
- *  @version    2.2.0
- *  @date       2026.04.02
- *
- *  File content:
- *      - PWMA related constants, type definitions and enumerations
- *      - Macros for PWMA control and status check
- *      - Macros for PWMA interrupts control and status check
- *      - PWMA module export functions prototype
+ *  @brief      PWMA timer module driver header file
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -866,6 +860,18 @@ typedef struct
  */
 #define __PWMA_CALC_ARR(__PWMACLK__, __PSC__, __FREQ__)     ((((__PWMACLK__) / ((__PSC__) + 1U)) >= (__FREQ__)) ? \
                                                              ((uint16_t)((__PWMACLK__) / ((__PSC__) + 1U) / (__FREQ__)) - 1U) : 0U)
+
+/**
+ * @brief  HELPER macro retrieving the ratio of the input capture prescaler.
+ * @note ex: @ref __PWMA_GET_ICPSC_RATIO (@ref PWMA_IC_GetPrescaler ());
+ * @param  __ICPSC__ This parameter can be one of the following values:
+ *         @arg @ref PWMA_IC_PRESCALER_DIV1
+ *         @arg @ref PWMA_IC_PRESCALER_DIV2
+ *         @arg @ref PWMA_IC_PRESCALER_DIV4
+ *         @arg @ref PWMA_IC_PRESCALER_DIV8
+ * @retval Input capture prescaler ratio (1, 2, 4 or 8)
+ */
+#define __PWMA_GET_ICPSC_RATIO(__ICPSC__)                   ((uint8_t)(0x1U << ((__ICPSC__) >> PWMA_CCMR1_IC_IC0PSC_Pos)))
 
 /**
  * @brief  Write a value in PWMA register.
@@ -2944,7 +2950,7 @@ __STATIC_INLINE uint32_t PWMA_IsEnabledDMAReq_COM(PWMA_TypeDef *PWMAx)
 }
 
 /**
- * @brief  Enable trigger interrupt (TDE).
+ * @brief  Enable trigger DMA interrupt (TDE).
  * @param  PWMAx Timer instance
  * @retval None
  */
@@ -2954,7 +2960,7 @@ __STATIC_INLINE void PWMA_EnableDMAReq_TRIG(PWMA_TypeDef *PWMAx)
 }
 
 /**
- * @brief  Disable trigger interrupt (TDE).
+ * @brief  Disable trigger DMA interrupt (TDE).
  * @param  PWMAx Timer instance
  * @retval None
  */
@@ -2964,7 +2970,7 @@ __STATIC_INLINE void PWMA_DisableDMAReq_TRIG(PWMA_TypeDef *PWMAx)
 }
 
 /**
- * @brief  Indicates whether the trigger interrupt (TDE) is enabled.
+ * @brief  Indicates whether the trigger DMA interrupt (TDE) is enabled.
  * @param  PWMAx Timer instance
  * @retval State of bit (1 or 0).
  */

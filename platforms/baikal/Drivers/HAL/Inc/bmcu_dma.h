@@ -3,8 +3,8 @@
  *  @file       bmcu_dma.h
  *  @author     Baikal electronics SDK team
  *  @brief      Direct Memory Access (DMA) module driver header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *

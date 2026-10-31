@@ -3,8 +3,8 @@
  *  @file       bmcu_adc.h
  *  @author     Baikal electronics SDK team
  *  @brief      Analog-to-Digital Converter (ADC) module driver header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -90,7 +90,7 @@ typedef enum {
 
 /** @brief ADC conversion trigger source */
 typedef enum {
-    ADC_TRIG_SOFTWARE = ADC_CR1_EXTSEL_0,                       /*!< Software trigger */
+    ADC_TRIG_SOFTWARE = 0,                                      /*!< Software trigger */
     ADC_TRIG_EXT_0    = (ADC_CR1_EXTTRIG | ADC_CR1_EXTSEL_0),   /*!< External event 0 trigger */
     ADC_TRIG_EXT_1    = (ADC_CR1_EXTTRIG | ADC_CR1_EXTSEL_1),   /*!< External event 1 trigger */
     ADC_TRIG_EXT_2    = (ADC_CR1_EXTTRIG | ADC_CR1_EXTSEL_2),   /*!< External event 2 trigger */
@@ -318,9 +318,10 @@ __STATIC_INLINE ADC_SeqScanLength_TypeDef ADC_GetSequencerLength(ADC_TypeDef *AD
  * @param Rank The scan sequence rank. Can be one of ADC_Rank_TypeDef values.
  * @param Channel The ADC channel. Can be one of ADC_Channels_TypeDef values.
  */
-__STATIC_INLINE void ADC_SetSequencerRanks(ADC_TypeDef *ADCx, ADC_Rank_TypeDef Rank, ADC_Channels_TypeDef Channel)
+__STATIC_INLINE void ADC_SetSequencerRankChannel(ADC_TypeDef *ADCx, ADC_Rank_TypeDef Rank, ADC_Channels_TypeDef Channel)
 {
-    uint32_t Pos = (uint32_t)Rank * 3U;
+    /* Priority is set by ranks: in register reserved 24 bits, 3 for each rank to hold 3-bit channel number in each zone */
+    uint32_t Pos = (uint32_t)Rank * 3U; /* Counting shift of 3-bit mask, to put Channel number into ADC_Ranck zone in register */
     
     MODIFY_REG(ADCx->ASQR,
                ADC_ASQR_SQ0 << Pos,
@@ -333,7 +334,7 @@ __STATIC_INLINE void ADC_SetSequencerRanks(ADC_TypeDef *ADCx, ADC_Rank_TypeDef R
  * @param Rank The scan sequence rank. Can be one of ADC_Rank_TypeDef values.
  * @returns The ADC channel. Can be one of ADC_Channels_TypeDef values.
  */
-__STATIC_INLINE ADC_Channels_TypeDef ADC_GetSequencerRanks(ADC_TypeDef *ADCx, ADC_Rank_TypeDef Rank)
+__STATIC_INLINE ADC_Channels_TypeDef ADC_GetSequencerRankChannel(ADC_TypeDef *ADCx, ADC_Rank_TypeDef Rank)
 {
     uint32_t Pos = (uint32_t)Rank * 3U;
 

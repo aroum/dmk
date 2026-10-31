@@ -3,8 +3,8 @@
  *  @file       basis_version.h
  *  @author     Baikal electronics SDK team
  *  @brief      BASIS component verion
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -19,7 +19,7 @@
 
 /* BASIS version definitions */
 #define __BASIS_VERSION_MAJ        (2U)   /*!< [31:22] BASIS major version */
-#define __BASIS_VERSION_MIN        (2U)   /*!< [21:12] BASIS minor version */
+#define __BASIS_VERSION_MIN        (4U)   /*!< [21:12] BASIS minor version */
 #define __BASIS_VERSION_PATCH      (0U) /*!< [11:0] BASIS patch version */
 #define __BASIS_VERSION            ((__BASIS_VERSION_MAJ << 22) | \
                                     (__BASIS_VERSION_MIN << 12) | \

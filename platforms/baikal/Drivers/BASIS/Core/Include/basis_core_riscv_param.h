@@ -3,8 +3,8 @@
  *  @file       basis_core_riscv_param.h
  *  @author     Baikal electronics SDK team
  *  @brief      BASIS RISC-V constant definitions
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -17,11 +17,11 @@
 #ifndef BASIS_CORE_RISCV_PARAM_H
 #define BASIS_CORE_RISCV_PARAM_H
 
-#if !defined (CORE_BR310S14) && !defined (CORE_BR350S1)
+#if !defined (CORE_BM310S14) && !defined (CORE_BR350S1)
 #error "Please select first the MCU core used in your application"
 #endif
 
-#if defined(CORE_BR310S14)
+#if defined(CORE_BM310S14)
 
 /* RISC-V ISA */
 #define __RV32
@@ -33,7 +33,7 @@
 #define __RV_N_NMI                  (0UL)   /*!< The number of NMI interrupts implemented */
 #define __RV_CLICINTCTLBITS         (4U)    /*!< The number of bits implemented in CLICINTCTL registers */
 
-#endif /* CORE_BR310S14 */
+#endif /* CORE_BM310S14 */
 
 #if defined(CORE_BR350S1)
 

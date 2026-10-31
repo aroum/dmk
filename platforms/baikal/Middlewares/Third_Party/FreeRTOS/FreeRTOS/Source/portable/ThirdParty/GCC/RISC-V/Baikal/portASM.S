@@ -330,6 +330,18 @@ exit_without_context_switch:
     portcontextRESTORE_CONTEXT
 /*-----------------------------------------------------------*/
 
+.weak Exception_Handler
+.set Exception_Handler,freertos_risc_v_exception_handler
+
+.weak Software_IRQHandler
+.set Software_IRQHandler,freertos_risc_v_interrupt_handler
+
+.weak Timer_IRQHandler
+.set Timer_IRQHandler,freertos_risc_v_mtimer_interrupt_handler
+
+.weak CLIC_SW_IRQHandler
+.set CLIC_SW_IRQHandler,freertos_risc_v_interrupt_handler
+
 .section .text.freertos_risc_v_trap_handler
 .align 8
 freertos_risc_v_trap_handler:

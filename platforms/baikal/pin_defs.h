@@ -140,10 +140,7 @@ typedef uint32_t pin_t;
 #define PC14 46
 #define PC15 47
 
-// GPIO0..GPIO47 aliases
-#define GPIO0 0
-#define GPIO1 1
-#define GPIO2 2
+// GPIO3..GPIO47 aliases (GPIO0, GPIO1, GPIO2 are reserved as CMSIS GPIO_TypeDef* peripheral pointers)
 #define GPIO3 3
 #define GPIO4 4
 #define GPIO5 5

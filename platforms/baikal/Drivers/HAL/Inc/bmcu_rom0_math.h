@@ -3,8 +3,8 @@
  *  @file       bmcu_rom0_math.h
  *  @author     Baikal electronics SDK team
  *  @brief      ROM0 (math functions) header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * 
  *  File content:
  *      - typedef for built-in core math.h functions

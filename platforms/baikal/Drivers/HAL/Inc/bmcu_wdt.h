@@ -3,8 +3,8 @@
  *  @file       bmcu_wdt.h
  *  @author     Baikal electronics SDK team
  *  @brief      Watchdog Timer (WDT) module driver header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  *  @details
  *  Programmable Watchdog Timer (WDT) is purposed to protect the user
  *  application from incorrect behavior in case of software or hardware error.

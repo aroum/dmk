@@ -3,8 +3,8 @@
  *  @file       bmcu_version.h
  *  @author     Baikal electronics SDK team
  *  @brief      SDK common definitions
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -19,7 +19,7 @@
 
 /* HAL version definitions */
 #define __HAL_VERSION_MAJ        (2U)   /*!< [31:22] HAL major version */
-#define __HAL_VERSION_MIN        (2U)   /*!< [21:12] HAL minor version */
+#define __HAL_VERSION_MIN        (4U)   /*!< [21:12] HAL minor version */
 #define __HAL_VERSION_PATCH      (0U) /*!< [11:0] HAL patch version */
 #define __HAL_VERSION            ((__HAL_VERSION_MAJ << 22) | \
                                   (__HAL_VERSION_MIN << 12) | \

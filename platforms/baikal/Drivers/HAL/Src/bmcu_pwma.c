@@ -2,13 +2,9 @@
  * *****************************************************************************
  *  @file       bmcu_pwma.c
  *  @author     Baikal electronics SDK team
- *  @brief      PWMA timer (PWMA) module driver
- *  @version    2.2.0
- *  @date       2026.04.02
- *
- *  File content:
- *      - PWMA Init/Deinit functions implementation
- *      - Definitions for PWMA function assertions check
+ *  @brief      PWMA timer module driver source file
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -189,8 +185,6 @@
                                                  ((__VALUE__) == PWMA_DMABURST_LENGTH_17TRANSFERS) || \
                                                  ((__VALUE__) == PWMA_DMABURST_LENGTH_18TRANSFERS))
 
-/* Private function prototypes -----------------------------------------------*/
-
 static ErrorStatus OC0Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct);
 static ErrorStatus OC1Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct);
 static ErrorStatus OC2Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct);
@@ -201,11 +195,11 @@ static ErrorStatus IC2Config(PWMA_TypeDef *PWMAx, PWMA_IC_InitStruct_TypeDef *PW
 static ErrorStatus IC3Config(PWMA_TypeDef *PWMAx, PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct);
 
 /**
- * @brief  Set PWMAx registers to their reset values.
- * @param  PWMAx Timer instance
+ * @brief Deinitializes a PWMA instance.
+ * @param PWMAx The PWMA instance.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx registers are de-initialized
- *          - ERROR: invalid PWMAx instance
+ *         - SUCCESS: The PWMA instance has been deinitialized.
+ *         - ERROR: The PWMA instance has not been deinitialized.
  */
 ErrorStatus PWMA_DeInit(PWMA_TypeDef *PWMAx)
 {
@@ -268,56 +262,56 @@ ErrorStatus PWMA_DeInit(PWMA_TypeDef *PWMAx)
 }
 
 /**
- * @brief  Configure the PWMAx time base unit.
- * @param  PWMAx Timer Instance
- * @param  PWMA_InitStruct pointer to a @ref PWMA_InitStruct_TypeDef structure (PWMAx time base unit configuration data structure)
+ * @brief Initializes the time base unit of a PWMA instance.
+ * @note PWMA_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_InitStruct The pointer to PWMA_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx registers are de-initialized
- *          - ERROR: not applicable
+ *         - SUCCESS: The PWMA instance has been initialized.
+ *         - ERROR: The PWMA instance has not been initialized.
  */
 ErrorStatus PWMA_Init(PWMA_TypeDef *PWMAx, PWMA_InitStruct_TypeDef *PWMA_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
     assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_COUNTERMODE(PWMA_InitStruct->CounterMode));
     assert(IS_PWMA_CLOCKDIVISION(PWMA_InitStruct->ClockDivision));
 
-    uint32_t tmpcr1 = READ_REG(PWMAx->CR1);
+    if (PWMA_IsEnabledCounter(PWMAx) == 0UL)
+    {
+        /* The counter is disabled */
 
-    /* Select the Counter Mode */
-    MODIFY_REG(tmpcr1, (PWMA_CR1_DIR | PWMA_CR1_CMS), (uint32_t)PWMA_InitStruct->CounterMode);
+        /* Configure counter */
+        MODIFY_REG(PWMAx->CR1,
+                   (PWMA_CR1_CKD | PWMA_CR1_ARPE | PWMA_CR1_CMS |
+                    PWMA_CR1_DIR | PWMA_CR1_OPM | PWMA_CR1_UDIS),
+                   ((uint32_t)PWMA_InitStruct->ClockDivision |
+                    (uint32_t)PWMA_InitStruct->CounterMode));
 
-    /* Set the clock division */
-    MODIFY_REG(tmpcr1, PWMA_CR1_CKD, (uint32_t)PWMA_InitStruct->ClockDivision);
+        WRITE_REG(PWMAx->DIER, PWMA_DIER_INTR_CLEAR);
+        WRITE_REG(PWMAx->SR, 0x0UL);
 
-    /* Write to PWMAx CR1 */
-    WRITE_REG(PWMAx->CR1, tmpcr1);
+        WRITE_REG(PWMAx->CNT, 0x0UL);
 
-    /* Set the Autoreload value */
-    PWMA_SetAutoReload(PWMAx, (uint32_t)PWMA_InitStruct->Autoreload);
+        WRITE_REG(PWMAx->PSC, (uint32_t)PWMA_InitStruct->Prescaler);
+        WRITE_REG(PWMAx->ARR, (uint32_t)PWMA_InitStruct->Autoreload);
+        WRITE_REG(PWMAx->RCR, (uint32_t)PWMA_InitStruct->RepetitionCounter);
 
-    /* Set the Prescaler value */
-    PWMA_SetPrescaler(PWMAx, (uint32_t)PWMA_InitStruct->Prescaler);
+        status = SUCCESS;
+    }
 
-    /* Set the Repetition Counter value */
-    PWMA_SetRepetitionCounter(PWMAx, (uint32_t)PWMA_InitStruct->RepetitionCounter);
-
-    /* Generate an update event to reload the Prescaler
-       and the repetition counter value (if applicable) immediately */
-    PWMA_GenerateEvent_UPDATE(PWMAx);
-
-    return SUCCESS;
+    return status;
 }
 
 /**
- * @brief  Set the fields of the time base unit configuration data structure
- *         to their default values.
- * @param  PWMA_InitStruct pointer to a @ref PWMA_InitStruct_TypeDef structure (time base unit configuration data structure)
- * @retval None
+ * @brief Sets each field of PWMA_InitStruct_TypeDef structure to default value.
+ * @param PWMA_InitStruct The pointer to PWMA_InitStruct_TypeDef structure.
  */
 void PWMA_StructInit(PWMA_InitStruct_TypeDef *PWMA_InitStruct)
 {
-    /* Set the default configuration */
+    /* Set PWMA_InitStruct fields to default values */
     PWMA_InitStruct->Prescaler         = 0x0U;
     PWMA_InitStruct->CounterMode       = PWMA_COUNTERMODE_UP;
     PWMA_InitStruct->Autoreload        = 0xFFFFU;
@@ -326,17 +320,14 @@ void PWMA_StructInit(PWMA_InitStruct_TypeDef *PWMA_InitStruct)
 }
 
 /**
- * @brief  Configure the PWMAx output channel.
- * @param  PWMAx Timer Instance
- * @param  Channel This parameter can be one of the following values:
- *         @arg @ref PWMA_CH0
- *         @arg @ref PWMA_CH1
- *         @arg @ref PWMA_CH2
- *         @arg @ref PWMA_CH3
- * @param  PWMA_OC_InitStruct pointer to a @ref PWMA_OC_InitStruct_TypeDef structure (PWMAx output channel configuration data structure)
+ * @brief Configures the PWMA output channel.
+ * @note PWMA_OC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param Channel The output channel. Can be one of the PWMA_CHx values.
+ * @param PWMA_OC_InitStruct The pointer to PWMA_OC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx output channel is initialized
- *          - ERROR: PWMAx output channel is not initialized
+ *         - SUCCESS: The PWMA output channel has been initialized.
+ *         - ERROR: The PWMA output channel has not been initialized.
  */
 ErrorStatus PWMA_OC_Init(PWMA_TypeDef *PWMAx, uint32_t Channel, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 {
@@ -364,14 +355,12 @@ ErrorStatus PWMA_OC_Init(PWMA_TypeDef *PWMAx, uint32_t Channel, PWMA_OC_InitStru
 }
 
 /**
- * @brief  Set the fields of the PWMAx output channel configuration data
- *         structure to their default values.
- * @param  PWMA_OC_InitStruct pointer to a @ref PWMA_OC_InitStruct_TypeDef structure (the output channel configuration data structure)
- * @retval None
+ * @brief Sets each field of PWMA_OC_InitStruct_TypeDef structure to default value.
+ * @param PWMA_OC_InitStruct The pointer to PWMA_OC_InitStruct_TypeDef structure.
  */
 void PWMA_OC_StructInit(PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 {
-    /* Set the default configuration */
+    /* Set PWMA_OC_InitStruct fields to default values */
     PWMA_OC_InitStruct->OCMode       = PWMA_OC_MODE_FROZEN;
     PWMA_OC_InitStruct->OCState      = PWMA_OC_STATE_DISABLE;
     PWMA_OC_InitStruct->OCNState     = PWMA_OC_STATE_DISABLE;
@@ -383,17 +372,14 @@ void PWMA_OC_StructInit(PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 }
 
 /**
- * @brief  Configure the PWMAx input channel.
- * @param  PWMAx Timer Instance
- * @param  Channel This parameter can be one of the following values:
- *         @arg @ref PWMA_CH0
- *         @arg @ref PWMA_CH1
- *         @arg @ref PWMA_CH2
- *         @arg @ref PWMA_CH3
- * @param  PWMA_IC_InitStruct pointer to a @ref PWMA_IC_InitStruct_TypeDef structure (PWMAx input channel configuration data structure)
+ * @brief Configures the PWMA input channel.
+ * @note PWMA_IC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param Channel The input channel. Can be one of the PWMA_CHx values.
+ * @param PWMA_IC_InitStruct The pointer to PWMA_IC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx input channel is initialized
- *          - ERROR: PWMAx input channel is not initialized
+ *         - SUCCESS: The PWMA input channel has been initialized.
+ *         - ERROR: The PWMA input channel has not been initialized.
  */
 ErrorStatus PWMA_IC_Init(PWMA_TypeDef *PWMAx, uint32_t Channel, PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 {
@@ -421,14 +407,12 @@ ErrorStatus PWMA_IC_Init(PWMA_TypeDef *PWMAx, uint32_t Channel, PWMA_IC_InitStru
 }
 
 /**
- * @brief  Set the fields of the PWMAx input channel configuration data
- *         structure to their default values.
- * @param  PWMA_IC_InitStruct pointer to a @ref PWMA_IC_InitStruct_TypeDef structure (the input channel configuration data structure)
- * @retval None
+ * @brief Sets each field of PWMA_IC_InitStruct_TypeDef structure to default value.
+ * @param PWMA_IC_InitStruct The pointer to PWMA_IC_InitStruct_TypeDef structure.
  */
 void PWMA_IC_StructInit(PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 {
-    /* Set the default configuration */
+    /* Set PWMA_IC_InitStruct fields to default values */
     PWMA_IC_InitStruct->ICPolarity    = PWMA_IC_POLARITY_RISING;
     PWMA_IC_InitStruct->ICActiveInput = PWMA_IC_ACTIVEINPUT_DIRECTTI;
     PWMA_IC_InitStruct->ICPrescaler   = PWMA_IC_PRESCALER_DIV1;
@@ -436,16 +420,17 @@ void PWMA_IC_StructInit(PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 }
 
 /**
- * @brief Configure the External Trigger feature of the timer instance.
- * @param  PWMAx Timer Instance
- * @param  PWMA_ETR_InitStruct pointer to a @ref PWMA_ETR_InitStruct_TypeDef structure (External Trigger configuration data structure)
+ * @brief Configures the External Trigger feature of a PWMA instance.
+ * @note PWMA_ETR_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_ETR_InitStruct The pointer to PWMA_ETR_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: External Trigger feature is initialized
- *          - ERROR: not applicable
+ *         - SUCCESS: The External Trigger feature has been configured.
+ *         - ERROR: The External Trigger feature has not been configured.
  */
 ErrorStatus PWMA_ETR_Init(PWMA_TypeDef *PWMAx, PWMA_ETR_InitStruct_TypeDef *PWMA_ETR_InitStruct)
 {
-    /* Check the parameters */
+    /* Check parameters */
     assert(IS_PWMA_CLOCKSOURCE(PWMA_ETR_InitStruct->ClockSource));
     assert(IS_PWMA_SLAVEMODE(PWMA_ETR_InitStruct->SlaveMode));
     assert(IS_PWMA_TS(PWMA_ETR_InitStruct->TriggerInput));
@@ -453,99 +438,72 @@ ErrorStatus PWMA_ETR_Init(PWMA_TypeDef *PWMAx, PWMA_ETR_InitStruct_TypeDef *PWMA
     assert(IS_PWMA_ETR_PRESCALER(PWMA_ETR_InitStruct->ETRPrescaler));
     assert(IS_PWMA_ETR_FILTER(PWMA_ETR_InitStruct->ETRFilter));
 
-    uint32_t tmpsmcr = READ_REG(PWMAx->SMCR);
-
-    /* Configure the external trigger signal */
-    MODIFY_REG(tmpsmcr, PWMA_SMCR_ETP, (uint32_t)PWMA_ETR_InitStruct->ETRPolarity);
-    MODIFY_REG(tmpsmcr, PWMA_SMCR_ETPS, (uint32_t)PWMA_ETR_InitStruct->ETRPrescaler);
-    MODIFY_REG(tmpsmcr, PWMA_SMCR_ETF, (uint32_t)PWMA_ETR_InitStruct->ETRFilter);
-
-    /* Configure the input synchronization signal */
-    MODIFY_REG(tmpsmcr, PWMA_SMCR_TS, (uint32_t)PWMA_ETR_InitStruct->TriggerInput);
-
-    /* Configure the input clock source and timer slave mode */
-    if (PWMA_ETR_InitStruct->ClockSource == PWMA_CLOCKSOURCE_EXT_MODE2)
-    {
-        MODIFY_REG(tmpsmcr,
-                   (PWMA_SMCR_ECE | PWMA_SMCR_SMS),
-                   ((uint32_t)PWMA_ETR_InitStruct->ClockSource |
-                    (uint32_t)PWMA_ETR_InitStruct->SlaveMode));
-    }
-    else
-    {
-        MODIFY_REG(tmpsmcr,
-                   (PWMA_SMCR_ECE | PWMA_SMCR_SMS),
-                   (uint32_t)PWMA_ETR_InitStruct->SlaveMode);
-    }
-
-    WRITE_REG(PWMAx->SMCR, tmpsmcr);
+    MODIFY_REG(PWMAx->SMCR,
+               (PWMA_SMCR_ETP | PWMA_SMCR_ECE | PWMA_SMCR_ETPS |
+                PWMA_SMCR_ETF | PWMA_SMCR_TS | PWMA_SMCR_SMS),
+               ((uint32_t)PWMA_ETR_InitStruct->ETRPolarity |
+                (uint32_t)PWMA_ETR_InitStruct->ETRPrescaler |
+                (uint32_t)PWMA_ETR_InitStruct->ETRFilter |
+                (uint32_t)PWMA_ETR_InitStruct->TriggerInput |
+                ((PWMA_ETR_InitStruct->ClockSource == PWMA_CLOCKSOURCE_EXT_MODE1) ?
+                    ((uint32_t)PWMA_ETR_InitStruct->ClockSource) :
+                    ((uint32_t)PWMA_ETR_InitStruct->ClockSource |
+                     (uint32_t)PWMA_ETR_InitStruct->SlaveMode))));
 
     return SUCCESS;
 }
 
 /**
- * @brief  Set the fields of the External Trigger configuration data structure
- *         to their default values.
- * @param  PWMA_ETR_InitStruct pointer to a @ref PWMA_ETR_InitStruct_TypeDef structure (External Trigger configuration data structure)
- * @retval None
+ * @brief Sets each field of PWMA_ETR_InitStruct_TypeDef structure to default value.
+ * @param PWMA_ETR_InitStruct The pointer to PWMA_ETR_InitStruct_TypeDef structure.
  */
 void PWMA_ETR_StructInit(PWMA_ETR_InitStruct_TypeDef *PWMA_ETR_InitStruct)
 {
-    /* Set the default configuration */
+    /* Set PWMA_ETR_InitStruct fields to default values */
     PWMA_ETR_InitStruct->ClockSource  = PWMA_CLOCKSOURCE_INTERNAL;
     PWMA_ETR_InitStruct->SlaveMode    = PWMA_SLAVEMODE_DISABLED;
+    PWMA_ETR_InitStruct->TriggerInput = PWMA_TS_ITR0;
     PWMA_ETR_InitStruct->ETRPolarity  = PWMA_ETR_POLARITY_NONINVERTED;
     PWMA_ETR_InitStruct->ETRPrescaler = PWMA_ETR_PRESCALER_DIV1;
     PWMA_ETR_InitStruct->ETRFilter    = PWMA_ETR_FILTER_FDIV1;
 }
 
 /**
- * @brief  Configure the Break and Dead Time feature of the timer instance.
- * @note As the bits AOE, BKP, BKE, OSSR, OSSI and DTG[7:0] can be write-locked
- *  depending on the LOCK configuration, it can be necessary to configure all of
- *  them during the first write access to the PWMAx_BDTR register.
- * @note Macro @ref IS_PWMA_BREAK_INSTANCE(PWMAx) can be used to check whether or not
- *       a timer instance provides a break input.
- * @param  PWMAx Timer Instance
- * @param  PWMA_BDTR_InitStruct pointer to a @ref PWMA_BDTR_InitStruct_TypeDef structure (Break and Dead Time configuration data structure)
+ * @brief Configures the Break and Dead Time feature of a PWMA instance.
+ * @note PWMA_BDTR_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_BDTR_InitStruct The pointer to PWMA_BDTR_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: Break and Dead Time are initialized
- *          - ERROR: not applicable
+ *         - SUCCESS: The Break and Dead Time feature has been configured.
+ *         - ERROR: The Break and Dead Time feature has not been configured.
  */
 ErrorStatus PWMA_BDTR_Init(PWMA_TypeDef *PWMAx, PWMA_BDTR_InitStruct_TypeDef *PWMA_BDTR_InitStruct)
 {
-    /* Check the parameters */
+    /* Check parameters */
     assert(IS_PWMA_OSSR_STATE(PWMA_BDTR_InitStruct->OSSRState));
     assert(IS_PWMA_BRK_STATE(PWMA_BDTR_InitStruct->BreakState));
     assert(IS_PWMA_BRK_POLARITY(PWMA_BDTR_InitStruct->BreakPolarity));
     assert(IS_PWMA_AUTOMATICOUTPUT(PWMA_BDTR_InitStruct->AutomaticOutput));
 
-    /* Set the Lock level, the Break enable Bit and the Polarity, the OSSR State,
-       the OSSI State, the dead time value and the Automatic Output Enable Bit */
-    uint32_t tmpbdtr = READ_REG(PWMAx->BDTR);
-
-    /* Set the BDTR bits */
-    MODIFY_REG(tmpbdtr, PWMA_BDTR_DTG, PWMA_BDTR_InitStruct->DeadTime);
-    MODIFY_REG(tmpbdtr, PWMA_BDTR_OSSR, (uint32_t)PWMA_BDTR_InitStruct->OSSRState);
-    MODIFY_REG(tmpbdtr, PWMA_BDTR_BKE, (uint32_t)PWMA_BDTR_InitStruct->BreakState);
-    MODIFY_REG(tmpbdtr, PWMA_BDTR_BKP, (uint32_t)PWMA_BDTR_InitStruct->BreakPolarity);
-    MODIFY_REG(tmpbdtr, PWMA_BDTR_AOE, (uint32_t)PWMA_BDTR_InitStruct->AutomaticOutput);
-
-    /* Set PWMAx_BDTR */
-    WRITE_REG(PWMAx->BDTR, tmpbdtr);
+    MODIFY_REG(PWMAx->BDTR,
+               (PWMA_BDTR_AOE | PWMA_BDTR_BKP | PWMA_BDTR_BKE |
+                PWMA_BDTR_OSSR |PWMA_BDTR_DTG),
+               (uint32_t)PWMA_BDTR_InitStruct->AutomaticOutput |
+               (uint32_t)PWMA_BDTR_InitStruct->BreakPolarity |
+               (uint32_t)PWMA_BDTR_InitStruct->BreakState |
+               (uint32_t)PWMA_BDTR_InitStruct->OSSRState |
+               (uint32_t)PWMA_BDTR_InitStruct->DeadTime);
 
     return SUCCESS;
 }
 
 /**
- * @brief  Set the fields of the Break and Dead Time configuration data structure
- *         to their default values.
- * @param  PWMA_BDTR_InitStruct pointer to a @ref PWMA_BDTR_InitStruct_TypeDef structure (Break and Dead Time configuration data structure)
- * @retval None
+ * @brief Sets each field of PWMA_BDTR_InitStruct_TypeDef structure to default value.
+ * @param PWMA_BDTR_InitStruct The pointer to PWMA_BDTR_InitStruct_TypeDef structure.
  */
 void PWMA_BDTR_StructInit(PWMA_BDTR_InitStruct_TypeDef *PWMA_BDTR_InitStruct)
 {
-    /* Set the default configuration */
+    /* Set PWMA_BDTR_InitStruct fields to default values */
     PWMA_BDTR_InitStruct->OSSRState       = PWMA_OSSR_DISABLE;
     PWMA_BDTR_InitStruct->DeadTime        = 0x0U;
     PWMA_BDTR_InitStruct->BreakState      = PWMA_BRK_DISABLE;
@@ -554,16 +512,19 @@ void PWMA_BDTR_StructInit(PWMA_BDTR_InitStruct_TypeDef *PWMA_BDTR_InitStruct)
 }
 
 /**
- * @brief  Configure the PWMAx output channel 0.
- * @param  PWMAx Timer Instance
- * @param  PWMA_OC_InitStruct pointer to the the PWMAx output channel 0 configuration data structure
+ * @brief Configures the PWMA output channel 0.
+ * @note PWMA_OC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_OC_InitStruct The pointer to PWMA_OC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx output channel is initialized
- *          - ERROR: PWMAx output channel is not initialized
+ *         - SUCCESS: The PWMA output channel has been initialized.
+ *         - ERROR: The PWMA output channel has not been initialized.
  */
 ErrorStatus OC0Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
     assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_OC_MODE(PWMA_OC_InitStruct->OCMode));
     assert(IS_PWMA_OC_STATE(PWMA_OC_InitStruct->OCState));
@@ -573,68 +534,52 @@ ErrorStatus OC0Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_I
     assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCIdleState));
     assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCNIdleState));
 
-    /* Disable the Channel 0: Reset the CC0E Bit */
-    CLEAR_BIT(PWMAx->CCER, PWMA_CCER_CC0E);
+    if ((PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH0) == 0UL) &&
+        (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH0N) == 0UL))
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Get the PWMAx CCER register value */
-    uint32_t tmpccer = READ_REG(PWMAx->CCER);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CR2,
+                   (PWMA_CR2_OIS0N | PWMA_CR2_OIS0),
+                   (((uint32_t)PWMA_OC_InitStruct->OCNIdleState << SHIFT_TAB_OISx[PWMA_GET_CHANNEL_INDEX(PWMA_CH0N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCIdleState << SHIFT_TAB_OISx[PWMA_GET_CHANNEL_INDEX(PWMA_CH0)])));
 
-    /* Get the PWMAx CR2 register value */
-    uint32_t tmpcr2 = READ_REG(PWMAx->CR2);
+        MODIFY_REG(PWMAx->CCMR1,
+                   (PWMA_CCMR1_OC_OC0CE | PWMA_CCMR1_OC_OC0M |
+                    PWMA_CCMR1_OC_OC0PE | PWMA_CCMR1_CC0S),
+                   (((uint32_t)PWMA_OC_InitStruct->OCMode << SHIFT_TAB_OCxx[PWMA_GET_CHANNEL_INDEX(PWMA_CH0)]) |
+                    PWMA_CCMR1_CC0S_OC));
 
-    /* Get the PWMAx CCMR1 register value */
-    uint32_t tmpccmr1 = READ_REG(PWMAx->CCMR1);
+        WRITE_REG(PWMAx->CCR0, PWMA_OC_InitStruct->CompareValue);
 
-    /* Reset Capture/Compare selection Bits */
-    CLEAR_BIT(tmpccmr1, PWMA_CCMR1_CC0S);
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC0NP | PWMA_CCER_CC0NE | PWMA_CCER_CC0P | PWMA_CCER_CC0E),
+                   (((uint32_t)PWMA_OC_InitStruct->OCNPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH0N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCNState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH0N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH0)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH0)])));
 
-    /* Set the Output Compare Mode */
-    MODIFY_REG(tmpccmr1, PWMA_CCMR1_OC_OC0M, (uint32_t)PWMA_OC_InitStruct->OCMode);
+        status = SUCCESS;
+    }
 
-    /* Set the Output Compare Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC0P, (uint32_t)PWMA_OC_InitStruct->OCPolarity);
-
-    /* Set the Output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC0E, (uint32_t)PWMA_OC_InitStruct->OCState);
-
-    /* Set the complementary output Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC0NP, (uint32_t)PWMA_OC_InitStruct->OCNPolarity << 2);
-
-    /* Set the complementary output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC0NE, (uint32_t)PWMA_OC_InitStruct->OCNState << 2);
-
-    /* Set the Output Idle state */
-    MODIFY_REG(tmpcr2, PWMA_CR2_OIS0, (uint32_t)PWMA_OC_InitStruct->OCIdleState);
-
-    /* Set the complementary output Idle state */
-    MODIFY_REG(tmpcr2, PWMA_CR2_OIS0N, (uint32_t)PWMA_OC_InitStruct->OCNIdleState << 1);
-
-    /* Write to PWMAx CR2 */
-    WRITE_REG(PWMAx->CR2, tmpcr2);
-
-    /* Write to PWMAx CCMR1 */
-    WRITE_REG(PWMAx->CCMR1, tmpccmr1);
-
-    /* Set the Capture Compare Register value */
-    PWMA_OC_SetCompareCH0(PWMAx, PWMA_OC_InitStruct->CompareValue);
-
-    /* Write to PWMAx CCER */
-    WRITE_REG(PWMAx->CCER, tmpccer);
-
-    return SUCCESS;
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx output channel 1.
- * @param  PWMAx Timer Instance
- * @param  PWMA_OC_InitStruct pointer to the the PWMAx output channel 1 configuration data structure
+ * @brief Configures the PWMA output channel 1.
+ * @note PWMA_OC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_OC_InitStruct The pointer to PWMA_OC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx output channel is initialized
- *          - ERROR: PWMAx output channel is not initialized
+ *         - SUCCESS: The PWMA output channel has been initialized.
+ *         - ERROR: The PWMA output channel has not been initialized.
  */
 ErrorStatus OC1Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
     assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_OC_MODE(PWMA_OC_InitStruct->OCMode));
     assert(IS_PWMA_OC_STATE(PWMA_OC_InitStruct->OCState));
@@ -644,68 +589,52 @@ ErrorStatus OC1Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_I
     assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCIdleState));
     assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCNIdleState));
 
-    /* Disable the Channel 1: Reset the CC1E Bit */
-    CLEAR_BIT(PWMAx->CCER, PWMA_CCER_CC1E);
+    if ((PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH1) == 0UL) &&
+        (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH1N) == 0UL))
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Get the PWMAx CCER register value */
-    uint32_t tmpccer =  READ_REG(PWMAx->CCER);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CR2,
+                   (PWMA_CR2_OIS1N | PWMA_CR2_OIS1),
+                   (((uint32_t)PWMA_OC_InitStruct->OCNIdleState << SHIFT_TAB_OISx[PWMA_GET_CHANNEL_INDEX(PWMA_CH1N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCIdleState << SHIFT_TAB_OISx[PWMA_GET_CHANNEL_INDEX(PWMA_CH1)])));
 
-    /* Get the PWMAx CR2 register value */
-    uint32_t tmpcr2 = READ_REG(PWMAx->CR2);
+        MODIFY_REG(PWMAx->CCMR1,
+                   (PWMA_CCMR1_OC_OC1CE | PWMA_CCMR1_OC_OC1M |
+                    PWMA_CCMR1_OC_OC1PE | PWMA_CCMR1_CC1S),
+                   (((uint32_t)PWMA_OC_InitStruct->OCMode << SHIFT_TAB_OCxx[PWMA_GET_CHANNEL_INDEX(PWMA_CH1)]) |
+                    PWMA_CCMR1_CC1S_OC));
 
-    /* Get the PWMAx CCMR1 register value */
-    uint32_t tmpccmr1 = READ_REG(PWMAx->CCMR1);
+        WRITE_REG(PWMAx->CCR1, PWMA_OC_InitStruct->CompareValue);
 
-    /* Reset Capture/Compare selection Bits */
-    CLEAR_BIT(tmpccmr1, PWMA_CCMR1_CC1S);
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC1NP | PWMA_CCER_CC1NE | PWMA_CCER_CC1P | PWMA_CCER_CC1E),
+                   (((uint32_t)PWMA_OC_InitStruct->OCNPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH1N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCNState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH1N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH1)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH1)])));
 
-    /* Select the Output Compare Mode */
-    MODIFY_REG(tmpccmr1, PWMA_CCMR1_OC_OC1M, (uint32_t)PWMA_OC_InitStruct->OCMode << 8);
+        status = SUCCESS;
+    }
 
-    /* Set the Output Compare Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC1P, (uint32_t)PWMA_OC_InitStruct->OCPolarity << 4);
-
-    /* Set the Output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC1E, (uint32_t)PWMA_OC_InitStruct->OCState << 4);
-
-    /* Set the complementary output Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC1NP, (uint32_t)PWMA_OC_InitStruct->OCNPolarity << 6);
-
-    /* Set the complementary output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC1NE, (uint32_t)PWMA_OC_InitStruct->OCNState << 6);
-
-    /* Set the Output Idle state */
-    MODIFY_REG(tmpcr2, PWMA_CR2_OIS1, (uint32_t)PWMA_OC_InitStruct->OCIdleState << 2);
-
-    /* Set the complementary output Idle state */
-    MODIFY_REG(tmpcr2, PWMA_CR2_OIS1N, (uint32_t)PWMA_OC_InitStruct->OCNIdleState << 3);
-
-    /* Write to PWMAx CR2 */
-    WRITE_REG(PWMAx->CR2, tmpcr2);
-
-    /* Write to PWMAx CCMR1 */
-    WRITE_REG(PWMAx->CCMR1, tmpccmr1);
-
-    /* Set the Capture Compare Register value */
-    PWMA_OC_SetCompareCH1(PWMAx, PWMA_OC_InitStruct->CompareValue);
-
-    /* Write to PWMAx CCER */
-    WRITE_REG(PWMAx->CCER, tmpccer);
-
-    return SUCCESS;
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx output channel 2.
- * @param  PWMAx Timer Instance
- * @param  PWMA_OC_InitStruct pointer to the the PWMAx output channel 2 configuration data structure
+ * @brief Configures the PWMA output channel 2.
+ * @note PWMA_OC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_OC_InitStruct The pointer to PWMA_OC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx output channel is initialized
- *          - ERROR: PWMAx output channel is not initialized
+ *         - SUCCESS: The PWMA output channel has been initialized.
+ *         - ERROR: The PWMA output channel has not been initialized.
  */
 ErrorStatus OC2Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
     assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_OC_MODE(PWMA_OC_InitStruct->OCMode));
     assert(IS_PWMA_OC_STATE(PWMA_OC_InitStruct->OCState));
@@ -715,244 +644,248 @@ ErrorStatus OC2Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_I
     assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCIdleState));
     assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCNIdleState));
 
-    /* Disable the Channel 2: Reset the CC2E Bit */
-    CLEAR_BIT(PWMAx->CCER, PWMA_CCER_CC2E);
+    if ((PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH2) == 0UL) &&
+        (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH2N) == 0UL))
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Get the PWMAx CCER register value */
-    uint32_t tmpccer =  READ_REG(PWMAx->CCER);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CR2,
+                   (PWMA_CR2_OIS2N | PWMA_CR2_OIS2),
+                   (((uint32_t)PWMA_OC_InitStruct->OCNIdleState << SHIFT_TAB_OISx[PWMA_GET_CHANNEL_INDEX(PWMA_CH2N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCIdleState << SHIFT_TAB_OISx[PWMA_GET_CHANNEL_INDEX(PWMA_CH2)])));
 
-    /* Get the PWMAx CR2 register value */
-    uint32_t tmpcr2 = READ_REG(PWMAx->CR2);
+        MODIFY_REG(PWMAx->CCMR2,
+                   (PWMA_CCMR2_OC_OC2CE | PWMA_CCMR2_OC_OC2M |
+                    PWMA_CCMR2_OC_OC2PE | PWMA_CCMR2_CC2S),
+                   (((uint32_t)PWMA_OC_InitStruct->OCMode << SHIFT_TAB_OCxx[PWMA_GET_CHANNEL_INDEX(PWMA_CH2)]) |
+                    PWMA_CCMR2_CC2S_OC));
 
-    /* Get the PWMAx CCMR2 register value */
-    uint32_t tmpccmr2 = READ_REG(PWMAx->CCMR2);
+        WRITE_REG(PWMAx->CCR2, PWMA_OC_InitStruct->CompareValue);
 
-    /* Reset Capture/Compare selection Bits */
-    CLEAR_BIT(tmpccmr2, PWMA_CCMR2_CC2S);
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC2NP | PWMA_CCER_CC2NE | PWMA_CCER_CC2P | PWMA_CCER_CC2E),
+                   (((uint32_t)PWMA_OC_InitStruct->OCNPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH2N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCNState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH2N)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH2)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH2)])));
 
-    /* Select the Output Compare Mode */
-    MODIFY_REG(tmpccmr2, PWMA_CCMR2_OC_OC2M, (uint32_t)PWMA_OC_InitStruct->OCMode);
+        status = SUCCESS;
+    }
 
-    /* Set the Output Compare Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC2P, (uint32_t)PWMA_OC_InitStruct->OCPolarity << 8);
-
-    /* Set the Output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC2E, (uint32_t)PWMA_OC_InitStruct->OCState << 8);
-
-    /* Set the complementary output Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC2NP, (uint32_t)PWMA_OC_InitStruct->OCNPolarity << 10);
-
-    /* Set the complementary output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC2NE, (uint32_t)PWMA_OC_InitStruct->OCNState << 10);
-
-    /* Set the Output Idle state */
-    MODIFY_REG(tmpcr2, PWMA_CR2_OIS2, (uint32_t)PWMA_OC_InitStruct->OCIdleState << 4);
-
-    /* Set the complementary output Idle state */
-    MODIFY_REG(tmpcr2, PWMA_CR2_OIS2N, (uint32_t)PWMA_OC_InitStruct->OCNIdleState << 5);
-
-    /* Write to PWMAx CR2 */
-    WRITE_REG(PWMAx->CR2, tmpcr2);
-
-    /* Write to PWMAx CCMR2 */
-    WRITE_REG(PWMAx->CCMR2, tmpccmr2);
-
-    /* Set the Capture Compare Register value */
-    PWMA_OC_SetCompareCH2(PWMAx, PWMA_OC_InitStruct->CompareValue);
-
-    /* Write to PWMAx CCER */
-    WRITE_REG(PWMAx->CCER, tmpccer);
-
-    return SUCCESS;
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx output channel 3.
- * @param  PWMAx Timer Instance
- * @param  PWMA_OC_InitStruct pointer to the the PWMAx output channel 3 configuration data structure
+ * @brief Configures the PWMA output channel 3.
+ * @note PWMA_OC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_OC_InitStruct The pointer to PWMA_OC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx output channel is initialized
- *          - ERROR: PWMAx output channel is not initialized
+ *         - SUCCESS: The PWMA output channel has been initialized.
+ *         - ERROR: The PWMA output channel has not been initialized.
  */
 ErrorStatus OC3Config(PWMA_TypeDef *PWMAx, PWMA_OC_InitStruct_TypeDef *PWMA_OC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
     assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_OC_MODE(PWMA_OC_InitStruct->OCMode));
     assert(IS_PWMA_OC_STATE(PWMA_OC_InitStruct->OCState));
     assert(IS_PWMA_OC_STATE(PWMA_OC_InitStruct->OCNState));
     assert(IS_PWMA_OC_POLARITY(PWMA_OC_InitStruct->OCPolarity));
     assert(IS_PWMA_OC_POLARITY(PWMA_OC_InitStruct->OCNPolarity));
+    assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCIdleState));
+    assert(IS_PWMA_OC_IDLESTATE(PWMA_OC_InitStruct->OCNIdleState));
 
-    /* Disable the Channel 3: Reset the CC3E Bit */
-    CLEAR_BIT(PWMAx->CCER, PWMA_CCER_CC3E);
+    if (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH3) == 0UL)
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Get the PWMAx CCER register value */
-    uint32_t tmpccer = READ_REG(PWMAx->CCER);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CCMR2,
+                   (PWMA_CCMR2_OC_OC3CE | PWMA_CCMR2_OC_OC3M |
+                    PWMA_CCMR2_OC_OC3PE | PWMA_CCMR2_CC3S),
+                   (((uint32_t)PWMA_OC_InitStruct->OCMode << SHIFT_TAB_OCxx[PWMA_GET_CHANNEL_INDEX(PWMA_CH3)]) |
+                    PWMA_CCMR2_CC3S_OC));
 
-    /* Get the PWMAx CR2 register value */
-    uint32_t tmpcr2 =  READ_REG(PWMAx->CR2);
+        WRITE_REG(PWMAx->CCR3, PWMA_OC_InitStruct->CompareValue);
 
-    /* Get the PWMAx CCMR2 register value */
-    uint32_t tmpccmr2 = READ_REG(PWMAx->CCMR2);
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC0P | PWMA_CCER_CC0E),
+                   (((uint32_t)PWMA_OC_InitStruct->OCPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH3)]) |
+                    ((uint32_t)PWMA_OC_InitStruct->OCState << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH3)])));
 
-    /* Reset Capture/Compare selection Bits */
-    CLEAR_BIT(tmpccmr2, PWMA_CCMR2_CC3S);
+        status = SUCCESS;
+    }
 
-    /* Select the Output Compare Mode */
-    MODIFY_REG(tmpccmr2, PWMA_CCMR2_OC_OC3M, (uint32_t)PWMA_OC_InitStruct->OCMode << 8);
-
-    /* Set the Output Compare Polarity */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC3P, (uint32_t)PWMA_OC_InitStruct->OCPolarity << 12);
-
-    /* Set the Output State */
-    MODIFY_REG(tmpccer, PWMA_CCER_CC3E, (uint32_t)PWMA_OC_InitStruct->OCState << 12);
-
-    /* Write to PWMAx CR2 */
-    WRITE_REG(PWMAx->CR2, tmpcr2);
-
-    /* Write to PWMAx CCMR2 */
-    WRITE_REG(PWMAx->CCMR2, tmpccmr2);
-
-    /* Set the Capture Compare Register value */
-    PWMA_OC_SetCompareCH3(PWMAx, PWMA_OC_InitStruct->CompareValue);
-
-    /* Write to PWMAx CCER */
-    WRITE_REG(PWMAx->CCER, tmpccer);
-
-    return SUCCESS;
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx input channel 0.
- * @param  PWMAx Timer Instance
- * @param  PWMA_IC_InitStruct pointer to the the PWMAx input channel 0 configuration data structure
+ * @brief Configures the PWMA input channel 0.
+ * @note PWMA_IC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_IC_InitStruct The pointer to PWMA_IC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx input channel is initialized
- *          - ERROR: PWMAx input channel is not initialized
+ *         - SUCCESS: The PWMA input channel has been initialized.
+ *         - ERROR: The PWMA input channel has not been initialized.
  */
 ErrorStatus IC0Config(PWMA_TypeDef *PWMAx, PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
+    assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_IC_POLARITY(PWMA_IC_InitStruct->ICPolarity));
     assert(IS_PWMA_IC_ACTIVEINPUT(PWMA_IC_InitStruct->ICActiveInput));
     assert(IS_PWMA_IC_PRESCALER(PWMA_IC_InitStruct->ICPrescaler));
     assert(IS_PWMA_IC_FILTER(PWMA_IC_InitStruct->ICFilter));
 
-    /* Disable the Channel 0: Reset the CC0E Bit */
-    PWMAx->CCER &= ~PWMA_CCER_CC0E;
+    if ((PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH0) == 0UL) &&
+        (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH0N) == 0UL))
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Select the Input and set the filter and the prescaler value */
-    MODIFY_REG(PWMAx->CCMR1,
-               (PWMA_CCMR1_CC0S | PWMA_CCMR1_IC_IC0F | PWMA_CCMR1_IC_IC0PSC),
-               (PWMA_IC_InitStruct->ICActiveInput | PWMA_IC_InitStruct->ICFilter | PWMA_IC_InitStruct->ICPrescaler) >> 16U);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CCMR1,
+                   (PWMA_CCMR1_IC_IC0F | PWMA_CCMR1_IC_IC0PSC | PWMA_CCMR1_CC0S),
+                   ((uint32_t)PWMA_IC_InitStruct->ICFilter |
+                    (uint32_t)PWMA_IC_InitStruct->ICPrescaler |
+                    (uint32_t)PWMA_IC_InitStruct->ICActiveInput) << SHIFT_TAB_ICxx[PWMA_GET_CHANNEL_INDEX(PWMA_CH0)]);
 
-    /* Select the Polarity and set the CC0E Bit */
-    MODIFY_REG(PWMAx->CCER,
-               (PWMA_CCER_CC0P | PWMA_CCER_CC0NP),
-               (PWMA_IC_InitStruct->ICPolarity | PWMA_CCER_CC0E));
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC0NP | PWMA_CCER_CC0P),
+                   (uint32_t)PWMA_IC_InitStruct->ICPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH0)]);
 
-    return SUCCESS;
+        status = SUCCESS;
+    }
+
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx input channel 1.
- * @param  PWMAx Timer Instance
- * @param  PWMA_IC_InitStruct pointer to the the PWMAx input channel 1 configuration data structure
+ * @brief Configures the PWMA input channel 1.
+ * @note PWMA_IC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_IC_InitStruct The pointer to PWMA_IC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx input channel is initialized
- *          - ERROR: PWMAx input channel is not initialized
+ *         - SUCCESS: The PWMA input channel has been initialized.
+ *         - ERROR: The PWMA input channel has not been initialized.
  */
 ErrorStatus IC1Config(PWMA_TypeDef *PWMAx, PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
+    assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_IC_POLARITY(PWMA_IC_InitStruct->ICPolarity));
     assert(IS_PWMA_IC_ACTIVEINPUT(PWMA_IC_InitStruct->ICActiveInput));
     assert(IS_PWMA_IC_PRESCALER(PWMA_IC_InitStruct->ICPrescaler));
     assert(IS_PWMA_IC_FILTER(PWMA_IC_InitStruct->ICFilter));
 
-    /* Disable the Channel 1: Reset the CC1E Bit */
-    PWMAx->CCER &= ~PWMA_CCER_CC1E;
+    if ((PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH1) == 0UL) &&
+        (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH1N) == 0UL))
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Select the Input and set the filter and the prescaler value */
-    MODIFY_REG(PWMAx->CCMR1,
-               (PWMA_CCMR1_CC1S | PWMA_CCMR1_IC_IC1F | PWMA_CCMR1_IC_IC1PSC),
-               ((uint32_t)PWMA_IC_InitStruct->ICActiveInput | 
-                (uint32_t)PWMA_IC_InitStruct->ICFilter | 
-                (uint32_t)PWMA_IC_InitStruct->ICPrescaler) >> 8);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CCMR1,
+                   (PWMA_CCMR1_IC_IC1F | PWMA_CCMR1_IC_IC1PSC | PWMA_CCMR1_CC1S),
+                   ((uint32_t)PWMA_IC_InitStruct->ICFilter |
+                    (uint32_t)PWMA_IC_InitStruct->ICPrescaler |
+                    (uint32_t)PWMA_IC_InitStruct->ICActiveInput) << SHIFT_TAB_ICxx[PWMA_GET_CHANNEL_INDEX(PWMA_CH1)]);
 
-    /* Select the Polarity and set the CC1E Bit */
-    MODIFY_REG(PWMAx->CCER,
-               (PWMA_CCER_CC1P | PWMA_CCER_CC1NP),
-               (((uint32_t)PWMA_IC_InitStruct->ICPolarity << 4) | PWMA_CCER_CC1E));
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC1NP | PWMA_CCER_CC1P),
+                   (uint32_t)PWMA_IC_InitStruct->ICPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH1)]);
 
-    return SUCCESS;
+        status = SUCCESS;
+    }
+
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx input channel 2.
- * @param  PWMAx Timer Instance
- * @param  PWMA_IC_InitStruct pointer to the the PWMAx input channel 2 configuration data structure
+ * @brief Configures the PWMA input channel 2.
+ * @note PWMA_IC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_IC_InitStruct The pointer to PWMA_IC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx input channel is initialized
- *          - ERROR: PWMAx input channel is not initialized
+ *         - SUCCESS: The PWMA input channel has been initialized.
+ *         - ERROR: The PWMA input channel has not been initialized.
  */
 ErrorStatus IC2Config(PWMA_TypeDef *PWMAx, PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
+    assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_IC_POLARITY(PWMA_IC_InitStruct->ICPolarity));
     assert(IS_PWMA_IC_ACTIVEINPUT(PWMA_IC_InitStruct->ICActiveInput));
     assert(IS_PWMA_IC_PRESCALER(PWMA_IC_InitStruct->ICPrescaler));
     assert(IS_PWMA_IC_FILTER(PWMA_IC_InitStruct->ICFilter));
 
-    /* Disable the Channel 2: Reset the CC2E Bit */
-    PWMAx->CCER &= ~PWMA_CCER_CC2E;
+    if ((PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH2) == 0UL) &&
+        (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH2N) == 0UL))
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Select the Input and set the filter and the prescaler value */
-    MODIFY_REG(PWMAx->CCMR2,
-               (PWMA_CCMR2_CC2S | PWMA_CCMR2_IC_IC2F | PWMA_CCMR2_IC_IC2PSC),
-               ((uint32_t)PWMA_IC_InitStruct->ICActiveInput |
-                (uint32_t)PWMA_IC_InitStruct->ICFilter |
-                (uint32_t)PWMA_IC_InitStruct->ICPrescaler) >> 16);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CCMR2,
+                   (PWMA_CCMR2_IC_IC2F | PWMA_CCMR2_IC_IC2PSC | PWMA_CCMR2_CC2S),
+                   ((uint32_t)PWMA_IC_InitStruct->ICFilter |
+                    (uint32_t)PWMA_IC_InitStruct->ICPrescaler |
+                    (uint32_t)PWMA_IC_InitStruct->ICActiveInput) << SHIFT_TAB_ICxx[PWMA_CH2]);
 
-    /* Select the Polarity and set the CC2E Bit */
-    MODIFY_REG(PWMAx->CCER,
-               (PWMA_CCER_CC2P | PWMA_CCER_CC2NP),
-               (((uint32_t)PWMA_IC_InitStruct->ICPolarity << 8) | PWMA_CCER_CC2E));
+        MODIFY_REG(PWMAx->CCER,
+                   (PWMA_CCER_CC2NP | PWMA_CCER_CC2P),
+                   (uint32_t)PWMA_IC_InitStruct->ICPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH2)]);
 
-    return SUCCESS;
+        status = SUCCESS;
+    }
+
+    return status;
 }
 
 /**
- * @brief  Configure the PWMAx input channel 3.
- * @param  PWMAx Timer Instance
- * @param  PWMA_IC_InitStruct pointer to the the PWMAx input channel 3 configuration data structure
+ * @brief Configures the PWMA input channel 3.
+ * @note PWMA_IC_InitStruct structure should be initialized prior to calling this function.
+ * @param PWMAx The PWMA instance.
+ * @param PWMA_IC_InitStruct The pointer to PWMA_IC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *          - SUCCESS: PWMAx input channel is initialized
- *          - ERROR: PWMAx input channel is not initialized
+ *         - SUCCESS: The PWMA input channel has been initialized.
+ *         - ERROR: The PWMA input channel has not been initialized.
  */
 ErrorStatus IC3Config(PWMA_TypeDef *PWMAx, PWMA_IC_InitStruct_TypeDef *PWMA_IC_InitStruct)
 {
-    /* Check the parameters */
+    ErrorStatus status = ERROR;
+
+    /* Check parameters */
+    assert(IS_PWMA_ALL_INSTANCE(PWMAx));
     assert(IS_PWMA_IC_POLARITY(PWMA_IC_InitStruct->ICPolarity));
     assert(IS_PWMA_IC_ACTIVEINPUT(PWMA_IC_InitStruct->ICActiveInput));
     assert(IS_PWMA_IC_PRESCALER(PWMA_IC_InitStruct->ICPrescaler));
     assert(IS_PWMA_IC_FILTER(PWMA_IC_InitStruct->ICFilter));
 
-    /* Disable the Channel 3: Reset the CC3E Bit */
-    PWMAx->CCER &= ~PWMA_CCER_CC3E;
+    if (PWMA_CC_IsEnabledChannel(PWMAx, PWMA_CH3) == 0UL)
+    {
+        /* The capture/compare channel is disabled */
 
-    /* Select the Input and set the filter and the prescaler value */
-    MODIFY_REG(PWMAx->CCMR2,
-               (PWMA_CCMR2_CC3S | PWMA_CCMR2_IC_IC3F | PWMA_CCMR2_IC_IC3PSC),
-               ((uint32_t)PWMA_IC_InitStruct->ICActiveInput |
-                (uint32_t)PWMA_IC_InitStruct->ICFilter |
-                (uint32_t)PWMA_IC_InitStruct->ICPrescaler) >> 8);
+        /* Configure the capture/compare channel */
+        MODIFY_REG(PWMAx->CCMR2,
+                   (PWMA_CCMR2_IC_IC3F | PWMA_CCMR2_IC_IC3PSC | PWMA_CCMR2_CC3S),
+                   ((uint32_t)PWMA_IC_InitStruct->ICFilter |
+                    (uint32_t)PWMA_IC_InitStruct->ICPrescaler |
+                    (uint32_t)PWMA_IC_InitStruct->ICActiveInput) << SHIFT_TAB_ICxx[PWMA_CH3]);
 
-    /* Select the Polarity and set the CC3E Bit */
-    MODIFY_REG(PWMAx->CCER,
-               PWMA_CCER_CC3P,
-               (((uint32_t)PWMA_IC_InitStruct->ICPolarity << 12) | PWMA_CCER_CC3E));
+        MODIFY_REG(PWMAx->CCER,
+                   PWMA_CCER_CC3P,
+                   (uint32_t)PWMA_IC_InitStruct->ICPolarity << SHIFT_TAB_CCxP[PWMA_GET_CHANNEL_INDEX(PWMA_CH3)]);
 
-    return SUCCESS;
+        status = SUCCESS;
+    }
+
+    return status;
 }

@@ -2,9 +2,9 @@
  * *****************************************************************************
  *  @file       bmcu_pwmg.h
  *  @author     Baikal electronics SDK team
- *  @brief      PWMG module driver header file
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @brief      PWMG timer module driver header file
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -157,6 +157,13 @@ typedef struct
  */
 #define __PWMG_CALC_ARR(__APBCLK__, __PSC__, __FREQ__)  ((((__APBCLK__)/((__PSC__) + 1U)) >= (__FREQ__)) ? \
                                                          (((__APBCLK__)/((__FREQ__) * ((__PSC__) + 1U))) - 1U) : 0U)
+
+/**
+ * @brief Calculates the ratio of the input capture prescaler.
+ * @param __ICPSC__ The input capture prescaler. Can be one of the PWMG_IC_Prescaler_TypeDef values.
+ * @returns The input capture prescaler ratio (1, 2, 4 or 8).
+ */
+#define __PWMG_GET_ICPSC_RATIO(__ICPSC__)               ((uint8_t)(0x1U << ((__ICPSC__) >> PWMG_CCMR1_IC_IC0PSC_Pos)))
 
 /**
  * @brief Writes a value in PWMG register.

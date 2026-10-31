@@ -2,9 +2,9 @@
  * *****************************************************************************
  *  @file       bmcu_pwmg.c
  *  @author     Baikal electronics SDK team
- *  @brief      PWMG module driver
- *  @version    2.2.0
- *  @date       2026.04.02
+ *  @brief      PWMG timer module driver source file
+ *  @version    2.4.0
+ *  @date       2026-10-06
  * *****************************************************************************
  *  @copyright Copyright (c) 2025 Baikal Electronics JSC
  *
@@ -68,8 +68,8 @@
  * @brief Deinitializes a PWMG instance.
  * @param PWMGx The PWMG instance.
  * @retval An ErrorStatus enumeration value:
- *         - SUCCESS: The PWMG instance have been deinitialized.
- *         - ERROR: The PWMG instance have not been deinitialized.
+ *         - SUCCESS: The PWMG instance has been deinitialized.
+ *         - ERROR: The PWMG instance has not been deinitialized.
  */
 ErrorStatus PWMG_DeInit(PWMG_TypeDef *PWMGx)
 {
@@ -114,14 +114,14 @@ ErrorStatus PWMG_DeInit(PWMG_TypeDef *PWMGx)
  * @param PWMGx The PWMG instance.
  * @param PWMG_InitStruct The pointer to PWMG_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *         - SUCCESS: The PWMG instance have been initialized.
- *         - ERROR: The PWMG instance have not been initialized.
+ *         - SUCCESS: The PWMG instance has been initialized.
+ *         - ERROR: The PWMG instance has not been initialized.
  */
 ErrorStatus PWMG_Init(PWMG_TypeDef *PWMGx, PWMG_InitStruct_TypeDef *PWMG_InitStruct)
 {
     ErrorStatus status = ERROR;
 
-    /* Check the parameters */
+    /* Check parameters */
     assert(IS_PWMG_ALL_INSTANCE(PWMGx));
     assert(IS_PWMG_CLOCKDIVISION(PWMG_InitStruct->ClockDivision));
 
@@ -134,8 +134,8 @@ ErrorStatus PWMG_Init(PWMG_TypeDef *PWMGx, PWMG_InitStruct_TypeDef *PWMG_InitStr
                    (PWMG_CR1_CKD | PWMG_CR1_ARPE | PWMG_CR1_OPM | PWMG_CR1_UDIS),
                    (uint32_t)PWMG_InitStruct->ClockDivision);
 
-        WRITE_REG(PWMGx->SR, 0x0UL);
         WRITE_REG(PWMGx->DIER, PWMG_DIER_INTR_CLEAR);
+        WRITE_REG(PWMGx->SR, 0x0UL);
 
         WRITE_REG(PWMGx->CNT, 0x0UL);
 
@@ -166,14 +166,14 @@ void PWMG_StructInit(PWMG_InitStruct_TypeDef *PWMG_InitStruct)
  * @param PWMGx The PWMG instance.
  * @param PWMG_OC_InitStruct The pointer to PWMG_OC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *         - SUCCESS: The PWMG output channel have been initialized.
- *         - ERROR: The PWMG output channel have not been initialized.
+ *         - SUCCESS: The PWMG output channel has been initialized.
+ *         - ERROR: The PWMG output channel has not been initialized.
  */
 ErrorStatus PWMG_OC_Init(PWMG_TypeDef *PWMGx, PWMG_OC_InitStruct_TypeDef *PWMG_OC_InitStruct)
 {
     ErrorStatus status = ERROR;
 
-    /* Check the parameters */
+    /* Check parameters */
     assert(IS_PWMG_ALL_INSTANCE(PWMGx));
     assert(IS_PWMG_OC_MODE(PWMG_OC_InitStruct->OCMode));
     assert(IS_PWMG_OC_POLARITY(PWMG_OC_InitStruct->OCPolarity));
@@ -188,12 +188,12 @@ ErrorStatus PWMG_OC_Init(PWMG_TypeDef *PWMGx, PWMG_OC_InitStruct_TypeDef *PWMG_O
                    (PWMG_CCMR1_OC_OC0M | PWMG_CCMR1_OC_OC0PE | PWMG_CCMR1_CC0S),
                    ((uint32_t)PWMG_OC_InitStruct->OCMode | PWMG_CCMR1_CC0S_OC));
 
+        WRITE_REG(PWMGx->CCR0, PWMG_OC_InitStruct->CompareValue);
+
         MODIFY_REG(PWMGx->CCER,
                    (PWMG_CCER_CC0P | PWMG_CCER_CC0E),
-                   ((uint32_t)PWMG_OC_InitStruct->OCPolarity | (uint32_t)PWMG_OC_InitStruct->OCState));
-
-        /* Set the compare value */
-        WRITE_REG(PWMGx->CCR0, PWMG_OC_InitStruct->CompareValue);
+                   ((uint32_t)PWMG_OC_InitStruct->OCPolarity |
+                    (uint32_t)PWMG_OC_InitStruct->OCState));
 
         status = SUCCESS;
     }
@@ -220,8 +220,8 @@ void PWMG_OC_StructInit(PWMG_OC_InitStruct_TypeDef *PWMG_OC_InitStruct)
  * @param PWMGx The PWMG instance.
  * @param PWMG_IC_InitStruct The pointer to PWMG_IC_InitStruct_TypeDef structure.
  * @retval An ErrorStatus enumeration value:
- *         - SUCCESS: The PWMG input channel have been initialized.
- *         - ERROR: The PWMG input channel have not been initialized.
+ *         - SUCCESS: The PWMG input channel has been initialized.
+ *         - ERROR: The PWMG input channel has not been initialized.
  */
 ErrorStatus PWMG_IC_Init(PWMG_TypeDef *PWMGx, PWMG_IC_InitStruct_TypeDef *PWMG_IC_InitStruct)
 {
