@@ -78,8 +78,13 @@ static inline void matrix_settle_delay(void) {
 #define DEBOUNCE 5
 #endif
 
+#if defined(HIGH_SPEED_USB)
+#define POLL_INTERVAL_US 125
+#define DEBOUNCE_TICKS ((DEBOUNCE * 1000) / POLL_INTERVAL_US)
+#else
 #define POLL_INTERVAL_MS 1
 #define DEBOUNCE_TICKS (DEBOUNCE / POLL_INTERVAL_MS)
+#endif
 
 #if (DEBOUNCE_TICKS < 1)
 #undef DEBOUNCE_TICKS
@@ -379,12 +384,21 @@ void matrix_task(void *pvParameters) {
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
         encoder_scan();
 #endif
+#if defined(HIGH_SPEED_USB)
+        TickType_t now = xTaskGetTickCount();
+        if (s_active_pressed_count == 0 && (now - s_last_matrix_activity) >= pdMS_TO_TICKS(MATRIX_IDLE_TIMEOUT_MS)) {
+            vTaskDelay(pdMS_TO_TICKS(MATRIX_IDLE_POLL_INTERVAL_MS));
+        } else {
+            hal_sleep_us(POLL_INTERVAL_US);
+        }
+#else
         TickType_t now = xTaskGetTickCount();
         uint32_t delay_ms = POLL_INTERVAL_MS;
         if (s_active_pressed_count == 0 && (now - s_last_matrix_activity) >= pdMS_TO_TICKS(MATRIX_IDLE_TIMEOUT_MS)) {
             delay_ms = MATRIX_IDLE_POLL_INTERVAL_MS;
         }
         vTaskDelay(pdMS_TO_TICKS(delay_ms));
+#endif
     }
 }
 

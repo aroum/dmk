@@ -108,7 +108,13 @@ uint8_t const desc_configuration[] = {
                           100),             // Maximum power consumption in 2mA units (100 * 2mA = 200mA)
 
 #ifndef HID_POLL_INTERVAL_MS
+#if defined(HIGH_SPEED_USB)
+// In USB 2.0 High Speed, interrupt endpoint interval is measured in microframes: 2^(bInterval - 1) * 125us.
+// bInterval = 1 yields 1 microframe = 125us = 8000Hz (8 kHz) polling rate.
 #define HID_POLL_INTERVAL_MS 1
+#else
+#define HID_POLL_INTERVAL_MS 1
+#endif
 #endif
 
     // Interface 0: Composite Keyboard/Consumer/Mouse HID Descriptor
