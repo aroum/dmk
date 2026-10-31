@@ -1,12 +1,11 @@
 #include "FreeRTOS.h"
 #include "hal_gpio.h"
 #include "task.h"
+#include "bmcu_cru.h"
 #include <stdbool.h>
 #include <string.h>
 
 #define WS2812_MAX_LEDS 64
-
-extern uint32_t SystemCoreClock;
 
 static uint32_t ws2812_colors[WS2812_MAX_LEDS];
 static uint32_t ws2812_len = 0;
@@ -32,8 +31,11 @@ void ws2812_show(void) {
     if (ws2812_len == 0)
         return;
 
-    // Calibrate delays based on SystemCoreClock (assuming ~3 cycles per loop iteration)
-    uint32_t cycles_per_us = SystemCoreClock / 1000000;
+    // Calibrate delays based on CPU clock frequency (assuming ~3 cycles per loop iteration)
+    CRU_Clocks_TypeDef cru_clocks;
+    CRU_GetSystemClocksFreq(&cru_clocks);
+    uint32_t cpu_freq = cru_clocks.CCLK_Frequency ? cru_clocks.CCLK_Frequency : 80000000;
+    uint32_t cycles_per_us = cpu_freq / 1000000;
     if (cycles_per_us == 0)
         cycles_per_us = 80; // Default fallback for 80MHz
 

@@ -20,16 +20,13 @@
 #endif
 #define COL_PINS {PM_9, PM_8, PM_7, PM_6, PM_5, PM_4}
 
-// /* --- RGB Backlight --- */
-// #if defined(MCU_milandr)
-//     #define RGB_PIN         PC0
-// #elif defined(MCU_rp2040) || defined(MCU_rp2350)
-//     #define RGB_PIN         GPIO25
-// #elif defined(MCU_nrf52840)
-//     #define RGB_PIN         P0_13
-// #elif defined(MCU_baikal)
-//     #define RGB_PIN         GPIO25
-// #endif
+#ifdef CE
+/* --- RGB Backlight (Kabarga CE on Pro Micro D1 pin) --- */
+#define RGB_PIN PM_1
+#ifndef RGB_NUM
+#define RGB_NUM 42
+#endif
+#endif
 
 /* --- Keymap Matrix --- */
 #define NUM_ROWS 7
