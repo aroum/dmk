@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -52,7 +52,7 @@ jobs:
           sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
 
       - name: Build Firmware (${{ matrix.keyboard }} / ${{ matrix.mcu }})
         run: |
@@ -60,7 +60,7 @@ jobs:
           ./build_all.sh -b ${{ matrix.keyboard }} --mcu ${{ matrix.mcu }} ${{ matrix.args }}
 
       - name: Upload Firmware Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}
           path: |
