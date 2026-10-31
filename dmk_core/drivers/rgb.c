@@ -96,6 +96,15 @@ static uint32_t hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v) {
  * @param color 32-bit packed RGB color.
  */
 static void set_led_color(uint32_t index, uint32_t color) {
+#if defined(RGB_LIMIT_VAL) && (RGB_LIMIT_VAL < 255)
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+    if (r > RGB_LIMIT_VAL) r = RGB_LIMIT_VAL;
+    if (g > RGB_LIMIT_VAL) g = RGB_LIMIT_VAL;
+    if (b > RGB_LIMIT_VAL) b = RGB_LIMIT_VAL;
+    color = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+#endif
 #ifdef RGB_MAP
     if (index < RGB_NUM) {
         ws2812_set_color(rgb_map[index], color);

@@ -29,7 +29,7 @@
 #define RGB_NUM 42
 #endif
 #ifndef RGB_LIMIT_VAL
-#define RGB_LIMIT_VAL 76 // 30% max brightness (76 / 255)
+#define RGB_LIMIT_VAL 10 // Max brightness limit = 10
 #endif
 #endif
 
