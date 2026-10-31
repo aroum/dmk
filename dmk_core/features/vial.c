@@ -464,13 +464,17 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         }
         uint16_t start = offset / 2;
         uint8_t count = size / 2;
+        uint16_t matrix_size = (uint16_t)NUM_ROWS * (uint16_t)NUM_COLS;
         for (uint8_t i = 0; i < count; i++) {
             uint16_t idx = start + i;
-            uint8_t layer = idx / NUM_KEYS;
-            uint8_t key_idx = idx % NUM_KEYS;
+            uint8_t layer = matrix_size ? (idx / matrix_size) : 0;
+            uint16_t m_pos = matrix_size ? (idx % matrix_size) : 0;
+            uint8_t row = m_pos / NUM_COLS;
+            uint8_t col = m_pos % NUM_COLS;
+            int16_t ki = keyboard_get_flat_key_index(row, col);
             uint16_t via_key = 0x0001; // transparent default
-            if (layer < DYNAMIC_KEYMAP_MAX_LAYERS) {
-                via_key = to_via_keycode(dynamic_keymap[layer][key_idx]);
+            if (layer < DYNAMIC_KEYMAP_MAX_LAYERS && ki >= 0 && ki < (int16_t)NUM_KEYS) {
+                via_key = to_via_keycode(dynamic_keymap[layer][ki]);
             }
             response[4 + i * 2] = (via_key >> 8) & 0xFF;
             response[5 + i * 2] = via_key & 0xFF;
@@ -486,13 +490,17 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         }
         uint16_t start = offset / 2;
         uint8_t count = size / 2;
+        uint16_t matrix_size = (uint16_t)NUM_ROWS * (uint16_t)NUM_COLS;
         for (uint8_t i = 0; i < count; i++) {
             uint16_t idx = start + i;
-            uint8_t layer = idx / NUM_KEYS;
-            uint8_t key_idx = idx % NUM_KEYS;
+            uint8_t layer = matrix_size ? (idx / matrix_size) : 0;
+            uint16_t m_pos = matrix_size ? (idx % matrix_size) : 0;
+            uint8_t row = m_pos / NUM_COLS;
+            uint8_t col = m_pos % NUM_COLS;
+            int16_t ki = keyboard_get_flat_key_index(row, col);
             uint16_t via_key = ((uint16_t)request[4 + i * 2] << 8) | request[5 + i * 2];
-            if (layer < DYNAMIC_KEYMAP_MAX_LAYERS) {
-                dynamic_keymap[layer][key_idx] = from_via_keycode(via_key);
+            if (layer < DYNAMIC_KEYMAP_MAX_LAYERS && ki >= 0 && ki < (int16_t)NUM_KEYS) {
+                dynamic_keymap[layer][ki] = from_via_keycode(via_key);
             }
         }
         vial_eeprom_save();
