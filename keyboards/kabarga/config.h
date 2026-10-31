@@ -11,22 +11,14 @@
 /* --- Matrix Settings --- */
 // Connection types: ROW2COL, COL2ROW, DIRECT
 #define MATRIX_TYPE COL2ROW
-// Pins for rows and columns
-#if defined(MCU_milandr)
-#ifdef CE
-#define ROW_PINS {PA0, PA3, PA2, PB5, PB4, PB3, PB2}
-#else
-#define ROW_PINS {PB5, PB4, PB3, PA1, PA0, PA2, PA3}
-#endif
-#define COL_PINS {PA9, PA8, PA7, PA6, PA5, PA4}
-#else
+
+// Pins for rows and columns (ProMicro pinout)
 #ifdef CE
 #define ROW_PINS {PM_0, PM_3, PM_2, PM_21, PM_20, PM_19, PM_18}
 #else
 #define ROW_PINS {PM_21, PM_20, PM_19, PM_1, PM_0, PM_2, PM_3}
 #endif
 #define COL_PINS {PM_9, PM_8, PM_7, PM_6, PM_5, PM_4}
-#endif
 
 // /* --- RGB Backlight --- */
 // #if defined(MCU_milandr)
@@ -137,18 +129,13 @@ const uint32_t keymap[][NUM_KEYS] = {
 const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 #endif // DEFINE_KEYMAP
 
-// #define LED_PINS           { PM_LED, PM_15, PM_14, PM_10, PM_16}
-#if defined(MCU_milandr)
-#define LED_PINS {PB7}
-#else
-#define LED_PINS {P0_15}
-#endif
+/* --- Status & Indicator LEDs --- */
+#define LED_PINS {PM_LED, PM_15, PM_14, PM_16, PM_10}
 
-#define LED_DEBUG 0 // Index in LED_PINS for diagnostic heartbeat LED
-// #define LED_HID_NUM_LOCK    1 // Index in LED_PINS for Num Lock LED
-// #define LED_HID_CAPS_LOCK   2 // Index in LED_PINS for Caps Lock LED
-// #define LED_HID_SCROLL_LOCK 3 // Index in LED_PINS for Scroll Lock LED
-// #define LED_HID_COMPOSE     4 // Index in LED_PINS for Compose LED
-// #define LED_HID_KANA        5 // Index in LED_PINS for Kana LED
+#define LED_DEBUG 0           // Index in LED_PINS for diagnostic heartbeat LED (PM_LED)
+#define LED_HID_NUM_LOCK 1    // Index in LED_PINS for Num Lock LED (PM_15)
+#define LED_HID_CAPS_LOCK 2   // Index in LED_PINS for Caps Lock LED (PM_14)
+#define LED_HID_SCROLL_LOCK 3 // Index in LED_PINS for Scroll Lock LED (PM_16)
+#define LED_HID_COMPOSE 4     // Index in LED_PINS for Compose LED (PM_10)
 
 #endif // CONFIG_H
