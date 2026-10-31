@@ -76,7 +76,9 @@ void platform_bootloader_jump(void) {
 
 #elif defined(MCU_baikal)
 #include "bmcu_cru.h"
+#include "bmcu_eflash.h"
 #include "bmcu_gpio.h"
+#include "bmcu_wdt.h"
 #include "bsp/board_api.h"
 
 static inline GPIO_TypeDef *get_gpio_port(pin_t pin) {
@@ -92,8 +94,13 @@ static inline uint16_t get_gpio_pin_mask(pin_t pin) {
 }
 
 void hal_gpio_init(pin_t gpio) {
-    GPIO_TypeDef *port = get_gpio_port(gpio);
+    uint8_t port_idx = gpio / 16;
     uint16_t mask = get_gpio_pin_mask(gpio);
+    GPIO_TypeDef *port = get_gpio_port(gpio);
+
+    CRU_SetPinAF(port_idx, mask, CRU_PIN_AF_0);
+    CRU_EnablePinInput(port_idx, mask);
+
     GPIO_InitStruct_TypeDef init = {0};
     GPIO_StructInit(&init);
     init.PinMask = mask;
@@ -102,8 +109,17 @@ void hal_gpio_init(pin_t gpio) {
 }
 
 void hal_gpio_set_dir(pin_t gpio, bool is_output) {
-    GPIO_TypeDef *port = get_gpio_port(gpio);
+    uint8_t port_idx = gpio / 16;
     uint16_t mask = get_gpio_pin_mask(gpio);
+    GPIO_TypeDef *port = get_gpio_port(gpio);
+
+    CRU_SetPinAF(port_idx, mask, CRU_PIN_AF_0);
+    if (is_output) {
+        CRU_DisablePinInput(port_idx, mask);
+    } else {
+        CRU_EnablePinInput(port_idx, mask);
+    }
+
     GPIO_InitStruct_TypeDef init = {0};
     GPIO_StructInit(&init);
     init.PinMask = mask;
@@ -129,10 +145,93 @@ void hal_sleep_us(uint32_t us) {
     __delay_us(us);
 }
 
-void platform_init(void) {}
+void platform_init(void) {
+    /* WDT reset does not disable it automatically. Ensure WDT0 is deinitialized */
+    CRU_APB0_EnableClock(CRU_APB0_PERIPH_WDT0);
+    WDT_DeInit(WDT0);
+
+    /* Enable GPIO peripheral clocks in CRU */
+    CRU_APB0_EnableClock(CRU_APB0_PERIPH_GPIO0);
+    CRU_APB1_EnableClock(CRU_APB1_PERIPH_GPIO1);
+    CRU_APB2_EnableClock(CRU_APB2_PERIPH_GPIO2);
+
+    /* Prepare eFlash to 200 MHz CCLK. See PLL configuration */
+    EFLASH_Init(200000000UL);
+
+    /* Configure System Clocks: PLL = 200MHz, CCLK = 200MHz, PCLK0/1/2 = 100MHz, HCLK = 50MHz */
+    CRU_PLL_BypassMode_Disable();
+    CRU_PLL_SetSource(CRU_PLL_SRC_C0);
+    CRU_PLL_ForceReset();
+    CRU_PLL_Config(1UL, 48UL, 6UL, 48UL);
+    CRU_PLL_ReleaseReset();
+    __delay_cycles(500UL);
+
+    /** Configure CCLK = 200MHz */
+    CRU_SetCCLKPrescaler(CRU_CLK_DIV_1);
+    CRU_CCLKPrescaler_Enable();
+    CRU_SetCCLKSource(CRU_CLK_SRC_PLL);
+
+    /** Configure PCLK0 = 100MHz */
+    CRU_SetPCLK0Prescaler(CRU_CLK_DIV_2);
+    CRU_PCLK0Prescaler_Enable();
+    CRU_SetPCLK0Source(CRU_CLK_SRC_PLL);
+
+    /** Configure PCLK1 = 100MHz */
+    CRU_SetPCLK1Prescaler(CRU_CLK_DIV_2);
+    CRU_PCLK1Prescaler_Enable();
+    CRU_SetPCLK1Source(CRU_CLK_SRC_PLL);
+
+    /** Configure PCLK2 = 100MHz */
+    CRU_SetPCLK2Prescaler(CRU_CLK_DIV_2);
+    CRU_PCLK2Prescaler_Enable();
+    CRU_SetPCLK2Source(CRU_CLK_SRC_PLL);
+
+    /** Configure HCLK = 50MHz */
+    CRU_SetHCLKPrescaler(CRU_CLK_DIV_4);
+    CRU_HCLKPrescaler_Enable();
+    CRU_SetHCLKSource(CRU_CLK_SRC_PLL);
+
+    /** Configure 1MHz clocks for FreeRTOS mtime tick counter */
+    CRU_SetCCLK1MHzPrescaler(199UL);
+    CRU_SetHCLK1MHzPrescaler(49UL);
+
+    /* Initialize and release reset on USB PHY */
+    CRU_USB_PHY_PLL_Enable();
+    __delay_cycles(100UL);
+    CRU_USB_PHY_ReleaseReset();
+    __delay_us(500UL);
+
+    /* Configure CLIC */
+    CLIC_Config(1U, 3U);
+    CLIC_SetLevelThreshold(0U);
+
+    /* Configure timer interrupt for FreeRTOS */
+    CLIC_ConfigIRQ(CLIC_MT_IRQn,
+                   CLIC_INTATTR_MODE_MACHINE,
+                   1U,
+                   1U,
+                   CLIC_INTATTR_SHV_VECTORED,
+                   CLIC_INTATTR_TRIG_TYPE_LEVEL,
+                   CLIC_INTATTR_TRIG_POL_P);
+
+    __enable_irq();
+}
 
 void platform_bootloader_jump(void) {
-    board_reset_to_bootloader();
+    /* Set TinyUF2 double-tap signature in TCMB */
+    *(__IO uint32_t*)TCMB_BASE = 0xf01669efUL;
+
+    /* Reset MCU via WDT0 */
+    CRU_APB0_EnableClock(CRU_APB0_PERIPH_WDT0);
+    WDT_InitStruct_TypeDef WDT_InitStruct;
+    WDT_StructInit(&WDT_InitStruct);
+    WDT_InitStruct.Mode = WDT_MODE_RESET;
+    WDT_InitStruct.Rstlen = WDT_RST_LEN_32;
+    WDT_InitStruct.Timeout = WDT_TIME_PERIOD_10;
+    WDT_Init(WDT0, &WDT_InitStruct);
+    for (;;) {
+        __asm volatile("nop");
+    }
 }
 
 #elif defined(MCU_milandr)

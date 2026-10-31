@@ -45,7 +45,9 @@ void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
     if (in_isr) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         vTaskNotifyGiveFromISR(s_usb_task_handle, &xHigherPriorityTaskWoken);
+#if !defined(MCU_baikal)
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+#endif
     } else {
         xTaskNotifyGive(s_usb_task_handle);
     }
@@ -98,7 +100,15 @@ bool USB_HID_Init(void) {
     }
 #endif
 
+#if defined(MCU_baikal)
+    tusb_rhport_init_t dev_init = {
+        .role = TUSB_ROLE_DEVICE,
+        .speed = TUSB_SPEED_AUTO
+    };
+    tusb_init(0, &dev_init);
+#else
     tusb_init();
+#endif
 #if defined(MCU_rp2350)
     irq_set_priority(USBCTRL_IRQ, 0x80);
 #elif defined(MCU_milandr)

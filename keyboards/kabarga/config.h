@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define VIAL_KEYBOARD_NAME "Kabarga"
 // #define VIAL
 
 #include "pin_defs.h"

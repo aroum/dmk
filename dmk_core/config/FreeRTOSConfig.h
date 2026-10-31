@@ -49,13 +49,29 @@
 #define configTICK_RATE_HZ ((TickType_t)1000)
 #define configMAX_PRIORITIES 4
 #define configMINIMAL_STACK_SIZE (configSTACK_DEPTH_TYPE)128
-#define configUSE_16_BIT_TICKS 0
+#ifndef configTICK_TYPE_WIDTH_IN_BITS
+#define configTICK_TYPE_WIDTH_IN_BITS TICK_TYPE_WIDTH_32_BITS
+#endif
 
 /* CPU clock speed – platform specific */
 #if defined(MCU_nrf52840)
 #define configCPU_CLOCK_HZ (64000000UL)
 #elif defined(MCU_milandr)
 #define configCPU_CLOCK_HZ (80000000UL)
+#elif defined(MCU_baikal)
+#ifndef configCPU_CLOCK_HZ
+#define configCPU_CLOCK_HZ (1000000UL)
+#endif
+#ifndef configMTIME_BASE_ADDRESS
+#define configMTIME_BASE_ADDRESS (0x0200BFF8)
+#endif
+#ifndef configMTIMECMP_BASE_ADDRESS
+#define configMTIMECMP_BASE_ADDRESS (0x02004000)
+#endif
+#ifndef configISR_STACK_SIZE_WORDS
+#define configISR_STACK_SIZE_WORDS (1024)
+#endif
+#define configUSE_NEWLIB_REENTRANT 1
 #endif
 
 #define configIDLE_SHOULD_YIELD 1
@@ -68,7 +84,9 @@
 #define configQUEUE_REGISTRY_SIZE 8
 #define configUSE_QUEUE_SETS 0
 #define configUSE_TIME_SLICING 1
+#ifndef configUSE_NEWLIB_REENTRANT
 #define configUSE_NEWLIB_REENTRANT 0
+#endif
 #define configENABLE_BACKWARD_COMPATIBILITY 0
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 0
 
