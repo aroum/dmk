@@ -47,7 +47,7 @@ if(MCU STREQUAL "rp2040")
     set(FREERTOS_PORT_DIR "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM0")
     set(FREERTOS_PORT_SRC "${FREERTOS_PORT_DIR}/port.c")
 elseif(MCU STREQUAL "rp2350")
-    set(FREERTOS_PORT_DIR "${DMK_ROOT}/platforms/baikal/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ/non_secure")
+    set(FREERTOS_PORT_DIR "${DMK_ROOT}/lib/freertos/portable/ThirdParty/Community-Supported-Ports/GCC/RP2350_ARM_NTZ/non_secure")
     set(FREERTOS_PORT_SRC
         "${FREERTOS_PORT_DIR}/port.c"
         "${FREERTOS_PORT_DIR}/portasm.c"
