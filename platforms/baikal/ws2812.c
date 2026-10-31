@@ -66,6 +66,10 @@ void ws2812_show(void) {
     uint32_t val_high = *dr | mask;
     uint32_t val_low = *dr & ~mask;
 
+    // Ensure line is low with a clean reset latch before sending the first frame
+    *dr = val_low;
+    hal_sleep_us(300);
+
     taskENTER_CRITICAL();
 
     for (uint32_t i = 0; i < ws2812_len; i++) {
