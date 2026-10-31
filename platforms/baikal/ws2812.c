@@ -27,23 +27,44 @@ void ws2812_set_color(uint32_t index, uint32_t color) {
     ws2812_colors[index] = color;
 }
 
+#define DELAY_CYCLES(count) do { \
+    uint32_t _c = (count); \
+    if (_c > 0) { \
+        __asm__ volatile( \
+            "1: addi %0, %0, -1\n" \
+            "   bnez %0, 1b\n" \
+            : "+r"(_c) \
+            : \
+            : "cc" \
+        ); \
+    } \
+} while (0)
+
 void ws2812_show(void) {
     if (ws2812_len == 0)
         return;
 
-    // Calibrate delays based on CPU clock frequency (assuming ~3 cycles per loop iteration)
+    // Calibrate delays based on CPU clock frequency (~3 cycles per delay iteration)
     CRU_Clocks_TypeDef cru_clocks;
     CRU_GetSystemClocksFreq(&cru_clocks);
-    uint32_t cpu_freq = cru_clocks.CCLK_Frequency ? cru_clocks.CCLK_Frequency : 80000000;
+    uint32_t cpu_freq = cru_clocks.CCLK_Frequency ? cru_clocks.CCLK_Frequency : 200000000;
     uint32_t cycles_per_us = cpu_freq / 1000000;
     if (cycles_per_us == 0)
-        cycles_per_us = 80; // Default fallback for 80MHz
+        cycles_per_us = 200;
 
-    // Delays in loop iterations
-    uint32_t t1h_loops = (7 * cycles_per_us) / 30;
-    uint32_t t1l_loops = (6 * cycles_per_us) / 30;
-    uint32_t t0h_loops = (35 * cycles_per_us) / 300;
-    uint32_t t0l_loops = (8 * cycles_per_us) / 30;
+    // Loop iteration count for 3-cycle loop:
+    // T0H: ~350ns, T0L: ~800ns
+    // T1H: ~700ns, T1L: ~600ns
+    uint32_t t0h_cycles = (35 * cycles_per_us) / 300;
+    uint32_t t0l_cycles = (80 * cycles_per_us) / 300;
+    uint32_t t1h_cycles = (70 * cycles_per_us) / 300;
+    uint32_t t1l_cycles = (60 * cycles_per_us) / 300;
+
+    GPIO_TypeDef *port = (ws2812_pin < 16) ? GPIO0 : (ws2812_pin < 32) ? GPIO1 : GPIO2;
+    uint32_t mask = 1U << (ws2812_pin % 16);
+    volatile uint32_t *dr = &port->DR;
+    uint32_t val_high = *dr | mask;
+    uint32_t val_low = *dr & ~mask;
 
     taskENTER_CRITICAL();
 
@@ -58,24 +79,20 @@ void ws2812_show(void) {
 
         for (int bit = 23; bit >= 0; bit--) {
             if ((grb >> bit) & 1) {
-                // T1H (high for 700ns, low for 600ns)
-                hal_gpio_put(ws2812_pin, true);
-                for (volatile uint32_t d = 0; d < t1h_loops; d++) {
-                }
-                hal_gpio_put(ws2812_pin, false);
-                for (volatile uint32_t d = 0; d < t1l_loops; d++) {
-                }
+                *dr = val_high;
+                DELAY_CYCLES(t1h_cycles);
+                *dr = val_low;
+                DELAY_CYCLES(t1l_cycles);
             } else {
-                // T0H (high for 350ns, low for 800ns)
-                hal_gpio_put(ws2812_pin, true);
-                for (volatile uint32_t d = 0; d < t0h_loops; d++) {
-                }
-                hal_gpio_put(ws2812_pin, false);
-                for (volatile uint32_t d = 0; d < t0l_loops; d++) {
-                }
+                *dr = val_high;
+                DELAY_CYCLES(t0h_cycles);
+                *dr = val_low;
+                DELAY_CYCLES(t0l_cycles);
             }
         }
     }
+
+    *dr = val_low;
 
     taskEXIT_CRITICAL();
 
