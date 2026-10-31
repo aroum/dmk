@@ -180,10 +180,6 @@ void rgb_task(void *pvParameters) {
             switch (rgb_mode) {
             case RGBLIGHT_MODE_STATIC_LIGHT:
                 set_all_leds(hsv_to_rgb(rgb_hue, rgb_sat, rgb_brightness));
-                // Diagnostic identification colors (brightness <= 10):
-                set_led_color(0, 0x0A0000); // LED 0: Red
-                set_led_color(1, 0x000A00); // LED 1: Green
-                set_led_color(2, 0x00000A); // LED 2: Blue
                 break;
 
             case RGBLIGHT_MODE_BREATHING: {
