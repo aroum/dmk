@@ -32,9 +32,17 @@
 
 ## Baikal (be-u1000)
 
-Port A: PA0-PA15
-Port B: PB0-PB15
-Port C: PC0-PC15
+- Port A: PA0-PA15
+- Port B: PB0-PB15
+- Port C: PC0-PC15
+
+### Baikal BE-U1000 PIO Interface Architecture
+The Baikal BE-U1000 microcontroller incorporates an independent auxiliary 32-bit RISC-V core: **CloudBEAR BM-310 (Core 2)**, clocked at up to 100 MHz with 10 KB dedicated TCM memory (`TCMA` 2 KB + `TCMB` 8 KB).
+
+* **Purpose**: Software-defined implementation of custom external digital interfaces (Programmable Input/Output, PIO).
+* **Hardware Register**: Core 2 accesses its fast dedicated 16-bit register `CORE2_PIO` (`IN`, `EN`, `OU`) for single-cycle pin manipulation.
+* **Pin Routing Constraints**: The 16 lines `PIO[0]`..`PIO[15]` are hardware-mapped via the chip's internal crossbar **strictly to Port PC** (`PC[0]` through `PC[15]` as Alternate Function `AF 1`).
+* **Port PA & PB Limitation**: Pins on **Port PA** and **Port PB** do not have physical connectivity to the Core 2 PIO peripheral. Any protocols implemented via the Core 2 PIO coprocessor must use pins on Port PC.
 
 ## RGB LED Pin Assignments
 
@@ -43,9 +51,9 @@ Depending on the microcontroller platform, the pins allowed for WS2812 RGB data 
 - **Milandr (K1986BE92FI)**: RGB uses the SSP (SPI) hardware blocks. You **must** connect the RGB data line to one of these specific hardware TXD pins:
   - **SSP1**: `PA15` or `PF0`
   - **SSP2**: `PD3` or `PD15`
-- **Raspberry Pi (RP2040/RP2350)**: RGB uses PIO (programmable I/O) state machines. You can configure **any** GPIO pin (`GPIO0`-`GPIO29` / `GPIO0`-`GPIO47`) for the RGB connection.
+- **Raspberry Pi (RP2040/RP2350)**: RGB uses hardware PIO (Programmable I/O) state machines. You can configure **any** GPIO pin (`GPIO0`-`GPIO29` / `GPIO0`-`GPIO47`) for the RGB connection.
 - **nRF52840**: RGB uses SPIM1 (SPI master). You can configure **any** GPIO pin (`P0_00`-`P0_31` / `P1_00`-`P1_15`) for the RGB connection.
-- **Baikal (be-u1000)**: RGB uses programmable I/O (PIO) state machines. You can configure **any** GPIO pin (`PA0`-`PA15`, `PB0`-`PB15`, `PC0`-`PC15`) for the RGB connection.
+- **Baikal (be-u1000)**: RGB uses a cycle-calibrated GPIO bit-bang driver executing within a FreeRTOS critical section (`taskENTER_CRITICAL()`) on the 200 MHz CloudBEAR BR-350 core (giving 5 ns timing resolution). This allows connecting WS2812 to **any** GPIO pin across `PA0`-`PA15`, `PB0`-`PB15`, or `PC0`-`PC15` (such as `PA6` / `PM_1` on Kabarga CE) without requiring hardware SPI or PIO routing.
 
 ## Split Keyboard (UART) Pin Assignments
 
@@ -63,7 +71,8 @@ For split keyboards, the communication line (`SERIAL_PIN`) works over a single-w
 
    - **Single-Pin Configurations**:
      - **nRF52840**: **Supports single-pin operation**. Thanks to the fully routable pin configuration (GPIO crossbar), both the TXD and RXD signals of the UARTE peripheral can be assigned to the **same physical GPIO pin** (e.g., `P0_06`). The pin must be set to open-drain mode with a pull-up resistor.
-     - **Raspberry Pi (RP2040/RP2350) & Baikal (via PIO)**: **Support single-pin operation**. They use Programmable I/O (PIO) blocks to dynamically switch the direction of a single GPIO pin between input and output on the fly.
+     - **Raspberry Pi (RP2040/RP2350)**: **Supports single-pin operation**. Uses Programmable I/O (PIO) state machines to dynamically switch the direction of a single GPIO pin between input and output on the fly.
+     - **Baikal (be-u1000)**: Single-wire split is supported via **Software Bit-Bang (`SOFT`)** on any free GPIO pin. For hardware UART (`HW_FULL_DUPLEX`), two physical pins (`SPLIT_TX_PIN` and `SPLIT_RX_PIN`) are used, as Baikal's hardware UART does not feature a single-wire half-duplex transceiver mode.
      - **STM32**: **Supports single-pin operation**. The built-in USART has a native Single-wire mode (enabled via the `USART_CR3_HDSEL` bit in QMK/ChibiOS), which internally routes the receiver channel to the TX pin. Only the TX pin is connected externally.
 
    - **Tied TX/RX Configurations**:
