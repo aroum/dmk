@@ -4,7 +4,9 @@ set(COMMON_DIR "${DEP_DIR}/common")
 set(CMAKE_DIR "${COMMON_DIR}/cmake")
 
 # TinyUSB root
-if(EXISTS "${DMK_ROOT}/platforms/raspberrypi/pico-sdk/lib/tinyusb/src/tusb.h")
+if(EXISTS "${DEP_DIR}/tinyusb/src/tusb.h")
+    set(TINYUSB_DIR "${DEP_DIR}/tinyusb")
+elseif(EXISTS "${DMK_ROOT}/platforms/raspberrypi/pico-sdk/lib/tinyusb/src/tusb.h")
     set(TINYUSB_DIR "${DMK_ROOT}/platforms/raspberrypi/pico-sdk/lib/tinyusb")
 elseif(EXISTS "${DMK_ROOT}/lib/tinyusb/src/tusb.h")
     set(TINYUSB_DIR "${DMK_ROOT}/lib/tinyusb")
@@ -46,7 +48,6 @@ set(PLATFORM_INC
     "${DMK_ROOT}/lib/freertos/portable/GCC/ARM_CM3"
     "${PLATFORM_DIR}/sdk"
     "${TINYUSB_DIR}/src"
-    "${TINYUSB_DIR}/hw"
 )
 
 # Platform sources
@@ -60,11 +61,10 @@ set(PLATFORM_SRC
     "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"
     "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     # Milandr TinyUSB DCD
-    "${PLATFORM_DIR}/dcd_milandr.c"
+    "${PLATFORM_DIR}/tusb_MDR32Fx.c"
     # TinyUSB stack
     "${TINYUSB_DIR}/src/tusb.c"
     "${TINYUSB_DIR}/src/common/tusb_fifo.c"
-    "${TINYUSB_DIR}/src/device/usbd_control.c"
     "${TINYUSB_DIR}/src/device/usbd.c"
     "${TINYUSB_DIR}/src/class/hid/hid_device.c"
     "${TINYUSB_DIR}/src/class/midi/midi_device.c"

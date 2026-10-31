@@ -23,10 +23,6 @@ static void power_event_handler(nrfx_power_usb_evt_t event) {
 }
 #elif defined(MCU_milandr)
 #include "MDR32FxQI_config.h"
-
-void USB_IRQHandler(void) {
-    tud_int_handler(0);
-}
 #endif
 
 static TaskHandle_t s_usb_task_handle = NULL;
