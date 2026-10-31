@@ -88,12 +88,14 @@ const uint32_t keymap[][NUM_KEYS] = {
     // ------------------------------------------------------------------------------------------------
     // LAYER 0: DEFAULT
     // Key order: row0_L, row0_R, row1_L, row1_R, row2_L, row2_R, thumbs
+    // Left thumbs:  HT(RSE, K_TAB), HT(K_LSFT, K_SPC), HT(LWR, K_ENT)
+    // Right thumbs: HT(LWR, K_ESC), HT(K_RSFT, K_BSPC), HT(RSE, K_DEL)
     // ------------------------------------------------------------------------------------------------
     [DEF] = {
         HT(K_LGUI, K_RBRC), K_Q,    K_W,    K_E,    K_R,    K_T,    K_Y,    K_U,    K_I,    K_O,    K_P,    HT(K_RGUI, K_LBRC), \
         HT(K_LCTL, K_GRAV), K_A,    K_S,    K_D,    K_F,    K_G,    K_H,    K_J,    K_K,    K_L,    K_SCLN, HT(K_RCTL, K_QUOT), \
         HT(K_LALT, K_BKSL), K_Z,    K_X,    K_C,    K_V,    K_B,    K_N,    K_M,    K_COMM, K_DOT,  K_SLSH, HT(K_RALT, K_MINS), \
-        HT(LWR, K_ESC), HT(K_RSFT, K_BSPC), HT(RSE, K_DEL), HT(RSE, K_TAB), HT(K_LSFT, K_SPC), HT(LWR, K_ENT)
+        HT(RSE, K_TAB), HT(K_LSFT, K_SPC), HT(LWR, K_ENT), HT(LWR, K_ESC), HT(K_RSFT, K_BSPC), HT(RSE, K_DEL)
     },
 
     // ------------------------------------------------------------------------------------------------
@@ -103,7 +105,7 @@ const uint32_t keymap[][NUM_KEYS] = {
         HT(K_LGUI, K_CAPS), K_KP_ASTERISK,       K_7,    K_8,    K_9,    MK(MOD_LSHIFT, K_EQL), MK(MOD_LSHIFT, K_1), MK(MOD_LSHIFT, K_2), MK(MOD_LSHIFT, K_3), MK(MOD_LSHIFT, K_4), MK(MOD_LSHIFT, K_5), HT(K_RGUI, K_F1), \
         HT(K_LCTL, K_APP),  K_KP_SLASH,          K_4,    K_5,    K_6,    K_MINS,                MK(MOD_LSHIFT, K_6), MK(MOD_LSHIFT, K_7), MK(MOD_LSHIFT, K_8), MK(MOD_LSHIFT, K_9), MK(MOD_LSHIFT, K_0), HT(K_RALT, K_F2), \
         HT(K_LALT, K_EQL),  K_0,                 K_1,    K_2,    K_3,    M(0),                  MK(MOD_LGUI, K_SPC), K_F4,                K_F5,                K_F6,                K_F7,                HT(K_RALT, K_F3), \
-        ___, ___, HT(ADJ, K_DEL), HT(ADJ, K_TAB), ___, ___
+        HT(ADJ, K_TAB), ___, ___, ___, ___, HT(ADJ, K_DEL)
     },
 
     // ------------------------------------------------------------------------------------------------
@@ -113,7 +115,7 @@ const uint32_t keymap[][NUM_KEYS] = {
         K_LGUI, K_VOLU, K_PGUP, K_NO,                          K_HOME, K_PAUS, K_0,    K_HOME, K_NO, K_PGUP, K_VOLU, K_RGUI, \
         K_LCTL, K_VOLD, K_LEFT, K_UP,                          K_DOWN, K_RIGHT,K_LEFT, K_DOWN, K_UP, K_RIGHT,K_VOLD, K_RALT, \
         K_LALT, K_MUTE, K_PGDN, MK(MOD_LGUI | MOD_LSHIFT, K_S),K_END, K_NO,   K_0,    K_END,  M(1), K_PGDN, K_MUTE, K_RALT, \
-        HT(ADJ, K_ESC), ___, ___, ___, ___, HT(ADJ, K_ENT)
+        ___, ___, HT(ADJ, K_ENT), HT(ADJ, K_ESC), ___, ___
     },
 
     // ------------------------------------------------------------------------------------------------
