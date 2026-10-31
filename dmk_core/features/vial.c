@@ -114,6 +114,19 @@ static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
 }
 
 static uint8_t to_via_mods(uint8_t dmk_mod) {
+    // If given an HID modifier keycode (0xE0..0xE7), map to single VIA modifier value
+    switch (dmk_mod) {
+    case HID_KEY_CONTROL_LEFT: return 0x01;
+    case HID_KEY_SHIFT_LEFT:   return 0x02;
+    case HID_KEY_ALT_LEFT:     return 0x04;
+    case HID_KEY_GUI_LEFT:     return 0x08;
+    case HID_KEY_CONTROL_RIGHT: return 0x11;
+    case HID_KEY_SHIFT_RIGHT:   return 0x12;
+    case HID_KEY_ALT_RIGHT:     return 0x14;
+    case HID_KEY_GUI_RIGHT:     return 0x18;
+    default: break;
+    }
+
     uint8_t via_mod = 0;
     if (dmk_mod & MOD_LCTRL)
         via_mod |= 0x01;
