@@ -37,7 +37,7 @@ static uint8_t rgb_mode = RGBLIGHT_MODE_RAINBOW_SWIRL;
 #else
 static uint8_t rgb_mode = RGBLIGHT_MODE_STATIC_LIGHT;
 #endif
-static uint8_t rgb_brightness = 255;
+static uint8_t rgb_brightness = RGB_LIMIT_VAL;
 static uint8_t rgb_hue = 0;
 static uint8_t rgb_sat = 255;
 static uint8_t rgb_speed = 128; // Standard default speed
@@ -122,6 +122,9 @@ void rgb_show(void) {
  * @brief Initialize power gating pin and WS2812 driver hardware (PIO/SPI/PWM/Timer).
  */
 void rgb_init(void) {
+    if (rgb_brightness > RGB_LIMIT_VAL) {
+        rgb_brightness = RGB_LIMIT_VAL;
+    }
 #ifdef POWER_PIN
     power_pin_init();
     // Power the LED strip immediately so ws2812_init has stable VCC

@@ -28,6 +28,9 @@
 #ifndef RGB_NUM
 #define RGB_NUM 42
 #endif
+#ifndef RGB_LIMIT_VAL
+#define RGB_LIMIT_VAL 76 // 30% max brightness (76 / 255)
+#endif
 #endif
 
 /* --- Keymap Matrix --- */
