@@ -64,9 +64,9 @@ set(BAIKAL_DIR "${PLATFORM_DIR}")
 set(PLATFORM_INC
     "${PLATFORM_DIR}"
     "${PLATFORM_DIR}/include"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/include"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/chip_specific_extensions/RISCV_no_extensions"
+    "${DMK_ROOT}/lib/freertos/include"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/chip_specific_extensions/RISCV_no_extensions"
     "${BAIKAL_DIR}/Drivers/BASIS/Core/Include"
     "${BAIKAL_DIR}/Drivers/BASIS/Device/BMCU/Include"
     "${BAIKAL_DIR}/Drivers/HAL/Inc"
@@ -75,19 +75,11 @@ set(PLATFORM_INC
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/bmcu"
 )
 
-# Use matching FreeRTOS kernel source files from SDK
-set(FREERTOS_COMMON_SRC
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/list.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/queue.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/tasks.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/MemMang/heap_4.c"
-)
-
 # Platform sources
 set(PLATFORM_SRC
     ${FREERTOS_COMMON_SRC}
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
     "${PLATFORM_DIR}/startup.S"
     "${PLATFORM_DIR}/ws2812.c"
     "${PLATFORM_DIR}/split.c"
