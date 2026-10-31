@@ -182,8 +182,8 @@ show_help() {
         echo "Combined flags:"
         echo "  -c, --clean              Perform a clean build"
         echo "  -f, --flash              Flash via debugger"
-        echo "  -u, --usb-flash          Flash via USB (for RP2040/RP2350/nRF52840/milandr)"
-        echo "  --uf2                    Generate UF2 file (for RP2040/RP2350/nRF52840)"
+        echo "  -u, --usb-flash          Flash via USB (for RP2040/RP2350/nRF52840/milandr/baikal)"
+        echo "  --uf2                    Generate UF2 file (for RP2040/RP2350/nRF52840/baikal)"
         echo "  -h, --help               Show this help"
         echo ""
         echo "Examples:"
@@ -206,8 +206,8 @@ show_help() {
         echo "Комбинированные флаги:"
         echo "  -c, --clean              Выполнить чистую сборку"
         echo "  -f, --flash              Прошить через отладчик"
-        echo "  -u, --usb-flash          Прошить через USB (для RP2040/RP2350/nRF52840/milandr)"
-        echo "  --uf2                    Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840)"
+        echo "  -u, --usb-flash          Прошить через USB (для RP2040/RP2350/nRF52840/milandr/baikal)"
+        echo "  --uf2                    Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840/baikal)"
         echo "  -h, --help               Показать справку"
         echo ""
         echo "Примеры:"
@@ -425,7 +425,7 @@ case "$MCU" in
             fi
         fi
         ;;
-    nrf52840)
+    nrf52840|baikal)
         if [[ -f "$UF2_FILE" ]]; then
             echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
         elif [[ "$UF2" == true ]]; then
@@ -563,6 +563,46 @@ if [[ "$USB_FLASH" == true ]]; then
                 exit 1
             fi
             echo -e "${GREEN}${MSG_FLASH_SUCCESS}${NC}"
+            ;;
+        baikal)
+            echo -e "${YELLOW}${MSG_FLASH_USB} (${TARGET_NAME})${NC}"
+            FLASH_SUCCESS=false
+
+            # Check if volume is mounted (BAIKAL_LI / UF2 / EVU-LI)
+            for MOUNT_PATH in "/Volumes/BAIKAL_LI" "/Volumes/UF2" "/media/$USER/BAIKAL_LI" "/media/$USER/UF2"; do
+                if [[ -d "$MOUNT_PATH" && -f "$UF2_FILE" ]]; then
+                    echo "Found mounted Baikal UF2 drive: $MOUNT_PATH. Copying UF2..."
+                    if cp -X "$UF2_FILE" "$MOUNT_PATH/" 2>/dev/null || cp "$UF2_FILE" "$MOUNT_PATH/"; then
+                        sync
+                        FLASH_SUCCESS=true
+                        break
+                    fi
+                fi
+            done
+
+            if [[ "$FLASH_SUCCESS" == false ]]; then
+                echo -e "${YELLOW}Waiting for Baikal UF2 drive (BAIKAL_LI / UF2)...${NC}"
+                echo -e "${YELLOW}Please double-reset the board to enter bootloader mode.${NC}"
+                for i in {1..10}; do
+                    for MOUNT_PATH in "/Volumes/BAIKAL_LI" "/Volumes/UF2" "/media/$USER/BAIKAL_LI" "/media/$USER/UF2"; do
+                        if [[ -d "$MOUNT_PATH" && -f "$UF2_FILE" ]]; then
+                            echo "Found mounted Baikal UF2 drive: $MOUNT_PATH. Copying UF2..."
+                            cp -X "$UF2_FILE" "$MOUNT_PATH/" 2>/dev/null || cp "$UF2_FILE" "$MOUNT_PATH/"
+                            sync
+                            FLASH_SUCCESS=true
+                            break 2
+                        fi
+                    done
+                    sleep 1
+                done
+            fi
+
+            if [[ "$FLASH_SUCCESS" == true ]]; then
+                echo -e "${GREEN}${MSG_FLASH_SUCCESS}${NC}"
+            else
+                echo -e "${RED}${MSG_FLASH_FAILED}${NC}"
+                exit 1
+            fi
             ;;
         *)
             echo -e "${RED}${MSG_USB_UNSUPPORTED} ${MCU}.${NC}"

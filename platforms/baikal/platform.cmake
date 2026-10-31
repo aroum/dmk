@@ -37,39 +37,26 @@ add_compile_definitions(
     configMTIMECMP_BASE_ADDRESS=0
 )
 
-set(LINKER_SCRIPT "${PLATFORM_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/RISC-V_Baikal_SimpleDemo_GCC/linker.ld")
+# Default memory sizes (eFlash is 256KB total on BE-U1000)
+# Bootloader uses first 64KB (0xA0000000), App gets remaining 192KB (0xA0010000)
+option(BOOTLOADER "Build for TinyUF2 bootloader" ON)
+if(BOOTLOADER)
+    set(LINKER_SCRIPT "${PLATFORM_DIR}/linker_uf2.ld")
+    set(FLASH_SIZE "0x30000") # 192 KB
+    set(FLASH_BASE_ADDR "0xA0010000")
+else()
+    set(LINKER_SCRIPT "${PLATFORM_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/RISC-V_Baikal_SimpleDemo_GCC/linker.ld")
+    set(FLASH_SIZE "0x40000") # 256 KB
+    set(FLASH_BASE_ADDR "0xA0000000")
+endif()
+set(RAM_SIZE "0x8000") # 32 KB SRAM
+
 add_link_options(-march=rv32imac_zicsr -mabi=ilp32 -mcmodel=medlow -nostartfiles)
 add_link_options("-T${LINKER_SCRIPT}")
 add_link_options(-Wl,--gc-sections,--print-memory-usage)
 add_link_options(-specs=nosys.specs -specs=nano.specs)
 
 set(BAIKAL_DIR "${PLATFORM_DIR}")
-
-# Default memory sizes
-if(NOT MEMORY)
-    set(MEMORY "1MB")
-endif()
-
-# Convert memory to bytes
-if(MEMORY STREQUAL "1MB")
-    set(FLASH_SIZE "0x100000")
-    set(RAM_SIZE "0x40000")
-elseif(MEMORY STREQUAL "2MB")
-    set(FLASH_SIZE "0x200000")
-    set(RAM_SIZE "0x80000")
-elseif(MEMORY STREQUAL "4MB")
-    set(FLASH_SIZE "0x400000")
-    set(RAM_SIZE "0x100000")
-elseif(MEMORY STREQUAL "8MB")
-    set(FLASH_SIZE "0x800000")
-    set(RAM_SIZE "0x100000")
-elseif(MEMORY STREQUAL "16MB")
-    set(FLASH_SIZE "0x1000000")
-    set(RAM_SIZE "0x100000")
-else()
-    set(FLASH_SIZE "0x100000")
-    set(RAM_SIZE "0x40000")
-endif()
 
 # Platform includes
 set(PLATFORM_INC
@@ -112,7 +99,12 @@ set(PLATFORM_SRC
 # Platform libraries
 set(PLATFORM_LIBS "")
 
-# Platform-specific post-build command (placeholder)
+# Platform-specific post-build command: generates hex, bin and uf2
 function(platform_post_build TARGET_NAME)
-    # TODO: Add binary generation for Baikal
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hex
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
+        COMMAND uv run --project ${DMK_ROOT}/tools/uf2 python ${DMK_ROOT}/tools/uf2/uf2conv.py -c -b ${FLASH_BASE_ADDR} -f 0x6ecb67a8 -o ${CMAKE_BINARY_DIR}/${TARGET_NAME}.uf2 ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
+        COMMENT "Generating hex, bin and uf2 for Baikal BE-U1000"
+    )
 endfunction()
