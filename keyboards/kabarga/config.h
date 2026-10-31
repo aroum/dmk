@@ -26,7 +26,7 @@
 /* --- RGB Backlight (Kabarga CE on Pro Micro D1 pin) --- */
 #define RGB_PIN PM_1
 #ifndef RGB_NUM
-#define RGB_NUM 44 // 42 keys + auxiliary/underglow LEDs
+#define RGB_NUM 42
 #endif
 #ifndef RGB_LIMIT_VAL
 #define RGB_LIMIT_VAL 10 // Max brightness limit = 10
