@@ -19,6 +19,7 @@ void ws2812_init(uint32_t pin, uint32_t length) {
     hal_gpio_init(pin);
     hal_gpio_set_dir(pin, true);
     hal_gpio_put(pin, false);
+    hal_sleep_us(500);
 }
 
 void ws2812_set_color(uint32_t index, uint32_t color) {
@@ -63,14 +64,15 @@ void ws2812_show(void) {
     GPIO_TypeDef *port = (ws2812_pin < 16) ? GPIO0 : (ws2812_pin < 32) ? GPIO1 : GPIO2;
     uint32_t mask = 1U << (ws2812_pin % 16);
     volatile uint32_t *dr = &port->DR;
+
+    taskENTER_CRITICAL();
+
     uint32_t val_high = *dr | mask;
     uint32_t val_low = *dr & ~mask;
 
-    // Ensure line is low with a clean reset latch before sending the first frame
+    // Ensure line is low with a clean reset latch (>400us) before sending the first frame
     *dr = val_low;
-    hal_sleep_us(300);
-
-    taskENTER_CRITICAL();
+    hal_sleep_us(400);
 
     for (uint32_t i = 0; i < ws2812_len; i++) {
         uint32_t color = ws2812_colors[i];
@@ -97,9 +99,7 @@ void ws2812_show(void) {
     }
 
     *dr = val_low;
+    hal_sleep_us(400);
 
     taskEXIT_CRITICAL();
-
-    // Reset latch delay (>300us)
-    hal_sleep_us(300);
 }

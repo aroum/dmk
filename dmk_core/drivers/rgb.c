@@ -308,8 +308,8 @@ void rgb_task(void *pvParameters) {
             ;
 
         if (is_static) {
-            // Static mode: sleep indefinitely until woken by setting change notification
-            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            // Static mode: periodically refresh (500ms) to self-heal against glitches, or wake immediately on change
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
         } else {
             // Animated mode: run at 50fps (20ms delay), but wake up early if setting changes
             ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20));
