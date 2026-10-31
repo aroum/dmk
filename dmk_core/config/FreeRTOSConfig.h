@@ -49,12 +49,8 @@
 #define configTICK_RATE_HZ ((TickType_t)1000)
 #define configMAX_PRIORITIES 4
 #define configMINIMAL_STACK_SIZE (configSTACK_DEPTH_TYPE)128
-#if defined(MCU_baikal)
 #ifndef configTICK_TYPE_WIDTH_IN_BITS
 #define configTICK_TYPE_WIDTH_IN_BITS TICK_TYPE_WIDTH_32_BITS
-#endif
-#else
-#define configUSE_16_BIT_TICKS 0
 #endif
 
 /* CPU clock speed – platform specific */
