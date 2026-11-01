@@ -126,7 +126,7 @@
 
 - `-c`, `--clean` — Выполнить «чистую» сборку (очистка временных файлов).
 - `-f`, `--flash` — Прошивка через внешник отладчик.
-- `-u`, `--usb-flash` — Прошивка через USB (для RP2040/RP2350, nRF52 и Milandr).
+- `-u`, `--usb-flash` — Прошивка через USB (для RP2040/RP2350, nRF52, Milandr и Baikal).
 - `-h`, `--help` — Показать справку.
 
 ## Способы и инструменты прошивки
@@ -135,9 +135,9 @@
 
 ### 1. Прошивка UF2 (как на обычную флешку)
 
-Для плат с UF2 bootloader (RP2040, RP2350, nRF52840):
+Для плат с UF2 bootloader (RP2040, RP2350, nRF52840, Baikal BE-U1000):
 
-1. Зажмите кнопку `BOOTSEL` / `RESET` при подключении USB и вставьте плату в ПК — она появится в системе как обычный съемный диск.
+1. Зажмите кнопку `BOOTSEL` / `RESET` при подключении USB (или дважды нажмите Reset / клавишу с кодом `K_BOOT`) и вставьте плату в ПК — она появится в системе как обычный съемный диск (`RPI-RP2`, `NICENANO`, `BAIKAL_LI` и т.д.).
 2. Скопируйте собранный файл `.uf2` из папки `build/` на этот диск. Плата прошьется и перезагрузится автоматически.
 
 ### 2. Инструменты для автоматической прошивки по USB (`-u`, `--usb-flash`)
@@ -150,6 +150,7 @@
 - **Миландр (K1986BE92FI)**: [`dfu-util`](http://dfu-util.sourceforge.net/) — прошивка с бутлоадером [K1986BE92FI-dfu-bootloader](https://github.com/aroum/K1986BE92FI-dfu-bootloader).
   - macOS: `brew install dfu-util`
   - Linux: `sudo apt install dfu-util`
+- **Baikal (BE-U1000)**: автоматическое копирование `.uf2` на смонтированный диск `BAIKAL_LI` (с бутлоадером [baikal-uf2-bootloader](https://github.com/aroum/baikal-uf2-bootloader)).
 
 ### 3. Прошивка через внешний отладчик (`-f`, `--flash`)
 
@@ -169,6 +170,7 @@
 - **dfu-util (USB DFU)**: <http://dfu-util.sourceforge.net/>
 - **OpenOCD (SWD/JTAG)**: <https://openocd.org/>
 - **Milandr DFU Bootloader**: <https://github.com/aroum/K1986BE92FI-dfu-bootloader>
+- **Baikal UF2 Bootloader**: <https://github.com/aroum/baikal-uf2-bootloader>
 
 ## Примеры использования
 
@@ -212,6 +214,18 @@
 ```bash
 ./build_all.sh -b pncateho --uf2 --mcu rp2040 -cf --memory 512KB
 ```
+
+### Baikal (BE-U1000)
+
+**Чистая сборка с поддержкой USB 2.0 High Speed (480 Мбит/с, 8 кГц polling rate) и прошивка через USB (UF2):**
+
+```bash
+./build_all.sh -b kabarga --mcu baikal -d CE,HIGH_SPEED_USB -cu --uf2
+```
+
+Микроконтроллер Baikal BE-U1000 оснащен встроенным аппаратным USB 2.0 High Speed PHY. При передаче флага `-d HIGH_SPEED_USB` опрос USB HID переводится на максимальную частоту **8 кГц (интервал 125 мкс)**.
+
+Прошивка платы осуществляется простым копированием полученного `.uf2` файла на накопитель `BAIKAL_LI` (или автоматически через флаг `-u`). Для входа в режим загрузчика используется двойное нажатие Reset, удержание кнопки Boot при перезагрузке или клавиша `K_BOOT` в раскладке клавиатуры.
 
 ## Автоматическая сборка в своем репозитории (GitHub Actions)
 

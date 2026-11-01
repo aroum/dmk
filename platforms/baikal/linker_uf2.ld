@@ -17,8 +17,8 @@ MEMORY
     SRAM        (rwx) : ORIGIN = 0x70000000, LENGTH = 32K
     XIP0        (rx)  : ORIGIN = 0x80000000, LENGTH = 16M
     XIP1        (rx)  : ORIGIN = 0x90000000, LENGTH = 16M
-    /* eFlash: Offset 64KB for TinyUF2 bootloader; available 192KB */
-    FLASH       (rx)  : ORIGIN = 0xA0010000, LENGTH = 192K
+    /* eFlash: Offset 16KB for TinyUF2 bootloader; available 240KB */
+    FLASH       (rx)  : ORIGIN = 0xA0004000, LENGTH = 240K
 }
 
 /* Heap and stack size */

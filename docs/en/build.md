@@ -126,7 +126,7 @@ You can combine flags (e.g., `-cf`):
 
 - `-c`, `--clean` — Perform a "clean" build (clear temporary files).
 - `-f`, `--flash` — Flash via external debugger.
-- `-u`, `--usb-flash` — Flash via USB (for RP2040/RP2350, nRF52, and Milandr).
+- `-u`, `--usb-flash` — Flash via USB (for RP2040/RP2350, nRF52, Milandr, and Baikal).
 - `-h`, `--help` — Show help.
 
 ## Flashing Methods & Tools
@@ -135,9 +135,9 @@ You can flash the target microcontroller using different methods depending on yo
 
 ### 1. UF2 Flashing (Drag-and-Drop Mass Storage)
 
-For development boards with UF2 bootloaders (RP2040, RP2350, nRF52840):
+For development boards with UF2 bootloaders (RP2040, RP2350, nRF52840, Baikal BE-U1000):
 
-1. Hold the `BOOTSEL` / `RESET` button while connecting USB to enter bootloader mode. The board will mount as a USB flash drive.
+1. Hold the `BOOTSEL` / `RESET` button while connecting USB (or double-press Reset / trigger `K_BOOT` key in keymap) to enter bootloader mode. The board will mount as a USB flash drive (`RPI-RP2`, `NICENANO`, `BAIKAL_LI`, etc.).
 2. Drag and drop the generated `.uf2` file from the `build/` directory onto the drive. The board will flash and reboot automatically.
 
 ### 2. Automated USB Flashing Tools (`-u`, `--usb-flash`)
@@ -150,6 +150,7 @@ For development boards with UF2 bootloaders (RP2040, RP2350, nRF52840):
 - **Milandr (K1986BE92FI)**: [`dfu-util`](http://dfu-util.sourceforge.net/) — Flashing with [K1986BE92FI-dfu-bootloader](https://github.com/aroum/K1986BE92FI-dfu-bootloader).
   - macOS: `brew install dfu-util`
   - Linux: `sudo apt install dfu-util`
+- **Baikal (BE-U1000)**: Automated `.uf2` copy to mounted drive `BAIKAL_LI` using [baikal-uf2-bootloader](https://github.com/aroum/baikal-uf2-bootloader).
 
 ### 3. External Debugger Flashing (`-f`, `--flash`)
 
@@ -169,6 +170,7 @@ Utility Links:
 - **dfu-util (USB DFU)**: <http://dfu-util.sourceforge.net/>
 - **OpenOCD (SWD/JTAG)**: <https://openocd.org/>
 - **Milandr DFU Bootloader**: <https://github.com/aroum/K1986BE92FI-dfu-bootloader>
+- **Baikal UF2 Bootloader**: <https://github.com/aroum/baikal-uf2-bootloader>
 
 ## Usage Examples
 
@@ -212,6 +214,18 @@ Utility Links:
 ```bash
 ./build_all.sh -b pncateho --uf2 --mcu rp2040 -cf --memory 512KB
 ```
+
+### Baikal (BE-U1000)
+
+**Clean build with USB 2.0 High Speed (480 Mbps, 8 kHz polling rate) and flash via USB (UF2):**
+
+```bash
+./build_all.sh -b kabarga --mcu baikal -d CE,HIGH_SPEED_USB -cu --uf2
+```
+
+The Baikal BE-U1000 microcontroller features an integrated USB 2.0 High Speed PHY. When providing the `-d HIGH_SPEED_USB` flag, USB HID polling operates at the maximum frequency of **8 kHz (125 µs interval)**.
+
+Flashing the board is performed by copying the generated `.uf2` file to the mounted `BAIKAL_LI` storage drive (or automated using the `-u` flag). To enter bootloader mode, double-click Reset, hold Boot during reset, or trigger the `K_BOOT` key in the keymap.
 
 ## Automated Build in Custom Repository (GitHub Actions)
 

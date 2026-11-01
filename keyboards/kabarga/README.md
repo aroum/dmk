@@ -73,3 +73,15 @@ In [`keyboards/kabarga/config.h`](config.h):
 * `RGB_LIMIT_VAL`: Clamps peak brightness (0–255) for all 42 WS2812 LEDs to keep thermal dissipation low on onboard regulators. Default is `60`.
 * `TAPPING_TERM_DEFAULT`: Configures hold-tap timing (default `200` ms).
 * `vial.json`: Layout definitions for real-time keymap and underglow editing via [Vial GUI](https://get.vial.today/).
+
+---
+
+## Layer Indication LEDs
+
+The Kabarga board features 4 onboard status LEDs (`PM_15`, `PM_14`, `PM_16`, `PM_10`) handled automatically by the [`modules/layer_leds`](modules/layer_leds/) module:
+* **Layer 0**: LED 1 (`PM_15`) ON.
+* **Layer 1**: LED 2 (`PM_14`) ON.
+* **Layer 2**: LED 3 (`PM_16`) ON.
+* **Layer 3**: LED 4 (`PM_10`) ON.
+
+Only one LED is active at a time to clearly indicate the currently active keyboard layer.

@@ -1,34 +1,23 @@
-# Description
+# Baikal BE-U1000 Platform
 
-**Board Support Packages (BSP)** were developed to simplify the code of user's projects and unify board-related functions, definitions and constants.\
-If the valid development board were specified in the project build script, the corresponding BSP would be used automatically while project building.
+Support for Baikal Electronics **BE-U1000** (RISC-V 32-bit RV32IMC core) microcontroller in DMK Firmware.
 
-# Structure
+## Features
 
-BSP directory contains packages for several development boards.
+- **Architecture**: RISC-V RV32IMC @ up to 100 MHz.
+- **Memory**: 256 KB Flash (16 KB allocated for bootloader, 240 KB for DMK application), 64 KB RAM.
+- **USB Controller**: Integrated USB 2.0 High Speed (480 Mbps) PHY powered by unified TinyUSB stack.
+- **High Speed USB Polling**: Supports up to **8 kHz (125 µs polling interval)** via `-d HIGH_SPEED_USB`.
+- **Bootloader**: UF2 drag-and-drop mass storage bootloader support:
+  - Repository: [baikal-uf2-bootloader](https://github.com/aroum/baikal-uf2-bootloader)
+  - Bootloader volume name: `BAIKAL_LI`
 
-```sh
-BSP
-├── Components
-├── BOARD_NAME_1
-│   ├── bsp.c
-│   ├── bsp.h
-│   └── bsp.mk
-├── BOARD_NAME_2
-│   └── ...
-...
-├── BOARD_NAME_N
-│   └── ...
-└── README.md
-```
+## Bootloader & Flashing
 
-Each BSP consist of several files:
-
-- `bsp.mk`: additional building script to be used in the project build process, if the correct development board name were specified.
-  See **BOARD** variable description and available values in the building script template file (_Tools/build/Makefile_template_)
-- `bsp.h`: board-specific definitions, constants and function prototypes
-- `bsp.c`: board-specific functions
-
-`Components` folder contains software components that are reused across different boards.
-
-Please refer to the desired development board BSP for more information (_<BSP_directory/README.md_)
+1. **Enter Bootloader Mode**:
+   - Double-tap the hardware Reset button.
+   - Or hold the Boot button while pressing Reset.
+   - Or trigger `K_BOOT` from the keyboard layout (e.g. on the Adjust layer).
+2. **Flash Firmware**:
+   - The device enumerates as a USB Mass Storage drive labeled `BAIKAL_LI`.
+   - Copy the generated `.uf2` file to `/Volumes/BAIKAL_LI/` (or run `./build_all.sh ... -u`).

@@ -40,12 +40,12 @@ add_compile_definitions(
 )
 
 # Default memory sizes (eFlash is 256KB total on BE-U1000)
-# Bootloader uses first 64KB (0xA0000000), App gets remaining 192KB (0xA0010000)
+# Bootloader uses first 16KB (0xA0000000), App gets remaining 240KB (0xA0004000)
 option(BOOTLOADER "Build for TinyUF2 bootloader" ON)
 if(BOOTLOADER)
     set(LINKER_SCRIPT "${PLATFORM_DIR}/linker_uf2.ld")
-    set(FLASH_SIZE "0x30000") # 192 KB
-    set(FLASH_BASE_ADDR "0xA0010000")
+    set(FLASH_SIZE "0x3C000") # 240 KB
+    set(FLASH_BASE_ADDR "0xA0004000")
 else()
     set(LINKER_SCRIPT "${PLATFORM_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Demo/ThirdParty/Community-Supported-Demos/RISC-V_Baikal_SimpleDemo_GCC/linker.ld")
     set(FLASH_SIZE "0x40000") # 256 KB
@@ -64,9 +64,9 @@ set(BAIKAL_DIR "${PLATFORM_DIR}")
 set(PLATFORM_INC
     "${PLATFORM_DIR}"
     "${PLATFORM_DIR}/include"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/include"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/chip_specific_extensions/RISCV_no_extensions"
+    "${DMK_ROOT}/lib/freertos/include"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/chip_specific_extensions/RISCV_no_extensions"
     "${BAIKAL_DIR}/Drivers/BASIS/Core/Include"
     "${BAIKAL_DIR}/Drivers/BASIS/Device/BMCU/Include"
     "${BAIKAL_DIR}/Drivers/HAL/Inc"
@@ -75,19 +75,11 @@ set(PLATFORM_INC
     "${BAIKAL_DIR}/Middlewares/Third_Party/TinyUSB/hw/bsp/bmcu"
 )
 
-# Use matching FreeRTOS kernel source files from SDK
-set(FREERTOS_COMMON_SRC
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/list.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/queue.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/tasks.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/MemMang/heap_4.c"
-)
-
 # Platform sources
 set(PLATFORM_SRC
     ${FREERTOS_COMMON_SRC}
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
-    "${BAIKAL_DIR}/Middlewares/Third_Party/FreeRTOS/FreeRTOS/Source/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
+    "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
     "${PLATFORM_DIR}/startup.S"
     "${PLATFORM_DIR}/ws2812.c"
     "${PLATFORM_DIR}/split.c"

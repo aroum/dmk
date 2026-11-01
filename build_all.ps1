@@ -180,8 +180,8 @@ function Show-Help {
         Write-Host "`nCombined flags (use spaces in PS!):"
         Write-Host "  -c, -Clean               Perform a clean build"
         Write-Host "  -f, -Flash               Flash via debugger"
-        Write-Host "  -u, -UsbFlash            Flash via USB (for RP2040/RP2350/nRF52840/milandr)"
-        Write-Host "  -Uf2                     Generate UF2 file (for RP2040/RP2350/nRF52840)"
+        Write-Host "  -u, -UsbFlash            Flash via USB (for RP2040/RP2350/nRF52840/milandr/baikal)"
+        Write-Host "  -Uf2                     Generate UF2 file (for RP2040/RP2350/nRF52840/baikal)"
         Write-Host "  -h, -Help                Show this help"
         Write-Host "`nExamples:"
         Write-Host "  .\build_all.ps1 -Keyboard corne -Clean -Flash"
@@ -201,8 +201,8 @@ function Show-Help {
         Write-Host "`nКомбинированные флаги (в PS пишутся через пробел!):"
         Write-Host "  -c, -Clean               Выполнить чистую сборку"
         Write-Host "  -f, -Flash               Прошить через отладчик"
-        Write-Host "  -u, -UsbFlash            Прошить через USB (для RP2040/RP2350/nRF52840/milandr)"
-        Write-Host "  -Uf2                     Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840)"
+        Write-Host "  -u, -UsbFlash            Прошить через USB (для RP2040/RP2350/nRF52840/milandr/baikal)"
+        Write-Host "  -Uf2                     Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840/baikal)"
         Write-Host "  -h, -Help                Показать справку"
         Write-Host "`nПримеры:"
         Write-Host "  .\build_all.ps1 -Keyboard corne -Clean -Flash"
@@ -339,7 +339,7 @@ switch ($Mcu) {
             }
         }
     }
-    "nrf52840" {
+    { $_ -in "nrf52840", "baikal" } {
         if (Test-Path $Uf2File) {
             Write-Host "$MSG_UF2_READY_CMAKE $Uf2File" -ForegroundColor Green
         } elseif ($Uf2) {
@@ -456,6 +456,53 @@ if ($UsbFlash) {
                 exit 1
             }
             Write-Host $MSG_FLASH_SUCCESS -ForegroundColor Green
+        }
+        "baikal" {
+            Write-Host "$MSG_FLASH_USB ($TargetName)" -ForegroundColor Yellow
+            $flashSuccess = $false
+
+            if (-not (Test-Path $Uf2File)) {
+                Write-Host "$MSG_ERR_UF2_NOT_FOUND $Uf2File" -ForegroundColor Red
+                exit 1
+            }
+
+            # Search mounted drives with label BAIKAL_LI or UF2
+            $drives = Get-Volume | Where-Object { $_.FileSystemLabel -in "BAIKAL_LI", "UF2" }
+            if ($drives) {
+                foreach ($drive in $drives) {
+                    $destPath = $drive.DriveLetter + ":\"
+                    Write-Host "Found mounted Baikal UF2 drive: $destPath. Copying UF2..."
+                    Copy-Item -Path $Uf2File -Destination $destPath -Force
+                    $flashSuccess = $true
+                    break
+                }
+            }
+
+            if (-not $flashSuccess) {
+                Write-Host "Waiting for Baikal UF2 drive (BAIKAL_LI / UF2)..." -ForegroundColor Yellow
+                Write-Host "Please double-reset the board to enter bootloader mode." -ForegroundColor Yellow
+                for ($i = 0; $i -lt 10; $i++) {
+                    Start-Sleep -Seconds 1
+                    $drives = Get-Volume | Where-Object { $_.FileSystemLabel -in "BAIKAL_LI", "UF2" }
+                    if ($drives) {
+                        foreach ($drive in $drives) {
+                            $destPath = $drive.DriveLetter + ":\"
+                            Write-Host "Found mounted Baikal UF2 drive: $destPath. Copying UF2..."
+                            Copy-Item -Path $Uf2File -Destination $destPath -Force
+                            $flashSuccess = $true
+                            break
+                        }
+                    }
+                    if ($flashSuccess) { break }
+                }
+            }
+
+            if ($flashSuccess) {
+                Write-Host $MSG_FLASH_SUCCESS -ForegroundColor Green
+            } else {
+                Write-Host $MSG_FLASH_FAILED -ForegroundColor Red
+                exit 1
+            }
         }
         default {
             Write-Host "$MSG_USB_UNSUPPORTED ${Mcu}." -ForegroundColor Red

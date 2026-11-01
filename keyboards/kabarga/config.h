@@ -122,7 +122,7 @@ const uint32_t keymap[][NUM_KEYS] = {
     // LAYER 3: ADJUST (ADJ)
     // ------------------------------------------------------------------------------------------------
     [ADJ] = {
-        K_NO /*BLDR*/, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
+        K_BOOT,        K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
         K_NO,          K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
         K_NO,          K_NLCK, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
         ___, K_NO, ___, ___, K_NO, ___
@@ -134,12 +134,8 @@ const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 #endif // DEFINE_KEYMAP
 
 /* --- Status & Indicator LEDs --- */
-#define LED_PINS {PM_LED, PM_15, PM_14, PM_16, PM_10}
+#define LED_PINS {PM_LED}
 
-#define LED_DEBUG 0           // Index in LED_PINS for diagnostic heartbeat LED (PM_LED)
-#define LED_HID_NUM_LOCK 1    // Index in LED_PINS for Num Lock LED (PM_15)
-#define LED_HID_CAPS_LOCK 2   // Index in LED_PINS for Caps Lock LED (PM_14)
-#define LED_HID_SCROLL_LOCK 3 // Index in LED_PINS for Scroll Lock LED (PM_16)
-#define LED_HID_COMPOSE 4     // Index in LED_PINS for Compose LED (PM_10)
+#define LED_DEBUG 0 // Index in LED_PINS for diagnostic heartbeat LED (PM_LED)
 
 #endif // CONFIG_H
