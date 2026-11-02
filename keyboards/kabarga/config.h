@@ -31,6 +31,34 @@
 #ifndef RGB_LIMIT_VAL
 #define RGB_LIMIT_VAL 60 // Max brightness limit = 60
 #endif
+
+// clang-format off
+// Mapping from logical LAYOUT key index to physical daisy-chained LED index (0-based)
+// Row 0: 6-1 (left) ; 42-37 (right) -> LEDs 5..0, 41..36
+// Row 1: 7-12 (left); 31-36 (right) -> LEDs 6..11, 30..35
+// Row 2: 18-13 (left); 30-25 (right) -> LEDs 17..12, 29..24
+// Thumbs: 19-24 -> LEDs 18..23
+#define RGB_MAP { \
+     5,  4,  3,  2,  1,  0,   41, 40, 39, 38, 37, 36, \
+     6,  7,  8,  9, 10, 11,   30, 31, 32, 33, 34, 35, \
+    17, 16, 15, 14, 13, 12,   29, 28, 27, 26, 25, 24, \
+                    18, 19, 20,   21, 22, 23 \
+}
+
+// Default Russian flag theme:
+// Row 0: White (0xFFFFFF)
+// Row 1: Blue  (0x0000FF)
+// Row 2: Red   (0xFF0000)
+// Thumbs: Red  (0xFF0000)
+#define RGB_THEME_DEFAULT { \
+    0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF,  0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, \
+    0x0000FF, 0x0000FF, 0x0000FF, 0x0000FF, 0x0000FF, 0x0000FF,  0x0000FF, 0x0000FF, 0x0000FF, 0x0000FF, 0x0000FF, 0x0000FF, \
+    0xFF0000, 0xFF0000, 0xFF0000, 0xFF0000, 0xFF0000, 0xFF0000,  0xFF0000, 0xFF0000, 0xFF0000, 0xFF0000, 0xFF0000, 0xFF0000, \
+                                  0xFF0000, 0xFF0000, 0xFF0000,  0xFF0000, 0xFF0000, 0xFF0000 \
+}
+#define RGB_THEMES { RGB_THEME_DEFAULT }
+#define RGB_DEFAULT_MODE 100 // Default to Theme Mode (Mode 100)
+// clang-format on
 #endif
 
 /* --- Keymap Matrix --- */
