@@ -212,12 +212,20 @@ volatile bool usb_mounted = false;
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
+    extern void USB_HID_ResyncKeyboard(void);
     usb_mounted = true;
+    USB_HID_ResyncKeyboard();
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void) {
     usb_mounted = false;
+}
+
+// Re-send the current keyboard state if it changed while USB was suspended.
+void tud_resume_cb(void) {
+    extern void USB_HID_ResyncKeyboard(void);
+    USB_HID_ResyncKeyboard();
 }
 
 // This callback will be invoked when the host sends a SET_PROTOCOL request to switch between these modes.

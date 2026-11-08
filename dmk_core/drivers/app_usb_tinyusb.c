@@ -3,6 +3,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
 #include "task_internal.h"
 #include "tusb.h"
 
@@ -26,6 +27,51 @@ static void power_event_handler(nrfx_power_usb_evt_t event) {
 #endif
 
 static TaskHandle_t s_usb_task_handle = NULL;
+
+#define KEYBOARD_REPORT_QUEUE_LENGTH 32
+typedef struct {
+    uint8_t report_id;
+    USB_HID_KeyboardReport_TypeDef keyboard;
+    uint16_t consumer;
+} queued_key_report_t;
+static StaticQueue_t s_keyboard_queue_control;
+static uint8_t s_keyboard_queue_storage[KEYBOARD_REPORT_QUEUE_LENGTH * sizeof(queued_key_report_t)];
+static QueueHandle_t s_keyboard_queue;
+static USB_HID_KeyboardReport_TypeDef s_latest_keyboard_report = {.ReportID = 1};
+static uint16_t s_latest_consumer;
+
+// Resend current states after reconnect, even if no new event occurs.
+void USB_HID_ResyncKeyboard(void) {
+    if (!s_keyboard_queue) return;
+    taskENTER_CRITICAL();
+    xQueueReset(s_keyboard_queue);
+    queued_key_report_t keyboard = {.report_id = 1, .keyboard = s_latest_keyboard_report};
+    queued_key_report_t consumer = {.report_id = 2, .consumer = s_latest_consumer};
+    xQueueSend(s_keyboard_queue, &keyboard, 0);
+    xQueueSend(s_keyboard_queue, &consumer, 0);
+    taskEXIT_CRITICAL();
+}
+
+static void usb_keyboard_flush(void) {
+    queued_key_report_t report;
+    if (!s_keyboard_queue || !tud_mounted() || tud_suspended() || !tud_hid_ready() ||
+        xQueuePeek(s_keyboard_queue, &report, 0) != pdTRUE) return;
+    bool sent = report.report_id == 1
+        ? tud_hid_keyboard_report(1, report.keyboard.Modifier, report.keyboard.Keycodes)
+        : tud_hid_report(2, &report.consumer, sizeof(report.consumer));
+    if (sent) xQueueReceive(s_keyboard_queue, &report, 0);
+}
+
+static bool usb_enqueue_key_report(const queued_key_report_t *report) {
+    while (tud_mounted() && !tud_suspended()) {
+        if (xQueueSend(s_keyboard_queue, report, pdMS_TO_TICKS(1)) == pdTRUE) {
+            if (s_usb_task_handle) xTaskNotifyGive(s_usb_task_handle);
+            return true;
+        }
+    }
+    return true;
+}
+
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
 static StaticTask_t s_usb_task_tcb;
@@ -53,7 +99,8 @@ static void usb_device_task(void *param) {
     (void)param;
     s_usb_task_handle = xTaskGetCurrentTaskHandle();
     while (1) {
-        tud_task();
+        tud_task_ext(0, false);
+        usb_keyboard_flush();
 #if defined(MIDI_USB) && !defined(MCU_milandr)
         extern void tud_midi_rx_cb(uint8_t itf);
         while (tud_midi_available()) {
@@ -71,6 +118,9 @@ static void usb_device_task(void *param) {
 }
 
 bool USB_HID_Init(void) {
+    s_keyboard_queue = xQueueCreateStatic(KEYBOARD_REPORT_QUEUE_LENGTH, sizeof(queued_key_report_t),
+                                           s_keyboard_queue_storage, &s_keyboard_queue_control);
+    if (!s_keyboard_queue) return false;
 #if defined(MCU_nrf52840)
     NVIC_SetPriority(USBD_IRQn, 5);
 
@@ -140,17 +190,21 @@ static bool usb_hid_complete_send(bool sent) {
 }
 
 bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
-    if (!usb_hid_wait_ready(5)) {
-        return false;
-    }
-    return usb_hid_complete_send(tud_hid_keyboard_report(1, report->Modifier, (uint8_t *)report->Keycodes));
+    if (!report || !s_keyboard_queue) return false;
+    taskENTER_CRITICAL();
+    s_latest_keyboard_report = *report;
+    taskEXIT_CRITICAL();
+    queued_key_report_t queued = {.report_id = 1, .keyboard = *report};
+    return usb_enqueue_key_report(&queued);
 }
 
 bool USB_HID_SendConsumerReport(uint16_t usage) {
-    if (!usb_hid_wait_ready(5)) {
-        return false;
-    }
-    return usb_hid_complete_send(tud_hid_report(2, &usage, sizeof(usage)));
+    if (!s_keyboard_queue) return false;
+    taskENTER_CRITICAL();
+    s_latest_consumer = usage;
+    taskEXIT_CRITICAL();
+    queued_key_report_t queued = {.report_id = 2, .consumer = usage};
+    return usb_enqueue_key_report(&queued);
 }
 
 bool USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
