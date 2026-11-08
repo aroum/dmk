@@ -219,3 +219,22 @@ void led_activity(bool pressed) {
     (void)pressed;
 #endif
 }
+
+void led_suspend(void) {
+#ifdef LED_PINS
+    for (uint32_t i = 0; i < LED_COUNT; ++i) {
+        hal_gpio_put(led_pins[i], false);
+    }
+#endif
+#ifdef LED_ACTIVITY_PIN
+    hal_gpio_put(LED_ACTIVITY_PIN, false);
+#endif
+}
+
+void led_resume(void) {
+#ifdef LED_PINS
+    for (uint32_t i = 0; i < LED_COUNT && i < 8; ++i) {
+        hal_gpio_put(led_pins[i], (s_led_output_mask & (1u << i)) != 0);
+    }
+#endif
+}

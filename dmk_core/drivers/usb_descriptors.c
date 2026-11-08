@@ -3,6 +3,8 @@
 #include "tusb.h"
 #include "vial.h"
 
+#include "rgb.h"
+
 #ifndef VIAL_VENDOR_ID
 #define VIAL_VENDOR_ID 0xCafe
 #endif
@@ -97,15 +99,25 @@ tusb_desc_device_t const desc_device = {
 #define TOTAL_INTERFACES 1
 #endif
 
+#ifndef USB_REMOTE_WAKEUP_ENABLED
+#define USB_REMOTE_WAKEUP_ENABLED 1
+#endif
+
+#if USB_REMOTE_WAKEUP_ENABLED
+#define USB_CONFIG_ATTRIBUTES TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP
+#else
+#define USB_CONFIG_ATTRIBUTES 0
+#endif
+
 // Configuration descriptor
 uint8_t const desc_configuration[] = {
     // Configuration Descriptor
-    TUD_CONFIG_DESCRIPTOR(1,                // Configuration number
-                          TOTAL_INTERFACES, // Number of interfaces
-                          0,                // Configuration string index
-                          CONFIG_TOTAL_LEN, // Total length of data for this configuration
-                          0,                // Attributes (bus-powered)
-                          100),             // Maximum power consumption in 2mA units (100 * 2mA = 200mA)
+    TUD_CONFIG_DESCRIPTOR(1,                      // Configuration number
+                          TOTAL_INTERFACES,       // Number of interfaces
+                          0,                      // Configuration string index
+                          CONFIG_TOTAL_LEN,       // Total length of data for this configuration
+                          USB_CONFIG_ATTRIBUTES,  // Attributes (bus-powered + optional remote wakeup)
+                          100),                   // Maximum power consumption in 2mA units (100 * 2mA = 200mA)
 
 #ifndef HID_POLL_INTERVAL_MS
 #define HID_POLL_INTERVAL_MS 1
@@ -222,8 +234,17 @@ void tud_umount_cb(void) {
     usb_mounted = false;
 }
 
+// Invoked when device is suspended
+void tud_suspend_cb(bool remote_wakeup_en) {
+    (void)remote_wakeup_en;
+    led_suspend();
+    rgb_suspend();
+}
+
 // Re-send the current keyboard state if it changed while USB was suspended.
 void tud_resume_cb(void) {
+    led_resume();
+    rgb_resume();
     extern void USB_HID_ResyncKeyboard(void);
     USB_HID_ResyncKeyboard();
 }

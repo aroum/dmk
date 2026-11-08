@@ -349,4 +349,70 @@ void platform_bootloader_jump(void) {
     NVIC_SystemReset();
 }
 
+#elif defined(MCU_stm32l072)
+#include "stm32l0xx.h"
+#include "stm32l0xx_ll_gpio.h"
+
+static inline GPIO_TypeDef* stm32_get_port(pin_t pin) {
+    uint8_t port_idx = pin >> 4;
+    switch (port_idx) {
+        case 0: return GPIOA;
+        case 1: return GPIOB;
+        case 2: return GPIOC;
+        case 3: return GPIOD;
+        case 4: return GPIOE;
+        case 5: return GPIOH;
+        default: return GPIOA;
+    }
+}
+
+static inline uint32_t stm32_get_ll_pin(pin_t pin) {
+    return 1U << (pin & 0x0F);
+}
+
+void hal_gpio_init(pin_t pin) {
+    if (pin == 0xFF) return;
+    GPIO_TypeDef* port = stm32_get_port(pin);
+    uint32_t ll_pin = stm32_get_ll_pin(pin);
+    LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_INPUT);
+    LL_GPIO_SetPinPull(port, ll_pin, LL_GPIO_PULL_NO);
+}
+
+void hal_gpio_set_dir(pin_t pin, bool is_output) {
+    if (pin == 0xFF) return;
+    GPIO_TypeDef* port = stm32_get_port(pin);
+    uint32_t ll_pin = stm32_get_ll_pin(pin);
+    if (is_output) {
+        LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_OUTPUT);
+        LL_GPIO_SetPinOutputType(port, ll_pin, LL_GPIO_OUTPUT_PUSHPULL);
+        LL_GPIO_SetPinSpeed(port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
+    } else {
+        LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_INPUT);
+    }
+}
+
+void hal_gpio_pull_down(pin_t pin) {
+    if (pin == 0xFF) return;
+    LL_GPIO_SetPinPull(stm32_get_port(pin), stm32_get_ll_pin(pin), LL_GPIO_PULL_DOWN);
+}
+
+void hal_gpio_pull_up(pin_t pin) {
+    if (pin == 0xFF) return;
+    LL_GPIO_SetPinPull(stm32_get_port(pin), stm32_get_ll_pin(pin), LL_GPIO_PULL_UP);
+}
+
+void hal_sleep_us(uint32_t us) {
+    // 32 MHz Cortex-M0+ loop (~6 iterations per microsecond)
+    for (volatile uint32_t i = 0; i < (us * 6); i++) {
+        __NOP();
+    }
+}
+
+void platform_bootloader_jump(void) {
+    // Jump to ST System Memory Bootloader (0x1FF00000)
+    void (*sys_bootloader)(void) = (void (*)(void))(*((volatile uint32_t *)0x1FF00004));
+    __set_MSP(*((volatile uint32_t *)0x1FF00000));
+    sys_bootloader();
+}
+
 #endif

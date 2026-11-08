@@ -51,6 +51,10 @@ void rgb_set_pixel_raw(uint32_t index, uint32_t color);
 void rgb_clear_pixel_raw(uint32_t index);
 void rgb_show(void);
 
+// Suspend and resume for low power
+void rgb_suspend(void);
+void rgb_resume(void);
+
 // Serialization for EEPROM storage
 void rgb_get_config(uint8_t *dest);
 void rgb_set_config(const uint8_t *src);
@@ -123,6 +127,8 @@ static inline void rgb_get_config(uint8_t *dest) {
 static inline void rgb_set_config(const uint8_t *src) {
     (void)src;
 }
+static inline void rgb_suspend(void) {}
+static inline void rgb_resume(void) {}
 
 #endif
 

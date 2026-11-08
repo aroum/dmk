@@ -62,7 +62,7 @@ endif()
 
 # Validate platform
 if(NOT EXISTS "${PLATFORM_DIR}")
-    message(FATAL_ERROR "Platform ${MCU} not found. Available platforms: milandr, rp2040, rp2350, nrf52840, baikal")
+    message(FATAL_ERROR "Platform ${MCU} not found. Available platforms: milandr, rp2040, rp2350, nrf52840, baikal, stm32l072")
 endif()
 
 set(CMAKE_PROJECT_NAME dmk_firmware)

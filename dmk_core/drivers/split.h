@@ -49,6 +49,22 @@
 #endif
 #endif
 
+#ifndef NUM_ROWS
+#ifdef MATRIX_ROWS
+#define NUM_ROWS MATRIX_ROWS
+#else
+#define NUM_ROWS 0
+#endif
+#endif
+
+#ifndef NUM_COLS
+#ifdef MATRIX_COLS
+#define NUM_COLS MATRIX_COLS
+#else
+#define NUM_COLS 0
+#endif
+#endif
+
 #define SPLIT_PACKET_HEADER 0xA5
 #define SPLIT_CONTROL_ROW 0xFF
 #define SPLIT_CONTROL_LED_MASK 0xFF

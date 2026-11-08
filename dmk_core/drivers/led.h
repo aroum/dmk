@@ -35,6 +35,10 @@ void led_set_hid_state(uint8_t state);
 // Activity indicator on switch press/release
 void led_activity(bool pressed);
 
+// Low-power suspend and resume
+void led_suspend(void);
+void led_resume(void);
+
 #else
 
 #ifndef LED_C_SRC
@@ -55,6 +59,8 @@ static inline void led_set_hid_state(uint8_t state) {
 static inline void led_activity(bool pressed) {
     (void)pressed;
 }
+static inline void led_suspend(void) {}
+static inline void led_resume(void) {}
 #endif
 
 #endif

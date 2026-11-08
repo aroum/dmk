@@ -1,5 +1,8 @@
 #include "app_usb_hid.h"
 #include "config.h"
+#include "keyboard.h"
+#include "led.h"
+#include "rgb.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -63,6 +66,13 @@ static void usb_keyboard_flush(void) {
 }
 
 static bool usb_enqueue_key_report(const queued_key_report_t *report) {
+    if (tud_suspended()) {
+        // If Power Saving is NOT enabled (or disabled via DIP switch/config),
+        // issue USB Remote Wakeup on keypress!
+        if (!keyboard_power_saving_enabled()) {
+            tud_remote_wakeup();
+        }
+    }
     while (tud_mounted() && !tud_suspended()) {
         if (xQueueSend(s_keyboard_queue, report, pdMS_TO_TICKS(1)) == pdTRUE) {
             if (s_usb_task_handle) xTaskNotifyGive(s_usb_task_handle);

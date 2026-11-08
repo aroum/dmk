@@ -55,6 +55,13 @@ void keyboard_record_pressed_key(uint8_t row, uint8_t col, uint32_t key);
  */
 void bootloader_jump(void);
 
+/**
+ * @brief Query whether Power Saving is enabled.
+ * Can be overridden by keyboards (e.g. via DIP switch or config).
+ * Default returns false (Power Saving disabled / Remote Wakeup allowed).
+ */
+bool keyboard_power_saving_enabled(void);
+
 #ifdef __cplusplus
 }
 #endif

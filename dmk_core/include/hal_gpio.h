@@ -146,6 +146,44 @@ static inline hal_gpio_snapshot_t hal_gpio_snapshot(void) {
     return s;
 }
 
+#elif defined(MCU_stm32l072)
+#include "stm32l0xx.h"
+#include "stm32l0xx_ll_gpio.h"
+
+static inline void hal_gpio_put(pin_t gpio, bool value) {
+    if (gpio == 0xFF) return;
+    uint8_t port_idx = gpio >> 4;
+    GPIO_TypeDef *port = (port_idx == 0) ? GPIOA :
+                         (port_idx == 1) ? GPIOB :
+                         (port_idx == 2) ? GPIOC :
+                         (port_idx == 3) ? GPIOD :
+                         (port_idx == 4) ? GPIOE : GPIOH;
+    uint32_t pin_mask = 1U << (gpio & 0x0F);
+    if (value) {
+        port->BSRR = pin_mask;
+    } else {
+        port->BRR = pin_mask;
+    }
+}
+
+static inline bool hal_gpio_get(pin_t gpio) {
+    if (gpio == 0xFF) return false;
+    uint8_t port_idx = gpio >> 4;
+    GPIO_TypeDef *port = (port_idx == 0) ? GPIOA :
+                         (port_idx == 1) ? GPIOB :
+                         (port_idx == 2) ? GPIOC :
+                         (port_idx == 3) ? GPIOD :
+                         (port_idx == 4) ? GPIOE : GPIOH;
+    return (port->IDR & (1U << (gpio & 0x0F))) != 0;
+}
+
+static inline hal_gpio_snapshot_t hal_gpio_snapshot(void) {
+    hal_gpio_snapshot_t s = {0};
+    s.p0 = (uint32_t)GPIOA->IDR | ((uint32_t)GPIOB->IDR << 16);
+    s.p1 = (uint32_t)GPIOC->IDR | ((uint32_t)GPIOD->IDR << 16);
+    return s;
+}
+
 #else
 hal_gpio_snapshot_t hal_gpio_snapshot(void);
 void hal_gpio_put(pin_t gpio, bool value);

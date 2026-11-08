@@ -72,6 +72,11 @@
 #define configISR_STACK_SIZE_WORDS (1024)
 #endif
 #define configUSE_NEWLIB_REENTRANT 1
+#elif defined(MCU_stm32l072)
+#define configCPU_CLOCK_HZ (32000000UL)
+#define vPortSVCHandler     SVC_Handler
+#define xPortPendSVHandler  PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler
 #endif
 
 #define configIDLE_SHOULD_YIELD 1
@@ -103,6 +108,9 @@
 #if defined(MCU_baikal)
 // Baikal has 32 KiB total SRAM; project tasks use static allocation.
 // Modules requiring dynamic allocation must explicitly increase this budget.
+#define configTOTAL_HEAP_SIZE (3 * 1024)
+#elif defined(MCU_stm32l072)
+// STM32L072 has 20 KiB SRAM total
 #define configTOTAL_HEAP_SIZE (3 * 1024)
 #else
 #define configTOTAL_HEAP_SIZE (8 * 1024)

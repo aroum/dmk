@@ -332,6 +332,18 @@ void keyboard_check(void) {
 }
 
 /**
+ * @brief Default weak implementation of power saving query.
+ * Keyboards or platforms can override this function.
+ */
+__attribute__((weak)) bool keyboard_power_saving_enabled(void) {
+#if defined(POWER_SAVING_ENABLED) && (POWER_SAVING_ENABLED == 1)
+    return true;
+#else
+    return false;
+#endif
+}
+
+/**
  * @brief FreeRTOS task responsible for keyboard logic and state machine.
  */
 void keyboard_task(void *pvParameters) {

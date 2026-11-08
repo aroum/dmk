@@ -600,4 +600,27 @@ void rgb_set_config(const uint8_t *src) {
     rgb_notify_change();
 }
 
+static bool s_rgb_suspended = false;
+
+void rgb_suspend(void) {
+    if (s_rgb_suspended) return;
+    s_rgb_suspended = true;
+    for (uint32_t i = 0; i < RGB_NUM; ++i) {
+        ws2812_set_color(i, 0);
+    }
+    ws2812_show();
+#ifdef POWER_PIN
+    power_pin_set(false);
+#endif
+}
+
+void rgb_resume(void) {
+    if (!s_rgb_suspended) return;
+    s_rgb_suspended = false;
+#ifdef POWER_PIN
+    power_pin_set(true);
+#endif
+    rgb_notify_change();
+}
+
 #endif // defined(RGB_NUM)

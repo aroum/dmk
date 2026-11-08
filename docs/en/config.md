@@ -20,6 +20,27 @@ Customize the USB product name, VID, and PID in `config.h`:
 #define VIAL_PRODUCT_ID    0x4010       // USB Product ID (PID)
 ```
 
+### USB Suspend and Power Saving
+
+DMK includes core-level power saving management for USB suspend states (when the host sleeps or the USB bus suspends):
+
+1. **Automatic LED & RGB Shutdown**:
+   - When the host suspends the USB bus (`tud_suspend_cb`), all status LEDs (Caps Lock, Num Lock, activity indicator) and RGB matrix backlighting/underglow are automatically turned off (`led_suspend()` / `rgb_suspend()`), reducing power consumption to minimal microamp levels.
+   - When the host resumes (`tud_resume_cb`), the prior LED states and RGB animation resume automatically.
+
+2. **Power Saving Enabled vs Remote Wakeup**:
+   - By default, USB Remote Wakeup is enabled (`USB_REMOTE_WAKEUP_ENABLED 1`). Pressing any key while the computer is asleep will send a `tud_remote_wakeup()` signal and wake the host up.
+   - If **Power Saving Enabled** is activated for a keyboard, waking the host by pressing keys is blocked, conserving energy and preventing unintended wakeups:
+     ```c
+     // Enable Power Saving (blocks host wakeup on keypress):
+     #define POWER_SAVING_ENABLED 1
+     ```
+   - Keyboards can also dynamically determine power saving status at runtime by overriding the weak function:
+     ```c
+     bool keyboard_power_saving_enabled(void);
+     ```
+     (For example, on HHKB Classic, reading the physical state of DIP switch SW6).
+
 ## Multi-Platform Support
 
 Configurations can dynamically target different microcontrollers using preprocessor checks (`#if defined(MCU_...)`). Supported MCUs include `MCU_milandr`, `MCU_rp2040`, `MCU_rp2350`, `MCU_nrf52840`, and `MCU_baikal`.
