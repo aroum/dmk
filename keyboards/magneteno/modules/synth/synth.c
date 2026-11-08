@@ -293,12 +293,12 @@ void synth_set_master_volume(uint8_t volume_percent) {
 }
 
 // Hook early initialization to launch synth on boot
-void hook_early_init(void) {
+static void subscriber_early_init(void) {
     synth_init();
 }
 
 // Intercept incoming host USB MIDI
-void hook_midi_receive(const uint8_t packet[4]) {
+static void subscriber_midi_receive(const uint8_t packet[4]) {
     uint8_t cin = packet[0] & 0x0F;
     uint8_t status = packet[1] & 0xF0;
     uint8_t note = packet[2];
@@ -314,7 +314,7 @@ void hook_midi_receive(const uint8_t packet[4]) {
 }
 
 // Intercept local keyboard MIDI
-void hook_midi_send(const uint8_t *msg, uint8_t len) {
+static void subscriber_midi_send(const uint8_t *msg, uint8_t len) {
     if (len >= 3) {
         uint8_t status = msg[0] & 0xF0;
         uint8_t note = msg[1];
@@ -327,6 +327,11 @@ void hook_midi_send(const uint8_t *msg, uint8_t len) {
         }
     }
 }
+
+DMK_HOOK_SUBSCRIBER(synth_hooks,
+    .early_init = subscriber_early_init,
+    .midi_receive = subscriber_midi_receive,
+    .midi_send = subscriber_midi_send);
 
 #else
 // Stubs for non-RP architectures

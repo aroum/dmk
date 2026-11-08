@@ -85,7 +85,7 @@ When a module belongs specifically to a given keyboard (such as `keyboards/omsk/
 
 ## 3. Core Lifecycle & Event Hooks (Hooks API)
 
-Modules communicate with DMK through non-blocking weak hooks declared in `dmk_core/include/hooks.h`. Modules implement any of these functions without requiring glue code or core edits:
+Modules register callbacks with `DMK_HOOK_SUBSCRIBER` in `dmk_core/include/hooks.h`; multiple subscribers can handle the same event. Legacy weak hooks remain supported and run first. Consuming hooks stop dispatch when consumed; report filters stop when they return false. Callback order between modules is unspecified:
 
 | Hook Function                                                                                                                    | When It Is Called                                                | Typical Use Cases                                                                                 |
 | :------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
@@ -113,18 +113,21 @@ Modules communicate with DMK through non-blocking weak hooks declared in `dmk_co
 #define LAYER_LED_INDEX 0
 #define CAPS_LED_INDEX  1
 
-void hook_layer_change(uint8_t active_layer) {
+static void on_layer_change(uint8_t active_layer) {
     const uint32_t layer_colors[] = { 0x00FF00, 0x0000FF, 0xFF00FF, 0xFFFF00 };
     uint32_t color = (active_layer < 4) ? layer_colors[active_layer] : 0xFFFFFF;
     rgb_set_pixel_raw(LAYER_LED_INDEX, color);
     rgb_show();
 }
 
-void hook_hid_led_change(uint8_t led_mask) {
+static void on_hid_led_change(uint8_t led_mask) {
     bool caps_on = (led_mask & 0x02) != 0;
     rgb_set_pixel_raw(CAPS_LED_INDEX, caps_on ? 0xFF0000 : 0x000000);
     rgb_show();
 }
+DMK_HOOK_SUBSCRIBER(indicator_hooks,
+    .layer_change = on_layer_change,
+    .hid_led_change = on_hid_led_change);
 ```
 
 ---
@@ -153,7 +156,7 @@ Unified analog input interface for Hall effect sensors, analog joysticks, thumbs
 
 Universal hardware-independent bus abstraction for external sensors (IMUs, gyroscopes, trackballs), DACs, and OLEDs:
 
-- `bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz)` — Initializes I2C master bus at `HAL_I2C_FREQ_STANDARD` (100 kHz) or `HAL_I2C_FREQ_FAST` (400 kHz).
+- `bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz)` — Initializes I2C master bus at `HAL_I2C_FREQ_STANDARD` (100 kHz) or `HAL_I2C_FREQ_FAST` (400 kHz). Bus operations are serialized; repeated initialization succeeds only with the same pins and frequency. Check the return value.
 - `bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len)` — Transmits data packet to a 7-bit slave address.
 - `bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len)` — Receives data packet from a slave address.
 - `bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len)` — Writes data into a specific register address.
@@ -164,13 +167,14 @@ Universal hardware-independent bus abstraction for external sensors (IMUs, gyros
 High-speed hardware and bit-bang SPI master abstraction for displays (Sharp Memory LCD, ST7789), sensors, and Flash:
 
 - `bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode)` — Initializes SPI master bus in modes `HAL_SPI_MODE_0` .. `HAL_SPI_MODE_3` at speeds up to 10 MHz.
+- `hal_spi_acquire()` / `hal_spi_release()` — Hold the SPI bus around chip select and all transfers in a transaction. Reinitialization with different parameters fails.
 - `bool hal_spi_write(const uint8_t *tx, size_t len)` — Transmits data buffer (MISO discarded).
 - `bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len)` — Receives data by sending fill dummy bytes.
 - `bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len)` — Full-duplex simultaneous transmit and receive.
 
 ### 4.5. FreeRTOS Tasks and Synchronization
 
-Modules can spawn dedicated RTOS worker tasks in `hook_early_init()`:
+Modules can create dedicated RTOS worker tasks during early initialization. Prefer static allocation: the task stack and control block are included in the firmware's RAM budget and do not consume the FreeRTOS heap.
 
 ```c
 static void my_display_task(void *pvParameters) {
@@ -181,16 +185,25 @@ static void my_display_task(void *pvParameters) {
     }
 }
 
-void hook_early_init(void) {
-    xTaskCreate(my_display_task, "display", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+static StaticTask_t display_tcb;
+static StackType_t display_stack[512]; // stack depth in StackType_t words
+static void my_early_init(void) {
+    if (xTaskCreateStatic(my_display_task, "display", 512, NULL, tskIDLE_PRIORITY + 1,
+                          display_stack, &display_tcb) == NULL) {
+        return; // optional module could not start
+    }
 }
+DMK_HOOK_SUBSCRIBER(display_hooks, .early_init = my_early_init);
 ```
+
+The default FreeRTOS dynamic heap is 8 KiB (3 KiB on Baikal); override `configTOTAL_HEAP_SIZE` at build time, for example `-d 'configTOTAL_HEAP_SIZE=4096'`. The linker rejects configurations whose static RAM and heap exceed the available SRAM. If a dynamic allocation fails, FreeRTOS returns `NULL`/`pdFAIL` and increments `dmk_malloc_failure_count` rather than hanging; check every dynamic allocation result. Stack overflow resets the MCU. Baikal also reserves a separate 2 KiB bounded newlib heap.
 
 ### 4.6. Direct RGB LED Control (`rgb.h`)
 
 Low-level direct pixel manipulation without interfering with standard lighting animations:
 
 - `void rgb_set_pixel_raw(uint32_t index, uint32_t color_hex)` — Sets color in `0xRRGGBB` format.
+- `void rgb_clear_pixel_raw(uint32_t index)` — Removes a persistent raw pixel overlay, returning that LED to the animation.
 - `void rgb_show(void)` — Flushes buffer to hardware (WS2812 / SK6812).
 - `void rgb_set_color(uint8_t hue, uint8_t sat)` — Sets global color in HSV space.
 - `void rgb_set_mode(uint8_t mode)` — Selects lighting effect mode.
@@ -252,7 +265,7 @@ For non-standard keyboard matrices (e.g. analog Hall Effect switches, multiplexe
            .col = col,
            .pressed = pressed ? 1 : 0
        };
-       xQueueSend(matrix_queue, &event, 0);
+       xQueueSend(matrix_queue, &event, portMAX_DELAY);
    }
    ```
 

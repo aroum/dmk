@@ -117,10 +117,16 @@ static void bmi270_airmouse_task(void *pvParameters) {
     }
 }
 
-void hook_early_init(void) {
+static void subscriber_early_init(void) {
     // Initialize I2C bus at 400 kHz (Fast mode)
-    hal_i2c_init(BMI270_SDA_PIN, BMI270_SCL_PIN, HAL_I2C_FREQ_FAST);
+    if (!hal_i2c_init(BMI270_SDA_PIN, BMI270_SCL_PIN, HAL_I2C_FREQ_FAST)) return;
 
     // Spawn IMU air mouse background task
-    xTaskCreate(bmi270_airmouse_task, "bmi270", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    static StaticTask_t task_control;
+    static StackType_t task_stack[256];
+    (void)xTaskCreateStatic(bmi270_airmouse_task, "bmi270", 256, NULL, tskIDLE_PRIORITY + 2, task_stack,
+                            &task_control);
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .early_init = subscriber_early_init);

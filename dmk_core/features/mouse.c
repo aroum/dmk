@@ -67,11 +67,11 @@ uint8_t mouse_get_buttons(void) {
 
 void mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8_t pan) {
     USB_HID_SendMouseReport(buttons, dx, dy, wheel, pan);
-    hook_mouse_report(buttons, dx, dy, wheel, pan);
+    hooks_dispatch_mouse_report(buttons, dx, dy, wheel, pan);
 }
 
 void mouse_move(int8_t dx, int8_t dy) {
-    if (!hook_mouse_move(&dx, &dy)) {
+    if (!hooks_dispatch_mouse_move(&dx, &dy)) {
         return; // Hook intercepted or cancelled movement
     }
     if (dx != 0 || dy != 0) {
@@ -80,7 +80,7 @@ void mouse_move(int8_t dx, int8_t dy) {
 }
 
 void mouse_scroll(int8_t wheel, int8_t pan) {
-    if (!hook_mouse_scroll(&wheel, &pan)) {
+    if (!hooks_dispatch_mouse_scroll(&wheel, &pan)) {
         return; // Hook intercepted or cancelled scroll
     }
     if (wheel != 0 || pan != 0) {

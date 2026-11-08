@@ -38,7 +38,7 @@ static void send_midi_noteon(uint8_t chan, uint8_t note, uint8_t vel) {
     usb_send_midi_noteon(chan, note, vel);
 #endif
     uint8_t msg[3] = {(uint8_t)(0x90 | (chan & 0x0F)), (uint8_t)(note & 0x7F), (uint8_t)(vel & 0x7F)};
-    hook_midi_send(msg, 3);
+    hooks_dispatch_midi_send(msg, 3);
 }
 
 /**
@@ -49,7 +49,7 @@ static void send_midi_noteoff(uint8_t chan, uint8_t note, uint8_t vel) {
     usb_send_midi_noteoff(chan, note, vel);
 #endif
     uint8_t msg[3] = {(uint8_t)(0x80 | (chan & 0x0F)), (uint8_t)(note & 0x7F), (uint8_t)(vel & 0x7F)};
-    hook_midi_send(msg, 3);
+    hooks_dispatch_midi_send(msg, 3);
 }
 
 /**
@@ -60,7 +60,7 @@ static void send_midi_cc(uint8_t chan, uint8_t cc, uint8_t val) {
     usb_send_midi_cc(chan, cc, val);
 #endif
     uint8_t msg[3] = {(uint8_t)(0xB0 | (chan & 0x0F)), (uint8_t)(cc & 0x7F), (uint8_t)(val & 0x7F)};
-    hook_midi_send(msg, 3);
+    hooks_dispatch_midi_send(msg, 3);
 }
 
 /**
@@ -72,7 +72,7 @@ static void send_midi_pitchbend(uint8_t chan, int16_t val) {
 #endif
     uint16_t pb = (uint16_t)(val + 8192);
     uint8_t msg[3] = {(uint8_t)(0xE0 | (chan & 0x0F)), (uint8_t)(pb & 0x7F), (uint8_t)((pb >> 7) & 0x7F)};
-    hook_midi_send(msg, 3);
+    hooks_dispatch_midi_send(msg, 3);
 }
 
 /**

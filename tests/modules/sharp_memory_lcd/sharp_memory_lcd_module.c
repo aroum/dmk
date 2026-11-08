@@ -291,14 +291,17 @@ static void sharp_lcd_task(void *pvParameters) {
 /**
  * @brief Early init hook
  */
-void hook_early_init(void) {
-    xTaskCreate(sharp_lcd_task, "sharp_lcd", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+static void subscriber_early_init(void) {
+    static StaticTask_t task_control;
+    static StackType_t task_stack[512];
+    (void)xTaskCreateStatic(sharp_lcd_task, "sharp_lcd", 512, NULL, tskIDLE_PRIORITY + 1, task_stack,
+                            &task_control);
 }
 
 /**
  * @brief Layer switch hook
  */
-void hook_layer_change(uint8_t active_layer) {
+static void subscriber_layer_change(uint8_t active_layer) {
     if (lcd_state.active_layer != active_layer) {
         lcd_state.active_layer = active_layer;
         lcd_state.dirty = true;
@@ -308,7 +311,7 @@ void hook_layer_change(uint8_t active_layer) {
 /**
  * @brief Keycode transmission hook: records typing metrics and last active keycode
  */
-void hook_key_sent(uint16_t keycode, bool pressed) {
+static void subscriber_key_sent(uint16_t keycode, bool pressed) {
     if (pressed) {
         lcd_state.last_keycode = keycode;
         lcd_state.dirty = true;
@@ -323,7 +326,7 @@ void hook_key_sent(uint16_t keycode, bool pressed) {
 /**
  * @brief Host HID keyboard lock indicator hook
  */
-void hook_hid_led_change(uint8_t led_mask) {
+static void subscriber_hid_led_change(uint8_t led_mask) {
     bool caps = (led_mask & 0x02) != 0;
     bool num = (led_mask & 0x01) != 0;
 
@@ -333,3 +336,9 @@ void hook_hid_led_change(uint8_t led_mask) {
         lcd_state.dirty = true;
     }
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .early_init = subscriber_early_init,
+    .layer_change = subscriber_layer_change,
+    .key_sent = subscriber_key_sent,
+    .hid_led_change = subscriber_hid_led_change);

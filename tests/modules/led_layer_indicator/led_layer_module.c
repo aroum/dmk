@@ -14,7 +14,7 @@
 
 static bool led_module_inited = false;
 
-void hook_early_init(void) {
+static void subscriber_early_init(void) {
     hal_gpio_init(LAYER_LED_PIN_0);
     hal_gpio_set_dir(LAYER_LED_PIN_0, true);
     hal_gpio_put(LAYER_LED_PIN_0, true); // Base layer LED active by default
@@ -26,7 +26,7 @@ void hook_early_init(void) {
     led_module_inited = true;
 }
 
-void hook_layer_change(uint8_t active_layer) {
+static void subscriber_layer_change(uint8_t active_layer) {
     if (!led_module_inited) {
         return;
     }
@@ -35,3 +35,7 @@ void hook_layer_change(uint8_t active_layer) {
     hal_gpio_put(LAYER_LED_PIN_0, active_layer == 0);
     hal_gpio_put(LAYER_LED_PIN_1, active_layer >= 1);
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .early_init = subscriber_early_init,
+    .layer_change = subscriber_layer_change);

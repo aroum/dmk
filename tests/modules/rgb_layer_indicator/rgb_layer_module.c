@@ -4,7 +4,7 @@
 #include "task.h"
 #include <stdint.h>
 
-void hook_layer_change(uint8_t active_layer) {
+static void subscriber_layer_change(uint8_t active_layer) {
     // Check if RGB subsystem is available
     if (!rgb_get_enabled()) {
         rgb_set_enabled(true);
@@ -32,3 +32,6 @@ void hook_layer_change(uint8_t active_layer) {
 
     rgb_set_mode(RGBLIGHT_MODE_STATIC_LIGHT);
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .layer_change = subscriber_layer_change);

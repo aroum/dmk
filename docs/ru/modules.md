@@ -85,7 +85,7 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 
 ## 3. Хуки событий и жизненного цикла ядра (Hooks API)
 
-Связь модулей с ядром DMK построена на механизме неблокирующих слабых хуков (weak functions), объявленных в `dmk_core/include/hooks.h`. Для использования хука модуль объявляет соответствующую функцию в своем C-коде:
+Модули регистрируют обработчики через `DMK_HOOK_SUBSCRIBER` из `dmk_core/include/hooks.h`; одно событие могут обрабатывать несколько модулей. Старые weak-хуки поддерживаются и вызываются первыми. При поглощении события обработка прекращается; фильтры отчётов прекращают её при возврате false. Порядок модулей не определён:
 
 | Функция хука                                                                                                                     | Момент вызова                                              | Типичное применение                                                                                        |
 | :------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- |
@@ -113,18 +113,21 @@ cmake -B build -DKEYBOARD=magneteno -DDMK_MODULES="tests/modules/hall_calibratio
 #define LAYER_LED_INDEX 0 // Первый светодиод — индикатор слоя
 #define CAPS_LED_INDEX  1 // Второй светодиод — индикатор CapsLock
 
-void hook_layer_change(uint8_t active_layer) {
+static void on_layer_change(uint8_t active_layer) {
     const uint32_t colors[] = { 0x00FF00, 0x0000FF, 0xFF00FF, 0xFFFF00 };
     uint32_t color = (active_layer < 4) ? colors[active_layer] : 0xFFFFFF;
     rgb_set_pixel_raw(LAYER_LED_INDEX, color);
     rgb_show();
 }
 
-void hook_hid_led_change(uint8_t led_mask) {
+static void on_hid_led_change(uint8_t led_mask) {
     bool caps_on = (led_mask & 0x02) != 0;
     rgb_set_pixel_raw(CAPS_LED_INDEX, caps_on ? 0xFF0000 : 0x000000);
     rgb_show();
 }
+DMK_HOOK_SUBSCRIBER(indicator_hooks,
+    .layer_change = on_layer_change,
+    .hid_led_change = on_hid_led_change);
 ```
 
 ---
@@ -153,7 +156,7 @@ void hook_hid_led_change(uint8_t led_mask) {
 
 Универсальный аппаратно-независимый слой для подключения датчиков (IMU, трекболы, гироскопы), внешних АЦП/ЦАП и OLED-дисплеев:
 
-- `bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz)` — Инициализирует шину I2C (частота `HAL_I2C_FREQ_STANDARD` 100 кГц или `HAL_I2C_FREQ_FAST` 400 кГц).
+- `bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz)` — Инициализирует шину I2C (частота `HAL_I2C_FREQ_STANDARD` 100 кГц или `HAL_I2C_FREQ_FAST` 400 кГц). Операции на шине сериализованы; повторная инициализация возможна только с теми же выводами и частотой. Проверяйте результат.
 - `bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len)` — Передача пакета данных ведомому устройству по 7-битному адресу.
 - `bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len)` — Чтение пакета данных с ведомого устройства.
 - `bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len)` — Запись одного или нескольких байт в указанный регистр устройства.
@@ -164,13 +167,14 @@ void hook_hid_led_change(uint8_t led_mask) {
 Аппаратный и побитовый (bit-bang) слой для скоростного обмена с дисплеями (Sharp Memory LCD, ST7789), датчиками и Flash-памятью:
 
 - `bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode)` — Инициализирует шину SPI в режимах `HAL_SPI_MODE_0` .. `HAL_SPI_MODE_3` с частотами до 10 МГц.
+- `hal_spi_acquire()` / `hal_spi_release()` — Удерживайте шину SPI от активации до деактивации chip select, включая все передачи. Повторная инициализация с другими параметрами возвращает ошибку.
 - `bool hal_spi_write(const uint8_t *tx, size_t len)` — Передача данных без чтения.
 - `bool hal_spi_read(uint8_t rx_fill, uint8_t *rx, size_t len)` — Чтение данных с отправкой байта-заполнителя.
 - `bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len)` — Полнодуплексный одновременный прием и передача данных.
 
 ### 4.5. Фоновые задачи FreeRTOS (`task.h`, `queue.h`)
 
-Модуль может запускать собственные потоки обработки в `hook_early_init()`:
+Модуль может запускать собственные задачи при ранней инициализации. Предпочтительна статическая память: стек и управляющая структура учитываются линкером и не расходуют динамическую кучу FreeRTOS.
 
 ```c
 static void my_background_task(void *pvParameters) {
@@ -181,16 +185,25 @@ static void my_background_task(void *pvParameters) {
     }
 }
 
-void hook_early_init(void) {
-    xTaskCreate(my_background_task, "bg_task", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+static StaticTask_t background_tcb;
+static StackType_t background_stack[512]; // глубина стека в словах StackType_t
+static void my_early_init(void) {
+    if (xTaskCreateStatic(my_background_task, "bg_task", 512, NULL, tskIDLE_PRIORITY + 1,
+                          background_stack, &background_tcb) == NULL) {
+        return; // необязательный модуль не запустился
+    }
 }
+DMK_HOOK_SUBSCRIBER(display_hooks, .early_init = my_early_init);
 ```
+
+Динамическая куча FreeRTOS по умолчанию составляет 8 КБ (3 КБ на Baikal); размер можно переопределить при сборке, например `-d 'configTOTAL_HEAP_SIZE=4096'`. Линкер отклоняет конфигурации, в которых статическая память и куча не помещаются в SRAM. При неудачном динамическом выделении FreeRTOS возвращает `NULL`/`pdFAIL` и увеличивает `dmk_malloc_failure_count` вместо зависания; проверяйте результат каждого выделения. Переполнение стека вызывает перезагрузку MCU. На Baikal отдельно выделена ограниченная куча newlib размером 2 КБ.
 
 ### 4.6. Прямое управление адресной RGB-подсветкой (`rgb.h`)
 
 Низкоуровневые функции позволяют модулю управлять отдельными пикселями без сбоя стандартных эффектов подсветки:
 
 - `void rgb_set_pixel_raw(uint32_t index, uint32_t color_hex)` — Устанавливает цвет светодиода по индексу в формате `0xRRGGBB`.
+- `void rgb_clear_pixel_raw(uint32_t index)` — Убирает постоянное наложение и возвращает светодиод под управление анимации.
 - `void rgb_show(void)` — Передает буфер кадров на физические светодиоды (WS2812 / SK6812).
 - `void rgb_set_color(uint8_t hue, uint8_t sat)` — Устанавливает глобальный цвет подсветки в пространстве HSV.
 - `void rgb_set_mode(uint8_t mode)` — Переключает режим анимации подсветки.
@@ -252,7 +265,7 @@ DMK предоставляет полную поддержку стандарт�
            .col = col,
            .pressed = pressed ? 1 : 0
        };
-       xQueueSend(matrix_queue, &event, 0);
+       xQueueSend(matrix_queue, &event, portMAX_DELAY);
    }
    ```
 

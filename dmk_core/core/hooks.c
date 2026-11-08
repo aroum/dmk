@@ -3,33 +3,8 @@
 #include "task.h"     /* RTOS task related API prototypes. */
 #include <stdbool.h>
 #include <stdint.h>
+#include "hooks.h"
 
-void vApplicationMallocFailedHook(void) {
-    /* The malloc failed hook is enabled by setting
-    configUSE_MALLOC_FAILED_HOOK to 1 in FreeRTOSConfig.h.
-
-    Called if a call to pvPortMalloc() fails because there is insufficient
-    free memory available in the FreeRTOS heap.  pvPortMalloc() is called
-    internally by FreeRTOS API functions that create tasks, queues, software
-    timers, and semaphores.  The size of the FreeRTOS heap is set by the
-    configTOTAL_HEAP_SIZE configuration constant in FreeRTOSConfig.h. */
-    for (;;)
-        ;
-}
-/*-----------------------------------------------------------*/
-
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
-    (void)pcTaskName;
-    (void)xTask;
-
-    /* Run time stack overflow checking is performed if
-    configconfigCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
-    function is called if a stack overflow is detected.  pxCurrentTCB can be
-    inspected in the debugger if the task name passed into this function is
-    corrupt. */
-    for (;;)
-        ;
-}
 
 void vApplicationIdleHook(void) {
 #if defined(__ARM_ARCH) || defined(__arm__)
@@ -130,4 +105,99 @@ __attribute__((weak)) void hook_midi_send(const uint8_t *msg, uint8_t len) {
 
 __attribute__((weak)) void hook_midi_receive(const uint8_t packet[4]) {
     (void)packet;
+}
+
+// A sentinel ensures that the linker creates the subscriber section even when
+// no module registers callbacks. GNU ld exposes the bounds of named sections.
+DMK_HOOK_SUBSCRIBER(s_hook_sentinel, .early_init = NULL);
+extern const dmk_hook_subscriber_t __start_dmk_hooks[];
+extern const dmk_hook_subscriber_t __stop_dmk_hooks[];
+
+void hooks_dispatch_early_init(void) {
+    hook_early_init();
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->early_init) h->early_init();
+    }
+}
+
+void hooks_dispatch_layer_change(uint8_t layer) {
+    hook_layer_change(layer);
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->layer_change) h->layer_change(layer);
+    }
+}
+
+bool hooks_dispatch_matrix_change(uint8_t row, uint8_t col, bool pressed) {
+    if (hook_matrix_change(row, col, pressed)) return true;
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->matrix_change && h->matrix_change(row, col, pressed)) return true;
+    }
+    return false;
+}
+
+bool hooks_dispatch_process_key(uint32_t key, bool pressed) {
+    if (hook_process_key(key, pressed)) return true;
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->process_key && h->process_key(key, pressed)) return true;
+    }
+    return false;
+}
+
+void hooks_dispatch_key_sent(uint16_t key, bool pressed) {
+    hook_key_sent(key, pressed);
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->key_sent) h->key_sent(key, pressed);
+    }
+}
+
+void hooks_dispatch_hid_led_change(uint8_t leds) {
+    hook_hid_led_change(leds);
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->hid_led_change) h->hid_led_change(leds);
+    }
+}
+
+bool hooks_dispatch_mouse_move(int8_t *x, int8_t *y) {
+    if (!hook_mouse_move(x, y)) return false;
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->mouse_move && !h->mouse_move(x, y)) return false;
+    }
+    return true;
+}
+
+bool hooks_dispatch_mouse_scroll(int8_t *wheel, int8_t *pan) {
+    if (!hook_mouse_scroll(wheel, pan)) return false;
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->mouse_scroll && !h->mouse_scroll(wheel, pan)) return false;
+    }
+    return true;
+}
+
+void hooks_dispatch_mouse_report(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan) {
+    hook_mouse_report(buttons, x, y, wheel, pan);
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->mouse_report) h->mouse_report(buttons, x, y, wheel, pan);
+    }
+}
+
+bool hooks_dispatch_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons) {
+    if (!hook_gamepad_report(x, y, z, rz, rx, ry, hat, buttons)) return false;
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->gamepad_report && !h->gamepad_report(x, y, z, rz, rx, ry, hat, buttons)) return false;
+    }
+    return true;
+}
+
+void hooks_dispatch_midi_send(const uint8_t *msg, uint8_t len) {
+    hook_midi_send(msg, len);
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->midi_send) h->midi_send(msg, len);
+    }
+}
+
+void hooks_dispatch_midi_receive(const uint8_t *packet) {
+    hook_midi_receive(packet);
+    for (const dmk_hook_subscriber_t *h = __start_dmk_hooks; h < __stop_dmk_hooks; ++h) {
+        if (h->midi_receive) h->midi_receive(packet);
+    }
 }

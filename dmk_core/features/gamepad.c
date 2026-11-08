@@ -104,7 +104,7 @@ void gamepad_send(void) {
     uint32_t buttons = s_gamepad.buttons;
 
     // Allow user modules to intercept or scale axes
-    if (!hook_gamepad_report(&x, &y, &z, &rz, &rx, &ry, &dpad, &buttons)) {
+    if (!hooks_dispatch_gamepad_report(&x, &y, &z, &rz, &rx, &ry, &dpad, &buttons)) {
         return;
     }
 

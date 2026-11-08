@@ -131,7 +131,12 @@ void midi_jack_init(void) {
     }
     s_initialized = true;
     hal_midi_jack_hw_init();
-    xTaskCreate(midi_rx_task, "midi_rx", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+    static StaticTask_t task_control;
+    static StackType_t task_stack[256];
+    if (xTaskCreateStatic(midi_rx_task, "midi_rx", 256, NULL, tskIDLE_PRIORITY + 1, task_stack,
+                          &task_control) == NULL) {
+        s_initialized = false;
+    }
 }
 
 void midi_jack_write(uint8_t byte) {
@@ -141,11 +146,11 @@ void midi_jack_write(uint8_t byte) {
     hal_midi_jack_putc(byte);
 }
 
-__attribute__((weak)) void hook_early_init(void) {
+static void subscriber_early_init(void) {
     midi_jack_init();
 }
 
-void hook_midi_send(const uint8_t *msg, uint8_t len) {
+static void subscriber_midi_send(const uint8_t *msg, uint8_t len) {
     if (!s_initialized) {
         midi_jack_init();
     }
@@ -153,3 +158,7 @@ void hook_midi_send(const uint8_t *msg, uint8_t len) {
         hal_midi_jack_putc(msg[i]);
     }
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .early_init = subscriber_early_init,
+    .midi_send = subscriber_midi_send);

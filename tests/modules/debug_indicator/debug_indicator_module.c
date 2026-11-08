@@ -50,7 +50,7 @@ static void debug_indicator_task(void *pvParameters) {
 /**
  * @brief Early init hook called before scheduler starts
  */
-void hook_early_init(void) {
+static void subscriber_early_init(void) {
 #ifdef DEBUG_KEY_PIN
     hal_gpio_init(DEBUG_KEY_PIN);
     hal_gpio_set_dir(DEBUG_KEY_PIN, true);
@@ -63,13 +63,16 @@ void hook_early_init(void) {
     hal_gpio_put(DEBUG_USB_PIN, false);
 #endif
 
-    xTaskCreate(debug_indicator_task, "dbg_ind", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
+    static StaticTask_t task_control;
+    static StackType_t task_stack[128];
+    (void)xTaskCreateStatic(debug_indicator_task, "dbg_ind", 128, NULL, tskIDLE_PRIORITY + 1, task_stack,
+                            &task_control);
 }
 
 /**
  * @brief Matrix switch change hook called on press/release of any key
  */
-bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
+static bool subscriber_matrix_change(uint8_t row, uint8_t col, bool pressed) {
     (void)row;
     (void)col;
 
@@ -91,3 +94,7 @@ bool hook_matrix_change(uint8_t row, uint8_t col, bool pressed) {
 #endif
     return false;
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .early_init = subscriber_early_init,
+    .matrix_change = subscriber_matrix_change);

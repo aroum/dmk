@@ -62,14 +62,17 @@ static void oled_task(void *pvParameters) {
 /**
  * @brief Early init hook called by dmk_core before scheduler starts
  */
-void hook_early_init(void) {
-    xTaskCreate(oled_task, "oled", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+static void subscriber_early_init(void) {
+    static StaticTask_t task_control;
+    static StackType_t task_stack[256];
+    (void)xTaskCreateStatic(oled_task, "oled", 256, NULL, tskIDLE_PRIORITY + 1, task_stack,
+                            &task_control);
 }
 
 /**
  * @brief Layer change hook called automatically on layer updates
  */
-void hook_layer_change(uint8_t active_layer) {
+static void subscriber_layer_change(uint8_t active_layer) {
     if (display_state.current_layer != active_layer) {
         display_state.current_layer = active_layer;
         display_state.dirty = true;
@@ -79,10 +82,15 @@ void hook_layer_change(uint8_t active_layer) {
 /**
  * @brief HID LED hook called on CapsLock / NumLock toggle
  */
-void hook_hid_led_change(uint8_t led_mask) {
+static void subscriber_hid_led_change(uint8_t led_mask) {
     bool caps = (led_mask & 0x02) != 0;
     if (display_state.caps_lock != caps) {
         display_state.caps_lock = caps;
         display_state.dirty = true;
     }
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .early_init = subscriber_early_init,
+    .layer_change = subscriber_layer_change,
+    .hid_led_change = subscriber_hid_led_change);

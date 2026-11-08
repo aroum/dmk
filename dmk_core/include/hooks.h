@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+// Diagnostic counter for failed FreeRTOS dynamic allocations since boot.
+extern volatile uint32_t dmk_malloc_failure_count;
+
 /**
  * @brief Early hardware hook called before RTOS tasks and peripherals start.
  */
@@ -55,7 +58,7 @@ void hook_hid_led_change(uint8_t led_mask);
  * @brief Intercept and modify relative mouse cursor deltas.
  * @param dx Pointer to relative X movement
  * @param dy Pointer to relative Y movement
- * @return true to suppress default mouse movement report, false to allow
+ * @return true to send the (possibly modified) mouse movement report, false to suppress it
  */
 bool hook_mouse_move(int8_t *dx, int8_t *dy);
 
@@ -63,7 +66,7 @@ bool hook_mouse_move(int8_t *dx, int8_t *dy);
  * @brief Intercept and modify mouse scroll wheels.
  * @param wheel Pointer to vertical scroll delta
  * @param pan Pointer to horizontal pan delta
- * @return true to suppress default scroll report, false to allow
+ * @return true to send the (possibly modified) scroll report, false to suppress it
  */
 bool hook_mouse_scroll(int8_t *wheel, int8_t *pan);
 
@@ -89,7 +92,7 @@ void hook_mouse_report(uint8_t buttons, int8_t dx, int8_t dy, int8_t wheel, int8
  * @param ry Pointer to Ry-axis value (-127..127)
  * @param hat Pointer to hat direction (0..8)
  * @param buttons Pointer to 32-bit button bitmask
- * @return true to intercept and send custom gamepad report, false for default behavior
+ * @return true to send the (possibly modified) gamepad report, false to suppress it
  */
 bool hook_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat,
                          uint32_t *buttons);
@@ -108,6 +111,39 @@ void hook_midi_send(const uint8_t *msg, uint8_t len);
  * @param packet 4-byte USB-MIDI packet buffer
  */
 void hook_midi_receive(const uint8_t packet[4]);
+
+/* Modules may register independent subscribers without defining a global weak hook.
+ * Legacy hook_* implementations continue to run first. For consuming hooks,
+ * dispatch stops at the first subscriber that consumes the event. */
+typedef struct {
+    void (*early_init)(void);
+    void (*layer_change)(uint8_t layer);
+    bool (*matrix_change)(uint8_t row, uint8_t col, bool pressed);
+    bool (*process_key)(uint32_t key, bool pressed);
+    void (*key_sent)(uint16_t key, bool pressed);
+    void (*hid_led_change)(uint8_t leds);
+    bool (*mouse_move)(int8_t *x, int8_t *y);
+    bool (*mouse_scroll)(int8_t *wheel, int8_t *pan);
+    void (*mouse_report)(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan);
+    bool (*gamepad_report)(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons);
+    void (*midi_send)(const uint8_t *msg, uint8_t len);
+    void (*midi_receive)(const uint8_t *packet);
+} dmk_hook_subscriber_t;
+#define DMK_HOOK_SUBSCRIBER(name, ...) \
+    static const dmk_hook_subscriber_t name __attribute__((used, section("dmk_hooks"), aligned(sizeof(void *)))) = { __VA_ARGS__ }
+
+void hooks_dispatch_early_init(void);
+void hooks_dispatch_layer_change(uint8_t layer);
+bool hooks_dispatch_matrix_change(uint8_t row, uint8_t col, bool pressed);
+bool hooks_dispatch_process_key(uint32_t key, bool pressed);
+void hooks_dispatch_key_sent(uint16_t key, bool pressed);
+void hooks_dispatch_hid_led_change(uint8_t leds);
+bool hooks_dispatch_mouse_move(int8_t *x, int8_t *y);
+bool hooks_dispatch_mouse_scroll(int8_t *wheel, int8_t *pan);
+void hooks_dispatch_mouse_report(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, int8_t pan);
+bool hooks_dispatch_gamepad_report(int8_t *x, int8_t *y, int8_t *z, int8_t *rz, int8_t *rx, int8_t *ry, uint8_t *hat, uint32_t *buttons);
+void hooks_dispatch_midi_send(const uint8_t *msg, uint8_t len);
+void hooks_dispatch_midi_receive(const uint8_t *packet);
 
 #ifdef __cplusplus
 }

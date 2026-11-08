@@ -41,7 +41,7 @@ static int16_t s_scroll_accum_y = 0;
  * @param dy Pointer to relative Y movement delta (can be modified by hook).
  * @return true to proceed with cursor movement, false to suppress it.
  */
-bool hook_mouse_move(int8_t *dx, int8_t *dy) {
+static bool subscriber_mouse_move(int8_t *dx, int8_t *dy) {
     if (!s_drag_scroll_enabled) {
         // Normal cursor movement: pass through unchanged
         return true;
@@ -85,7 +85,7 @@ bool hook_mouse_move(int8_t *dx, int8_t *dy) {
  * @brief Listen for layer switches to automatically toggle drag-scroll mode.
  * @param active_layer Index of newly activated layer.
  */
-void hook_layer_change(uint8_t active_layer) {
+static void subscriber_layer_change(uint8_t active_layer) {
     if (active_layer == TRACKBALL_SCROLL_LAYER) {
         s_drag_scroll_enabled = true;
         s_scroll_accum_x = 0;
@@ -104,3 +104,7 @@ void trackball_set_drag_scroll(bool enable) {
     s_scroll_accum_x = 0;
     s_scroll_accum_y = 0;
 }
+
+DMK_HOOK_SUBSCRIBER(module_hooks,
+    .mouse_move = subscriber_mouse_move,
+    .layer_change = subscriber_layer_change);

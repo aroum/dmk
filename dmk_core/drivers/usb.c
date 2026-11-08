@@ -159,7 +159,7 @@ void tud_midi_rx_cb(uint8_t itf) {
     uint8_t packet[4];
     while (tud_midi_available()) {
         if (tud_midi_packet_read(packet)) {
-            hook_midi_receive(packet);
+            hooks_dispatch_midi_receive(packet);
         }
     }
 }
