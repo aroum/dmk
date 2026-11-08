@@ -9,8 +9,8 @@
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 
-// Reserve second to last sector on Flash for HE Calibration storage
-#define HE_FLASH_STORAGE_OFFSET (PICO_FLASH_SIZE_BYTES - (2 * FLASH_SECTOR_SIZE))
+#include "flash_storage.h"
+#define HE_FLASH_STORAGE_OFFSET DMK_FLASH_OFFSET(DMK_FLASH_SECTOR_HALL_CALIBRATION)
 #endif
 
 static hall_calibration_storage_t storage;
@@ -63,14 +63,22 @@ void hall_calibration_load(void) {
  */
 void hall_calibration_save(void) {
 #if defined(MCU_rp2040) || defined(MCU_rp2350)
+    if (memcmp((const void *)(XIP_BASE + HE_FLASH_STORAGE_OFFSET), &storage, sizeof(storage)) == 0) return;
     static uint8_t sector_buf[FLASH_SECTOR_SIZE];
     memset(sector_buf, 0xFF, FLASH_SECTOR_SIZE);
     memcpy(sector_buf, &storage, sizeof(storage));
 
+    _Static_assert(sizeof(storage) <= FLASH_SECTOR_SIZE, "Hall calibration exceeds its reserved sector");
     uint32_t ints = save_and_disable_interrupts();
     flash_range_erase(HE_FLASH_STORAGE_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_program(HE_FLASH_STORAGE_OFFSET, sector_buf, FLASH_SECTOR_SIZE);
     restore_interrupts(ints);
+    // Unused erased pages need not be programmed. Allow interrupts between pages.
+    size_t program_size = (sizeof(storage) + FLASH_PAGE_SIZE - 1) / FLASH_PAGE_SIZE * FLASH_PAGE_SIZE;
+    for (size_t offset = 0; offset < program_size; offset += FLASH_PAGE_SIZE) {
+        ints = save_and_disable_interrupts();
+        flash_range_program(HE_FLASH_STORAGE_OFFSET + offset, sector_buf + offset, FLASH_PAGE_SIZE);
+        restore_interrupts(ints);
+    }
 #endif
 }
 
