@@ -1,20 +1,34 @@
 #!/usr/bin/env python3
 """
 HHKB Classic Firmware Container (.hfb) Tool
+===========================================
 
 Wraps a raw binary into a standard 65,570-byte HHKB firmware update container (.hfb).
-Computes the authentic CRC16-X25 (reflected polynomial 0x8408) required by the PFU updater.
+Computes the authentic CRC-16/MCRF4XX (poly 0x1021 reflected 0x8408, init 0xFFFF, no final XOR).
+
+Format breakdown (65,570 bytes total):
+- bytes [0:2]  : Outer CRC-16/MCRF4XX over bytes [2:65570], little-endian.
+- bytes [2:4]  : Inner CRC-16/MCRF4XX over the 64 KB code payload [4:65540], little-endian.
+- bytes [4:65540] : 64 KB Bank 2 firmware binary (padded with 0xFF).
+- bytes [65540:65554] : 14 bytes 0xFF padding.
+- bytes [65554:65560] : 6 bytes Model ID ASCII (e.g. 'AHHX01', 'AHHS01').
+- bytes [65560:65564] : 4 bytes BCD version (e.g. 0A 04 02 09 -> A4.29).
+- bytes [65564:65570] : 6 bytes 0xFF padding.
 
 Usage:
-    python3 make_hfb.py input.bin output.hfb [--version A4.30]
+    python3 make_hfb.py input.bin output.hfb [--model AHHX01] [--version A4.30]
 """
 
 import sys
 import argparse
 import struct
+import os
 
-def compute_crc16_x25(data: bytes) -> int:
-    """Computes CRC-16-CCITT/X.25 (reflected, init 0xFFFF, poly 0x8408)."""
+def compute_crc16_mcrf4xx(data: bytes) -> int:
+    """
+    Computes CRC-16/MCRF4XX (poly 0x1021 reflected -> 0x8408, init 0xFFFF, no final XOR).
+    Returns 16-bit integer.
+    """
     crc = 0xFFFF
     for b in data:
         cur = (crc ^ b) & 0xFF
@@ -28,10 +42,11 @@ def compute_crc16_x25(data: bytes) -> int:
 
 def parse_version_bytes(ver_str: str) -> bytes:
     """
-    Parses a version string like 'A4.29' or 'A4.30' or 'A9.99'
+    Parses a version string like 'A4.29' or 'A4.30' or 'A8.03'
     Format: [Major_Hex, Minor_Hex1, Minor_Hex2, Minor_Hex3]
     E.g. 'A4.29' -> bytes([0x0A, 0x04, 0x02, 0x09])
          'A4.30' -> bytes([0x0A, 0x04, 0x03, 0x00])
+         'A8.03' -> bytes([0x0A, 0x08, 0x00, 0x03])
     """
     ver = ver_str.strip()
     if ver.startswith('A') or ver.startswith('a'):
@@ -42,28 +57,22 @@ def parse_version_bytes(ver_str: str) -> bytes:
 
     parts = ver.split('.')
     if len(parts) == 1:
-        v1 = int(parts[0])
+        v1 = int(parts[0], 16)
         v2 = 0
         v3 = 0
     else:
-        v1 = int(parts[0])
+        v1 = int(parts[0], 16)
         sub = parts[1]
         if len(sub) == 1:
-            v2 = int(sub[0])
+            v2 = int(sub[0], 16)
             v3 = 0
         else:
-            v2 = int(sub[0])
-            v3 = int(sub[1])
+            v2 = int(sub[0], 16)
+            v3 = int(sub[1], 16)
 
     return bytes([major, v1, v2, v3])
 
-MODEL_TAGS = {
-    "AHHX01": bytes.fromhex("07de"),  # HHKB Classic (PD-KB401W, PD-KB401B, etc.)
-    "AHHS01": bytes.fromhex("72e1"),  # HHKB Classic Type-S ANSI (PD-KB401WSC, PD-KB401BSC)
-    "AHKS01": bytes.fromhex("72e1"),  # HHKB Classic Type-S JIS (PD-KB421WSC, PD-KB421BSC)
-}
-
-def make_hfb(bin_path, out_path, model="AHHX01", version_str=None):
+def make_hfb(bin_path: str, out_path: str, model: str = "AHHX01", version_str: str = None):
     with open(bin_path, "rb") as f:
         data = f.read()
 
@@ -78,6 +87,10 @@ def make_hfb(bin_path, out_path, model="AHHX01", version_str=None):
     if version_str is None:
         version_str = "A8.05" if "S01" in model else "A4.30"
 
+    # Inner tag is the CRC-16 of the 64KB payload (little-endian)
+    inner_crc = compute_crc16_mcrf4xx(padded_data)
+    inner_tag = inner_crc.to_bytes(2, "little")
+
     # Build 30-byte postfix:
     # 14 bytes 0xFF
     # 6 bytes Model ID: 'AHHX01' or 'AHHS01'
@@ -88,22 +101,21 @@ def make_hfb(bin_path, out_path, model="AHHX01", version_str=None):
     postfix = (b"\xff" * 14) + model_bytes + version_bytes + (b"\xff" * 6)
     assert len(postfix) == 30
 
-    # Body to compute CRC over: 2 bytes header tag + 64KB code + 30B postfix
-    tag = MODEL_TAGS.get(model, bytes.fromhex("07de"))
-    body = tag + padded_data + postfix
+    # Body to compute outer CRC over: 2 bytes inner tag + 64KB code + 30B postfix
+    body = inner_tag + padded_data + postfix
     assert len(body) == 2 + 65536 + 30  # 65568 bytes
 
-    # Compute CRC16 (little-endian 2 bytes)
-    crc = compute_crc16_x25(body)
-    crc_bytes = crc.to_bytes(2, "little")
+    # Outer CRC16 over the entire body (little-endian 2 bytes)
+    outer_crc = compute_crc16_mcrf4xx(body)
+    outer_crc_bytes = outer_crc.to_bytes(2, "little")
 
-    hfb_data = crc_bytes + body
+    hfb_data = outer_crc_bytes + body
     assert len(hfb_data) == 65570
 
     with open(out_path, "wb") as f:
         f.write(hfb_data)
 
-    print(f"Generated {out_path}: {len(hfb_data)} bytes (CRC: {crc_bytes.hex()}, Model: {model}, Version: {version_str})")
+    print(f"Generated {out_path}: {len(hfb_data)} bytes (Outer CRC: {outer_crc_bytes.hex()}, Inner Tag: {inner_tag.hex()}, Model: {model}, Version: {version_str})")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Wrap binary into HHKB .hfb firmware package")
@@ -114,24 +126,26 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # If input is already an .hfb file (65570 bytes), automatically extract raw 64KB Bank 2 payload:
+    # If input is already an .hfb file (65570 bytes), inspect and extract:
     with open(args.input, "rb") as f_check:
-        header = f_check.read(4)
-        f_check.seek(0, 2)
-        total_len = f_check.tell()
+        total_len = os.path.getsize(args.input)
 
     if total_len == 65570:
-        # Extract 64KB raw code payload (skip 4 bytes header, drop last 30 bytes metadata)
         with open(args.input, "rb") as f_in:
-            f_in.seek(4)
-            raw_payload = f_in.read(65536)
+            hfb_raw = f_in.read()
+
+        raw_payload = hfb_raw[4:4+65536]
+        # Preserve model if not explicitly given
+        in_model = hfb_raw[65554:65560].decode('ascii', errors='ignore').strip('\x00')
+        if not args.model or args.model == "AHHX01":
+            if in_model in ["AHHX01", "AHHS01", "AHKS01"]:
+                args.model = in_model
+
         tmp_bin = args.input + ".extracted.bin"
         with open(tmp_bin, "wb") as f_tmp:
             f_tmp.write(raw_payload)
         make_hfb(tmp_bin, args.output, model=args.model, version_str=args.version)
-        import os
         try: os.remove(tmp_bin)
         except OSError: pass
     else:
         make_hfb(args.input, args.output, model=args.model, version_str=args.version)
-
