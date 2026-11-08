@@ -31,6 +31,11 @@ extern "C" {
  */
 bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode);
 
+/** Hold the bus around chip-select assertion, transfers and deassertion.
+ * The lock is recursive, so transfer functions may be called while held. */
+bool hal_spi_acquire(void);
+void hal_spi_release(void);
+
 /**
  * @brief Transmit data over SPI (MISO discarded).
  * @param tx Pointer to transmit data

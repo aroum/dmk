@@ -2,6 +2,17 @@
 #include "hal_i2c.h"
 #include <string.h>
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
+
+// The platform implementations below run only while the public wrapper owns the bus.
+#define hal_i2c_init i2c_backend_init
+#define hal_i2c_write i2c_backend_write
+#define hal_i2c_read i2c_backend_read
+#define hal_i2c_write_reg i2c_backend_write_reg
+#define hal_i2c_read_reg i2c_backend_read_reg
+
 // =============================================================================
 // 1. Raspberry Pi RP2040 / RP2350 (Hardware I2C)
 // =============================================================================
@@ -97,8 +108,8 @@ bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
     if (!s_twim_inited || !data || len == 0)
         return false;
     if (len > sizeof(s_twim_ram_buf))
-        len = sizeof(s_twim_ram_buf);
-    memcpy(s_twim_ram_buf, data, len);
+        return false;
+    if (data != s_twim_ram_buf) memcpy(s_twim_ram_buf, data, len);
 
     nrf_twim_address_set(NRF_TWIM0, addr);
     nrf_twim_tx_buffer_set(NRF_TWIM0, s_twim_ram_buf, len);
@@ -410,3 +421,66 @@ bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
     return true;
 }
 #endif
+
+#undef hal_i2c_init
+#undef hal_i2c_write
+#undef hal_i2c_read
+#undef hal_i2c_write_reg
+#undef hal_i2c_read_reg
+
+static StaticSemaphore_t s_i2c_mutex_storage;
+static SemaphoreHandle_t s_i2c_mutex;
+static bool s_i2c_configured;
+static pin_t s_i2c_sda, s_i2c_scl;
+static uint32_t s_i2c_freq;
+
+static bool i2c_lock(void) {
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) return true;
+    return s_i2c_mutex && xSemaphoreTake(s_i2c_mutex, portMAX_DELAY) == pdTRUE;
+}
+static void i2c_unlock(void) {
+    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) xSemaphoreGive(s_i2c_mutex);
+}
+
+bool hal_i2c_init(pin_t sda, pin_t scl, uint32_t freq_hz) {
+    if (!s_i2c_mutex) {
+        if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) taskENTER_CRITICAL();
+        if (!s_i2c_mutex) s_i2c_mutex = xSemaphoreCreateMutexStatic(&s_i2c_mutex_storage);
+        if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) taskEXIT_CRITICAL();
+    }
+    if (!s_i2c_mutex || !i2c_lock()) return false;
+    uint32_t freq = freq_hz ? freq_hz : HAL_I2C_FREQ_STANDARD;
+    bool ok;
+    if (s_i2c_configured) {
+        ok = s_i2c_sda == sda && s_i2c_scl == scl && s_i2c_freq == freq;
+    } else {
+        ok = i2c_backend_init(sda, scl, freq);
+        if (ok) {
+            s_i2c_configured = true;
+            s_i2c_sda = sda; s_i2c_scl = scl; s_i2c_freq = freq;
+        }
+    }
+    i2c_unlock();
+    return ok;
+}
+
+bool hal_i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
+    if (!i2c_lock()) return false;
+    bool ok = s_i2c_configured && i2c_backend_write(addr, data, len);
+    i2c_unlock(); return ok;
+}
+bool hal_i2c_read(uint8_t addr, uint8_t *data, size_t len) {
+    if (!i2c_lock()) return false;
+    bool ok = s_i2c_configured && i2c_backend_read(addr, data, len);
+    i2c_unlock(); return ok;
+}
+bool hal_i2c_write_reg(uint8_t addr, uint8_t reg, const uint8_t *data, size_t len) {
+    if (!i2c_lock()) return false;
+    bool ok = s_i2c_configured && i2c_backend_write_reg(addr, reg, data, len);
+    i2c_unlock(); return ok;
+}
+bool hal_i2c_read_reg(uint8_t addr, uint8_t reg, uint8_t *data, size_t len) {
+    if (!i2c_lock()) return false;
+    bool ok = s_i2c_configured && i2c_backend_read_reg(addr, reg, data, len);
+    i2c_unlock(); return ok;
+}

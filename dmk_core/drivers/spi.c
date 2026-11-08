@@ -2,6 +2,15 @@
 #include "hal_spi.h"
 #include <string.h>
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "task.h"
+
+#define hal_spi_init spi_backend_init
+#define hal_spi_write spi_backend_write
+#define hal_spi_read spi_backend_read
+#define hal_spi_transfer spi_backend_transfer
+
 // =============================================================================
 // 1. Raspberry Pi RP2040 / RP2350 (Hardware SPI)
 // =============================================================================
@@ -112,7 +121,7 @@ bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
     if (!s_spim_inited || len == 0)
         return false;
     if (len > sizeof(s_spim_tx_buf))
-        len = sizeof(s_spim_tx_buf);
+        return false;
 
     if (tx) {
         memcpy(s_spim_tx_buf, tx, len);
@@ -265,3 +274,60 @@ bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
     return true;
 }
 #endif
+
+#undef hal_spi_init
+#undef hal_spi_write
+#undef hal_spi_read
+#undef hal_spi_transfer
+
+static StaticSemaphore_t s_spi_mutex_storage;
+static SemaphoreHandle_t s_spi_mutex;
+static bool s_spi_configured;
+static pin_t s_cfg_sck, s_cfg_mosi, s_cfg_miso;
+static uint32_t s_cfg_freq;
+static uint8_t s_cfg_mode;
+
+bool hal_spi_acquire(void) {
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) return true;
+    return s_spi_mutex && xSemaphoreTakeRecursive(s_spi_mutex, portMAX_DELAY) == pdTRUE;
+}
+void hal_spi_release(void) {
+    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED && s_spi_mutex)
+        xSemaphoreGiveRecursive(s_spi_mutex);
+}
+
+bool hal_spi_init(pin_t sck, pin_t mosi, pin_t miso, uint32_t freq_hz, uint8_t mode) {
+    if (!s_spi_mutex) {
+        if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) taskENTER_CRITICAL();
+        if (!s_spi_mutex) s_spi_mutex = xSemaphoreCreateRecursiveMutexStatic(&s_spi_mutex_storage);
+        if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) taskEXIT_CRITICAL();
+    }
+    if (!s_spi_mutex || !hal_spi_acquire()) return false;
+    uint32_t freq = freq_hz ? freq_hz : HAL_SPI_FREQ_4MHZ;
+    bool ok;
+    if (s_spi_configured) {
+        ok = s_cfg_sck == sck && s_cfg_mosi == mosi && s_cfg_miso == miso && s_cfg_freq == freq && s_cfg_mode == mode;
+    } else {
+        ok = spi_backend_init(sck, mosi, miso, freq, mode);
+        if (ok) {
+            s_spi_configured = true;
+            s_cfg_sck = sck; s_cfg_mosi = mosi; s_cfg_miso = miso; s_cfg_freq = freq; s_cfg_mode = mode;
+        }
+    }
+    hal_spi_release(); return ok;
+}
+bool hal_spi_write(const uint8_t *tx, size_t len) {
+    if (!hal_spi_acquire()) return false;
+    bool ok = s_spi_configured && spi_backend_write(tx, len);
+    hal_spi_release(); return ok;
+}
+bool hal_spi_read(uint8_t fill, uint8_t *rx, size_t len) {
+    if (!hal_spi_acquire()) return false;
+    bool ok = s_spi_configured && spi_backend_read(fill, rx, len);
+    hal_spi_release(); return ok;
+}
+bool hal_spi_transfer(const uint8_t *tx, uint8_t *rx, size_t len) {
+    if (!hal_spi_acquire()) return false;
+    bool ok = s_spi_configured && spi_backend_transfer(tx, rx, len);
+    hal_spi_release(); return ok;
+}
