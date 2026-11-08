@@ -57,12 +57,16 @@ Depending on the microcontroller platform, the pins allowed for WS2812 RGB data 
 
 ## Split Keyboard (UART) Pin Assignments
 
+Both halves must use firmware with the same split packet format. The current format includes a sequence byte and CRC and is incompatible with older firmware; update both halves together.
+
+The slave sends matrix positions; the master resolves keycodes and layers. After each matrix packet the slave opens a reply window in which the master can send one LED mask or RGB pixel. Values are repeated so a lost reply can recover. Ordinary LEDs correspond to the first eight entries in `LED_PINS`. RGB output defaults to mirroring master logical pixels starting at index 0; define `SPLIT_RGB_OFFSET` on the master to select another starting index and `SPLIT_REMOTE_RGB_COUNT` to set the number of remote pixels (default `RGB_NUM`, maximum 255). Modules may also call `split_set_remote_leds(mask)` and `split_set_remote_rgb(index, color)`. Both halves must be updated together. Physical timing and reconnect behavior should be verified on the target hardware.
+
 For split keyboards, the communication line (`SERIAL_PIN`) works over a single-wire half-duplex connection. There are two modes available on the supported platforms:
 
 1. **Bit-Bang (default)**: Software-emulated UART.
    - **Features**:
      - Uses **exactly 1 free GPIO pin**.
-     - On Milandr and nRF52840, this mode runs synchronously inside a processor critical section, leading to higher peak CPU load during packet transmission/reception.
+     - Transmission is queued outside the matrix task. Each UART byte uses a short critical section for bit timing; the line uses a wake pulse and a reply window.
      - Does not require external pull-up resistors (uses internal pull-up).
    - **Supported Platforms**: Milandr, Raspberry Pi, nRF52840, Baikal.
 
