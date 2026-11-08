@@ -78,7 +78,7 @@
 
 /* Synchronization Related */
 #define configUSE_MUTEXES 1
-#define configUSE_RECURSIVE_MUTEXES 0
+#define configUSE_RECURSIVE_MUTEXES 1
 #define configUSE_APPLICATION_TASK_TAG 0
 #define configUSE_COUNTING_SEMAPHORES 0
 #define configQUEUE_REGISTRY_SIZE 8
@@ -97,7 +97,17 @@
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION 1
 #define configSUPPORT_DYNAMIC_ALLOCATION 1
-#define configTOTAL_HEAP_SIZE (2 * 1024)
+/* Dynamic module tasks need room for their stacks and FreeRTOS metadata.
+ * Override at build time for boards with different RAM budgets. */
+#ifndef configTOTAL_HEAP_SIZE
+#if defined(MCU_baikal)
+// Baikal has 32 KiB total SRAM; project tasks use static allocation.
+// Modules requiring dynamic allocation must explicitly increase this budget.
+#define configTOTAL_HEAP_SIZE (3 * 1024)
+#else
+#define configTOTAL_HEAP_SIZE (8 * 1024)
+#endif
+#endif
 #define configAPPLICATION_ALLOCATED_HEAP 0
 
 /* Hook function related definitions. */

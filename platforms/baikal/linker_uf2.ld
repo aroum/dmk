@@ -22,7 +22,8 @@ MEMORY
 }
 
 /* Heap and stack size */
-__HEAP_SIZE = 0x00001000;
+/* Separate newlib heap; FreeRTOS uses its own configurable heap_4 pool. */
+__HEAP_SIZE = 0x00000800;
 __STACK_SIZE = 0x00001000;
 
 /* Program sections */

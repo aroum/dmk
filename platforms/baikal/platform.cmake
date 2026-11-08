@@ -81,6 +81,7 @@ set(PLATFORM_SRC
     "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/port.c"
     "${DMK_ROOT}/lib/freertos/portable/ThirdParty/GCC/RISC-V/Baikal/portASM.S"
     "${PLATFORM_DIR}/startup.S"
+    "${PLATFORM_DIR}/syscalls.c"
     "${PLATFORM_DIR}/ws2812.c"
     "${PLATFORM_DIR}/split.c"
     "${DMK_ROOT}/dmk_core/drivers/app_usb_tinyusb.c"

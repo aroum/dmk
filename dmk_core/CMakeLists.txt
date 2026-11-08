@@ -14,6 +14,7 @@ set(DMK_CORE_BASE_SRC
     "${DMK_ROOT}/dmk_core/core/main.c"
     "${DMK_ROOT}/dmk_core/core/keyboard.c"
     "${DMK_ROOT}/dmk_core/core/hooks.c"
+    "${DMK_ROOT}/dmk_core/core/memory.c"
     # Software features
     "${DMK_ROOT}/dmk_core/features/layers.c"
     # Hardware subsystems & drivers

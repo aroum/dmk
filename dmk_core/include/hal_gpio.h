@@ -205,6 +205,9 @@ void hal_sleep_us(uint32_t us);
  */
 void platform_init(void);
 
+// Reset after an unrecoverable error, without entering the bootloader.
+void platform_system_reset(void);
+
 /**
  * @brief Reset microcontroller and jump to ROM/UF2 bootloader mode.
  */
