@@ -5,6 +5,9 @@
 #include <string.h>
 #include <assert.h>
 
+#define hooks_dispatch_layer_change hook_layer_change
+#define hooks_dispatch_midi_receive hook_midi_receive
+
 // Include mocks
 #include "mocks/FreeRTOS.h"
 #include "mocks/queue.h"
@@ -184,6 +187,49 @@ static void test_hold_tap_custom_timeout(void) {
     printf("  ✔ test_hold_tap_custom_timeout passed\n");
 }
 
+static void test_hold_tap_quick_tap_repeat(void) {
+    mock_reset_records();
+    hold_tap_init();
+
+    // Mod-Tap: Hold = K_LCTL, Tap = K_A
+    uint32_t ht_key = HT(K_LCTL, K_A);
+
+    // 1. Initial quick tap: press at t=100, release at t=150 (50ms duration)
+    g_mock_ticks = 100;
+    hold_tap_process_event(0, 0, ht_key, true);
+    g_mock_ticks = 150;
+    hold_tap_process_event(0, 0, ht_key, false);
+
+    // Verify initial tap was sent (K_A press + release)
+    assert(s_recorded_keys_count == 2);
+    assert(s_recorded_keys[0].keycode == K_A && s_recorded_keys[0].pressed == true);
+    assert(s_recorded_keys[1].keycode == K_A && s_recorded_keys[1].pressed == false);
+    assert(s_recorded_mods_count == 0);
+
+    // 2. Quick double tap: press again at t=230 (80ms after release <= QUICK_TAP_TERM 150ms)
+    g_mock_ticks = 230;
+    hold_tap_process_event(0, 0, ht_key, true);
+
+    // Should immediately send K_A pressed (repeat mode, continuous hold)
+    assert(s_recorded_keys_count == 3);
+    assert(s_recorded_keys[2].keycode == K_A && s_recorded_keys[2].pressed == true);
+    assert(s_recorded_mods_count == 0);
+
+    // Advance time past tapping term to t=500: should NOT become a modifier!
+    g_mock_ticks = 500;
+    hold_tap_check_timeouts(g_mock_ticks);
+    assert(s_recorded_mods_count == 0);
+
+    // Release key at t=600: should release K_A
+    g_mock_ticks = 600;
+    hold_tap_process_event(0, 0, ht_key, false);
+    assert(s_recorded_keys_count == 4);
+    assert(s_recorded_keys[3].keycode == K_A && s_recorded_keys[3].pressed == false);
+    assert(s_recorded_mods_count == 0);
+
+    printf("  ✔ test_hold_tap_quick_tap_repeat passed\n");
+}
+
 // --- Test 2: Layers Logic ---
 #define DEFINE_KEYMAP
 #include "mocks/config.h"
@@ -332,6 +378,7 @@ int main(void) {
     test_hold_tap_hold_after_timeout();
     test_hold_tap_layer_tap();
     test_hold_tap_custom_timeout();
+    test_hold_tap_quick_tap_repeat();
 
     printf("\n[2/3] Testing Layers subsystem...\n");
     test_layers_stack_and_fallthrough();

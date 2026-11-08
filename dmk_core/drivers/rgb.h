@@ -22,6 +22,7 @@ void rgb_task(void *pvParameters);
 void rgb_toggle(void);
 void rgb_next_theme(void);
 void rgb_prev_theme(void);
+void rgb_reset_default(void);
 
 // Getters and setters for Vial GUI control
 void rgb_set_enabled(bool enabled);
@@ -47,6 +48,7 @@ void rgb_decrease_speed(void);
 
 // Low-level individual LED control
 void rgb_set_pixel_raw(uint32_t index, uint32_t color);
+void rgb_clear_pixel_raw(uint32_t index);
 void rgb_show(void);
 
 // Serialization for EEPROM storage
@@ -62,6 +64,7 @@ static inline void rgb_task(void *pvParameters) {
 static inline void rgb_toggle(void) {}
 static inline void rgb_next_theme(void) {}
 static inline void rgb_prev_theme(void) {}
+static inline void rgb_reset_default(void) {}
 
 static inline void rgb_set_enabled(bool enabled) {
     (void)enabled;
@@ -111,6 +114,7 @@ static inline void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
     (void)index;
     (void)color;
 }
+static inline void rgb_clear_pixel_raw(uint32_t index) { (void)index; }
 static inline void rgb_show(void) {}
 
 static inline void rgb_get_config(uint8_t *dest) {

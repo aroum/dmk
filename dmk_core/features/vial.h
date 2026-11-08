@@ -63,6 +63,7 @@ void vial_init(void);
  */
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 void vial_eeprom_task(void);
+void vial_eeprom_save(void);
 void vial_macro_send(uint8_t id);
 bool vial_macro_has_active(void);
 TickType_t vial_macro_check_timeouts(TickType_t now);

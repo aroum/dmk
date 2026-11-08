@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 typedef uint8_t HTState;
-enum { HT_STATE_IDLE = 0, HT_STATE_PRESSED = 1, HT_STATE_HOLD = 2 };
+enum { HT_STATE_IDLE = 0, HT_STATE_PRESSED = 1, HT_STATE_HOLD = 2, HT_STATE_REPEAT = 3 };
 
 typedef struct {
     uint32_t keycode;
@@ -20,6 +20,14 @@ typedef struct {
     uint8_t col;
     HTState state;
 } HTTracker;
+
+typedef struct {
+    uint8_t row;
+    uint8_t col;
+    uint32_t keycode;
+    TickType_t release_time;
+    bool valid;
+} HTLastRelease;
 
 #ifndef MAX_HT_TRACKERS
 #define MAX_HT_TRACKERS 4

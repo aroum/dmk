@@ -9,7 +9,12 @@
 #define TAPPING_TERM_DEFAULT 200
 #endif
 
+#ifndef QUICK_TAP_TERM
+#define QUICK_TAP_TERM 150
+#endif
+
 static HTTracker ht_trackers[MAX_HT_TRACKERS];
+static HTLastRelease s_last_release;
 static uint8_t s_active_ht_count = 0;
 
 extern void keyboard_send_key(uint16_t keycode, bool pressed);
@@ -19,6 +24,7 @@ extern void oneshot_on_tap_key(void);
 
 void hold_tap_init(void) {
     memset(ht_trackers, 0, sizeof(ht_trackers));
+    memset(&s_last_release, 0, sizeof(s_last_release));
     s_active_ht_count = 0;
 }
 
@@ -73,14 +79,45 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
     if ((key & 0xFF000000) != DMK_HT)
         return false;
 
+    TickType_t now = xTaskGetTickCount();
+
     if (pressed) {
+        // Quick-Tap / Auto-repeat tap detection:
+        // If the exact same Hold-Tap key was recently tapped and released within QUICK_TAP_TERM,
+        // treat this press as a continuous tap hold (repeating the tap keycode).
+#if QUICK_TAP_TERM > 0
+        if (s_last_release.valid &&
+            s_last_release.row == row &&
+            s_last_release.col == col &&
+            s_last_release.keycode == key &&
+            (now - s_last_release.release_time) <= pdMS_TO_TICKS(QUICK_TAP_TERM)) {
+
+            s_last_release.valid = false;
+            for (int i = 0; i < MAX_HT_TRACKERS; i++) {
+                if (ht_trackers[i].state == HT_STATE_IDLE) {
+                    ht_trackers[i] = (HTTracker){.row = row,
+                                                 .col = col,
+                                                 .keycode = key,
+                                                 .press_time = now,
+                                                 .timeout_ticks = 0,
+                                                 .state = HT_STATE_REPEAT};
+                    uint8_t kc = key & 0xFF;
+                    oneshot_send_lazy_mods();
+                    keyboard_send_key(kc, true);
+                    return true;
+                }
+            }
+        }
+#endif
+        s_last_release.valid = false;
+
         for (int i = 0; i < MAX_HT_TRACKERS; i++) {
             if (ht_trackers[i].state == HT_STATE_IDLE) {
                 uint32_t ms = (key >> 16) & 0xFF;
                 ht_trackers[i] = (HTTracker){.row = row,
                                              .col = col,
                                              .keycode = key,
-                                             .press_time = xTaskGetTickCount(),
+                                             .press_time = now,
                                              .timeout_ticks = pdMS_TO_TICKS(ms ? ms : TAPPING_TERM_DEFAULT),
                                              .state = HT_STATE_PRESSED};
                 s_active_ht_count++;
@@ -93,7 +130,11 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                 uint8_t target = (ht_trackers[i].keycode >> 8) & 0xFF;
                 uint8_t kc = ht_trackers[i].keycode & 0xFF;
 
-                if (ht_trackers[i].state == HT_STATE_PRESSED) {
+                if (ht_trackers[i].state == HT_STATE_REPEAT) {
+                    keyboard_send_key(kc, false);
+                    oneshot_on_tap_key();
+                    s_last_release.valid = false;
+                } else if (ht_trackers[i].state == HT_STATE_PRESSED) {
                     if (s_active_ht_count > 0) {
                         s_active_ht_count--;
                     }
@@ -101,11 +142,19 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                     keyboard_send_key(kc, true);
                     keyboard_send_key(kc, false);
                     oneshot_on_tap_key();
+
+                    // Record tap release for potential quick-tap repeat
+                    s_last_release.row = row;
+                    s_last_release.col = col;
+                    s_last_release.keycode = ht_trackers[i].keycode;
+                    s_last_release.release_time = now;
+                    s_last_release.valid = true;
                 } else if (ht_trackers[i].state == HT_STATE_HOLD) {
                     if (target < 16)
                         layers_off(target);
                     else
                         keyboard_send_modifiers(target, false);
+                    s_last_release.valid = false;
                 }
                 ht_trackers[i].state = HT_STATE_IDLE;
                 break;

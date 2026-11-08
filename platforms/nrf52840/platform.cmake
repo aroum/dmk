@@ -110,6 +110,8 @@ set(PLATFORM_SRC
     "${NRF5_SDK_DIR}/components/libraries/strerror/nrf_strerror.c"
     # nRF5 SDK – SPIM driver
     "${NRF5_SDK_DIR}/modules/nrfx/drivers/src/nrfx_spim.c"
+    # nRF5 SDK – NVMC driver
+    "${NRF5_SDK_DIR}/modules/nrfx/hal/nrf_nvmc.c"
 )
 
 # nRF52840 chip-specific compile definitions

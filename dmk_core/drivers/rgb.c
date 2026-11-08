@@ -1,5 +1,6 @@
 #include "rgb.h"
 #include "config.h"
+#include "split.h"
 
 #ifndef RGB_LIMIT_VAL
 #define RGB_LIMIT_VAL 255
@@ -8,6 +9,7 @@
 #include "FreeRTOS.h"
 #include "hal_gpio.h"
 #include "task.h"
+#include "semphr.h"
 #include <string.h>
 
 #if defined(RGB_NUM)
@@ -27,6 +29,21 @@ static void power_pin_set(bool on) {
     hal_gpio_put(POWER_PIN, on);
 }
 #endif
+
+// Raw pixels are persistent overlays on top of the animation frame.
+static uint32_t s_overlay[RGB_NUM];
+static bool s_overlay_active[RGB_NUM];
+static StaticSemaphore_t s_rgb_mutex_storage;
+static SemaphoreHandle_t s_rgb_mutex;
+
+static void rgb_lock(void) {
+    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
+        xSemaphoreTake(s_rgb_mutex, portMAX_DELAY);
+}
+static void rgb_unlock(void) {
+    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
+        xSemaphoreGive(s_rgb_mutex);
+}
 
 // RGB configuration state
 static bool rgb_enabled = true;
@@ -105,6 +122,12 @@ static void set_led_color(uint32_t index, uint32_t color) {
     if (b > RGB_LIMIT_VAL) b = RGB_LIMIT_VAL;
     color = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
 #endif
+#ifndef SPLIT_RGB_OFFSET
+#define SPLIT_RGB_OFFSET 0
+#endif
+    // The remote strip uses indices relative to SPLIT_RGB_OFFSET.
+    if (index >= SPLIT_RGB_OFFSET && index - SPLIT_RGB_OFFSET < 255)
+        split_set_remote_rgb((uint8_t)(index - SPLIT_RGB_OFFSET), color);
 #ifdef RGB_MAP
     if (index < RGB_NUM) {
         ws2812_set_color(rgb_map[index], color);
@@ -116,21 +139,36 @@ static void set_led_color(uint32_t index, uint32_t color) {
 
 static void set_all_leds(uint32_t color) {
     for (uint32_t i = 0; i < RGB_NUM; i++)
-        set_led_color(i, color);
+        set_led_color(i, s_overlay_active[i] ? s_overlay[i] : color);
 }
 
 void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
+    if (index >= RGB_NUM) return;
+    rgb_lock();
+    s_overlay[index] = color;
+    s_overlay_active[index] = true;
     set_led_color(index, color);
+    rgb_unlock();
+}
+
+void rgb_clear_pixel_raw(uint32_t index) {
+    if (index >= RGB_NUM) return;
+    rgb_lock();
+    s_overlay_active[index] = false;
+    rgb_unlock();
 }
 
 void rgb_show(void) {
+    rgb_lock();
     ws2812_show();
+    rgb_unlock();
 }
 
 /**
  * @brief Initialize power gating pin and WS2812 driver hardware (PIO/SPI/PWM/Timer).
  */
 void rgb_init(void) {
+    s_rgb_mutex = xSemaphoreCreateMutexStatic(&s_rgb_mutex_storage);
     if (rgb_brightness > RGB_LIMIT_VAL) {
         rgb_brightness = RGB_LIMIT_VAL;
     }
@@ -163,6 +201,7 @@ void rgb_task(void *pvParameters) {
     s_rgb_task_handle = xTaskGetCurrentTaskHandle();
 
     while (1) {
+        rgb_lock();
 #ifdef POWER_PIN
         power_pin_set(rgb_enabled && rgb_mode != 0);
 #endif
@@ -200,7 +239,7 @@ void rgb_task(void *pvParameters) {
                 for (uint32_t i = 0; i < RGB_NUM; i++) {
                     uint8_t hue = (base_hue + (i * 256 / RGB_NUM)) & 0xFF;
                     uint32_t color = hsv_to_rgb(hue, rgb_sat, rgb_brightness);
-                    set_led_color(i, color);
+                    set_led_color(i, s_overlay_active[i] ? s_overlay[i] : color);
                 }
                 break;
             }
@@ -294,11 +333,14 @@ void rgb_task(void *pvParameters) {
             default:
                 break;
             }
+            for (uint32_t i = 0; i < RGB_NUM; ++i)
+                if (s_overlay_active[i]) set_led_color(i, s_overlay[i]);
             ws2812_show();
         } else {
             set_all_leds(0);
             ws2812_show();
         }
+        rgb_unlock();
 
         bool is_static = !rgb_enabled || (rgb_mode == 0) || (rgb_mode == RGBLIGHT_MODE_STATIC_LIGHT) ||
                          (rgb_mode == RGBLIGHT_MODE_STATIC_GRADIENT)
@@ -396,6 +438,25 @@ void rgb_prev_theme(void) {
     rgb_mode = get_prev_mode(rgb_mode);
 #endif
     rgb_enabled = true;
+    rgb_notify_change();
+}
+
+void rgb_reset_default(void) {
+    rgb_enabled = true;
+#ifdef RGB_DEFAULT_MODE
+    rgb_mode = RGB_DEFAULT_MODE;
+#elif defined(RGB_THEMES)
+    rgb_mode = RGBLIGHT_MODE_RAINBOW_SWIRL;
+#else
+    rgb_mode = RGBLIGHT_MODE_STATIC_LIGHT;
+#endif
+#ifdef RGB_THEMES
+    active_theme = 0;
+#endif
+    rgb_brightness = RGB_LIMIT_VAL;
+    rgb_hue = 0;
+    rgb_sat = 255;
+    rgb_speed = 128;
     rgb_notify_change();
 }
 

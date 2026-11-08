@@ -48,36 +48,22 @@ void bootloader_jump(void) {
 // FreeRTOS queues
 extern QueueHandle_t matrix_queue;
 
-// Tracks active pressed keys using a compact pool to avoid allocating NUM_ROWS * NUM_COLS * 4 bytes in RAM
-typedef struct {
-    uint32_t key;
-    uint8_t row;
-    uint8_t col;
-} active_key_t;
-
-#define MAX_ACTIVE_KEYS 8
-static active_key_t s_active_keys[MAX_ACTIVE_KEYS];
+// Keep the key resolved at press time for every matrix position. A layer can
+// change while any number of keys are held, so releases must use that value.
+static uint32_t s_active_keys[NUM_ROWS][NUM_COLS];
 
 void keyboard_record_pressed_key(uint8_t row, uint8_t col, uint32_t key) {
-    for (uint8_t i = 0; i < MAX_ACTIVE_KEYS; i++) {
-        if (s_active_keys[i].key == 0) {
-            s_active_keys[i].row = row;
-            s_active_keys[i].col = col;
-            s_active_keys[i].key = key;
-            return;
-        }
+    if (row < NUM_ROWS && col < NUM_COLS) {
+        s_active_keys[row][col] = key;
     }
 }
 
 static uint32_t pop_pressed_key(uint8_t row, uint8_t col) {
-    for (uint8_t i = 0; i < MAX_ACTIVE_KEYS; i++) {
-        if (s_active_keys[i].key != 0 && s_active_keys[i].row == row && s_active_keys[i].col == col) {
-            uint32_t key = s_active_keys[i].key;
-            s_active_keys[i].key = 0;
-            return key;
-        }
+    if (row < NUM_ROWS && col < NUM_COLS && s_active_keys[row][col] != 0) {
+        uint32_t key = s_active_keys[row][col];
+        s_active_keys[row][col] = 0;
+        return key;
     }
-    // Fallback if key exceeded pool size (e.g. > 8 simultaneous keys)
     return layers_lookup_key(row, col);
 }
 
@@ -88,7 +74,7 @@ static uint32_t pop_pressed_key(uint8_t row, uint8_t col) {
  */
 void keyboard_send_key(uint16_t keycode, bool pressed) {
     usb_process_key(keycode, pressed);
-    hook_key_sent(keycode, pressed);
+    hooks_dispatch_key_sent(keycode, pressed);
 }
 
 /**
@@ -145,14 +131,18 @@ static bool process_system_key(uint32_t key, bool pressed) {
         return true;
     }
 #if !defined(NO_RGB)
-    if (key >= K_RGB_TOGG && key <= K_RGB_SPD) {
+    if (key >= K_RGB_TOGG && key <= K_RGB_RST) {
         static void (*const rgb_actions[])(void) = {
             rgb_toggle,       rgb_next_theme,     rgb_prev_theme,     rgb_increase_hue,
             rgb_decrease_hue, rgb_increase_sat,   rgb_decrease_sat,   rgb_increase_val,
-            rgb_decrease_val, rgb_increase_speed, rgb_decrease_speed,
+            rgb_decrease_val, rgb_increase_speed, rgb_decrease_speed, rgb_reset_default,
         };
         if (pressed) {
             rgb_actions[key - K_RGB_TOGG]();
+#ifdef VIAL
+            extern void vial_eeprom_save(void);
+            vial_eeprom_save();
+#endif
         }
         return true;
     }
@@ -172,7 +162,7 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
         return;
 
     // 0. User module custom keycode interception hook
-    if (hook_process_key(key, pressed)) {
+    if (hooks_dispatch_process_key(key, pressed)) {
         return;
     }
 
@@ -299,7 +289,7 @@ void keyboard_check(void) {
             led_activity(pressed);
 
             // Notify user modules of matrix events (if hook returns true, event was consumed)
-            if (hook_matrix_change(row, col, pressed)) {
+            if (hooks_dispatch_matrix_change(row, col, pressed)) {
                 continue;
             }
 

@@ -172,7 +172,7 @@ static uint8_t from_via_mods(uint8_t via_mod) {
 uint16_t to_via_keycode(uint32_t dmk_key) {
     if (dmk_key == K_TRNS)
         return 0x0001;
-    if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_SPD)
+    if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_RST)
         return 0x7820 + (dmk_key - K_RGB_TOGG);
     if (dmk_key == K_BOOTLOADER)
         return 0x7C00;
@@ -211,7 +211,7 @@ uint32_t from_via_keycode(uint16_t via_key) {
     if ((via_key >= 0x7100 && via_key <= 0x71FF) || (via_key >= 0x7A00 && via_key <= 0x7AFF) ||
         (via_key >= 0x7E00 && via_key <= 0x7F3F))
         return via_key;
-    if (via_key >= 0x7820 && via_key <= 0x782A)
+    if (via_key >= 0x7820 && via_key <= 0x782B)
         return K_RGB_TOGG + (via_key - 0x7820);
     if (via_key == 0x7C00 || via_key == 0x5C00)
         return K_BOOTLOADER;
@@ -307,7 +307,10 @@ static void vial_eeprom_save_now(void) {
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 
-#define FLASH_STORAGE_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
+#include "flash_storage.h"
+#define FLASH_STORAGE_OFFSET DMK_FLASH_OFFSET(DMK_FLASH_SECTOR_VIAL)
+_Static_assert(sizeof(vial_storage_t) <= FLASH_SECTOR_SIZE, "Vial storage exceeds its reserved sector");
+_Static_assert(sizeof(vial_storage_t) % FLASH_PAGE_SIZE == 0, "Vial storage must fill whole flash pages");
 
 static void vial_eeprom_load(void) {
     const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
@@ -328,19 +331,106 @@ static void vial_eeprom_save_now(void) {
     }
     uint32_t ints = save_and_disable_interrupts();
     flash_range_erase(FLASH_STORAGE_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_program(FLASH_STORAGE_OFFSET, (const uint8_t *)&vial_storage, sizeof(vial_storage));
     restore_interrupts(ints);
+    // Give interrupts an opportunity to run between page programs.
+    for (size_t offset = 0; offset < sizeof(vial_storage); offset += FLASH_PAGE_SIZE) {
+        ints = save_and_disable_interrupts();
+        flash_range_program(FLASH_STORAGE_OFFSET + offset, (const uint8_t *)&vial_storage + offset, FLASH_PAGE_SIZE);
+        restore_interrupts(ints);
+    }
 }
 #endif
 
-#if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350)
+#if defined(MCU_baikal)
+#include "bmcu_cru.h"
+#include "bmcu_eflash.h"
+
+// eFlash layout on Baikal BE-U1000:
+// 256 KB total (0xA0000000 - 0xA003FFFF).
+// TinyUF2 bootloader is at 0xA0000000 - 0xA0003FFF (16 KB).
+// Application Flash is at 0xA0004000 - 0xA003FFFF (240 KB).
+// We reserve the top 4 KB block (0xA003F000 - 0xA003FFFF) for non-volatile Vial/RGB config.
+#define BAIKAL_FLASH_STORAGE_ADDR 0xA003F000UL
+
+static void vial_eeprom_load(void) {
+    const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)BAIKAL_FLASH_STORAGE_ADDR;
+    if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
+        memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
+        rgb_set_config(vial_storage.data.rgb_cfg);
+    } else {
+        vial_storage_init_default();
+    }
+}
+
+static void vial_eeprom_save_now(void) {
+    vial_storage.data.magic = VIAL_EEPROM_MAGIC;
+    rgb_get_config(vial_storage.data.rgb_cfg);
+    if (memcmp((const void *)BAIKAL_FLASH_STORAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
+        return;
+    }
+
+    CRU_Clocks_TypeDef cru_clocks;
+    CRU_GetSystemClocksFreq(&cru_clocks);
+    uint32_t cpu_freq = cru_clocks.CCLK_Frequency ? cru_clocks.CCLK_Frequency : 200000000;
+    EFLASH_Init(cpu_freq);
+
+    taskENTER_CRITICAL();
+    // Erase the 4 sectors (1024 bytes each = 4096 bytes block)
+    for (uint32_t addr = BAIKAL_FLASH_STORAGE_ADDR; addr < BAIKAL_FLASH_STORAGE_ADDR + 4096; addr += EFLASH_SECTOR_SIZE) {
+        EFLASH_EraseSector(addr, EFLASH_MAIN_ARRAY);
+    }
+
+    const uint32_t *src_words = (const uint32_t *)&vial_storage.data;
+    size_t word_count = sizeof(vial_storage_data_t) / 4;
+    for (size_t i = 0; i < word_count; i++) {
+        EFLASH_ProgramWord(BAIKAL_FLASH_STORAGE_ADDR + (i * 4), src_words[i], EFLASH_MAIN_ARRAY);
+    }
+    taskEXIT_CRITICAL();
+}
+#endif
+
+#if defined(MCU_nrf52840)
+#include "nrf_nvmc.h"
+
+// Flash layout on nRF52840 (1 MB total: 0x00000000 - 0x00100000, 4 KB page size):
+// SoftDevice / MBR: 0x00000000 - 0x00026000
+// Application: 0x00026000 - 0x000E0000
+// Bootloader + Bootloader settings: top pages (0x000F4000 - 0x00100000)
+// Reserved page for Vial / RGB persistent storage: 0x000EE000 (1 page = 4096 bytes)
+#define NRF_FLASH_STORAGE_PAGE_ADDR 0x000EE000UL
+
+static void vial_eeprom_load(void) {
+    const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)NRF_FLASH_STORAGE_PAGE_ADDR;
+    if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
+        memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
+        rgb_set_config(vial_storage.data.rgb_cfg);
+    } else {
+        vial_storage_init_default();
+    }
+}
+
+static void vial_eeprom_save_now(void) {
+    vial_storage.data.magic = VIAL_EEPROM_MAGIC;
+    rgb_get_config(vial_storage.data.rgb_cfg);
+    if (memcmp((const void *)NRF_FLASH_STORAGE_PAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    nrf_nvmc_page_erase(NRF_FLASH_STORAGE_PAGE_ADDR);
+    nrf_nvmc_write_words(NRF_FLASH_STORAGE_PAGE_ADDR, (const uint32_t *)&vial_storage.data, sizeof(vial_storage_data_t) / 4);
+    taskEXIT_CRITICAL();
+}
+#endif
+
+#if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350) && !defined(MCU_baikal) && !defined(MCU_nrf52840)
 static inline void vial_eeprom_load(void) {
     vial_storage_init_default();
 }
 static inline void vial_eeprom_save_now(void) {}
 #endif
 
-static void vial_eeprom_save(void) {
+void vial_eeprom_save(void) {
     s_eeprom_dirty_time = xTaskGetTickCount();
     s_eeprom_dirty = true;
 }
