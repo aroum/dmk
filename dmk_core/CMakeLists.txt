@@ -226,6 +226,8 @@ function(build_keyboard KEYBOARD_NAME)
 
     # Collect any local keyboard-specific sources (e.g. matrix_magneteno.c)
     file(GLOB KEYBOARD_LOCAL_SRC "${ACTUAL_KEYBOARD_DIR}/*.c")
+    # Exclude host-only test files (test_*.c) from the firmware build
+    list(FILTER KEYBOARD_LOCAL_SRC EXCLUDE REGEX ".*/test_[^/]*\\.c$")
 
     # Modular feature detection from config.h and modules
     set(DMK_CORE_SRC ${DMK_CORE_BASE_SRC})
