@@ -102,6 +102,8 @@ SECTIONS
         _sdata = .;
         *(.data)
         *(.data*)
+        *(.RamFunc)
+        *(.RamFunc*)
         . = ALIGN(4);
         _edata = .;
     } >RAM AT> FLASH
