@@ -106,7 +106,7 @@ void mux_hall_matrix_scan(void) {
                     .col = c,
                     .pressed = next ? 1 : 0
                 };
-                xQueueSend(matrix_queue, &event, 0);
+                xQueueSend(matrix_queue, &event, portMAX_DELAY);
             }
         }
     }

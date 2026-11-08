@@ -100,7 +100,7 @@ void encoder_scan(void) {
                     event.row = 0xFF; // Special row marker for rotary encoder events
                     event.col = i;
                     event.pressed = 0; // Clockwise (CW)
-                    xQueueSend(matrix_queue, &event, 0);
+                    xQueueSend(matrix_queue, &event, portMAX_DELAY);
                 } else if (positions[i] <= -res) {
                     positions[i] += res;
 
@@ -109,7 +109,7 @@ void encoder_scan(void) {
                     event.row = 0xFF;
                     event.col = i;
                     event.pressed = 1; // Counter-Clockwise (CCW)
-                    xQueueSend(matrix_queue, &event, 0);
+                    xQueueSend(matrix_queue, &event, portMAX_DELAY);
                 }
             }
         }

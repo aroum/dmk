@@ -177,7 +177,7 @@ static inline void update_key_state(uint8_t key_idx, uint16_t adc_val) {
     if (next != current) {
         key_states[key_idx] = next;
         matrix_event_t event = {.split = 0, .row = 0, .col = key_idx, .pressed = next ? 1 : 0};
-        xQueueSend(matrix_queue, &event, 0);
+        xQueueSend(matrix_queue, &event, portMAX_DELAY);
     }
 }
 
