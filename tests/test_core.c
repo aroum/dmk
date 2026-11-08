@@ -60,6 +60,7 @@ void macros_run_layer_triggers(uint8_t layer) { (void)layer; }
 void hook_key_sent(uint16_t keycode, bool pressed) { (void)keycode; (void)pressed; }
 
 // --- Test 1: Hold-Tap and Priority Modes ---
+#define QUICK_TAP_TERM 150
 #include "keys.h"
 #include "hold_tap.h"
 #include "hold_tap.c"

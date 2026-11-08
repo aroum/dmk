@@ -372,8 +372,16 @@ In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` 
 // - PERMISSIVE_HOLD 1: Enables Permissive Hold. Pressing another key while
 //   the HT key is held immediately resolves the HT key to "Hold" without
 //   waiting for the 200ms timeout (useful for faster shortcut execution).
+//   (Note: ensure HOLD_TAP_TAP_PREFERRED is set to 0 when enabling PERMISSIVE_HOLD).
 #define PERMISSIVE_HOLD 0
 #define HOLD_TAP_TAP_PREFERRED 1
+
+// Quick Tap (Auto-repeat tap):
+// Interval (in ms) within which pressing the same Hold-Tap key again will
+// immediately hold down the tap keycode (triggering OS key repeat).
+// - To disable: set #define QUICK_TAP_TERM 0 or remove it from config (default is 0 / disabled).
+// - To enable: set desired window (e.g. 120-150 ms).
+#define QUICK_TAP_TERM 0
 
 // [Universal Hold-Tap Macro]
 // Replaces both &mt and &lt from ZMK.

@@ -10,7 +10,7 @@
 #endif
 
 #ifndef QUICK_TAP_TERM
-#define QUICK_TAP_TERM 150
+#define QUICK_TAP_TERM 0
 #endif
 
 static HTTracker ht_trackers[MAX_HT_TRACKERS];
