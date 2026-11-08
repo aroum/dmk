@@ -4,19 +4,35 @@
 #include "config.h"
 #include "hal_gpio.h"
 #include "hooks.h"
+#include "split.h"
 #include "task.h"
 
 #ifdef LED_PINS
 // Physical LED pin mapping table
 static const pin_t led_pins[] = LED_PINS;
 #define LED_COUNT (sizeof(led_pins) / sizeof(led_pins[0]))
+static uint8_t s_led_output_mask;
+static bool s_remote_output_control;
+static void led_write_index(unsigned index, bool on) {
+    if (index >= LED_COUNT) return;
+    if (s_remote_output_control) {
+        if (!is_master()) return;
+        s_remote_output_control = false;
+    }
+    hal_gpio_put(led_pins[index], on);
+    if (index < 8) {
+        if (on) s_led_output_mask |= (uint8_t)(1u << index);
+        else s_led_output_mask &= (uint8_t)~(1u << index);
+        split_set_remote_leds(s_led_output_mask);
+    }
+}
 #endif
 
 static inline void Board_LED_On(void) {
 #ifdef LED_PINS
 #ifdef LED_DEBUG
     if (LED_DEBUG < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_DEBUG], true);
+        led_write_index(LED_DEBUG, true);
     }
 #endif
 #endif
@@ -25,7 +41,7 @@ static inline void Board_LED_Off(void) {
 #ifdef LED_PINS
 #ifdef LED_DEBUG
     if (LED_DEBUG < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_DEBUG], false);
+        led_write_index(LED_DEBUG, false);
     }
 #endif
 #endif
@@ -47,7 +63,7 @@ void led_init(void) {
     for (uint32_t i = 0; i < LED_COUNT; i++) {
         hal_gpio_init(led_pins[i]);
         hal_gpio_set_dir(led_pins[i], true); // Output
-        hal_gpio_put(led_pins[i], false);    // Default off
+        led_write_index(i, false);    // Default off
     }
 #endif
 
@@ -91,7 +107,7 @@ void led_update(TickType_t now) {
     if ((now - last_toggle_time) >= interval) {
         last_toggle_time = now;
         led_heartbeat_state = !led_heartbeat_state;
-        hal_gpio_put(led_pins[LED_DEBUG], led_heartbeat_state);
+        led_write_index(LED_DEBUG, led_heartbeat_state);
     }
 #else
     (void)now;
@@ -136,6 +152,18 @@ TickType_t led_check_timeouts(TickType_t now) {
 #endif
 }
 
+// Apply explicit physical output values received from the other half.
+void led_set_output_mask(uint8_t mask) {
+#ifdef LED_PINS
+    s_remote_output_control = true;
+    s_led_output_mask = mask;
+    for (uint32_t i = 0; i < LED_COUNT && i < 8; ++i)
+        hal_gpio_put(led_pins[i], (mask & (1u << i)) != 0);
+#else
+    (void)mask;
+#endif
+}
+
 /**
  * @brief Update host keyboard lock LEDs (Num Lock, Caps Lock, Scroll Lock, Compose, Kana).
  * @param state Host HID LED indicator bitmask.
@@ -144,31 +172,31 @@ void led_set_hid_state(uint8_t state) {
 #ifdef LED_PINS
 #ifdef LED_HID_NUM_LOCK
     if (LED_HID_NUM_LOCK < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_HID_NUM_LOCK], (state & 0x01) ? true : false);
+        led_write_index(LED_HID_NUM_LOCK, (state & 0x01) ? true : false);
     }
 #endif
 #ifdef LED_HID_CAPS_LOCK
     if (LED_HID_CAPS_LOCK < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_HID_CAPS_LOCK], (state & 0x02) ? true : false);
+        led_write_index(LED_HID_CAPS_LOCK, (state & 0x02) ? true : false);
     }
 #endif
 #ifdef LED_HID_SCROLL_LOCK
     if (LED_HID_SCROLL_LOCK < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_HID_SCROLL_LOCK], (state & 0x04) ? true : false);
+        led_write_index(LED_HID_SCROLL_LOCK, (state & 0x04) ? true : false);
     }
 #endif
 #ifdef LED_HID_COMPOSE
     if (LED_HID_COMPOSE < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_HID_COMPOSE], (state & 0x08) ? true : false);
+        led_write_index(LED_HID_COMPOSE, (state & 0x08) ? true : false);
     }
 #endif
 #ifdef LED_HID_KANA
     if (LED_HID_KANA < LED_COUNT) {
-        hal_gpio_put(led_pins[LED_HID_KANA], (state & 0x10) ? true : false);
+        led_write_index(LED_HID_KANA, (state & 0x10) ? true : false);
     }
 #endif
 #endif
-    hook_hid_led_change(state);
+    hooks_dispatch_hid_led_change(state);
 }
 
 void led_activity(bool pressed) {

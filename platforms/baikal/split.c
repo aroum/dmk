@@ -152,11 +152,8 @@
     "DMK Baikal HW UART Error: Unsupported hardware UART pin pair! Supported pairs: PC6(TX)+PC7(RX), PC8(TX)+PC9(RX), PA6(TX)+PA7(RX), PA2(TX)+PA3(RX), PA4(TX)+PA5(RX), PA10(TX)+PA11(RX), PA12(TX)+PA13(RX), PB6(TX)+PB7(RX), PB2(TX)+PB3(RX), PB4(TX)+PB5(RX), PB10(TX)+PB11(RX), PB12(TX)+PB13(RX). For other pins, use SPLIT_CONNECTION_TYPE SOFT (Bit-Bang)."
 #endif
 
-void split_send_event(matrix_event_t *event) {
-    split_packet_t pkt;
-    split_make_packet(&pkt, event);
-
-    uint8_t *pkt_ptr = (uint8_t *)&pkt;
+void split_transport_send_packet(const split_packet_t *packet) {
+    const uint8_t *pkt_ptr = (const uint8_t *)packet;
     for (size_t i = 0; i < sizeof(split_packet_t); i++) {
         // Wait while Transmit FIFO is full
         while (UART_IsActiveFlag(SPLIT_UART_DEV, UART_FLAG_TFNF) == RESET) {
@@ -164,20 +161,25 @@ void split_send_event(matrix_event_t *event) {
         }
         UART_TransmitData8b(SPLIT_UART_DEV, pkt_ptr[i]);
     }
+    // Hold the local sender until the master has had its reply slot.
+    if (!is_master()) vTaskDelay(pdMS_TO_TICKS(12));
+}
+
+
+void split_transport_reply_packet(const split_packet_t *packet) {
+    split_transport_send_packet(packet);
 }
 
 void split_task(void *pvParameters) {
     (void)pvParameters;
     while (1) {
-        if (is_master()) {
+        {
             if (UART_IsActiveFlag(SPLIT_UART_DEV, UART_FLAG_RFNE) == SET) {
                 uint8_t byte = UART_ReceiveData8b(SPLIT_UART_DEV);
                 split_process_received_byte(byte);
             } else {
                 vTaskDelay(pdMS_TO_TICKS(1));
             }
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
 }

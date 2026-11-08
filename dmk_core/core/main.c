@@ -116,6 +116,7 @@ int main(void) {
 
     // Initialize split interconnect (UART / PIO / Software bit-bang)
     split_init();
+    split_common_init();
 
 #if defined(RGB_NUM)
     // Initialize WS2812 hardware drivers before scheduler starts
@@ -123,7 +124,7 @@ int main(void) {
 #endif
 
     // Invoke user modules / extension early initialization
-    hook_early_init();
+    hooks_dispatch_early_init();
 
     // Start FreeRTOS preemptive multitasking scheduler
     vTaskStartScheduler();

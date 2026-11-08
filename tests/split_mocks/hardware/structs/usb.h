@@ -1,0 +1,1 @@
+/* No USB registers needed in this PIO transport test. */

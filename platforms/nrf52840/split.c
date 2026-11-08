@@ -3,6 +3,8 @@
 #include "config.h"
 #include "hal_gpio.h"
 #include "queue.h"
+#include "semphr.h"
+#include <string.h>
 #include "task.h"
 #include "task_internal.h"
 
@@ -25,60 +27,114 @@
 #define SPLIT_UART_INSTANCE NRF_UARTE0
 #endif
 
-static uint8_t rx_byte_buf;
+// EasyDMA must receive the whole frame: polling a one-byte buffer at the RTOS
+// tick rate loses bytes at 115200 baud.
+static uint8_t s_rx_buffer[sizeof(split_packet_t)];
+static StaticSemaphore_t s_uart_lock_storage;
+static SemaphoreHandle_t s_uart_lock;
+static bool s_rx_has_data;
+static TickType_t s_rx_last_activity;
 
-void split_send_event(matrix_event_t *event) {
-    split_packet_t pkt;
-    split_make_packet(&pkt, event);
-
-    uint8_t *pkt_ptr = (uint8_t *)&pkt;
-
-    if (SPLIT_CONNECTION_TYPE == HW_HALF_DUPLEX || SPLIT_TX_PIN == SPLIT_RX_PIN) {
-        nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STOPRX);
-    }
-
-    nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX);
-    nrf_uarte_tx_buffer_set(SPLIT_UART_INSTANCE, pkt_ptr, sizeof(split_packet_t));
-    nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STARTTX);
-
-    uint32_t timeout = 10000;
-    while (!nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX) && --timeout > 0) {
-        vTaskDelay(1);
-    }
-    nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX);
-
-    if (SPLIT_CONNECTION_TYPE == HW_HALF_DUPLEX || SPLIT_TX_PIN == SPLIT_RX_PIN) {
-        nrf_uarte_rx_buffer_set(SPLIT_UART_INSTANCE, &rx_byte_buf, 1);
-        nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STARTRX);
-    }
+static void split_uart_start_rx(void) {
+    s_rx_has_data = false;
+    nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDRX);
+    nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXDRDY);
+    nrf_uarte_rx_buffer_set(SPLIT_UART_INSTANCE, s_rx_buffer, sizeof(s_rx_buffer));
+    nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STARTRX);
 }
+
+void split_transport_send_packet(const split_packet_t *packet) {
+    xSemaphoreTake(s_uart_lock, portMAX_DELAY);
+    bool shared_wire = SPLIT_CONNECTION_TYPE == HW_HALF_DUPLEX || SPLIT_TX_PIN == SPLIT_RX_PIN;
+    if (shared_wire) {
+        nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXTO);
+        nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STOPRX);
+        unsigned timeout = 1000;
+        while (!nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXTO) && timeout--) hal_sleep_us(1);
+        if (!nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXTO)) {
+            nrf_uarte_disable(SPLIT_UART_INSTANCE);
+            nrf_uarte_enable(SPLIT_UART_INSTANCE);
+            split_uart_start_rx();
+            xSemaphoreGive(s_uart_lock);
+            return;
+        }
+    }
+
+    nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX);
+    nrf_uarte_tx_buffer_set(SPLIT_UART_INSTANCE, (const uint8_t *)packet, sizeof(*packet));
+    nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STARTTX);
+    unsigned timeout = 100;
+    while (!nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX) && timeout--) vTaskDelay(1);
+    if (!nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX)) {
+        // Do not return while EasyDMA may still read the caller's stack.
+        nrf_uarte_disable(SPLIT_UART_INSTANCE);
+        nrf_uarte_enable(SPLIT_UART_INSTANCE);
+        shared_wire = true; // re-arm receive after resetting the peripheral
+    }
+    nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDTX);
+    if (shared_wire) split_uart_start_rx();
+    xSemaphoreGive(s_uart_lock);
+    if (!is_master()) vTaskDelay(pdMS_TO_TICKS(12));
+}
+
+void split_transport_reply_packet(const split_packet_t *packet) {
+    split_transport_send_packet(packet);
+}
+
+static size_t split_uart_poll_rx(uint8_t *frame, TickType_t now) {
+    size_t count = 0;
+    xSemaphoreTake(s_uart_lock, portMAX_DELAY);
+    if (nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDRX)) {
+        count = nrf_uarte_rx_amount_get(SPLIT_UART_INSTANCE);
+        if (count > sizeof(s_rx_buffer)) count = sizeof(s_rx_buffer);
+        memcpy(frame, s_rx_buffer, count);
+        split_uart_start_rx();
+    } else {
+        if (nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXDRDY)) {
+            nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXDRDY);
+            s_rx_has_data = true;
+            s_rx_last_activity = now;
+        }
+        if (s_rx_has_data && (TickType_t)(now - s_rx_last_activity) >= pdMS_TO_TICKS(3)) {
+            // A truncated frame must not consume the first byte of the
+            // next transmission and make the reply collide with it.
+            nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXTO);
+            nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STOPRX);
+            unsigned timeout = 1000;
+            while (!nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXTO) && timeout--)
+                hal_sleep_us(1);
+            if (nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_RXTO)) {
+                count = nrf_uarte_rx_amount_get(SPLIT_UART_INSTANCE);
+                if (count > sizeof(s_rx_buffer)) count = sizeof(s_rx_buffer);
+                memcpy(frame, s_rx_buffer, count);
+            } else {
+                nrf_uarte_disable(SPLIT_UART_INSTANCE);
+                nrf_uarte_enable(SPLIT_UART_INSTANCE);
+            }
+            split_uart_start_rx();
+        }
+    }
+    xSemaphoreGive(s_uart_lock);
+    return count;
+}
+
+#ifdef DMK_SPLIT_TEST
+size_t split_test_uart_poll_rx(uint8_t *frame, TickType_t now) { return split_uart_poll_rx(frame, now); }
+#endif
 
 void split_task(void *pvParameters) {
     (void)pvParameters;
-
-    nrf_uarte_rx_buffer_set(SPLIT_UART_INSTANCE, &rx_byte_buf, 1);
-    nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STARTRX);
-
-    while (1) {
-        if (is_master()) {
-            if (nrf_uarte_event_check(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDRX)) {
-                nrf_uarte_event_clear(SPLIT_UART_INSTANCE, NRF_UARTE_EVENT_ENDRX);
-                uint8_t byte = rx_byte_buf;
-
-                nrf_uarte_rx_buffer_set(SPLIT_UART_INSTANCE, &rx_byte_buf, 1);
-                nrf_uarte_task_trigger(SPLIT_UART_INSTANCE, NRF_UARTE_TASK_STARTRX);
-
-                split_process_received_byte(byte);
-            } else {
-                vTaskDelay(pdMS_TO_TICKS(1));
-            }
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(10));
-        }
+    for (;;) {
+        uint8_t frame[sizeof(s_rx_buffer)];
+        size_t count = split_uart_poll_rx(frame, xTaskGetTickCount());
+        for (size_t i = 0; i < count; ++i) split_process_received_byte(frame[i]);
+        if (!count) vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
 void split_init(void) {
+    s_uart_lock = xSemaphoreCreateMutexStatic(&s_uart_lock_storage);
+    configASSERT(s_uart_lock != NULL);
     uint32_t tx_pin = SPLIT_TX_PIN;
     uint32_t rx_pin = SPLIT_RX_PIN;
 
@@ -102,6 +158,7 @@ void split_init(void) {
 
     nrf_uarte_configure(SPLIT_UART_INSTANCE, NRF_UARTE_PARITY_EXCLUDED, NRF_UARTE_HWFC_DISABLED);
     nrf_uarte_enable(SPLIT_UART_INSTANCE);
+    split_uart_start_rx();
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     static StaticTask_t s_split_task_tcb;

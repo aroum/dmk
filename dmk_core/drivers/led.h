@@ -26,6 +26,9 @@ void led_on(void);
 // Turns debug LED off
 void led_off(void);
 
+// Set up to eight configured LED_PINS by physical index.
+void led_set_output_mask(uint8_t mask);
+
 // Set host HID LED indicators state (Caps Lock, Num Lock, etc.)
 void led_set_hid_state(uint8_t state);
 
@@ -45,6 +48,7 @@ static inline TickType_t led_check_timeouts(TickType_t now) {
 }
 static inline void led_on(void) {}
 static inline void led_off(void) {}
+static inline void led_set_output_mask(uint8_t mask) { (void)mask; }
 static inline void led_set_hid_state(uint8_t state) {
     (void)state;
 }

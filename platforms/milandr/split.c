@@ -82,31 +82,33 @@
 #define SPLIT_UART_PULLUP 1
 #endif
 
-void split_send_event(matrix_event_t *event) {
-    split_packet_t pkt;
-    split_make_packet(&pkt, event);
-
-    uint8_t *pkt_ptr = (uint8_t *)&pkt;
+void split_transport_send_packet(const split_packet_t *packet) {
+    const uint8_t *pkt_ptr = (const uint8_t *)packet;
     for (size_t i = 0; i < sizeof(split_packet_t); i++) {
         while (UART_GetFlagStatus(SPLIT_UART_PORT, UART_FLAG_TXFF) == SET) {
             vTaskDelay(1);
         }
         UART_SendData(SPLIT_UART_PORT, pkt_ptr[i]);
     }
+    // Hold the local sender until the master has had its reply slot.
+    if (!is_master()) vTaskDelay(pdMS_TO_TICKS(12));
+}
+
+
+void split_transport_reply_packet(const split_packet_t *packet) {
+    split_transport_send_packet(packet);
 }
 
 void split_task(void *pvParameters) {
     (void)pvParameters;
     while (1) {
-        if (is_master()) {
+        {
             if (UART_GetFlagStatus(SPLIT_UART_PORT, UART_FLAG_RXFE) == RESET) {
                 uint8_t byte = UART_ReceiveData(SPLIT_UART_PORT) & 0xFF;
                 split_process_received_byte(byte);
             } else {
                 vTaskDelay(pdMS_TO_TICKS(1));
             }
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
 }

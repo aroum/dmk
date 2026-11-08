@@ -7,6 +7,7 @@
 #include "hardware/structs/usb.h"
 #include "pico/stdlib.h"
 #include "queue.h"
+#include "semphr.h"
 #include "split.pio.h"
 #include "task.h"
 #include "task_internal.h"
@@ -35,14 +36,17 @@ static PIO split_pio = pio0;
 static uint split_sm = 0;
 static uint tx_program_offset;
 static uint rx_program_offset;
-static int current_role = -1; // -1 = unconfigured, 0 = slave (TX), 1 = master (RX)
+static int current_role = -1; // -1 = unconfigured, 0 = transmit, 1 = receive
+static StaticSemaphore_t s_pio_mutex_storage;
+static SemaphoreHandle_t s_pio_mutex;
 
 static void configure_split_role(bool master) {
     if (current_role == (master ? 1 : 0)) {
         return; // Already configured
     }
 
-    uint pin = SPLIT_TX_PIN;
+    uint pin = master ? SPLIT_RX_PIN : SPLIT_TX_PIN;
+    current_role = -1;
 
     // Disable state machine before reconfiguring
     pio_sm_set_enabled(split_pio, split_sm, false);
@@ -96,39 +100,47 @@ static void configure_split_role(bool master) {
     current_role = master ? 1 : 0;
 }
 
-void split_send_event(matrix_event_t *event) {
-    split_packet_t pkt;
-    split_make_packet(&pkt, event);
-
-    uint8_t *pkt_ptr = (uint8_t *)&pkt;
+void split_transport_send_packet(const split_packet_t *packet) {
+    xSemaphoreTake(s_pio_mutex, portMAX_DELAY);
+    configure_split_role(false);
+    const uint8_t *pkt_ptr = (const uint8_t *)packet;
     for (size_t i = 0; i < sizeof(split_packet_t); i++) {
-        // Data is inverted because open-drain drives low for 0 and floats high for 1
         pio_sm_put_blocking(split_pio, split_sm, (uint32_t)~pkt_ptr[i]);
     }
+    // FIFO empty means the final byte has been pulled, not yet shifted out.
+    while (!pio_sm_is_tx_fifo_empty(split_pio, split_sm)) vTaskDelay(1);
+    sleep_us(20 * BIT_TIME_US);
+    configure_split_role(true);
+    xSemaphoreGive(s_pio_mutex);
+    if (!is_master()) vTaskDelay(pdMS_TO_TICKS(12));
 }
+
+void split_transport_reply_packet(const split_packet_t *packet) {
+    split_transport_send_packet(packet);
+}
+
+static bool split_pio_receive_one(uint8_t *byte) {
+    bool received = false;
+    xSemaphoreTake(s_pio_mutex, portMAX_DELAY);
+    if (current_role == 1 && !pio_sm_is_rx_fifo_empty(split_pio, split_sm)) {
+        *byte = (pio_sm_get(split_pio, split_sm) >> 24) & 0xFF;
+        received = true;
+    }
+    xSemaphoreGive(s_pio_mutex);
+    return received;
+}
+
+#ifdef DMK_SPLIT_TEST
+bool split_test_pio_receive_one(uint8_t *byte) { return split_pio_receive_one(byte); }
+#endif
 
 void split_task(void *pvParameters) {
     (void)pvParameters;
-
-    while (1) {
-        bool master = is_master();
-        if (master) {
-            if (current_role != 1) {
-                configure_split_role(true);
-            }
-
-            if (!pio_sm_is_rx_fifo_empty(split_pio, split_sm)) {
-                uint8_t byte = (pio_sm_get(split_pio, split_sm) >> 24) & 0xFF;
-                split_process_received_byte(byte);
-            } else {
-                vTaskDelay(pdMS_TO_TICKS(1));
-            }
-        } else {
-            if (current_role != 0) {
-                configure_split_role(false);
-            }
-            vTaskDelay(pdMS_TO_TICKS(10));
-        }
+    for (;;) {
+        uint8_t byte;
+        // The parser can transmit a reply and therefore must run outside the mutex.
+        if (split_pio_receive_one(&byte)) split_process_received_byte(byte);
+        else vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
@@ -138,6 +150,8 @@ static StackType_t s_split_task_stack[256];
 #endif
 
 void split_init(void) {
+    s_pio_mutex = xSemaphoreCreateMutexStatic(&s_pio_mutex_storage);
+    configASSERT(s_pio_mutex != NULL);
     uint pin = SPLIT_TX_PIN;
 
     gpio_init(pin);
@@ -149,9 +163,14 @@ void split_init(void) {
     split_sm = pio_claim_unused_sm(split_pio, true);
 
     pio_gpio_init(split_pio, pin);
+    if (SPLIT_RX_PIN != pin) {
+        gpio_init(SPLIT_RX_PIN);
+        gpio_pull_up(SPLIT_RX_PIN);
+        pio_gpio_init(split_pio, SPLIT_RX_PIN);
+    }
 
-    // Start with Slave (TX) role by default
-    configure_split_role(false);
+    // Both halves listen except while transmitting their assigned slot.
+    configure_split_role(true);
 
 #if (configSUPPORT_STATIC_ALLOCATION == 1)
     xTaskCreateStatic(split_task, "split", 256, NULL, TASK_PRIO_DEF, s_split_task_stack, &s_split_task_tcb);

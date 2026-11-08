@@ -80,6 +80,7 @@ set(PLATFORM_LIBS
     tinyusb_board
     hardware_pio
     hardware_flash
+    hardware_watchdog
     hardware_uart
 )
 
