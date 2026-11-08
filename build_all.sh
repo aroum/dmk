@@ -15,6 +15,7 @@ NC='\033[0m'
 CLEAN=false
 FLASH=false
 UF2=false
+DFU_MODE=false
 USB_FLASH=false
 KEYBOARD="corne"
 MCU=""
@@ -56,6 +57,7 @@ if [[ "$CURRENT_LANG" == "en" ]]; then
     MSG_FLASH_USB="=== Flashing via USB ==="
     MSG_FLASH_USB_DFU="=== Flashing via USB (dfu-util) ==="
     MSG_MILANDR_DFU_HINT="Make sure the board is in DFU mode (hold PB6/button, press Reset, then release PB6)."
+    MSG_MILANDR_UF2_HINT="Waiting for Milandr UF2 drive (K1986VE92FI)... Double-reset or hold PB6 on reset."
     MSG_PICO_BOOTSEL_ERR="Device not found in BOOTSEL mode or USB-ready mode."
     MSG_PICO_BOOTSEL_ACT="Action Required: Hold BOOTSEL, press Reset, then release BOOTSEL."
     MSG_PICO_PRESS_KEY="Press any key when device is ready..."
@@ -94,6 +96,7 @@ else
     MSG_FLASH_USB="=== Прошивка через USB ==="
     MSG_FLASH_USB_DFU="=== Прошивка через USB (dfu-util) ==="
     MSG_MILANDR_DFU_HINT="Убедитесь, что плата переведена в режим DFU (зажав кнопку PB6 при сбросе)."
+    MSG_MILANDR_UF2_HINT="Ожидание диска Milandr UF2 (K1986VE92FI)... Дважды нажмите Reset или зажмите PB6 при сбросе."
     MSG_PICO_BOOTSEL_ERR="Устройство не найдено в режиме BOOTSEL или режиме USB."
     MSG_PICO_BOOTSEL_ACT="Необходимое действие: Удерживайте BOOTSEL, нажмите Reset, затем отпустите BOOTSEL."
     MSG_PICO_PRESS_KEY="Нажмите любую клавишу, когда устройство будет готово..."
@@ -182,8 +185,9 @@ show_help() {
         echo "Combined flags:"
         echo "  -c, --clean              Perform a clean build"
         echo "  -f, --flash              Flash via debugger"
-        echo "  -u, --usb-flash          Flash via USB (for RP2040/RP2350/nRF52840/milandr/baikal)"
-        echo "  --uf2                    Generate UF2 file (for RP2040/RP2350/nRF52840/baikal)"
+        echo "  -u, --usb-flash          Flash via USB (UF2/DFU for RP2040/RP2350/nRF52840/milandr/baikal)"
+        echo "  --dfu                    Force DFU mode when flashing Milandr via USB (default is UF2)"
+        echo "  --uf2                    Generate UF2 file (for RP2040/RP2350/nRF52840/milandr/baikal)"
         echo "  -h, --help               Show this help"
         echo ""
         echo "Examples:"
@@ -206,8 +210,9 @@ show_help() {
         echo "Комбинированные флаги:"
         echo "  -c, --clean              Выполнить чистую сборку"
         echo "  -f, --flash              Прошить через отладчик"
-        echo "  -u, --usb-flash          Прошить через USB (для RP2040/RP2350/nRF52840/milandr/baikal)"
-        echo "  --uf2                    Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840/baikal)"
+        echo "  -u, --usb-flash          Прошить через USB (UF2/DFU для RP2040/RP2350/nRF52840/milandr/baikal)"
+        echo "  --dfu                    Принудительный режим DFU для Миландра (по умолчанию UF2)"
+        echo "  --uf2                    Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840/milandr/baikal)"
         echo "  -h, --help               Показать справку"
         echo ""
         echo "Примеры:"
@@ -243,6 +248,7 @@ while [[ $# -gt 0 ]]; do
         --clean) CLEAN=true; shift ;;
         --flash) FLASH=true; shift ;;
         --usb-flash) USB_FLASH=true; shift ;;
+        --dfu) DFU_MODE=true; shift ;;
         --uf2) UF2=true; shift ;;
         -s|--silent) shift ;;
         --help) show_help; exit 0 ;;
@@ -379,8 +385,12 @@ fi
 [[ -n "$MEMORY" ]] && CMAKE_ARGS+=(-DMEMORY="${MEMORY}")
 [[ -n "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE="${DEFINE}")
 [[ -n "$MODULES" ]] && CMAKE_ARGS+=(-DDMK_MODULES="${MODULES}")
-if [[ "$MCU" == "milandr" && "$USB_FLASH" == true ]]; then
-    CMAKE_ARGS+=(-DBOOTLOADER=ON)
+if [[ "$MCU" == "milandr" ]]; then
+    if [[ "$DFU_MODE" == true ]]; then
+        CMAKE_ARGS+=(-DBOOTLOADER_TYPE=DFU)
+    elif [[ "$USB_FLASH" == true || "$UF2" == true ]]; then
+        CMAKE_ARGS+=(-DBOOTLOADER_TYPE=UF2)
+    fi
 fi
 cmake "${CMAKE_ARGS[@]}"
 
@@ -425,7 +435,7 @@ case "$MCU" in
             fi
         fi
         ;;
-    nrf52840|baikal)
+    nrf52840|baikal|milandr)
         if [[ -f "$UF2_FILE" ]]; then
             echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
         elif [[ "$UF2" == true ]]; then
@@ -547,22 +557,62 @@ if [[ "$USB_FLASH" == true ]]; then
             fi
             ;;
         milandr)
-            if ! command -v dfu-util &> /dev/null; then
-                echo -e "${RED}${MSG_ERR_DFU_UTIL}${NC}"
-                exit 1
+            if [[ "$DFU_MODE" == true ]]; then
+                if ! command -v dfu-util &> /dev/null; then
+                    echo -e "${RED}${MSG_ERR_DFU_UTIL}${NC}"
+                    exit 1
+                fi
+
+                [[ -f "$BIN_FILE" ]] || arm-none-eabi-objcopy -O binary "$ELF_FILE" "$BIN_FILE"
+
+                echo -e "${YELLOW}${MSG_FLASH_USB_DFU} (${TARGET_NAME})${NC}"
+                echo -e "${YELLOW}${MSG_MILANDR_DFU_HINT}${NC}"
+
+                dfu-util -a 0 -d 1209:be92 -D "$BIN_FILE"
+                if [[ $? -ne 0 ]]; then
+                    echo -e "${RED}${MSG_FLASH_FAILED}${NC}"
+                    exit 1
+                fi
+                echo -e "${GREEN}${MSG_FLASH_SUCCESS}${NC}"
+            else
+                echo -e "${YELLOW}${MSG_FLASH_USB} (${TARGET_NAME})${NC}"
+                FLASH_SUCCESS=false
+
+                # Check if volume is mounted (K1986VE92FI / UF2)
+                for MOUNT_PATH in "/Volumes/K1986VE92FI" "/Volumes/UF2" "/media/$USER/K1986VE92FI" "/media/$USER/UF2"; do
+                    if [[ -d "$MOUNT_PATH" && -f "$UF2_FILE" ]]; then
+                        echo "Found mounted Milandr UF2 drive: $MOUNT_PATH. Copying UF2..."
+                        if cp -X "$UF2_FILE" "$MOUNT_PATH/" 2>/dev/null || cp "$UF2_FILE" "$MOUNT_PATH/"; then
+                            sync
+                            FLASH_SUCCESS=true
+                            break
+                        fi
+                    fi
+                done
+
+                if [[ "$FLASH_SUCCESS" == false ]]; then
+                    echo -e "${YELLOW}${MSG_MILANDR_UF2_HINT}${NC}"
+                    for i in {1..10}; do
+                        for MOUNT_PATH in "/Volumes/K1986VE92FI" "/Volumes/UF2" "/media/$USER/K1986VE92FI" "/media/$USER/UF2"; do
+                            if [[ -d "$MOUNT_PATH" && -f "$UF2_FILE" ]]; then
+                                echo "Found mounted Milandr UF2 drive: $MOUNT_PATH. Copying UF2..."
+                                cp -X "$UF2_FILE" "$MOUNT_PATH/" 2>/dev/null || cp "$UF2_FILE" "$MOUNT_PATH/"
+                                sync
+                                FLASH_SUCCESS=true
+                                break 2
+                            fi
+                        done
+                        sleep 1
+                    done
+                fi
+
+                if [[ "$FLASH_SUCCESS" == true ]]; then
+                    echo -e "${GREEN}${MSG_FLASH_SUCCESS}${NC}"
+                else
+                    echo -e "${RED}${MSG_FLASH_FAILED}${NC}"
+                    exit 1
+                fi
             fi
-
-            [[ -f "$BIN_FILE" ]] || arm-none-eabi-objcopy -O binary "$ELF_FILE" "$BIN_FILE"
-
-            echo -e "${YELLOW}${MSG_FLASH_USB_DFU} (${TARGET_NAME})${NC}"
-            echo -e "${YELLOW}${MSG_MILANDR_DFU_HINT}${NC}"
-
-            dfu-util -a 0 -d 1209:be92 -D "$BIN_FILE"
-            if [[ $? -ne 0 ]]; then
-                echo -e "${RED}${MSG_FLASH_FAILED}${NC}"
-                exit 1
-            fi
-            echo -e "${GREEN}${MSG_FLASH_SUCCESS}${NC}"
             ;;
         baikal)
             echo -e "${YELLOW}${MSG_FLASH_USB} (${TARGET_NAME})${NC}"

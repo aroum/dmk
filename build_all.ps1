@@ -3,6 +3,7 @@ param(
     [Alias("c")][switch]$Clean,
     [Alias("f")][switch]$Flash,
     [Alias("u")][switch]$UsbFlash,
+    [switch]$Dfu,
     [switch]$Uf2,
     [Alias("h")][switch]$Help,
     [Alias("b")][string]$Keyboard = "corne",
@@ -72,6 +73,7 @@ if ($CURRENT_LANG -eq "en") {
     $MSG_FLASH_USB = "=== Flashing via USB ==="
     $MSG_FLASH_USB_DFU = "=== Flashing via USB (dfu-util) ==="
     $MSG_MILANDR_DFU_HINT = "Make sure the board is in DFU mode (hold PB6/button, press Reset, then release PB6)."
+    $MSG_MILANDR_UF2_HINT = "Waiting for Milandr UF2 drive (K1986VE92FI)... Double-reset or hold PB6 on reset."
     $MSG_PICO_BOOTSEL_ERR = "Device not found in BOOTSEL mode or USB-ready mode."
     $MSG_PICO_BOOTSEL_ACT = "Action Required: Hold BOOTSEL, press Reset, then release BOOTSEL."
     $MSG_PICO_PRESS_KEY = "Press any key when device is ready..."
@@ -108,6 +110,7 @@ if ($CURRENT_LANG -eq "en") {
     $MSG_FLASH_USB = "=== Прошивка через USB ==="
     $MSG_FLASH_USB_DFU = "=== Прошивка через USB (dfu-util) ==="
     $MSG_MILANDR_DFU_HINT = "Убедитесь, что плата переведена в режим DFU (зажав кнопку PB6 при сбросе)."
+    $MSG_MILANDR_UF2_HINT = "Ожидание диска Milandr UF2 (K1986VE92FI)... Дважды нажмите Reset или зажмите PB6 при сбросе."
     $MSG_PICO_BOOTSEL_ERR = "Устройство не найдено в режиме BOOTSEL или режиме USB."
     $MSG_PICO_BOOTSEL_ACT = "Необходимое действие: Удерживайте BOOTSEL, нажмите Reset, затем отпустите BOOTSEL."
     $MSG_PICO_PRESS_KEY = "Нажмите любую клавишу, когда устройство будет готово..."
@@ -180,8 +183,9 @@ function Show-Help {
         Write-Host "`nCombined flags (use spaces in PS!):"
         Write-Host "  -c, -Clean               Perform a clean build"
         Write-Host "  -f, -Flash               Flash via debugger"
-        Write-Host "  -u, -UsbFlash            Flash via USB (for RP2040/RP2350/nRF52840/milandr/baikal)"
-        Write-Host "  -Uf2                     Generate UF2 file (for RP2040/RP2350/nRF52840/baikal)"
+        Write-Host "  -u, -UsbFlash            Flash via USB (UF2/DFU for RP2040/RP2350/nRF52840/milandr/baikal)"
+        Write-Host "  -Dfu                     Force DFU mode when flashing Milandr via USB (default is UF2)"
+        Write-Host "  -Uf2                     Generate UF2 file (for RP2040/RP2350/nRF52840/milandr/baikal)"
         Write-Host "  -h, -Help                Show this help"
         Write-Host "`nExamples:"
         Write-Host "  .\build_all.ps1 -Keyboard corne -Clean -Flash"
@@ -201,8 +205,9 @@ function Show-Help {
         Write-Host "`nКомбинированные флаги (в PS пишутся через пробел!):"
         Write-Host "  -c, -Clean               Выполнить чистую сборку"
         Write-Host "  -f, -Flash               Прошить через отладчик"
-        Write-Host "  -u, -UsbFlash            Прошить через USB (для RP2040/RP2350/nRF52840/milandr/baikal)"
-        Write-Host "  -Uf2                     Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840/baikal)"
+        Write-Host "  -u, -UsbFlash            Прошить через USB (UF2/DFU для RP2040/RP2350/nRF52840/milandr/baikal)"
+        Write-Host "  -Dfu                     Принудительный режим DFU для Миландра (по умолчанию UF2)"
+        Write-Host "  -Uf2                     Сгенерировать UF2-файл (для RP2040/RP2350/nRF52840/milandr/baikal)"
         Write-Host "  -h, -Help                Показать справку"
         Write-Host "`nПримеры:"
         Write-Host "  .\build_all.ps1 -Keyboard corne -Clean -Flash"
@@ -288,7 +293,13 @@ if (-not (Test-Path $BuildDir)) {
     if ($Memory) { $CmakeArgs += "-DMEMORY=$Memory" }
     if ($Define) { $CmakeArgs += "-DDEFINE=$Define" }
     if ($Modules) { $CmakeArgs += "-DDMK_MODULES=$Modules" }
-    if ($Mcu -eq "milandr" -and $UsbFlash) { $CmakeArgs += "-DBOOTLOADER=ON" }
+    if ($Mcu -eq "milandr") {
+        if ($Dfu) {
+            $CmakeArgs += "-DBOOTLOADER_TYPE=DFU"
+        } elseif ($UsbFlash -or $Uf2) {
+            $CmakeArgs += "-DBOOTLOADER_TYPE=UF2"
+        }
+    }
     
     # В Windows CMake по умолчанию использует Visual Studio, если он установлен. 
     # Если вы хотите принудительно использовать Unix Makefiles (MinGW) или Ninja, 
@@ -339,7 +350,7 @@ switch ($Mcu) {
             }
         }
     }
-    { $_ -in "nrf52840", "baikal" } {
+    { $_ -in "nrf52840", "baikal", "milandr" } {
         if (Test-Path $Uf2File) {
             Write-Host "$MSG_UF2_READY_CMAKE $Uf2File" -ForegroundColor Green
         } elseif ($Uf2) {
@@ -438,24 +449,71 @@ if ($UsbFlash) {
             }
         }
         "milandr" {
-            if (-not (Get-Command dfu-util -ErrorAction SilentlyContinue)) {
-                Write-Host $MSG_ERR_DFU_UTIL -ForegroundColor Red
-                exit 1
-            }
+            if ($Dfu) {
+                if (-not (Get-Command dfu-util -ErrorAction SilentlyContinue)) {
+                    Write-Host $MSG_ERR_DFU_UTIL -ForegroundColor Red
+                    exit 1
+                }
 
-            if (-not (Test-Path $BinFile)) {
-                & arm-none-eabi-objcopy -O binary $ElfFile $BinFile
-            }
+                if (-not (Test-Path $BinFile)) {
+                    & arm-none-eabi-objcopy -O binary $ElfFile $BinFile
+                }
 
-            Write-Host "$MSG_FLASH_USB_DFU ($TargetName)" -ForegroundColor Yellow
-            Write-Host $MSG_MILANDR_DFU_HINT -ForegroundColor Yellow
+                Write-Host "$MSG_FLASH_USB_DFU ($TargetName)" -ForegroundColor Yellow
+                Write-Host $MSG_MILANDR_DFU_HINT -ForegroundColor Yellow
 
-            & dfu-util -a 0 -d 1209:be92 -D $BinFile
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host $MSG_FLASH_FAILED -ForegroundColor Red
-                exit 1
+                & dfu-util -a 0 -d 1209:be92 -D $BinFile
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host $MSG_FLASH_FAILED -ForegroundColor Red
+                    exit 1
+                }
+                Write-Host $MSG_FLASH_SUCCESS -ForegroundColor Green
+            } else {
+                Write-Host "$MSG_FLASH_USB ($TargetName)" -ForegroundColor Yellow
+                $flashSuccess = $false
+
+                if (-not (Test-Path $Uf2File)) {
+                    Write-Host "$MSG_ERR_UF2_NOT_FOUND $Uf2File" -ForegroundColor Red
+                    exit 1
+                }
+
+                # Search mounted drives with label K1986VE92FI or UF2
+                $drives = Get-Volume | Where-Object { $_.FileSystemLabel -in "K1986VE92FI", "UF2" }
+                if ($drives) {
+                    foreach ($drive in $drives) {
+                        $destPath = $drive.DriveLetter + ":\"
+                        Write-Host "Found mounted Milandr UF2 drive: $destPath. Copying UF2..."
+                        Copy-Item -Path $Uf2File -Destination $destPath -Force
+                        $flashSuccess = $true
+                        break
+                    }
+                }
+
+                if (-not $flashSuccess) {
+                    Write-Host $MSG_MILANDR_UF2_HINT -ForegroundColor Yellow
+                    for ($i = 0; $i -lt 10; $i++) {
+                        Start-Sleep -Seconds 1
+                        $drives = Get-Volume | Where-Object { $_.FileSystemLabel -in "K1986VE92FI", "UF2" }
+                        if ($drives) {
+                            foreach ($drive in $drives) {
+                                $destPath = $drive.DriveLetter + ":\"
+                                Write-Host "Found mounted Milandr UF2 drive: $destPath. Copying UF2..."
+                                Copy-Item -Path $Uf2File -Destination $destPath -Force
+                                $flashSuccess = $true
+                                break
+                            }
+                        }
+                        if ($flashSuccess) { break }
+                    }
+                }
+
+                if ($flashSuccess) {
+                    Write-Host $MSG_FLASH_SUCCESS -ForegroundColor Green
+                } else {
+                    Write-Host $MSG_FLASH_FAILED -ForegroundColor Red
+                    exit 1
+                }
             }
-            Write-Host $MSG_FLASH_SUCCESS -ForegroundColor Green
         }
         "baikal" {
             Write-Host "$MSG_FLASH_USB ($TargetName)" -ForegroundColor Yellow

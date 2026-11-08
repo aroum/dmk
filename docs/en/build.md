@@ -118,6 +118,7 @@ To run the build, use the `build_all.sh` script (or `build_all.ps1` on Windows w
 - `--memory [SIZE]` — Flash memory size selection (e.g., `256KB`, `512KB`, `2MB`, `4MB`, `16MB`). Used for boards with external flash memory.
 - `--define [DEFS]` / `-d [DEFS]` — Compiler definitions, e.g., `-d LEFT, 6_COL_LAYOUT, KEEPER_KEYMAP`.
 - `--uf2` — Force generate UF2 file (note: `.bin` and `.uf2` are generated automatically whenever supported by the target platform).
+- `--dfu` — Force DFU mode when flashing Milandr (K1986BE92FI) via USB.
 - `--lang [LANG]` — Set script language (`ru` or `en`).
 
 ### Combined Flags
@@ -135,9 +136,9 @@ You can flash the target microcontroller using different methods depending on yo
 
 ### 1. UF2 Flashing (Drag-and-Drop Mass Storage)
 
-For development boards with UF2 bootloaders (RP2040, RP2350, nRF52840, Baikal BE-U1000):
+For development boards with UF2 bootloaders (RP2040, RP2350, nRF52840, Baikal BE-U1000, Milandr K1986BE92FI):
 
-1. Hold the `BOOTSEL` / `RESET` button while connecting USB (or double-press Reset / trigger `K_BOOT` key in keymap) to enter bootloader mode. The board will mount as a USB flash drive (`RPI-RP2`, `NICENANO`, `BAIKAL_LI`, etc.).
+1. Hold the `BOOTSEL` / `RESET` button while connecting USB (or double-press Reset / trigger `K_BOOT` key in keymap) to enter bootloader mode. The board will mount as a USB flash drive (`RPI-RP2`, `NICENANO`, `BAIKAL_LI`, `K1986VE92FI`, etc.).
 2. Drag and drop the generated `.uf2` file from the `build/` directory onto the drive. The board will flash and reboot automatically.
 
 ### 2. Automated USB Flashing Tools (`-u`, `--usb-flash`)
@@ -147,9 +148,11 @@ For development boards with UF2 bootloaders (RP2040, RP2350, nRF52840, Baikal BE
 - **nRF52840**: [`nrfutil`](https://pypi.org/project/nrfutil/) / `adafruit-nrfutil` — Flashing via Adafruit DFU bootloader.
   - macOS: `brew install --cask nrfutil`
   - Linux / Windows: `pip install nrfutil` / `pip install adafruit-nrfutil`
-- **Milandr (K1986BE92FI)**: [`dfu-util`](http://dfu-util.sourceforge.net/) — Flashing with [K1986BE92FI-dfu-bootloader](https://github.com/aroum/K1986BE92FI-dfu-bootloader).
-  - macOS: `brew install dfu-util`
-  - Linux: `sudo apt install dfu-util`
+- **Milandr (K1986BE92FI)**:
+  - **UF2 Mode (default)**: Automated `.uf2` copy to mounted drive `K1986VE92FI` using [K1986BE92FI-uf2-bootloader](https://github.com/aroum/K1986BE92FI-uf2-bootloader).
+  - **DFU Mode (`--dfu`)**: [`dfu-util`](http://dfu-util.sourceforge.net/) — Flashing with legacy [K1986BE92FI-dfu-bootloader](https://github.com/aroum/K1986BE92FI-dfu-bootloader).
+    - macOS: `brew install dfu-util`
+    - Linux: `sudo apt install dfu-util`
 - **Baikal (BE-U1000)**: Automated `.uf2` copy to mounted drive `BAIKAL_LI` using [baikal-uf2-bootloader](https://github.com/aroum/baikal-uf2-bootloader).
 
 ### 3. External Debugger Flashing (`-f`, `--flash`)
@@ -169,6 +172,7 @@ Utility Links:
 - **nrfutil (nRF52840)**: <https://pypi.org/project/nrfutil/>
 - **dfu-util (USB DFU)**: <http://dfu-util.sourceforge.net/>
 - **OpenOCD (SWD/JTAG)**: <https://openocd.org/>
+- **Milandr UF2 Bootloader**: <https://github.com/aroum/K1986BE92FI-uf2-bootloader>
 - **Milandr DFU Bootloader**: <https://github.com/aroum/K1986BE92FI-dfu-bootloader>
 - **Baikal UF2 Bootloader**: <https://github.com/aroum/baikal-uf2-bootloader>
 
@@ -183,10 +187,16 @@ Utility Links:
 ./build_all.sh -b corne -d RIGHT -cf
 ```
 
-**Clean build and flash via USB DFU:**
+**Clean build and flash via USB UF2 (default):**
 
 ```bash
 ./build_all.sh -b corne -d LEFT -cu
+```
+
+**Clean build and flash via legacy USB DFU:**
+
+```bash
+./build_all.sh -b corne -d LEFT -cu --dfu
 ```
 
 ### Raspberry Pi (RP2040/RP2350)

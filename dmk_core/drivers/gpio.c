@@ -4,6 +4,7 @@
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
+#include "hardware/watchdog.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 
@@ -30,6 +31,11 @@ void hal_sleep_us(uint32_t us) {
 }
 
 void platform_init(void) {}
+
+void platform_system_reset(void) {
+    watchdog_reboot(0, 0, 1);
+    for (;;) tight_loop_contents();
+}
 
 void platform_bootloader_jump(void) {
     reset_usb_boot(0, 0);
@@ -68,6 +74,11 @@ void hal_sleep_us(uint32_t us) {
 }
 
 void platform_init(void) {}
+
+void platform_system_reset(void) {
+    NVIC_SystemReset();
+    for (;;) {}
+}
 
 void platform_bootloader_jump(void) {
     NRF_POWER->GPREGRET = 0x57;
@@ -217,6 +228,15 @@ void platform_init(void) {
     __enable_irq();
 }
 
+void platform_system_reset(void) {
+    // WDT0 is normally disabled; arm it only for unrecoverable failures.
+    CRU_APB0_EnableClock(CRU_APB0_PERIPH_WDT0);
+    WDT_SetMode(WDT0, WDT_MODE_RESET);
+    WDT_SetReloadCounter(WDT0, WDT_TIME_PERIOD_0);
+    WDT_Enable(WDT0);
+    for (;;) {}
+}
+
 void platform_bootloader_jump(void) {
     /* Set TinyUF2 double-tap signature in TCMB */
     *(__IO uint32_t*)TCMB_BASE = 0xf01669efUL;
@@ -297,18 +317,35 @@ void hal_gpio_pull_up(uint8_t gpio) {
 }
 
 void hal_sleep_us(uint32_t us) {
-    for (volatile uint32_t i = 0; i < us * 8; i++) {
-        __NOP();
+    const uint32_t cycles_per_us = (SystemCoreClock + 999999U) / 1000000U;
+    while (us--) {
+        uint32_t start = DWT->CYCCNT;
+        while ((uint32_t)(DWT->CYCCNT - start) < cycles_per_us) {
+            __NOP();
+        }
     }
 }
 
 void platform_init(void) {
     CLK_Init_80_mhz();
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
+void platform_system_reset(void) {
+    NVIC_SystemReset();
+    for (;;) {}
 }
 
 void platform_bootloader_jump(void) {
+    // Request entry to UF2 bootloader (64-bit magic in top of RAM 0x20007FF8)
+    *(volatile uint64_t *)0x20007FF8u = 0xB007F2D0AD15C0DEull;
+
+    // Also set DFU bootloader request signature in BKP register for DFU bootloader compatibility
     RST_CLK_PCLKcmd(RST_CLK_PCLK_BKP, ENABLE);
     MDR_BKP->REG_00 = 0xDFDB007; // DFU bootloader request signature
+
     NVIC_SystemReset();
 }
 

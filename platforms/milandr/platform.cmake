@@ -19,14 +19,23 @@ if(NOT MEMORY)
     set(MEMORY "256KB")
 endif()
 
-# Select linker script based on BOOTLOADER option
-option(BOOTLOADER "Build for DFU bootloader" OFF)
-if(BOOTLOADER)
+# Select linker script and bootloader configuration
+# BOOTLOADER_TYPE can be: "UF2" (default for USB flash), "DFU", or "NONE"/OFF
+set(BOOTLOADER_TYPE "" CACHE STRING "Bootloader type for Milandr (UF2, DFU, or NONE)")
+option(BOOTLOADER "Legacy switch to enable bootloader" OFF)
+
+if(BOOTLOADER_TYPE STREQUAL "UF2" OR (BOOTLOADER AND BOOTLOADER_TYPE STREQUAL "UF2"))
+    set(LINKER_SCRIPT "${PLATFORM_DIR}/dep/gcc/MDR32F9Q2I_uf2.ld")
+    set(FLASH_SIZE "0x1C000") # 112 KB
+    set(FLASH_BASE_ADDR "0x08004000")
+elseif(BOOTLOADER_TYPE STREQUAL "DFU" OR BOOTLOADER)
     set(LINKER_SCRIPT "${PLATFORM_DIR}/dep/gcc/MDR32F9Q2I_dfu.ld")
-    set(FLASH_SIZE "0x1F000")
+    set(FLASH_SIZE "0x1F000") # 124 KB
+    set(FLASH_BASE_ADDR "0x08001000")
 else()
     set(LINKER_SCRIPT "${PLATFORM_DIR}/dep/gcc/MDR32F9Q2I.ld")
-    set(FLASH_SIZE "0x40000")
+    set(FLASH_SIZE "0x40000") # 256 KB
+    set(FLASH_BASE_ADDR "0x08000000")
 endif()
 set(RAM_SIZE "0x10000")
 
@@ -75,9 +84,18 @@ set(PLATFORM_LIBS milandr_sdk)
 
 # Platform-specific post-build command
 function(platform_post_build TARGET_NAME)
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hex
-        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
-        COMMENT "Building ${TARGET_NAME}.hex and ${TARGET_NAME}.bin"
-    )
+    if(BOOTLOADER_TYPE STREQUAL "UF2" OR (BOOTLOADER AND BOOTLOADER_TYPE STREQUAL "UF2"))
+        add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hex
+            COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
+            COMMAND uv run --project ${DMK_ROOT}/tools/uf2 python ${DMK_ROOT}/tools/uf2/uf2conv.py -c -b ${FLASH_BASE_ADDR} -f 0xe47e1d64 -o ${CMAKE_BINARY_DIR}/${TARGET_NAME}.uf2 ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
+            COMMENT "Building ${TARGET_NAME}.hex, ${TARGET_NAME}.bin and ${TARGET_NAME}.uf2 for Milandr (UF2)"
+        )
+    else()
+        add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hex
+            COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
+            COMMENT "Building ${TARGET_NAME}.hex and ${TARGET_NAME}.bin"
+        )
+    endif()
 endfunction()

@@ -118,6 +118,7 @@
 - `--memory [SIZE]` — Выбор размера памяти для прошивки (например, `256KB`, `512KB`, `2MB`, `4MB`, `16MB`). Используется для плат с внешней флеш-памятью.
 - `--define [DEFS]`/`-d [DEFS]` Например `-d  LEFT, 6_COL_LAYOUT, KEEPER_KEYMAP`
 - `--uf2` — Принудительно сгенерировать UF2-файл (примечание: `.bin` и `.uf2` генерируются автоматически при поддержке платформой).
+- `--dfu` — Принудительный выбор режима DFU при прошивке микроконтроллера Миландр (K1986BE92FI) через USB.
 - `--lang [LANG]` — Установить язык скрипта (`ru` или `en`).
 
 ### Комбинированные флаги
@@ -135,9 +136,9 @@
 
 ### 1. Прошивка UF2 (как на обычную флешку)
 
-Для плат с UF2 bootloader (RP2040, RP2350, nRF52840, Baikal BE-U1000):
+Для плат с UF2 bootloader (RP2040, RP2350, nRF52840, Baikal BE-U1000, Milandr K1986BE92FI):
 
-1. Зажмите кнопку `BOOTSEL` / `RESET` при подключении USB (или дважды нажмите Reset / клавишу с кодом `K_BOOT`) и вставьте плату в ПК — она появится в системе как обычный съемный диск (`RPI-RP2`, `NICENANO`, `BAIKAL_LI` и т.д.).
+1. Зажмите кнопку `BOOTSEL` / `RESET` при подключении USB (или дважды нажмите Reset / клавишу с кодом `K_BOOT`) и вставьте плату в ПК — она появится в системе как обычный съемный диск (`RPI-RP2`, `NICENANO`, `BAIKAL_LI`, `K1986VE92FI` и т.д.).
 2. Скопируйте собранный файл `.uf2` из папки `build/` на этот диск. Плата прошьется и перезагрузится автоматически.
 
 ### 2. Инструменты для автоматической прошивки по USB (`-u`, `--usb-flash`)
@@ -147,9 +148,11 @@
 - **nRF52840**: [`nrfutil`](https://pypi.org/project/nrfutil/) / `adafruit-nrfutil` — прошивка через DFU-бутлоадер Adafruit.
   - macOS: `brew install --cask nrfutil`
   - Linux / Windows: `pip install nrfutil` / `pip install adafruit-nrfutil`
-- **Миландр (K1986BE92FI)**: [`dfu-util`](http://dfu-util.sourceforge.net/) — прошивка с бутлоадером [K1986BE92FI-dfu-bootloader](https://github.com/aroum/K1986BE92FI-dfu-bootloader).
-  - macOS: `brew install dfu-util`
-  - Linux: `sudo apt install dfu-util`
+- **Миландр (K1986BE92FI)**:
+  - **UF2-загрузчик (по умолчанию при `-u` / `--uf2`)**: автоматическое копирование `.uf2` на смонтированный диск `K1986VE92FI` (с бутлоадером [K1986BE92FI-uf2-bootloader](https://github.com/aroum/K1986BE92FI-uf2-bootloader)).
+  - **DFU-загрузчик (при передаче флага `--dfu`)**: [`dfu-util`](http://dfu-util.sourceforge.net/) — прошивка с бутлоадером [K1986BE92FI-dfu-bootloader](https://github.com/aroum/K1986BE92FI-dfu-bootloader).
+    - macOS: `brew install dfu-util`
+    - Linux: `sudo apt install dfu-util`
 - **Baikal (BE-U1000)**: автоматическое копирование `.uf2` на смонтированный диск `BAIKAL_LI` (с бутлоадером [baikal-uf2-bootloader](https://github.com/aroum/baikal-uf2-bootloader)).
 
 ### 3. Прошивка через внешний отладчик (`-f`, `--flash`)
@@ -169,6 +172,7 @@
 - **nrfutil (nRF52840)**: <https://pypi.org/project/nrfutil/>
 - **dfu-util (USB DFU)**: <http://dfu-util.sourceforge.net/>
 - **OpenOCD (SWD/JTAG)**: <https://openocd.org/>
+- **Milandr UF2 Bootloader**: <https://github.com/aroum/K1986BE92FI-uf2-bootloader>
 - **Milandr DFU Bootloader**: <https://github.com/aroum/K1986BE92FI-dfu-bootloader>
 - **Baikal UF2 Bootloader**: <https://github.com/aroum/baikal-uf2-bootloader>
 
@@ -183,10 +187,16 @@
 ./build_all.sh -b corne -d RIGHT -cf
 ```
 
-**Чистая сборка и прошивка по USB DFU:**
+**Чистая сборка и прошивка по USB через UF2 (по умолчанию):**
 
 ```bash
 ./build_all.sh -b corne -d LEFT -cu
+```
+
+**Чистая сборка и прошивка по USB через старый DFU bootloader:**
+
+```bash
+./build_all.sh -b corne -d LEFT -cu --dfu
 ```
 
 ### Raspberry Pi (RP2040/RP2350)
