@@ -9,6 +9,10 @@
 #include "pin_defs.h"
 
 #define DEFAULT_MCU nrf52840
+#define TAPPING_TERM_DEFAULT 220
+#define PERMISSIVE_HOLD 1
+#define HOLD_TAP_TAP_PREFERRED 0
+#define QUICK_TAP_TERM 150
 
 /* --- Matrix Settings --- */
 // Connection types: ROW2COL, COL2ROW, DIRECT
@@ -84,7 +88,8 @@
 #include "keys.h"
 
 #ifdef DEFINE_KEYMAP
-#define TAPPING_TERM_DEFAULT 200
+#define QUICK_TAP_TERM 150
+
 
 // Layer identifiers used directly in the keymap
 enum layers { DEF = 0, LWR = 1, RSE = 2, ADJ = 3 };
@@ -150,9 +155,9 @@ const uint32_t keymap[][NUM_KEYS] = {
     // LAYER 3: ADJUST (ADJ)
     // ------------------------------------------------------------------------------------------------
     [ADJ] = {
-        K_BOOT,        K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
-        K_NO,          K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
-        K_NO,          K_NLCK, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, K_NO, \
+        K_BOOT,        K_RGB_VAI, K_RGB_TOGG, K_RGB_PREV, K_RGB_NEXT, K_RGB_RST, K_NO, K_RGB_PREV, K_RGB_NEXT, K_RGB_TOGG, K_RGB_VAI, K_NO, \
+        K_NO,          K_RGB_VAD, K_RGB_HUI,  K_RGB_HUD,  K_RGB_SAI,  K_RGB_SAD, K_NO, K_RGB_HUD,  K_RGB_HUI,  K_RGB_SAD,  K_RGB_VAD, K_NO, \
+        K_NO,          K_NLCK,    K_RGB_SPD,  K_RGB_SPI,  K_NO,       K_NO,      K_NO, K_NO,       K_RGB_SPD,  K_RGB_SPI,  K_NO,      K_NO, \
         ___, K_NO, ___, ___, K_NO, ___
     }
 };
@@ -166,4 +171,4 @@ const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 
 #define LED_DEBUG 0 // Index in LED_PINS for diagnostic heartbeat LED (PM_LED)
 
-#endif // CONFIG_H
+#endif // CONFIG_H 
