@@ -7,24 +7,38 @@
 #include "split.h"
 #include "task.h"
 
+static bool s_led_suspended;
+#ifdef LED_ACTIVITY_PIN
+static bool s_activity_initialized;
+static uint32_t s_active_keys_count;
+#endif
+
 #ifdef LED_PINS
 // Physical LED pin mapping table
 static const pin_t led_pins[] = LED_PINS;
 #define LED_COUNT (sizeof(led_pins) / sizeof(led_pins[0]))
 static uint8_t s_led_output_mask;
+static bool s_led_output_state[LED_COUNT];
 static bool s_remote_output_control;
 static void led_write_index(unsigned index, bool on) {
     if (index >= LED_COUNT) return;
+    bool running = xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED;
+    if (running) taskENTER_CRITICAL();
     if (s_remote_output_control) {
-        if (!is_master()) return;
+        if (!is_master()) {
+            if (running) taskEXIT_CRITICAL();
+            return;
+        }
         s_remote_output_control = false;
     }
-    hal_gpio_put(led_pins[index], on);
+    s_led_output_state[index] = on;
+    hal_gpio_put(led_pins[index], on && !s_led_suspended);
     if (index < 8) {
         if (on) s_led_output_mask |= (uint8_t)(1u << index);
         else s_led_output_mask &= (uint8_t)~(1u << index);
-        split_set_remote_leds(s_led_output_mask);
+        split_set_remote_leds(s_led_suspended ? 0 : s_led_output_mask);
     }
+    if (running) taskEXIT_CRITICAL();
 }
 #endif
 
@@ -155,10 +169,14 @@ TickType_t led_check_timeouts(TickType_t now) {
 // Apply explicit physical output values received from the other half.
 void led_set_output_mask(uint8_t mask) {
 #ifdef LED_PINS
+    taskENTER_CRITICAL();
     s_remote_output_control = true;
     s_led_output_mask = mask;
-    for (uint32_t i = 0; i < LED_COUNT && i < 8; ++i)
-        hal_gpio_put(led_pins[i], (mask & (1u << i)) != 0);
+    for (uint32_t i = 0; i < LED_COUNT && i < 8; ++i) {
+        s_led_output_state[i] = (mask & (1u << i)) != 0;
+        hal_gpio_put(led_pins[i], s_led_output_state[i] && !s_led_suspended);
+    }
+    taskEXIT_CRITICAL();
 #else
     (void)mask;
 #endif
@@ -201,40 +219,51 @@ void led_set_hid_state(uint8_t state) {
 
 void led_activity(bool pressed) {
 #ifdef LED_ACTIVITY_PIN
-    static bool led_act_inited = false;
-    static uint32_t active_keys_count = 0;
-    if (!led_act_inited) {
+    taskENTER_CRITICAL();
+    if (!s_activity_initialized) {
         hal_gpio_init(LED_ACTIVITY_PIN);
         hal_gpio_set_dir(LED_ACTIVITY_PIN, true);
         hal_gpio_put(LED_ACTIVITY_PIN, false);
-        led_act_inited = true;
+        s_activity_initialized = true;
     }
     if (pressed) {
-        active_keys_count++;
-    } else if (active_keys_count > 0) {
-        active_keys_count--;
+        s_active_keys_count++;
+    } else if (s_active_keys_count > 0) {
+        s_active_keys_count--;
     }
-    hal_gpio_put(LED_ACTIVITY_PIN, active_keys_count > 0);
+    hal_gpio_put(LED_ACTIVITY_PIN, s_active_keys_count > 0 && !s_led_suspended);
+    taskEXIT_CRITICAL();
 #else
     (void)pressed;
 #endif
 }
 
 void led_suspend(void) {
+    taskENTER_CRITICAL();
+    s_led_suspended = true;
 #ifdef LED_PINS
     for (uint32_t i = 0; i < LED_COUNT; ++i) {
         hal_gpio_put(led_pins[i], false);
     }
+    split_set_remote_leds(0);
 #endif
 #ifdef LED_ACTIVITY_PIN
-    hal_gpio_put(LED_ACTIVITY_PIN, false);
+    if (s_activity_initialized) hal_gpio_put(LED_ACTIVITY_PIN, false);
 #endif
+    taskEXIT_CRITICAL();
 }
 
 void led_resume(void) {
+    taskENTER_CRITICAL();
+    s_led_suspended = false;
 #ifdef LED_PINS
-    for (uint32_t i = 0; i < LED_COUNT && i < 8; ++i) {
-        hal_gpio_put(led_pins[i], (s_led_output_mask & (1u << i)) != 0);
+    for (uint32_t i = 0; i < LED_COUNT; ++i) {
+        hal_gpio_put(led_pins[i], s_led_output_state[i]);
     }
+    if (!s_remote_output_control) split_set_remote_leds(s_led_output_mask);
 #endif
+#ifdef LED_ACTIVITY_PIN
+    if (s_activity_initialized) hal_gpio_put(LED_ACTIVITY_PIN, s_active_keys_count > 0);
+#endif
+    taskEXIT_CRITICAL();
 }

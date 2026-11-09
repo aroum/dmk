@@ -34,6 +34,17 @@ int main(void) {
     master = true;
     led_on(); // a new master resumes local ownership of its LEDs
     assert(pins[1] && pins[3] && mirrored_mask == 5);
+    led_activity(true);
+    assert(pins[0]);
+    led_suspend();
+    assert(!pins[0] && !pins[1] && !pins[2] && !pins[3] && mirrored_mask == 0);
+    led_set_hid_state(2);
+    led_update(1000);
+    led_activity(false);
+    led_activity(true);
+    assert(!pins[0] && !pins[1] && !pins[2] && !pins[3] && mirrored_mask == 0);
+    led_resume();
+    assert(pins[0] && pins[2] && pins[3] && mirrored_mask != 0);
     puts("split physical indicator tests passed");
     return 0;
 }

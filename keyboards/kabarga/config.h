@@ -26,6 +26,9 @@
 #endif
 #define COL_PINS {PM_9, PM_8, PM_7, PM_6, PM_5, PM_4}
 
+/* Power-only USB supplies do not send suspend; turn lights off without a host. */
+#define USB_NO_HOST_SUSPEND_MS 3000
+
 #ifdef CE
 /* --- RGB Backlight (Kabarga CE on Pro Micro D1 pin) --- */
 #define RGB_PIN PM_1
@@ -169,6 +172,6 @@ const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 /* --- Status & Indicator LEDs --- */
 #define LED_PINS {PM_LED}
 
-#define LED_DEBUG 0 // Index in LED_PINS for diagnostic heartbeat LED (PM_LED)
+#define LED_HID_CAPS_LOCK 0 // Index in LED_PINS for diagnostic heartbeat LED (PM_LED)
 
 #endif // CONFIG_H 

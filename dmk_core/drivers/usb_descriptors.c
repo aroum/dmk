@@ -226,6 +226,8 @@ volatile bool usb_mounted = false;
 void tud_mount_cb(void) {
     extern void USB_HID_ResyncKeyboard(void);
     usb_mounted = true;
+    led_resume();
+    rgb_resume();
     USB_HID_ResyncKeyboard();
 }
 

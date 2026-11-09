@@ -108,8 +108,23 @@ void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
 static void usb_device_task(void *param) {
     (void)param;
     s_usb_task_handle = xTaskGetCurrentTaskHandle();
+#ifdef USB_NO_HOST_SUSPEND_MS
+    TickType_t last_mounted = xTaskGetTickCount();
+    bool no_host_suspended = false;
+#endif
     while (1) {
         tud_task_ext(0, false);
+#ifdef USB_NO_HOST_SUSPEND_MS
+        if (tud_mounted()) {
+            last_mounted = xTaskGetTickCount();
+            no_host_suspended = false;
+        } else if (!no_host_suspended &&
+                   (TickType_t)(xTaskGetTickCount() - last_mounted) >= pdMS_TO_TICKS(USB_NO_HOST_SUSPEND_MS)) {
+            led_suspend();
+            rgb_suspend();
+            no_host_suspended = true;
+        }
+#endif
         usb_keyboard_flush();
 #if defined(MIDI_USB) && !defined(MCU_milandr)
         extern void tud_midi_rx_cb(uint8_t itf);

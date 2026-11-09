@@ -71,7 +71,7 @@ clang -Wall -Wextra -DDMK_SPLIT_TEST -DSPLIT_RIGHT -DNUM_ROWS_SPLIT=2 -DNUM_COLS
 "${SCRIPT_DIR}/tests/test_split_protocol"
 rm -f "${SCRIPT_DIR}/tests/test_split_protocol"
 clang -Wall -Wextra -DNUM_ROWS_SPLIT=2 -DNUM_COLS_SPLIT=3 '-DLED_PINS={1,2,3}' \
-    -DLED_DEBUG=0 -DLED_HID_CAPS_LOCK=1 -I "${SCRIPT_DIR}/tests/split_mocks" \
+    -DLED_DEBUG=0 -DLED_HID_CAPS_LOCK=1 -DLED_ACTIVITY_PIN=0 -I "${SCRIPT_DIR}/tests/split_mocks" \
     -I "${SCRIPT_DIR}/tests/mocks" -I "${SCRIPT_DIR}/dmk_core/include" \
     -I "${SCRIPT_DIR}/dmk_core/config" -I "${SCRIPT_DIR}/dmk_core/features" \
     -I "${SCRIPT_DIR}/dmk_core/drivers" "${SCRIPT_DIR}/tests/test_split_led.c" \
