@@ -196,7 +196,7 @@ static void my_early_init(void) {
 DMK_HOOK_SUBSCRIBER(display_hooks, .early_init = my_early_init);
 ```
 
-The default FreeRTOS dynamic heap is 8 KiB (3 KiB on Baikal); override `configTOTAL_HEAP_SIZE` at build time, for example `-d 'configTOTAL_HEAP_SIZE=4096'`. The linker rejects configurations whose static RAM and heap exceed the available SRAM. If a dynamic allocation fails, FreeRTOS returns `NULL`/`pdFAIL` and increments `dmk_malloc_failure_count` rather than hanging; check every dynamic allocation result. Stack overflow resets the MCU. Baikal also reserves a separate 2 KiB bounded newlib heap.
+The default FreeRTOS dynamic heap is 8 KiB (3 KiB on Baikal); override `configTOTAL_HEAP_SIZE` at build time, for example `-d 'configTOTAL_HEAP_SIZE=4096'`. The linker rejects configurations that exceed their memory regions. If a dynamic allocation fails, FreeRTOS returns `NULL`/`pdFAIL` and increments `dmk_malloc_failure_count` rather than hanging; check every dynamic allocation result. Stack overflow resets the MCU. On Baikal, the FreeRTOS heap, interrupt stack and separate 2 KiB bounded newlib heap reside in TCM; ordinary static data resides in SRAM.
 
 ### 4.6. Direct RGB LED Control (`rgb.h`)
 

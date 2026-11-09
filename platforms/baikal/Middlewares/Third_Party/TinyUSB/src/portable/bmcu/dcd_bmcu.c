@@ -29,6 +29,14 @@
 #define DMA_CH_MAX              (5U)        /*!< The maximum number of DMA channels */
 #define DMA_CH_NUM_MASK         (0x1FU)     /*!< DMA channel number mask */
 #define DMA_CH_IN_USE_FLAG      (0x80U)     /*!< DMA channel is used for the selected channel flag */
+/* The USB DMA sees core 0 TCM through its front-port alias. */
+static uint32_t usb_dma_address(uint32_t address)
+{
+    if (address >= 0x40010000UL && address < 0x40038000UL) {
+        return address + 0x10000000UL;
+    }
+    return address + (uint32_t)RAM_ACCESS_OFFSET;
+}
 #endif /* defined (BE_U1000) && (USBD_USE_DMA) */
 
 /** @brief Endpoint 0 state definitions */
@@ -601,7 +609,7 @@ bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t t
             {
                 uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-                USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred + (uint32_t)RAM_ACCESS_OFFSET;
+                USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred);
                 USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
                 USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | ((uint32_t)epnum << USB_DMA_CNTL_DMAEP_Pos) |
                                                USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |
@@ -635,7 +643,7 @@ void ep0_data_in(epn_ctrl_t * edpt)
     {
         uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-        USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred + (uint32_t)RAM_ACCESS_OFFSET;
+        USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred);
         USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
         USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | (0UL << USB_DMA_CNTL_DMAEP_Pos) |
                                        USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |
@@ -1256,7 +1264,7 @@ void ep0_int_handler(void)
 
                         uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-                        USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred + (uint32_t)RAM_ACCESS_OFFSET;
+                        USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred);
                         USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
                         USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | (0UL << USB_DMA_CNTL_DMAEP_Pos) |
                                                        USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |
@@ -1405,7 +1413,7 @@ void epn_rx_int_handler(uint8_t epnum)
 
             uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-            USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + (uint32_t)RAM_ACCESS_OFFSET;
+            USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf);
             USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
             USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | ((uint32_t)epnum << USB_DMA_CNTL_DMAEP_Pos) |
                                            USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |
@@ -1430,7 +1438,7 @@ void epn_rx_int_handler(uint8_t epnum)
 
             uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-            USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred + (uint32_t)RAM_ACCESS_OFFSET;
+            USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred);
             USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
             USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | ((uint32_t)epnum << USB_DMA_CNTL_DMAEP_Pos) |
                                            USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |
@@ -1484,7 +1492,7 @@ void epn_tx_int_handler(uint8_t epnum)
             /* Configure DMA transfer */
             uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-            USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + (uint32_t)RAM_ACCESS_OFFSET;
+            USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf);
             USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
             USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | ((uint32_t)epnum << USB_DMA_CNTL_DMAEP_Pos) |
                                            USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |
@@ -1523,7 +1531,7 @@ void epn_tx_int_handler(uint8_t epnum)
             {
                 uint8_t dma_ch = edpt->dma_ch & DMA_CH_NUM_MASK;
 
-                USB->DMA.CH[dma_ch].DMA_ADDR = (uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred + (uint32_t)RAM_ACCESS_OFFSET;
+                USB->DMA.CH[dma_ch].DMA_ADDR = usb_dma_address((uint32_t)edpt->xfer.xfer_buf + edpt->xfer.xferred);
                 USB->DMA.CH[dma_ch].DMA_COUNT = edpt->xfer.last_packet_size;
                 USB->DMA.CH[dma_ch].DMA_CNTL = USB_DMA_CNTL_DMABRSTM_MODE3 | ((uint32_t)epnum << USB_DMA_CNTL_DMAEP_Pos) |
                                                USB_DMA_CNTL_DMAIE_ENABLE | USB_DMA_CNTL_DMAMODE_MODE0 |

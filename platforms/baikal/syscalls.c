@@ -8,7 +8,10 @@
 extern char _heap_start;
 extern char _heap_end;
 
-// newlib's nosys _sbrk starts at _end (after the IRQ stack), outside SRAM.
+/* heap_4 uses this application-owned pool in the core-local TCM window. */
+uint8_t ucHeap[configTOTAL_HEAP_SIZE] __attribute__((section(".tcm_bss"), aligned(8)));
+
+// Keep newlib allocations within their dedicated linker-reserved TCM region.
 // Keep libc allocations inside the dedicated linker-reserved region instead.
 void *_sbrk(ptrdiff_t increment) {
     static uintptr_t cursor;

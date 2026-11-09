@@ -51,7 +51,7 @@ else()
     set(FLASH_SIZE "0x40000") # 256 KB
     set(FLASH_BASE_ADDR "0xA0000000")
 endif()
-set(RAM_SIZE "0x8000") # 32 KB SRAM
+set(RAM_SIZE "0x30000") # 32 KiB SRAM + 160 KiB shared TCM
 
 add_link_options(-march=rv32imac_zicsr -mabi=ilp32 -mcmodel=medlow -nostartfiles)
 add_link_options("-T${LINKER_SCRIPT}")

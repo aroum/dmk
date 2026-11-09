@@ -63,6 +63,16 @@ clear_bss_loop:
     addi t0, t0, 1
     blt t0, t1, clear_bss_loop
 
+    /* Clear explicitly placed TCM data, including the FreeRTOS heap. */
+    la t1, _stcm_bss
+    la t2, _etcm_bss
+clear_tcm_bss_loop:
+    bgeu t1, t2, clear_tcm_bss_done
+    sb zero, 0(t1)
+    addi t1, t1, 1
+    j clear_tcm_bss_loop
+clear_tcm_bss_done:
+
     /* Call the main function */
     call main
 

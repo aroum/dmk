@@ -10,8 +10,7 @@ MEMORY
 {
     BOOT_ROM0   (rx)  : ORIGIN = 0x40000000, LENGTH = 64K
     ROM1        (rx)  : ORIGIN = 0x40008000, LENGTH = 32K
-    TCMA        (rwx) : ORIGIN = 0x40010000, LENGTH = 64K
-    TCMB        (rwx) : ORIGIN = 0x40020000, LENGTH = 96K
+    TCM         (rwx) : ORIGIN = 0x40010000, LENGTH = 160K
     FRONT_PORT0 (rw)  : ORIGIN = 0x50000000, LENGTH = 256K
     FRONT_PORT1 (rw)  : ORIGIN = 0x60000000, LENGTH = 256K
     SRAM        (rwx) : ORIGIN = 0x70000000, LENGTH = 32K
@@ -85,6 +84,15 @@ SECTIONS
         _ebss = .;
     } > SRAM
 
+    .tcm_bss (NOLOAD) :
+    {
+        . = ALIGN(8);
+        _stcm_bss = .;
+        *(.tcm_bss .tcm_bss.*)
+        . = ALIGN(8);
+        _etcm_bss = .;
+    } > TCM
+
     .heap (NOLOAD) :
     {
         /* Heap section */
@@ -92,7 +100,7 @@ SECTIONS
         _heap_start = .;
         . += __HEAP_SIZE;
         _heap_end = .;
-    } > SRAM
+    } > TCM
 
     .stack (NOLOAD) :
     {
@@ -103,7 +111,7 @@ SECTIONS
         . = ALIGN(16);
         _estack = .; /* The end of the stack */
         __freertos_irq_stack_top = .;
-    } > SRAM
+    } > TCM
 
     _end = .;
     PROVIDE(end = .);

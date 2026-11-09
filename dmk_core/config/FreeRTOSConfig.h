@@ -106,8 +106,7 @@
  * Override at build time for boards with different RAM budgets. */
 #ifndef configTOTAL_HEAP_SIZE
 #if defined(MCU_baikal)
-// Baikal has 32 KiB total SRAM; project tasks use static allocation.
-// Modules requiring dynamic allocation must explicitly increase this budget.
+// The FreeRTOS heap resides in shared TCM. Increase this budget if needed.
 #define configTOTAL_HEAP_SIZE (3 * 1024)
 #elif defined(MCU_stm32l072)
 // STM32L072 has 20 KiB SRAM total
@@ -116,7 +115,11 @@
 #define configTOTAL_HEAP_SIZE (8 * 1024)
 #endif
 #endif
+#if defined(MCU_baikal)
+#define configAPPLICATION_ALLOCATED_HEAP 1
+#else
 #define configAPPLICATION_ALLOCATED_HEAP 0
+#endif
 
 /* Hook function related definitions. */
 #define configCHECK_FOR_STACK_OVERFLOW 2
