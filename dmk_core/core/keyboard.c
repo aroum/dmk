@@ -94,6 +94,10 @@ void keyboard_send_modifiers(uint8_t mod_mask, bool pressed) {
 /**
  * @brief Initialize all keyboard submodules (layers, hold-tap, one-shot, combos, MIDI, Vial).
  */
+__attribute__((weak)) void keyboard_platform_init(void) {}
+__attribute__((weak)) void keyboard_platform_tick(TickType_t now) { (void)now; }
+__attribute__((weak)) TickType_t keyboard_platform_timeout(void) { return portMAX_DELAY; }
+
 void keyboard_init(void) {
     layers_init();
     hold_tap_init();
@@ -107,6 +111,7 @@ void keyboard_init(void) {
 #ifdef VIAL
     vial_init();
 #endif
+    keyboard_platform_init();
 }
 
 static bool process_system_key(uint32_t key, bool pressed) {
@@ -157,7 +162,12 @@ static bool process_system_key(uint32_t key, bool pressed) {
  * @param key 32-bit composite keycode.
  * @param pressed True for press, false for release.
  */
-void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
+static void process_matrix_action(uint8_t row, uint8_t col, uint32_t key, bool pressed, bool batched) {
+#ifdef MATRIX_REPORT_BATCH
+    if (!batched || key >= 0xe0) usb_flush_batched_keys();
+#else
+    (void)batched;
+#endif
     if (key == 0 || key == K_NULL)
         return;
 
@@ -237,8 +247,55 @@ void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
     }
 
     // 12. Standard HID Keycode
+#ifdef MATRIX_REPORT_BATCH
+    if (batched && key < 0xe0) {
+        usb_process_batched_key((uint16_t)key, pressed);
+        hooks_dispatch_key_sent((uint16_t)key, pressed);
+        return;
+    }
+#endif
     keyboard_send_key((uint16_t)key, pressed);
 }
+
+void process_key_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
+    process_matrix_action(row, col, key, pressed, false);
+}
+
+#ifdef MATRIX_REPORT_BATCH
+static BaseType_t receive_matrix_event(matrix_event_t *event, TickType_t wait) {
+    static uint16_t rows[NUM_ROWS];
+    static uint16_t pending;
+    static uint8_t row;
+    static uint8_t col;
+    static bool first;
+    _Static_assert(NUM_COLS <= 16 && NUM_ROWS <= MATRIX_EVENT_ROW_MASK + 1,
+                   "matrix row snapshot is limited to 16 columns and 64 rows");
+
+    while (pending == 0) {
+        if (xQueueReceive(matrix_queue, event, wait) != pdTRUE) return pdFALSE;
+        // 0xff is the encoder marker.
+        if (!(event->row & MATRIX_EVENT_ROW_SNAPSHOT) || event->row == 0xff) return pdTRUE;
+        row = event->row & MATRIX_EVENT_ROW_MASK;
+        if (row >= NUM_ROWS) continue;
+        uint16_t state = ((uint16_t)event->row_state_hi << 8) | event->col;
+        pending = (state ^ rows[row]) & (UINT32_C(0xffff) >> (16 - NUM_COLS));
+        rows[row] = state;
+        col = 0;
+        first = (event->row & MATRIX_EVENT_SCAN_START) != 0;
+    }
+    while (!(pending & (1U << col))) ++col;
+    uint16_t bit = (uint16_t)(1U << col);
+    pending &= (uint16_t)~bit;
+    *event = (matrix_event_t){
+        .row = row, .col = col, .pressed = (rows[row] & bit) != 0,
+        .batched = true, .batch_start = first,
+    };
+    first = false;
+    return pdTRUE;
+}
+#else
+#define receive_matrix_event(event, wait) xQueueReceive(matrix_queue, (event), (wait))
+#endif
 
 /**
  * @brief Core event processing loop: checks timeouts across all subsystems and dispatches matrix events.
@@ -267,14 +324,22 @@ void keyboard_check(void) {
         next_deadline = r;
 
     led_update(now);
+    keyboard_platform_tick(now);
+    if ((r = keyboard_platform_timeout()) < next_deadline) next_deadline = r;
 
     if (next_deadline < 1)
         next_deadline = 1;
 
     // 2. Receive and process matrix events
     matrix_event_t matrix_event;
-    if (pdTRUE == xQueueReceive(matrix_queue, &matrix_event, next_deadline)) {
+    if (pdTRUE == receive_matrix_event(&matrix_event, next_deadline)) {
         do {
+#ifdef MATRIX_REPORT_BATCH
+            bool batched = matrix_event.batched;
+            if (!batched || matrix_event.batch_start) usb_flush_batched_keys();
+#else
+            const bool batched = false;
+#endif
             uint8_t row = matrix_event.row;
             uint8_t col = matrix_event.col;
             bool pressed = matrix_event.pressed;
@@ -312,7 +377,7 @@ void keyboard_check(void) {
                 oneshot_on_key_press(key);
 
                 // Process action
-                process_key_event(row, col, key, true);
+                process_matrix_action(row, col, key, true, batched);
             } else {
                 // Check combos / chords
                 if (combos_process_event(row, col, false, now)) {
@@ -322,12 +387,15 @@ void keyboard_check(void) {
                 uint32_t key = pop_pressed_key(row, col);
 
                 // Process action release
-                process_key_event(row, col, key, false);
+                process_matrix_action(row, col, key, false, batched);
 
                 // Notify One-Shot subsystem of key release
                 oneshot_on_key_release();
             }
-        } while (pdTRUE == xQueueReceive(matrix_queue, &matrix_event, 0));
+        } while (pdTRUE == receive_matrix_event(&matrix_event, 0));
+#ifdef MATRIX_REPORT_BATCH
+        usb_flush_batched_keys();
+#endif
     }
 }
 

@@ -31,7 +31,9 @@ static void power_event_handler(nrfx_power_usb_evt_t event) {
 
 static TaskHandle_t s_usb_task_handle = NULL;
 
+#ifndef KEYBOARD_REPORT_QUEUE_LENGTH
 #define KEYBOARD_REPORT_QUEUE_LENGTH 32
+#endif
 typedef struct {
     uint8_t report_id;
     USB_HID_KeyboardReport_TypeDef keyboard;
@@ -42,6 +44,10 @@ static uint8_t s_keyboard_queue_storage[KEYBOARD_REPORT_QUEUE_LENGTH * sizeof(qu
 static QueueHandle_t s_keyboard_queue;
 static USB_HID_KeyboardReport_TypeDef s_latest_keyboard_report = {.ReportID = 1};
 static uint16_t s_latest_consumer;
+#if defined(MATRIX_REPORT_BATCH) && defined(HHKB_SCAN_DIAGNOSTICS)
+static volatile uint32_t s_usb_keyboard_queue_peak;
+static volatile uint32_t s_usb_keyboard_queue_full;
+#endif
 
 // Resend current states after reconnect, even if no new event occurs.
 void USB_HID_ResyncKeyboard(void) {
@@ -74,7 +80,14 @@ static bool usb_enqueue_key_report(const queued_key_report_t *report) {
         }
     }
     while (tud_mounted() && !tud_suspended()) {
+#if defined(MATRIX_REPORT_BATCH) && defined(HHKB_SCAN_DIAGNOSTICS)
+        if (uxQueueSpacesAvailable(s_keyboard_queue) == 0) s_usb_keyboard_queue_full++;
+#endif
         if (xQueueSend(s_keyboard_queue, report, pdMS_TO_TICKS(1)) == pdTRUE) {
+#if defined(MATRIX_REPORT_BATCH) && defined(HHKB_SCAN_DIAGNOSTICS)
+            UBaseType_t waiting = uxQueueMessagesWaiting(s_keyboard_queue);
+            if (waiting > s_usb_keyboard_queue_peak) s_usb_keyboard_queue_peak = waiting;
+#endif
             if (s_usb_task_handle) xTaskNotifyGive(s_usb_task_handle);
             return true;
         }

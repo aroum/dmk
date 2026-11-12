@@ -95,7 +95,7 @@ void encoder_scan(void) {
                 if (positions[i] >= res) {
                     positions[i] -= res;
 
-                    matrix_event_t event;
+                    matrix_event_t event = {0};
                     event.split = 0;
                     event.row = 0xFF; // Special row marker for rotary encoder events
                     event.col = i;
@@ -104,7 +104,7 @@ void encoder_scan(void) {
                 } else if (positions[i] <= -res) {
                     positions[i] += res;
 
-                    matrix_event_t event;
+                    matrix_event_t event = {0};
                     event.split = 0;
                     event.row = 0xFF;
                     event.col = i;

@@ -424,10 +424,14 @@ static void vial_eeprom_save_now(void) {
 #endif
 
 #if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350) && !defined(MCU_baikal) && !defined(MCU_nrf52840)
+__attribute__((weak)) void vial_keyboard_keymap_load(void) {}
+__attribute__((weak)) void vial_keyboard_keymap_save(void) {}
+__attribute__((weak)) void vial_keyboard_keymap_poll(void) {}
 static inline void vial_eeprom_load(void) {
     vial_storage_init_default();
+    vial_keyboard_keymap_load();
 }
-static inline void vial_eeprom_save_now(void) {}
+static inline void vial_eeprom_save_now(void) { vial_keyboard_keymap_save(); }
 #endif
 
 void vial_eeprom_save(void) {
@@ -435,7 +439,13 @@ void vial_eeprom_save(void) {
     s_eeprom_dirty = true;
 }
 
+__attribute__((weak)) void vial_keyboard_eeprom_task(void) {}
+
 void vial_eeprom_task(void) {
+    vial_keyboard_eeprom_task();
+#if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350) && !defined(MCU_baikal) && !defined(MCU_nrf52840)
+    vial_keyboard_keymap_poll();
+#endif
     if (s_eeprom_dirty) {
         TickType_t now = xTaskGetTickCount();
         if ((now - s_eeprom_dirty_time) >= pdMS_TO_TICKS(VIAL_EEPROM_SAVE_DELAY_MS)) {
@@ -514,11 +524,14 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
             break;
         }
         case VIA_SUB_FIRMWARE_VERSION: {
-            // 0x00000001
-            response[2] = 0;
-            response[3] = 0;
-            response[4] = 0;
-            response[5] = 1;
+#ifndef VIA_FIRMWARE_VERSION
+#define VIA_FIRMWARE_VERSION 1U
+#endif
+            uint32_t version = VIA_FIRMWARE_VERSION;
+            response[2] = (uint8_t)(version >> 24);
+            response[3] = (uint8_t)(version >> 16);
+            response[4] = (uint8_t)(version >> 8);
+            response[5] = (uint8_t)version;
             break;
         }
         default:

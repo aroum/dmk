@@ -25,7 +25,9 @@
 #define TASK_HANDLER_DEF NULL
 
 // Sane queue sizes (saving RAM while preventing dropped keys)
+#ifndef QUEUE_DEF_SIZE
 #define QUEUE_DEF_SIZE 16
+#endif
 
 #define TASK_DEFS TASK_STACK_DEF, TASK_PARAMS_DEF, TASK_PRIO_DEF, TASK_HANDLER_DEF
 

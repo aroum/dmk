@@ -73,14 +73,10 @@ void hold_tap_init(void);
 bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed);
 
 // Permissive hold: immediately resolves any pending HT keys as holds when another key is pressed
-#if DMK_PERMISSIVE_HOLD_ENABLED
 void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col);
-#else
-static inline void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
-    (void)except_row;
-    (void)except_col;
-}
-#endif
+
+// Boards may override the weak defaults with persistent runtime settings.
+uint16_t hold_tap_config_value(uint8_t id);
 
 // Check timeouts for all active hold-tap keys; returns ticks until next deadline or portMAX_DELAY
 TickType_t hold_tap_check_timeouts(TickType_t now);

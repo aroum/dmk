@@ -371,6 +371,32 @@ static void test_usb_hid_reports_and_zero_queue(void) {
     printf("  ✔ test_usb_hid_reports_and_zero_queue passed\n");
 }
 
+#ifdef MATRIX_REPORT_BATCH
+static void test_usb_matrix_batch(void) {
+    usb_init();
+    s_send_report_count = 0;
+    usb_process_batched_key(K_A, true);
+    usb_process_batched_key(K_B, true);
+    assert(s_send_report_count == 0);
+    usb_flush_batched_keys();
+    assert(s_send_report_count == 1);
+    assert(s_last_sent_report.Keycodes[0] == K_A && s_last_sent_report.Keycodes[1] == K_B);
+
+    // Release and re-press of the same HID usage must survive batching.
+    usb_process_batched_key(K_A, false);
+    usb_process_batched_key(K_A, true);
+    assert(s_send_report_count == 2 && s_last_sent_report.Keycodes[0] == 0);
+    usb_flush_batched_keys();
+    assert(s_send_report_count == 3 && s_last_sent_report.Keycodes[0] == K_A);
+
+    // An immediate modifier must follow any pending ordinary key changes.
+    usb_process_batched_key(K_B, false);
+    usb_process_modifiers(MOD_LSHIFT, true);
+    assert(s_send_report_count == 5);
+    assert(s_last_sent_report.Modifier == MOD_LSHIFT && s_last_sent_report.Keycodes[1] == 0);
+}
+#endif
+
 int main(void) {
     printf("\n=== Running DMK Host-Based C Core Unit Tests ===\n\n");
 
@@ -386,6 +412,9 @@ int main(void) {
 
     printf("\n[3/3] Testing USB HID Zero-Queue subsystem...\n");
     test_usb_hid_reports_and_zero_queue();
+#ifdef MATRIX_REPORT_BATCH
+    test_usb_matrix_batch();
+#endif
 
     printf("\n🎉 All C core unit tests passed successfully!\n\n");
     return 0;
