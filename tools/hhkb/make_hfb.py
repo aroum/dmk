@@ -16,7 +16,7 @@ Format breakdown (65,570 bytes total):
 - bytes [65564:65570] : 6 bytes 0xFF padding.
 
 Usage:
-    python3 make_hfb.py input.bin output.hfb [--model AHHX01] [--version A4.30]
+    python3 make_hfb.py input.bin output.hfb [--model AHHX01] [--version A4.50]
 """
 
 import sys
@@ -42,11 +42,11 @@ def compute_crc16_mcrf4xx(data: bytes) -> int:
 
 def parse_version_bytes(ver_str: str) -> bytes:
     """
-    Parses a version string like 'A4.29' or 'A4.30' or 'A8.03'
+    Parses a version string like 'A4.29', 'A4.50', or 'A8.50'
     Format: [Major_Hex, Minor_Hex1, Minor_Hex2, Minor_Hex3]
     E.g. 'A4.29' -> bytes([0x0A, 0x04, 0x02, 0x09])
-         'A4.30' -> bytes([0x0A, 0x04, 0x03, 0x00])
-         'A8.03' -> bytes([0x0A, 0x08, 0x00, 0x03])
+         'A4.50' -> bytes([0x0A, 0x04, 0x05, 0x00])
+         'A8.50' -> bytes([0x0A, 0x08, 0x05, 0x00])
     """
     ver = ver_str.strip()
     if ver.startswith('A') or ver.startswith('a'):
@@ -85,7 +85,7 @@ def make_hfb(bin_path: str, out_path: str, model: str = "AHHX01", version_str: s
     padded_data = data + b"\xff" * (target_size - len(data))
 
     if version_str is None:
-        version_str = "A8.05" if "S01" in model else "A4.30"
+        version_str = "A8.50" if "S01" in model else "A4.50"
 
     # Inner tag is the CRC-16 of the 64KB payload (little-endian)
     inner_crc = compute_crc16_mcrf4xx(padded_data)
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     parser.add_argument("input", help="Input raw .bin or .hfb file")
     parser.add_argument("output", help="Output .hfb file")
     parser.add_argument("--model", default="AHHX01", help="Model code (default: AHHX01, e.g. AHHS01 for Classic Type-S)")
-    parser.add_argument("--version", default=None, help="Firmware version (default: A4.30 for Classic, A8.05 for Type-S)")
+    parser.add_argument("--version", default=None, help="Firmware version (default: A4.50 for Classic, A8.50 for Type-S)")
 
     args = parser.parse_args()
 

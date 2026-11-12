@@ -11,14 +11,14 @@ Supports:
 - Flashing official .hfb containers (65,570 bytes) via authentic PFU E1/E2 protocol.
 - Flashing raw .bin firmware (64 KB) by packaging it on the fly into .hfb.
 - Bypassing official PFU version downgrade restrictions.
-- Safe verification and model compatibility validation.
+- Local CRC and model compatibility checks before starting an update.
 
 Protocol Notes (from tmk research & reverse engineering):
 - Cmd 0x02: Read ID & Version (response: 55 55 02 00 00 39 [data...])
 - Cmd 0xE0: Enter Firmup Mode
 - Cmd 0xE1: Firmup Start (Length: 65,570 [22 00 01 00], CRC16, erase Bank 2)
 - Cmd 0xE2: Send chunk (Header: E2 00 <len> <seq_lo> <seq_hi> [payload])
-- Cmd 0xE3: Firmup End (Verify checksum and reboot to Bank 2)
+- Cmd 0xE3: Firmup End (device verification/reboot; response status unverified)
 """
 
 import argparse
@@ -37,7 +37,7 @@ PFU_USAGE_PAGE = 0xFF00
 PFU_USAGE = 0x01
 
 REPORT_SIZE = 64
-CHUNK_PAYLOAD_SIZE = 56  # 64 bytes total: AA AA E2 00 <len> <seq_lo> <seq_hi> + 56 bytes payload = 63 bytes <= 64
+CHUNK_PAYLOAD_SIZE = 57  # 7-byte header plus 57 data bytes fills a 64-byte HID report
 
 CMD_GET_INFO = 0x02
 CMD_FIRMUP_MODE = 0xE0
@@ -61,7 +61,7 @@ def compute_crc16_mcrf4xx(data: bytes) -> int:
         crc = (crc >> 8) ^ cur
     return crc
 
-def wrap_binary_to_hfb(raw_bin: bytes, model: str = "AHHX01", version_bytes: bytes = bytes([0x0A, 0x04, 0x03, 0x00])) -> bytes:
+def wrap_binary_to_hfb(raw_bin: bytes, model: str = "AHHX01", version_bytes: bytes = bytes([0x0A, 0x04, 0x05, 0x00])) -> bytes:
     """Wraps raw 64 KB binary into standard 65,570-byte .hfb container."""
     if len(raw_bin) > 65536:
         raise ValueError(f"Firmware exceeds 64 KB ({len(raw_bin)} bytes)")
@@ -74,6 +74,34 @@ def wrap_binary_to_hfb(raw_bin: bytes, model: str = "AHHX01", version_bytes: byt
     body = inner_tag + padded + postfix
     outer_crc = compute_crc16_mcrf4xx(body).to_bytes(2, "little")
     return outer_crc + body
+
+def device_model(type_number: str):
+    """Map recognised physical model numbers to the container model ID."""
+    name = type_number.upper().strip()
+    if name in ("PD-KB401WSC", "PD-KB401BSC") or "TYPE-S" in name:
+        return "AHHS01"
+    if name in ("PD-KB401W", "PD-KB401B"):
+        return "AHHX01"
+    return None
+
+def validate_container(data: bytes, expected_model=None, *, check_crc=True, check_model=True):
+    """Validate the complete HFB before sending any update command."""
+    if len(data) != 65570:
+        raise ValueError("Firmware container must be exactly 65,570 bytes")
+    if check_crc:
+        outer = int.from_bytes(data[:2], "little")
+        inner = int.from_bytes(data[2:4], "little")
+        if outer != compute_crc16_mcrf4xx(data[2:]):
+            raise ValueError("Invalid HFB outer CRC")
+        if inner != compute_crc16_mcrf4xx(data[4:65540]):
+            raise ValueError("Invalid HFB firmware CRC")
+    model = data[65554:65560].decode("ascii", errors="replace")
+    if check_model:
+        if expected_model is None:
+            raise ValueError("Cannot determine keyboard model; use --skip-model-check only if intentional")
+        if model != expected_model:
+            raise ValueError(f"Firmware model {model!r} does not match keyboard {expected_model}")
+    return model
 
 def find_hhkb_device(product_id=None):
     """Locate matching HHKB device with UsagePage 0xFF00 / Usage 0x01."""
@@ -107,6 +135,31 @@ class HHKBDevice:
         except Exception:
             pass
 
+    def reconnect(self, timeout_sec=10):
+        """Reopen the PFU HID interface after Firmup Mode resets USB."""
+        old_path = self.dev_info["path"]
+        self.close()
+        deadline = time.monotonic() + timeout_sec
+        last_error = None
+        while time.monotonic() < deadline:
+            dev_info = find_hhkb_device(self.dev_info["product_id"])
+            if dev_info is not None and dev_info["path"] != old_path:
+                try:
+                    handle = hid.device()
+                    handle.open_path(dev_info["path"])
+                    handle.set_nonblocking(False)
+                    self.handle = handle
+                    self.dev_info = dev_info
+                    return
+                except OSError as exc:
+                    last_error = exc
+                    try:
+                        handle.close()
+                    except Exception:
+                        pass
+            time.sleep(0.1)
+        raise TimeoutError(f"PFU HID interface did not return after Firmup Mode: {last_error}")
+
     def __enter__(self):
         return self
 
@@ -119,16 +172,17 @@ class HHKBDevice:
             raise ValueError(f"Packet too large ({len(data)} > {REPORT_SIZE})")
         packet = data + b"\x00" * (REPORT_SIZE - len(data))
         res = self.handle.write(b"\x00" + packet)
-        if res < 0:
-            raise IOError("HID write failed")
+        if res != len(packet) + 1:
+            raise IOError(f"Incomplete HID write: {res} bytes")
         return res
 
     def read_report(self, timeout_ms=5000) -> bytes:
         """Read a 64-byte response report from the keyboard."""
-        start = time.time()
+        start = time.monotonic()
         timeout_sec = timeout_ms / 1000.0
-        while time.time() - start < timeout_sec:
-            res = self.handle.read(REPORT_SIZE, timeout_ms=int((timeout_sec - (time.time() - start)) * 1000))
+        while time.monotonic() - start < timeout_sec:
+            remaining_ms = max(1, int((timeout_sec - (time.monotonic() - start)) * 1000))
+            res = self.handle.read(REPORT_SIZE, timeout_ms=remaining_ms)
             if res:
                 return bytes(res)
         raise TimeoutError("Device did not respond within timeout")
@@ -142,11 +196,10 @@ class HHKBDevice:
         if not resp.startswith(RESP_HEADER + bytes([CMD_GET_INFO])):
             raise RuntimeError(f"Unexpected response to GetInfo: {resp[:8].hex()}")
 
-        # Response format from EEPROM 0x310:
-        # bytes [6:26] (20 bytes): Type Number ASCII string (e.g. "PD-KB401W")
-        # bytes [26:30] (4 bytes): Firmware Version code
+        # The payload starts at EEPROM 0x310. Version fields correspond to
+        # 0x338 and 0x340; their relationship to the active code is unverified.
         type_str = resp[6:26].split(b"\x00")[0].decode("ascii", errors="ignore").strip()
-        ver_raw = resp[26:30]
+        ver_raw = resp[46:50]
 
         # Format version string correctly: e.g. [0A 04 02 09] -> "A4.29", [0A 08 00 03] -> "A8.03"
         if len(ver_raw) == 4 and (ver_raw[0] == 0x0A or ver_raw[0] == 0x0B):
@@ -155,8 +208,8 @@ class HHKBDevice:
         else:
             ver_str = ver_raw.decode("ascii", errors="ignore").strip()
 
-        # Bank 2 integrity flag byte is at the end of cmd 02 payload
-        bank2_broken = (resp[38] == 0x01) if len(resp) > 38 else False
+        # The documented response has a 57-byte payload, ending at byte 62.
+        bank2_broken = (resp[62] == 0x01) if len(resp) > 62 else None
 
         return {
             "type_number": type_str or "Unknown HHKB",
@@ -182,7 +235,7 @@ class HHKBDevice:
         if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_MODE])):
             raise RuntimeError(f"Firmup mode entry rejected: {resp[:6].hex()}")
 
-        time.sleep(0.2)
+        self.reconnect()
 
         # 2. Cmd E1: Firmup Start
         # Format matching tmk capture: e1 00 08 22 00 01 00 <CRC_LSB> <CRC_MSB> 00 00
@@ -198,14 +251,15 @@ class HHKBDevice:
 
         time.sleep(0.2)
 
-        # 3. Cmd E2: Send chunks
+        # 3. Cmd E2: Send chunks. PFU sends the container without its outer CRC.
         # Format matching tmk capture: e2 00 <len> <seq_lo> <seq_hi> <payload>
-        total_bytes = len(hfb_container)
+        payload = hfb_container[2:]
+        total_bytes = len(payload)
         offset = 0
         seq = 0
 
         while offset < total_bytes:
-            chunk = hfb_container[offset : offset + CHUNK_PAYLOAD_SIZE]
+            chunk = payload[offset : offset + CHUNK_PAYLOAD_SIZE]
             chunk_len = len(chunk)
             length_byte = chunk_len + 2  # data + 2 bytes sequence
             seq_bytes = seq.to_bytes(2, "little")
@@ -225,15 +279,16 @@ class HHKBDevice:
 
         time.sleep(0.2)
 
-        # 4. Cmd E3: Firmup End (checksum validation & reboot)
+        # 4. Cmd E3: Firmup End. Prefix alone does not verify device status.
         req_e3 = REQ_HEADER + bytes([CMD_FIRMUP_END, 0x00, 0x00, 0x00])
         self.send_report(req_e3)
         try:
             resp = self.read_report(timeout_ms=5000)
             if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_END])):
-                raise RuntimeError(f"Firmup end verification failed: {resp[:6].hex()}")
+                raise RuntimeError(f"Unexpected firmup end response: {resp[:6].hex()}")
+            return True
         except TimeoutError:
-            pass
+            return False
 
 def print_progress(current, total):
     percent = (current / total) * 100
@@ -249,7 +304,10 @@ def main():
     )
     parser.add_argument("firmware", nargs="?", help="Path to .bin or .hfb firmware file to flash")
     parser.add_argument("--info", action="store_true", help="Read device information only (no flashing)")
-    parser.add_argument("--force", action="store_true", help="Bypass model mismatch checks")
+    parser.add_argument("--force", action="store_true", help="Bypass Bank 2 reset-vector check")
+    parser.add_argument("--skip-crc", action="store_true", help="Skip both HFB CRC checks")
+    parser.add_argument("--skip-model-check", action="store_true", help="Skip HFB/device model check")
+    parser.add_argument("--model", choices=("AHHX01", "AHHS01"), help="Model ID to use when wrapping a raw .bin")
     args = parser.parse_args()
 
     print("=== HHKB Open Flasher CLI ===")
@@ -266,7 +324,7 @@ def main():
     with HHKBDevice(dev_info) as kbd:
         info = kbd.get_info()
         print(f"  Model       : {info['type_number']}")
-        print(f"  Current FW  : {info['version']} (raw: {info['raw_version']})")
+        print(f"  Bank 2 version field (unverified): {info['version']} (raw: {info['raw_version']})")
         if info['bank2_broken']:
             print("  Bank 2 State: BROKEN (Running in Bank 1 recovery bootloader)")
 
@@ -282,16 +340,26 @@ def main():
         with open(fw_path, "rb") as f:
             data = f.read()
 
+        expected_model = device_model(info['type_number'])
+
         if len(data) == 65570:
             hfb_container = data
             raw_payload = data[4:4+65536]
-        elif len(data) <= 65536:
+        elif 8 <= len(data) <= 65536:
             print("Wrapping raw binary into .hfb container...")
-            model = "AHHS01" if "Type-S" in info['type_number'] or "WSC" in info['type_number'] or "BSC" in info['type_number'] else "AHHX01"
-            hfb_container = wrap_binary_to_hfb(data, model=model)
+            model = args.model or expected_model
+            if model is None:
+                raise ValueError("Unknown keyboard model: specify --model for a raw binary")
+            version = bytes([0x0A, 0x08, 0x05, 0x00]) if model == "AHHS01" else bytes([0x0A, 0x04, 0x05, 0x00])
+            hfb_container = wrap_binary_to_hfb(data, model=model, version_bytes=version)
             raw_payload = hfb_container[4:4+65536]
         else:
             raise ValueError(f"Invalid file size: {len(data)} bytes")
+
+        model = validate_container(hfb_container, expected_model, check_crc=not args.skip_crc,
+                                   check_model=not args.skip_model_check)
+        print(f"Container model: {model}; CRC check: {'skipped' if args.skip_crc else 'passed'}; "
+              f"model check: {'skipped' if args.skip_model_check else 'passed'}")
 
         # Sanity check vector table from payload offset 4
         initial_sp = int.from_bytes(raw_payload[0:4], "little")
@@ -299,7 +367,7 @@ def main():
         print(f"Payload Initial SP: 0x{initial_sp:08X}, Reset Vector: 0x{reset_vector:08X}")
 
         # Check Bank 2 address range (0x08010000 - 0x08020000)
-        if not (0x08010000 <= reset_vector <= 0x08020000) and not args.force:
+        if not (0x08010000 <= (reset_vector & ~1) < 0x08020000 and reset_vector & 1) and not args.force:
             print("Warning: Reset vector does not point into Bank 2 (0x08010000-0x08020000).")
             print("Use --force if you intentionally want to flash this image.")
             confirm = input("Continue anyway? (y/N): ").strip().lower()
@@ -309,9 +377,12 @@ def main():
 
         print("\nStarting firmware update process...")
         start_time = time.time()
-        kbd.flash_firmware(hfb_container, progress_cb=print_progress)
-        print("\n\nFlashing successfully completed in {:.2f}s!".format(time.time() - start_time))
-        print("Keyboard is rebooting into the new firmware...")
+        acknowledged = kbd.flash_firmware(hfb_container, progress_cb=print_progress)
+        print("\n\nTransfer finished in {:.2f}s.".format(time.time() - start_time))
+        if acknowledged:
+            print("Final command acknowledged; verify the device after reboot.")
+        else:
+            print("No final acknowledgement: update result is unconfirmed. Verify the device after reboot.")
 
 if __name__ == "__main__":
     main()
