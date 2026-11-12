@@ -8,7 +8,7 @@ ENTRY(Reset_Handler)
 
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 
-_Min_Heap_Size = 0x800;  /* 2 KB */
+_Min_Heap_Size = 0;      /* FreeRTOS owns its separate heap; no libc heap. */
 _Min_Stack_Size = 0x800; /* 2 KB */
 
 MEMORY

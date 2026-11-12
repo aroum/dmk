@@ -40,11 +40,11 @@ DMK includes core-level power saving management for USB suspend states (when the
      ```c
      bool keyboard_power_saving_enabled(void);
      ```
-     (For example, on HHKB Classic, reading the physical state of DIP switch SW6).
+     (For example, by reading a board-specific hardware switch).
 
 ## Multi-Platform Support
 
-Configurations can dynamically target different microcontrollers using preprocessor checks (`#if defined(MCU_...)`). Supported MCUs include `MCU_milandr`, `MCU_rp2040`, `MCU_rp2350`, `MCU_nrf52840`, and `MCU_baikal`.
+Configurations can dynamically target different microcontrollers using preprocessor checks (`#if defined(MCU_...)`). Supported MCUs include `MCU_milandr`, `MCU_rp2040`, `MCU_rp2350`, `MCU_nrf52840`, `MCU_baikal`, and `MCU_stm32l072`.
 
 ```c
 #if defined(MCU_milandr)

@@ -37,6 +37,8 @@ add_compile_definitions(
     HSE_VALUE=8000000
     HSI_VALUE=16000000
     CFG_TUSB_MCU=OPT_MCU_STM32L0
+    USER_VECT_TAB_ADDRESS
+    VECT_TAB_OFFSET=0x10000U
 )
 
 # Flash layout: Bank 2 starts at 0x08010000 (64 KB)
@@ -102,13 +104,29 @@ set(PLATFORM_LIBS
 # Option to compile for Classic Type-S (AHHS01, version A8.xx)
 option(HHKB_TYPE_S "Build firmware container for HHKB Classic Type-S (AHHS01)" OFF)
 
+option(HHKB_RAPID_TRIGGER "Enable HHKB Rapid Trigger" OFF)
+if(DEFINED DEFINE)
+    string(REPLACE "," ";" HHKB_BUILD_DEFINES "${DEFINE}")
+    set(HHKB_RAPID_TRIGGER OFF)
+    set(HHKB_TYPE_S OFF)
+    if("HHKB_RAPID_TRIGGER" IN_LIST HHKB_BUILD_DEFINES)
+        set(HHKB_RAPID_TRIGGER ON)
+    endif()
+    if("HHKB_TYPE_S" IN_LIST HHKB_BUILD_DEFINES)
+        set(HHKB_TYPE_S ON)
+    endif()
+endif()
+if(HHKB_RAPID_TRIGGER AND NOT DEFINED DEFINE)
+    add_compile_definitions(HHKB_RAPID_TRIGGER=1)
+endif()
+
 # Post-build packaging into .bin and HHKB .hfb container
 function(platform_post_build TARGET_NAME)
     if(HHKB_TYPE_S)
-        set(HFB_MODEL_ARG "--model" "AHHS01" "--version" "A8.05")
+        set(HFB_MODEL_ARG "--model" "AHHS01" "--version" "A8.50")
         set(MODEL_COMMENT "Type-S (AHHS01)")
     else()
-        set(HFB_MODEL_ARG "--model" "AHHX01" "--version" "A4.30")
+        set(HFB_MODEL_ARG "--model" "AHHX01" "--version" "A4.50")
         set(MODEL_COMMENT "Classic (AHHX01)")
     endif()
 
