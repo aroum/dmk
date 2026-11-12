@@ -22,7 +22,7 @@ echo -e "${BOLD}====================================================${NC}\n"
 
 # 1. C Core Unit Tests
 echo -e "${BOLD}[1/3] Running Host-Based C Core Unit Tests...${NC}"
-clang -Wall -Wextra \
+clang -Wall -Wextra -DMATRIX_REPORT_BATCH \
     -I "${SCRIPT_DIR}/tests" \
     -I "${SCRIPT_DIR}/tests/mocks" \
     -I "${SCRIPT_DIR}/dmk_core/include" \
@@ -125,6 +125,30 @@ clang -Wall -Wextra -I "${SCRIPT_DIR}/tests/mocks" -I "${SCRIPT_DIR}/dmk_core/in
     "${SCRIPT_DIR}/dmk_core/features/macros.c" -o "${SCRIPT_DIR}/tests/test_features"
 "${SCRIPT_DIR}/tests/test_features"
 rm -f "${SCRIPT_DIR}/tests/test_features"
+
+if [[ -f "${SCRIPT_DIR}/keyboards/hhkb_classic/modules/topre/rapid_trigger.c" ]]; then
+    # HHKB Classic host-only algorithm and EEPROM guard tests
+    HHKB_TEST_DIR="${SCRIPT_DIR}/tests/hhkb_classic"
+    HHKB_MODULES_DIR="${SCRIPT_DIR}/keyboards/hhkb_classic/modules"
+    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${HHKB_MODULES_DIR}/topre" \
+        "${HHKB_MODULES_DIR}/topre/rapid_trigger.c" "${HHKB_TEST_DIR}/test_rapid_trigger.c" \
+        -o "${HHKB_TEST_DIR}/test_rapid_trigger"
+    "${HHKB_TEST_DIR}/test_rapid_trigger"
+    rm -f "${HHKB_TEST_DIR}/test_rapid_trigger"
+    clang -std=c11 -Wall -Wextra -Werror -I "${HHKB_MODULES_DIR}/via_settings" \
+        "${HHKB_TEST_DIR}/test_settings_storage_guard.c" -o "${HHKB_TEST_DIR}/test_settings_storage_guard"
+    "${HHKB_TEST_DIR}/test_settings_storage_guard"
+    rm -f "${HHKB_TEST_DIR}/test_settings_storage_guard"
+    for hhkb_test in test_keymap_storage test_indicators_system; do
+        clang -std=c11 -Wall -Wextra -Werror -I "${HHKB_TEST_DIR}/mocks" \
+            "${HHKB_TEST_DIR}/${hhkb_test}.c" -o "${HHKB_TEST_DIR}/${hhkb_test}"
+        "${HHKB_TEST_DIR}/${hhkb_test}"
+        rm -f "${HHKB_TEST_DIR}/${hhkb_test}"
+    done
+
+else
+    echo "HHKB Classic sources absent; skipping HHKB firmware tests."
+fi
 
 # 2. Python Tool Tests
 echo -e "${BOLD}[2/3] Running Python Tool Unit Tests...${NC}"

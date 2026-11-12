@@ -6,4 +6,6 @@
 __pycache__/
 *.pyc
 /PROBLEM.md
-keyboards/hhkb_classic/
+# HHKB Classic local firmware backups and private development notes.
+keyboards/hhkb_classic/binaries/
+keyboards/hhkb_classic/docs/dev/
