@@ -66,3 +66,48 @@ jobs:
           path: |
             build/dmk_*
           if-no-files-found: error
+
+  build-hhkb-classic:
+    name: Build HHKB Classic ${{ matrix.variant }} (max ADC)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: classic
+            defines: HHKB_RAPID_TRIGGER,HHKB_FACTORY_THRESHOLDS,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+          - variant: type-s
+            defines: HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_FACTORY_THRESHOLDS,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install Toolchain and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+
+      - name: Build HFB
+        run: |
+          chmod +x build_all.sh
+          ./build_all.sh -b hhkb_classic --mcu stm32l072 -d "${{ matrix.defines }}" -c
+
+      - name: Package HFB and VIA layout
+        run: |
+          python3 -m json.tool keyboards/hhkb_classic/via.json > /dev/null
+          mkdir -p build/hhkb-release
+          cp build/hhkb-script/*.hfb build/hhkb-release/
+          cp keyboards/hhkb_classic/via.json build/hhkb-release/
+
+      - name: Upload HFB
+        uses: actions/upload-artifact@v7
+        with:
+          name: hhkb-classic-${{ matrix.variant }}-max-adc-hfb
+          path: build/hhkb-release/
+          if-no-files-found: error
