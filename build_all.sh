@@ -132,7 +132,7 @@ show_memory_usage() {
         rp2040)   flash_size=$(( 2 * 1024 * 1024 )); ram_size=$(( 264 * 1024 )) ;;
         rp2350)   flash_size=$(( 4 * 1024 * 1024 )); ram_size=$(( 520 * 1024 )) ;;
         nrf52840) flash_size=$(( 1024 * 1024 ));     ram_size=$(( 256 * 1024 )) ;;
-        baikal)   flash_size=$(( 1024 * 1024 ));     ram_size=$(( 256 * 1024 )) ;;
+        baikal)   flash_size=$(( 240 * 1024 ));      ram_size=$(( 192 * 1024 )) ;;
         *)        return ;; # milandr already printed by CMake
     esac
 
@@ -349,7 +349,7 @@ fi
 
 # Настройка целевого имени
 SUFFIX=""
-if [[ -n "$DEFINE" ]]; then
+if [[ -n "$DEFINE" && "$KEYBOARD" != "hhkb_classic" ]]; then
     DEFINE_LOWER=$(echo "$DEFINE" | tr '[:upper:]' '[:lower:]')
     if [[ "$DEFINE_LOWER" == *left* ]]; then
         SUFFIX="_left"
@@ -362,6 +362,9 @@ if [[ -n "$DEFINE" ]]; then
 fi
 TARGET_NAME="dmk_${KBD_BASE}_${MCU}${SUFFIX}"
 BUILD_DIR="${SCRIPT_DIR}/build"
+if [[ "$KBD_BASE" == "hhkb_classic" && "$MCU" == "stm32l072" ]]; then
+    BUILD_DIR="${SCRIPT_DIR}/build/hhkb-script"
+fi
 HRD_PROBE="${SCRIPT_DIR}/platforms/milandr/dep/probe/jlink4swd.cfg"
 
 if [[ "$CLEAN" == true ]]; then
@@ -384,6 +387,7 @@ if [[ "$MCU" == "rp2350" ]]; then
 fi
 [[ -n "$MEMORY" ]] && CMAKE_ARGS+=(-DMEMORY="${MEMORY}")
 [[ -n "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE="${DEFINE}")
+[[ "$KBD_BASE" == "hhkb_classic" && -z "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE=)
 [[ -n "$MODULES" ]] && CMAKE_ARGS+=(-DDMK_MODULES="${MODULES}")
 if [[ "$MCU" == "milandr" ]]; then
     if [[ "$DFU_MODE" == true ]]; then

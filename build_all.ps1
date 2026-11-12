@@ -143,7 +143,7 @@ function Show-MemoryUsage {
         "rp2040"   { $flashSize = 2 * 1024 * 1024; $ramSize = 264 * 1024 }
         "rp2350"   { $flashSize = 4 * 1024 * 1024; $ramSize = 520 * 1024 }
         "nrf52840" { $flashSize = 1 * 1024 * 1024; $ramSize = 256 * 1024 }
-        "baikal"   { $flashSize = 1 * 1024 * 1024; $ramSize = 256 * 1024 }
+        "baikal"   { $flashSize = 240 * 1024; $ramSize = 192 * 1024 }
         default    { return } # milandr already printed by CMake
     }
 
@@ -264,7 +264,7 @@ if ([string]::IsNullOrWhiteSpace($Mcu)) {
 
 # Настройка целевого имени
 $Suffix = ""
-if ($Define) {
+if ($Define -and $Keyboard -ne "hhkb_classic") {
     $defLower = $Define.ToLower()
     if ($defLower.Contains("left")) {
         $Suffix = "_left"
@@ -277,6 +277,7 @@ if ($Define) {
 }
 $TargetName = "dmk_${KbdBase}_${Mcu}${Suffix}"
 $BuildDir = Join-Path $ScriptDir "build"
+if ($KbdBase -eq "hhkb_classic" -and $Mcu -eq "stm32l072") { $BuildDir = Join-Path $BuildDir "hhkb-script" }
 $HrdProbe = Join-Path $ScriptDir "platforms\milandr\dep\probe\jlink4swd.cfg"
 
 if ($Clean) {
@@ -284,14 +285,16 @@ if ($Clean) {
     if (Test-Path $BuildDir) { Remove-Item -Path $BuildDir -Recurse -Force }
 }
 
-if (-not (Test-Path $BuildDir)) {
+if (-not (Test-Path $BuildDir)) { New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null }
+& {
     Write-Host $MSG_INIT_CMAKE -ForegroundColor Yellow
-    New-Item -ItemType Directory -Path $BuildDir | Out-Null
+
     
     $CmakeArgs = @("-S", $ScriptDir, "-B", $BuildDir, "-DKEYBOARD=$KbdBase", "-DKEYBOARD_DIR=$KeyboardDir", "-DMCU=$Mcu")
     if ($Mcu -eq "rp2350") { $CmakeArgs += "-DPICO_PLATFORM=rp2350" }
     if ($Memory) { $CmakeArgs += "-DMEMORY=$Memory" }
     if ($Define) { $CmakeArgs += "-DDEFINE=$Define" }
+    if ($KbdBase -eq "hhkb_classic" -and -not $Define) { $CmakeArgs += "-DDEFINE=" }
     if ($Modules) { $CmakeArgs += "-DDMK_MODULES=$Modules" }
     if ($Mcu -eq "milandr") {
         if ($Dfu) {
@@ -308,6 +311,7 @@ if (-not (Test-Path $BuildDir)) {
     # $CmakeArgs = @("-G", "MinGW Makefiles") + $CmakeArgs
 
     & cmake $CmakeArgs
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 Write-Host "$MSG_BUILD $TargetName ===" -ForegroundColor Yellow
