@@ -52,7 +52,7 @@ function(build_keyboard KEYBOARD_NAME)
     endif()
     
     set(SUFFIX "")
-    if(DEFINE)
+    if(DEFINE AND NOT (KBD_BASE STREQUAL "hhkb_classic" AND MCU STREQUAL "stm32l072"))
         string(TOLOWER "${DEFINE}" DEFINE_LOWER)
         if(DEFINE_LOWER MATCHES "left")
             set(SUFFIX "_left")
