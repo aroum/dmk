@@ -11,6 +11,21 @@
 3. Откройте появившуюся вкладку **Design**, нажмите **Load Draft Definition** и выберите `via.json` из этого каталога или из файлов релиза.
 4. Подключите клавиатуру и откройте **HHKB Settings**.
 
+## Chromium на Linux видит HHKB, но VIA не подключается
+
+Если VIA видит **HHKB Professional Classic** с VID/PID `cafe:4010`, но сообщает, что клавиатура не отвечает, попробуйте дать Chromium доступ к её устройствам `/dev/hidraw*`. Правило ниже даёт доступ пользователю активной локальной сессии для устройств с этим VID/PID.
+
+```bash
+sudo tee /etc/udev/rules.d/70-hhkb-via.rules >/dev/null <<'EOF'
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="4010", TAG+="uaccess"
+EOF
+sudo udevadm control --reload-rules
+```
+
+Отключите и снова подключите USB-кабель клавиатуры, обновите страницу VIA и выберите HHKB через **Authorize device**. Используйте тот же `via.json`.
+
+Если ошибка повторится, откройте `chrome://device-log`, снова попробуйте подключиться через VIA и проверьте записи с `HID` или `hidraw`.
+
 ## VIA и Vial
 
 [VIA](https://www.usevia.app/) поддерживает пользовательский интерфейс **HHKB Settings**: Scan Rate, Calibration, Rapid Trigger и LED. Эти пользовательские контролы доступны только в веб-версии VIA. Rapid Trigger появляется только в сборке с `HHKB_RAPID_TRIGGER`.
