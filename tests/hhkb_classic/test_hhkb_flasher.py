@@ -13,6 +13,15 @@ flasher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(flasher)
 
 class FlasherValidationTest(unittest.TestCase):
+    def test_find_vendor_interface_without_usage_metadata(self):
+        devices = [
+            {'path': f'1-11:1.{i}'.encode(), 'product_id': 0x20,
+             'usage_page': 0, 'usage': 0, 'interface_number': i}
+            for i in range(3)
+        ]
+        with patch.object(flasher.hid, 'enumerate', return_value=devices, create=True):
+            self.assertEqual(flasher.find_hhkb_device()['interface_number'], 2)
+
     def setUp(self):
         self.good = flasher.wrap_binary_to_hfb(b'\x00\x50\x00\x20\x01\x00\x01\x08')
 
@@ -49,12 +58,18 @@ class FlasherValidationTest(unittest.TestCase):
         dev = flasher.HHKBDevice.__new__(flasher.HHKBDevice)
         dev.dev_info = {'product_id': 32, 'path': b'old'}
         dev.handle = old_handle
-        with patch.object(flasher, 'find_hhkb_device', side_effect=[
-            {'product_id': 32, 'path': b'old'}, {'product_id': 32, 'path': b'new'}]), \
+        events = []
+        def find_after_reset(product_id):
+            events.append('enumerate')
+            return {'product_id': product_id, 'path': b'old'}
+
+        with patch.object(flasher.time, 'sleep', side_effect=events.append), \
+             patch.object(flasher, 'find_hhkb_device', side_effect=find_after_reset), \
              patch.object(flasher.hid, 'device', return_value=new_handle, create=True):
             dev.reconnect()
+        self.assertEqual(events, [10, 'enumerate'])
         self.assertIs(dev.handle, new_handle)
-        self.assertEqual(dev.dev_info['path'], b'new')
+        self.assertEqual(dev.dev_info['path'], b'old')
 
     def test_firmware_transfer_matches_pfu_packet_format(self):
         image = flasher.wrap_binary_to_hfb(bytes(range(256)) * 256)

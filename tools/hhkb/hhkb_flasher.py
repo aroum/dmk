@@ -38,6 +38,7 @@ PFU_USAGE = 0x01
 
 REPORT_SIZE = 64
 CHUNK_PAYLOAD_SIZE = 57  # 7-byte header plus 57 data bytes fills a 64-byte HID report
+FIRMUP_REENUMERATION_DELAY_SEC = 10
 
 CMD_GET_INFO = 0x02
 CMD_FIRMUP_MODE = 0xE0
@@ -120,7 +121,12 @@ def find_hhkb_device(product_id=None):
     for d in matches:
         if d.get("usage_page") == PFU_USAGE_PAGE and d.get("usage") == PFU_USAGE:
             return d
-    return matches[0]
+    # The hidapi libusb backend reports zero usage values for all interfaces.
+    # On the Classic, the PFU vendor interface is interface 2.
+    for d in matches:
+        if d.get("usage_page") == 0 and d.get("interface_number") == 2:
+            return d
+    return None
 
 class HHKBDevice:
     def __init__(self, dev_info):
@@ -137,13 +143,15 @@ class HHKBDevice:
 
     def reconnect(self, timeout_sec=10):
         """Reopen the PFU HID interface after Firmup Mode resets USB."""
-        old_path = self.dev_info["path"]
         self.close()
+        # Keymap Tool waits after E0. libusb can still open the old interface
+        # before the reset, and the replacement can have the same USB path.
+        time.sleep(FIRMUP_REENUMERATION_DELAY_SEC)
         deadline = time.monotonic() + timeout_sec
         last_error = None
         while time.monotonic() < deadline:
             dev_info = find_hhkb_device(self.dev_info["product_id"])
-            if dev_info is not None and dev_info["path"] != old_path:
+            if dev_info is not None:
                 try:
                     handle = hid.device()
                     handle.open_path(dev_info["path"])
@@ -158,7 +166,10 @@ class HHKBDevice:
                     except Exception:
                         pass
             time.sleep(0.1)
-        raise TimeoutError(f"PFU HID interface did not return after Firmup Mode: {last_error}")
+        message = "PFU HID interface did not return after Firmup Mode"
+        if last_error is not None:
+            message += f": {last_error}"
+        raise TimeoutError(message) from last_error
 
     def __enter__(self):
         return self
@@ -235,6 +246,7 @@ class HHKBDevice:
         if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_MODE])):
             raise RuntimeError(f"Firmup mode entry rejected: {resp[:6].hex()}")
 
+        print("Waiting for the PFU update interface to reconnect...")
         self.reconnect()
 
         # 2. Cmd E1: Firmup Start
