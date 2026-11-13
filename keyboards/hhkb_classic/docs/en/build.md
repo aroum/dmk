@@ -65,8 +65,8 @@ The [Build Firmware workflow](../../../../.github/workflows/build_test.yml) runs
 - `hhkb-classic-classic-max-adc-hfb` — standard Classic, model `AHHX01`, HFB version A4.50.
 - `hhkb-classic-type-s-max-adc-hfb` — Classic Type-S, model `AHHS01`, HFB version A8.50.
 
-Each archive contains the model-specific `.hfb` and [via.json](../../via.json) for loading the custom menu through VIA Design. Select the archive that matches your keyboard. The Type-S build has been compiler-checked; physical board verification so far covers the standard Classic.
+Each archive contains the model-specific `.hfb` and [via.json](../../via.json) for loading the custom menu through the [VIA web app](https://www.usevia.app/) Design tab. Select the archive that matches your keyboard. The Type-S build has been compiler-checked; physical board verification so far covers the standard Classic.
 
-Both builds use `HHKB_RAPID_TRIGGER,HHKB_FACTORY_THRESHOLDS,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S also uses `HHKB_TYPE_S`. The keyboard configuration enables VIA v3 and Vial, custom calibration, scan rate, actuation, Rapid Trigger, LEDs, layers, and hold-tap settings. `HHKB_ADC_DMA` is not enabled in this workflow.
+Both builds use `HHKB_RAPID_TRIGGER,HHKB_FACTORY_THRESHOLDS,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S also uses `HHKB_TYPE_S`. The keyboard configuration enables [VIA](https://www.usevia.app/) v3 and Vial, custom calibration, scan rate, actuation, Rapid Trigger, LEDs, layers, and hold-tap settings. `HHKB_ADC_DMA` is not enabled in this workflow.
 
-`HHKB_ADC_OVERSAMPLING` sets the initial VIA toggle state: ×4 applies at 50–500 Hz, while 1000 Hz forces ×1. The saved preference applies again when the rate drops to 500 Hz or less. Downloading an artifact does not flash the keyboard; see [Install](install.md).
+`HHKB_ADC_OVERSAMPLING` sets the initial [VIA](https://www.usevia.app/) toggle state: ×4 applies at 50–500 Hz, while 1000 Hz forces ×1. The saved preference applies again when the rate drops to 500 Hz or less. Downloading an artifact does not flash the keyboard; see [Install](install.md).

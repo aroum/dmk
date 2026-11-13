@@ -17,13 +17,13 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 
 ## Features
 
-- VIA and Vial support for runtime keymap changes.
+- [VIA](https://www.usevia.app/) and Vial support for runtime keymap changes.
 - Configurable matrix scan rate: 50, 125, 250, 500, or 1000 Hz. The stock firmware's matrix loop runs at about 50 Hz. At 50–500 Hz, optional ×4 hardware ADC oversampling improves measurement precision and reduces noise.
-- Factory thresholds, or per-key user calibration through VIA.
+- Factory thresholds, or per-key user calibration through [VIA](https://www.usevia.app/).
 - Adjustable actuation point and classic release hysteresis.
 - Rapid Trigger, including independent press and release sensitivity.
 - Optional hardware ADC oversampling to reduce measurement noise.
-- Two configurable LEDs; VIA assigns Off, Debug heartbeat, Caps Lock, Fn layer, or System 2 to PA8 and PA9.
+- Two configurable LEDs; [VIA](https://www.usevia.app/) assigns Off, Debug heartbeat, Caps Lock, Fn layer, or System 2 to PA8 and PA9.
 - Mod-Tap and Layer-Tap, with configurable tapping term, permissive hold, tap preference, and quick tap.
 - Two base/Fn layer pairs, switchable with Fn + Space.
 
@@ -33,17 +33,17 @@ The firmware is installed on the original controller without opening the keyboar
 
 The original firmware can be restored using the documented Bank 1/SW6 recovery path, or by writing a saved DFU backup. Read [Installation, backup, and recovery](docs/en/backup-restore.md) before flashing.
 
-## VIA and Vial
+## VIA vs Vial
 
-VIA provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED. Advanced analog settings such as actuation point and Rapid Trigger sensitivities are configured there.
+[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via.json`.
 
-Vial supports runtime keymap editing, but it does not provide VIA v3 custom UI controls. Use VIA for calibration, scan rate, LED assignments, and Rapid Trigger settings.
+Vial supports runtime keymap editing through `vial.json`, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, and Rapid Trigger settings.
 
 ## DIP switches
 
-DMK reads all six DIP switches. SW6 currently provides the recovery transition to the stock Bank 1 updater. The remaining switches are intentionally not bound to fixed layout behaviour yet: a user-editable VIA/Vial keymap makes automatic layout rewrites ambiguous.
+DMK reads all six DIP switches. SW6 currently provides the recovery transition to the stock Bank 1 updater. The remaining switches are intentionally not bound to fixed layout behaviour yet: a user-editable [VIA](https://www.usevia.app/)/Vial keymap makes automatic layout rewrites ambiguous.
 
-Possible future uses include assigning switch functions through VIA dropdowns. Suggestions are welcome.
+Possible future uses include assigning switch functions through [VIA](https://www.usevia.app/) dropdowns. Suggestions are welcome.
 
 ## Other HHKB models
 

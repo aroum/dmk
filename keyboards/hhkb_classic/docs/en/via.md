@@ -2,11 +2,20 @@
 
 **Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [VIA](via.md)
 
-# VIA
+# [VIA](https://www.usevia.app/)
 
-Load `via.json` through the VIA Design tab. The custom interface is grouped under **HHKB Settings**: Scan Rate, Calibration, Rapid Trigger, and LED. Rapid Trigger is shown only by firmware built with `HHKB_RAPID_TRIGGER`.
+## Load the custom definition
 
-Vial uses `vial.json` and supports keymap editing. Vial does not expose VIA v3 custom controls, so use VIA for analog, LED, and scan-rate settings.
+1. Open the [VIA web app](https://www.usevia.app/).
+2. Open **Settings** and enable **Show Design tab**.
+3. Open the new **Design** tab, choose **Load Draft Definition**, and select `via.json` from this directory or the release assets.
+4. Connect the keyboard and open **HHKB Settings**.
+
+## VIA vs Vial
+
+[VIA](https://www.usevia.app/) supports the custom **HHKB Settings** interface: Scan Rate, Calibration, Rapid Trigger, and LED. These custom controls are available only in the VIA web app. Rapid Trigger is shown only by firmware built with `HHKB_RAPID_TRIGGER`.
+
+Vial uses `vial.json` and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
 
 ## Settings
 
@@ -22,4 +31,4 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 
 Calibration Start captures released baselines. Fully press the keys to update, then use Finish and save. Only positions with a valid signal range are changed.
 
-Settings and calibration are stored in EEPROM at `0x08081500`. VIA keymaps use the reserved EEPROM slots separately.
+Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.

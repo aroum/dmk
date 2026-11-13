@@ -19,6 +19,12 @@ If the keyboard is currently running the original PFU firmware, it already expos
 
 If the keyboard is currently running DMK, its USB identity differs from the PFU updater and Keymap Tool cannot flash it directly. Set SW6 to ON while powering the keyboard, then return it to OFF after Bank 1 starts. This recovery action erases the first 128-byte page of Bank 2. See [SW6 recovery](backup-restore.md#sw6-recovery) for the detailed description of this irreversible transition to Bank 1. Then use the official updater with the generated `.hfb` and reconnect after it completes.
 
+After a successful DMK update, Keymap Tool displays the following message:
+
+> An error occurred during writing to HHKB. Check the connection with HHKB and try again. You cannot write anything to HHKB while pressing a key.
+
+This is expected and does **not** mean that the update failed. At this point Bank 1 has written Bank 2 and transfers execution to DMK. DMK then reconnects with its own USB VID/PID, which the PFU Keymap Tool does not recognize, so the tool reports that its original PFU device disappeared.
+
 ## Install with the DMK flasher
 
 You do not need the official Keymap Tool. `hhkb_flasher.py` sends the same `.hfb` through the PFU update interface and is a cross-platform alternative, including for Linux where the official Keymap Tool is not available. Stock firmware already exposes that interface; a running DMK image must first be returned to Bank 1 through SW6 as described above.
