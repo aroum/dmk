@@ -13,11 +13,18 @@ Build the matching firmware first. Classic uses an `AHHX01` container; Classic T
 
 DMK occupies Flash Bank 2 (`0x08010000–0x0801FFFF`). The original Bank 1 updater remains in place and provides the PFU update interface.
 
+DMK uses a different USB identity, so Keymap Tool cannot flash it directly. If DMK is already installed, first return to the stock Bank 1 updater.
+
+With the keyboard powered off, set SW6 to ON, connect power, and return SW6 to OFF after Bank 1 starts. This recovery action erases the first 128-byte page of Bank 2. See [SW6 recovery](backup-restore.md#sw6-recovery) for the detailed description of this irreversible transition to Bank 1. Then flash the generated `.hfb` with the official updater and reconnect the keyboard after it completes.
+
+If the keyboard is currently running the original PFU firmware, its PFU update interface is already available: do **not** use SW6.
+
+> [!WARNING]
+> Make sure SW6 is OFF before flashing.
+
 ## Install through the PFU updater
 
-If the keyboard is currently running the original PFU firmware, it already exposes the PFU update interface: do **not** use SW6. Open the matching `.hfb` in HHKB Keymap Tool and complete the normal update.
-
-If the keyboard is currently running DMK, its USB identity differs from the PFU updater and Keymap Tool cannot flash it directly. Set SW6 to ON while powering the keyboard, then return it to OFF after Bank 1 starts. This recovery action erases the first 128-byte page of Bank 2. See [SW6 recovery](backup-restore.md#sw6-recovery) for the detailed description of this irreversible transition to Bank 1. Then use the official updater with the generated `.hfb` and reconnect after it completes.
+Open the matching `.hfb` in HHKB Keymap Tool and complete the normal update.
 
 After a successful DMK update, Keymap Tool displays the following message:
 

@@ -27,6 +27,20 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 - Mod-Tap and Layer-Tap, with configurable tapping term, permissive hold, tap preference, and quick tap.
 - Two base/Fn layer pairs, selectable with the System 1 and System 2 keycodes in VIA.
 
+## Scan rate and power
+
+Running the controller at a higher scan rate is within the MCU's normal operating specifications. The 32 MHz clock and the supported scan rates are standard operating modes, not overclocking; the chip remains cool.
+
+Measured current consumption:
+
+- Stock firmware, 50 Hz, 16 MHz: 7.5 mA.
+- DMK, 500 Hz with ADC oversampling, 32 MHz: 10 mA.
+- DMK, 1000 Hz without oversampling, 32 MHz: 12 mA.
+
+At 1000 Hz the increase is only 4.5 mA, which is negligible for a USB-powered keyboard. If power consumption matters, select 50 Hz in [VIA](https://www.usevia.app/) to return to the stock 7.5 mA level.
+
+PFU's 50 Hz choice may reflect the Classic's shared design lineage with the battery-powered Bluetooth Hybrid. The Classic is effectively the wired-only version, and the scan rate apparently drew little attention for years.
+
 ## Installation and recovery
 
 The firmware is installed on the original controller without opening the keyboard. The supported paths are the Python flasher or the official HHKB Keymap Tool after returning to the stock Bank 1 updater with SW6. DFU and SWD are also available for backup, recovery, and development.
