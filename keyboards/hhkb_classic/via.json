@@ -2,7 +2,18 @@
   "name": "HHKB Professional Classic",
   "vendorId": "0xCAFE",
   "productId": "0x4010",
-  "customKeycodes": [],
+  "customKeycodes": [
+    {
+      "name": "System 1",
+      "title": "Select System 1",
+      "shortName": "Sys 1"
+    },
+    {
+      "name": "System 2",
+      "title": "Select System 2",
+      "shortName": "Sys 2"
+    }
+  ],
   "matrix": {
     "rows": 4,
     "cols": 15

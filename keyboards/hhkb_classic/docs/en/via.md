@@ -32,6 +32,10 @@ If the error persists, open `chrome://device-log`, try connecting through VIA ag
 
 Vial uses `vial.json` and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
 
+## Select a system
+
+With the updated firmware and `via.json`, assign **System 1** or **System 2** in the VIA keycode picker. Through **Any**, use `0x7E00` for System 1 and `0x7E01` for System 2. System 1 uses layers 0 and 1, and System 2 uses layers 2 and 3. Place each selector where it can be reached from the other system.
+
 ## Settings
 
 - Scan rate: 50, 125, 250, 500, or 1000 Hz.

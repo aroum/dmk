@@ -35,4 +35,4 @@ Factory classic-mode thresholds are read from the keyboard's EEPROM at startup. 
 
 ## DIP switches
 
-SW1–SW5 are read but have no fixed DMK layout action. SW6 is assigned to Bank 1 recovery by default. Fn + Space selects the two base/Fn layer pairs; Fn + Tab remains Caps Lock.
+SW1–SW5 are read but have no fixed DMK layout action. SW6 is assigned to Bank 1 recovery by default. Assign the System 1 and System 2 keycodes in VIA to select a base/Fn layer pair. Fn + Tab remains Caps Lock.

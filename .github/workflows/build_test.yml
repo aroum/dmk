@@ -27,9 +27,9 @@ jobs:
           - keyboard: kabarga
             mcu: nrf52840
             args: "-c --uf2"
-          - keyboard: magneteno
-            mcu: rp2350
-            args: "-c --uf2"
+          # - keyboard: magneteno
+          #   mcu: rp2350
+          #   args: "-c --uf2"
           - keyboard: nizkoteno
             mcu: rp2040
             args: "-c --uf2"

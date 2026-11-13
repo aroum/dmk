@@ -25,7 +25,7 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 - Optional hardware ADC oversampling to reduce measurement noise.
 - Two configurable LEDs; [VIA](https://www.usevia.app/) assigns Off, Debug heartbeat, Caps Lock, Fn layer, or System 2 to PA8 and PA9.
 - Mod-Tap and Layer-Tap, with configurable tapping term, permissive hold, tap preference, and quick tap.
-- Two base/Fn layer pairs, switchable with Fn + Space.
+- Two base/Fn layer pairs, selectable with the System 1 and System 2 keycodes in VIA.
 
 ## Installation and recovery
 
