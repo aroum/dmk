@@ -20,7 +20,7 @@ static bool s_custom_calibration = true;
 static bool s_calibration_mode = false;
 static bool s_capture_baseline = false;
 static uint8_t s_cal_baseline_samples = 0;
-static uint32_t s_cal_baseline_accum[MATRIX_COLS][MATRIX_ROWS];
+static uint16_t s_cal_baseline_accum[MATRIX_COLS][MATRIX_ROWS];
 static uint32_t s_calibrated_mask[2];
 static uint16_t s_capture_base[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
@@ -120,7 +120,7 @@ void hhkb_calibration_save_to_eeprom(void) {
     }
     while (FLASH->PECR & FLASH_PECR_PELOCK);
 
-    static hhkb_eeprom_cal_t cal;
+    hhkb_eeprom_cal_t cal;
     cal.magic = USER_EEPROM_MAGIC;
     cal.version = USER_EEPROM_VERSION;
     cal.actuation_pct = (uint8_t)(s_rt_cfg.act_pm / 10);

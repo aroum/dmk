@@ -482,7 +482,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     return _desc_str;
 }
 
-#define CONSOLE_BUF_SIZE 256
+#define CONSOLE_BUF_SIZE 192
 static char s_console_buf[CONSOLE_BUF_SIZE];
 static volatile uint16_t s_console_head = 0;
 static volatile uint16_t s_console_tail = 0;
