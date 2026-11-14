@@ -26,8 +26,12 @@ class FlasherValidationTest(unittest.TestCase):
         self.good = flasher.wrap_binary_to_hfb(b'\x00\x50\x00\x20\x01\x00\x01\x08')
 
     def test_models(self):
-        self.assertEqual(flasher.device_model('PD-KB401W'), 'AHHX01')
-        self.assertEqual(flasher.device_model('PD-KB401BSC'), 'AHHS01')
+        # Classic models (AHHX01)
+        for model in ('PD-KB401W', 'PD-KB401B', 'PD-KB401WN', 'PD-KB401BN'):
+            self.assertEqual(flasher.device_model(model), 'AHHX01')
+        # Type-S models (AHHS01)
+        for model in ('PD-KB401WSC', 'PD-KB401BSC', 'PD-KB401YSC'):
+            self.assertEqual(flasher.device_model(model), 'AHHS01')
         self.assertIsNone(flasher.device_model('unknown'))
         self.assertEqual(flasher.validate_container(self.good, 'AHHX01'), 'AHHX01')
         with self.assertRaises(ValueError): flasher.validate_container(self.good, 'AHHS01')

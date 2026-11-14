@@ -79,9 +79,14 @@ def wrap_binary_to_hfb(raw_bin: bytes, model: str = "AHHX01", version_bytes: byt
 def device_model(type_number: str):
     """Map recognised physical model numbers to the container model ID."""
     name = type_number.upper().strip()
-    if name in ("PD-KB401WSC", "PD-KB401BSC") or "TYPE-S" in name:
+    # Type-S models (container model AHHS01):
+    # PD-KB401WSC (White), PD-KB401BSC (Charcoal), PD-KB401YSC (Snow)
+    if name in ("PD-KB401WSC", "PD-KB401BSC", "PD-KB401YSC") or "TYPE-S" in name:
         return "AHHS01"
-    if name in ("PD-KB401W", "PD-KB401B"):
+    # Classic models (container model AHHX01):
+    # PD-KB401W (White Printed), PD-KB401B (Charcoal Printed),
+    # PD-KB401WN (White Blank), PD-KB401BN (Charcoal Blank)
+    if name in ("PD-KB401W", "PD-KB401B", "PD-KB401WN", "PD-KB401BN"):
         return "AHHX01"
     return None
 

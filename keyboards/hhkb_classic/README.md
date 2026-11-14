@@ -6,14 +6,16 @@
 
 Alternative firmware for the HHKB Professional Classic. It runs directly on the original STM32L072 controller: no controller replacement, soldering, or keyboard disassembly is required.
 
-**Documentation:** [Install](docs/en/install.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md)
+**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md)
 
 Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Releases page](https://github.com/aroum/dmk/releases).
 
 ## Supported keyboards
 
-- HHKB Professional Classic
-- HHKB Professional Classic Type-S
+- HHKB Professional Classic (`PD-KB401W`, `PD-KB401B`, `PD-KB401WN`, `PD-KB401BN`)
+- HHKB Professional Classic Type-S (`PD-KB401WSC`, `PD-KB401BSC`, `PD-KB401YSC`)
+
+See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, color variants, and container IDs.
 
 ## Features
 
