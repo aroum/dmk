@@ -1,4 +1,4 @@
-/* HHKB Classic: two independently validated EEPROM snapshots of VIA keymap.
+/* HHKB Classic: two independently validated EEPROM snapshots of VIA keymap, combos, and macros.
  * 0x08080600..0x08080d9f were zero in the supplied stock EEPROM backup.
  * Never overwrite a slot containing data that is not ours. */
 #include "vial.h"
@@ -10,15 +10,20 @@
 #ifndef SLOT_ADDRESS
 #define SLOT_ADDRESS 0x08080600UL
 #endif
-#define SLOT_MAGIC 0x314b4d44UL
-#define SLOT_COMMIT 0x54494d43UL
-#define KEYMAP_WORDS (DYNAMIC_KEYMAP_MAX_LAYERS * NUM_KEYS)
-#define SLOT_WORDS (4U + KEYMAP_WORDS)
+#define SLOT_MAGIC  0x324b4d44UL // 'DMK2' (Keymap + Combos + Macros)
+#define SLOT_COMMIT 0x54494d43UL // 'CMIT'
+
+#define KEYMAP_WORDS  (DYNAMIC_KEYMAP_MAX_LAYERS * NUM_KEYS)
+#define COMBO_WORDS   ((VIAL_COMBO_ENTRIES * sizeof(vial_combo_entry_t) + 3U) / 4U)
+#define MACRO_WORDS   ((DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE + 3U) / 4U)
+#define PAYLOAD_WORDS (KEYMAP_WORDS + COMBO_WORDS + MACRO_WORDS)
+#define SLOT_WORDS    (4U + PAYLOAD_WORDS)
+
 #define FLASH_ERRORS (FLASH_SR_WRPERR | FLASH_SR_PGAERR | FLASH_SR_SIZERR | FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR)
 _Static_assert(DYNAMIC_KEYMAP_MAX_LAYERS == 4 && NUM_KEYS == 60, "HHKB EEPROM layout requires 4 x 60 keys");
 _Static_assert(2 * SLOT_WORDS * 4 <= 0xa00, "keymap slots overlap factory sensor data");
 
-static uint32_t snapshot[KEYMAP_WORDS];
+static uint32_t snapshot[PAYLOAD_WORDS];
 static uint32_t generation, checksum;
 static int active_slot = -1, target_slot = -1;
 static unsigned stage;
@@ -33,7 +38,7 @@ static uint32_t hash_word(uint32_t hash, uint32_t word) {
 }
 static uint32_t slot_hash(volatile const uint32_t *p) {
     uint32_t h = hash_word(2166136261U, p[1]);
-    for (unsigned i = 0; i < KEYMAP_WORDS; i++) h = hash_word(h, p[4 + i]);
+    for (unsigned i = 0; i < PAYLOAD_WORDS; i++) h = hash_word(h, p[4 + i]);
     return h;
 }
 static bool valid(unsigned n) {
@@ -56,6 +61,14 @@ void vial_keyboard_keymap_load(void) {
     generation = p[1];
     uint32_t *dst = &dynamic_keymap[0][0];
     for (unsigned i = 0; i < KEYMAP_WORDS; i++) dst[i] = p[4 + i];
+
+    uint8_t *combo_dst = (uint8_t *)vial_storage.data.combos;
+    const volatile uint8_t *combo_src = (const volatile uint8_t *)&p[4 + KEYMAP_WORDS];
+    for (size_t i = 0; i < sizeof(vial_storage.data.combos); i++) combo_dst[i] = combo_src[i];
+
+    uint8_t *macro_dst = vial_storage.data.macro_buffer;
+    const volatile uint8_t *macro_src = (const volatile uint8_t *)&p[4 + KEYMAP_WORDS + COMBO_WORDS];
+    for (size_t i = 0; i < sizeof(vial_storage.data.macro_buffer); i++) macro_dst[i] = macro_src[i];
 }
 void vial_keyboard_keymap_save(void) { pending = true; }
 
@@ -84,10 +97,13 @@ void vial_keyboard_keymap_poll(void) {
             if (active_slot >= 0 || !writable(1)) return;
             candidate = 1;
         }
-        memcpy(snapshot, dynamic_keymap, sizeof(snapshot));
+        memset(snapshot, 0, sizeof(snapshot));
+        memcpy(&snapshot[0], dynamic_keymap, sizeof(dynamic_keymap));
+        memcpy(&snapshot[KEYMAP_WORDS], vial_storage.data.combos, sizeof(vial_storage.data.combos));
+        memcpy(&snapshot[KEYMAP_WORDS + COMBO_WORDS], vial_storage.data.macro_buffer, sizeof(vial_storage.data.macro_buffer));
         generation++;
         checksum = hash_word(2166136261U, generation);
-        for (unsigned i = 0; i < KEYMAP_WORDS; i++) checksum = hash_word(checksum, snapshot[i]);
+        for (unsigned i = 0; i < PAYLOAD_WORDS; i++) checksum = hash_word(checksum, snapshot[i]);
         target_slot = candidate;
         stage = 0;
     }
@@ -97,10 +113,10 @@ void vial_keyboard_keymap_poll(void) {
     else if (stage == 1) { offset = 0; value = SLOT_MAGIC; }
     else if (stage == 2) { offset = 1; value = generation; }
     else if (stage == 3) { offset = 2; value = checksum; }
-    else if (stage < 4 + KEYMAP_WORDS) { offset = stage; value = snapshot[stage - 4]; }
+    else if (stage < 4 + PAYLOAD_WORDS) { offset = stage; value = snapshot[stage - 4]; }
     else { offset = 3; value = SLOT_COMMIT; }
     if (!write_word(&dst[offset], value)) { target_slot = -1; return; }
-    if (++stage == 5 + KEYMAP_WORDS) {
+    if (++stage == 5 + PAYLOAD_WORDS) {
         active_slot = target_slot;
         target_slot = -1;
     }
