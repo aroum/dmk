@@ -28,15 +28,21 @@ void keyboard_platform_init(void) { update_system_layer(); }
 TickType_t keyboard_platform_timeout(void) { return pdMS_TO_TICKS(250); }
 void keyboard_platform_tick(TickType_t now) {
     bool heartbeat = ((now / pdMS_TO_TICKS(500)) & 1U) != 0;
+    bool mounted = tud_mounted();
     bool suspended = tud_suspended();
     for (uint8_t i = 0; i < 2; i++) {
         bool on = false;
-        switch (hhkb_get_led_mode(i)) {
-        case 1: on = heartbeat; break;
-        case 2: on = caps_lock; break;
-        case 3: on = (layers_get_state() & ((1U << 1) | (1U << 3))) != 0; break;
-        case 4: on = hhkb_get_system() != 0; break;
-        default: break;
+        if (!mounted && i == 0) {
+            // Debug LED: PA8 is solid ON while FreeRTOS is running and waiting for USB host enumeration
+            on = true;
+        } else {
+            switch (hhkb_get_led_mode(i)) {
+            case 1: on = heartbeat; break;
+            case 2: on = caps_lock; break;
+            case 3: on = (layers_get_state() & ((1U << 1) | (1U << 3))) != 0; break;
+            case 4: on = hhkb_get_system() != 0; break;
+            default: break;
+            }
         }
         hal_gpio_put(led_pins[i], on && !suspended);
     }

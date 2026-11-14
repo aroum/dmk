@@ -13,6 +13,7 @@ void hhkb_set_system(uint8_t s) { system_id = s; }
 uint8_t hhkb_get_led_mode(uint8_t i) { return modes[i]; }
 void hal_gpio_put(int p, bool v) { gpio[p] = v; }
 bool tud_suspended(void) { return suspended; }
+bool tud_mounted(void) { return true; }
 #include "../../keyboards/hhkb_classic/modules/indicators_system/indicators_system.c"
 
 int main(void) {
