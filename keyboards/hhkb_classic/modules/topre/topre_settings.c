@@ -268,6 +268,9 @@ void hhkb_calibration_start(void) {
     s_calibrated_mask[1] = 0;
     s_capture_baseline = true;
     s_calibration_mode = true;
+    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+        debug_console_printf("\r\n[CAL] Calibration started: capturing baseline (16 samples)...\r\n");
+    }
 }
 
 void hhkb_calibration_finish(void) {
@@ -285,6 +288,10 @@ void hhkb_calibration_finish(void) {
             rt_key_set_range(&s_rt_keys[c][r], s_cal_baseline[c][r], s_cal_peak[c][r]);
             rt_key_reset(&s_rt_keys[c][r]);
         }
+    }
+    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+        uint8_t count = (uint8_t)(__builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]));
+        debug_console_printf("[CAL] Calibration complete and saved to EEPROM (%u/60 keys updated).\r\n", count);
     }
     s_calibration_mode = false;
     s_custom_calibration = true;
@@ -516,8 +523,31 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
     if (val > s_capture_peak[col][row]) s_capture_peak[col][row] = val;
     if (val >= s_capture_base[col][row] + RT_MIN_RANGE) {
         uint8_t k_idx = col * 4 + row;
-        if (k_idx < 32) s_calibrated_mask[0] |= (1U << k_idx);
-        else s_calibrated_mask[1] |= (1U << (k_idx - 32));
+        bool newly_calibrated = false;
+        if (k_idx < 32) {
+            if (!(s_calibrated_mask[0] & (1U << k_idx))) {
+                s_calibrated_mask[0] |= (1U << k_idx);
+                newly_calibrated = true;
+            }
+        } else {
+            if (!(s_calibrated_mask[1] & (1U << (k_idx - 32)))) {
+                s_calibrated_mask[1] |= (1U << (k_idx - 32));
+                newly_calibrated = true;
+            }
+        }
+        if (newly_calibrated && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+            uint8_t count = (uint8_t)(__builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]));
+            uint8_t pct = (uint8_t)((count * 100U) / 60U);
+            char bar[21];
+            uint8_t filled = (uint8_t)((count * 20U) / 60U);
+            for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
+            bar[20] = '\0';
+            debug_console_printf("[CAL] [%s] %u%% (%u/60) | Key C%u R%u peak: %u\r\n",
+                                 bar, pct, count, col, row, s_capture_peak[col][row]);
+            if (count >= 60) {
+                debug_console_printf("[CAL] >>> All 60 keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
+            }
+        }
     }
 }
 bool hhkb_cal_is_capturing_baseline(void) { return s_calibration_mode && s_capture_baseline; }
@@ -530,6 +560,9 @@ void hhkb_cal_decrement_samples(void) {
             }
         }
         s_capture_baseline = false;
+        if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+            debug_console_printf("[CAL] Baseline captured! Press every key firmly to record peak travel.\r\n");
+        }
     }
 }
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row) { return &s_rt_keys[col][row]; }

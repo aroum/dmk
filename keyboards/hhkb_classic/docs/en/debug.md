@@ -22,9 +22,10 @@ By default, all debug logging channels are **disabled** to avoid unnecessary MCU
 1. Navigate to the **Configure** tab.
 2. Open **HHKB Settings** → **Debug** submenu.
 3. Toggle the desired logging flags:
-   - **Topre Matrix Logging** — prints state transition events (press/release) with matrix coordinates `(col, row)`, raw ADC count (`raw`), normalized value (`norm` from 0 to 1000 permille), and current key status.
-   - **VIA Protocol Logging** — prints incoming VIA/Vial requests, commands, and parameter modifications.
-   - **Rate Monitor Logging** — outputs periodic reports of the actual matrix scan rate and USB task frequency (e.g. `[RATE] Matrix: 1000 Hz, USB: 500 Hz`).
+   - **Topre Matrix Stream** — prints state transition events (press/release) with matrix coordinates `(col, row)`, raw ADC count (`raw`), normalized value (`norm` from 0 to 1000 permille), and current key status.
+   - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key, completion percentage `[====>    ] X% (N/60)`, and save readiness notifications.
+   - **Polling Rate Monitor** — outputs periodic reports of the actual matrix scan rate and USB task frequency (e.g. `[RATE] Matrix: 1000 Hz, USB: 500 Hz`).
+   - **VIA Telemetry Diag** — prints incoming VIA/Vial requests, commands, and parameter modifications.
 
 > [!TIP]
 > You can save logs to a text file or clear the output area directly using the buttons in the upper-right corner of the **HID Console** tab in VIA.

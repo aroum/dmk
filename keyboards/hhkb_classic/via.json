@@ -1022,30 +1022,12 @@
               ]
             },
             {
-              "label": "Active key",
-              "type": "label",
+              "label": "Calibration Monitor",
+              "type": "toggle",
               "content": [
-                "id_hhkb_debug_key",
+                "id_hhkb_debug_cal",
                 0,
-                20
-              ]
-            },
-            {
-              "label": "ADC raw / range",
-              "type": "label",
-              "content": [
-                "id_hhkb_debug_raw",
-                0,
-                21
-              ]
-            },
-            {
-              "label": "Travel & state",
-              "type": "label",
-              "content": [
-                "id_hhkb_debug_travel",
-                0,
-                22
+                25
               ]
             }
           ]

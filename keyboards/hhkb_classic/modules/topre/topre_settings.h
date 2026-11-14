@@ -70,6 +70,7 @@ enum {
     DEBUG_FLAG_TOPRE = 1U << 0, // 0x01: Topre matrix debug [Topre]
     DEBUG_FLAG_VIA   = 1U << 1, // 0x02: VIA telemetry diag [VIA_DIAG]
     DEBUG_FLAG_RATE  = 1U << 2, // 0x04: Polling/scan rate monitor [RATE]
+    DEBUG_FLAG_CAL   = 1U << 3, // 0x08: Calibration progress monitor [CAL]
 };
 
 bool hhkb_get_debug_flag(uint8_t flag);
