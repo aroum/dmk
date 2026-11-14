@@ -53,7 +53,10 @@ bool rt_update(rt_key_t *k, const rt_cfg_t *c, uint16_t raw) {
 
     /* Classic mode: fixed actuation point with release hysteresis. */
     if (!c->rt_enabled) {
-        int16_t rel = (c->act_pm > c->release_pm) ? (int16_t)(c->act_pm - c->release_pm) : 0;
+        int16_t rel = (c->act_pm > c->release_pm) ? (int16_t)(c->act_pm - c->release_pm) : (int16_t)c->reset_pm;
+        if (rel < (int16_t)c->reset_pm) {
+            rel = (int16_t)c->reset_pm;
+        }
         if (k->down) {
             if (v <= rel) {
                 k->down = false;

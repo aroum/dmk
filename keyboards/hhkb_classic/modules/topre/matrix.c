@@ -32,7 +32,8 @@ void TIM2_IRQHandler(void) {
 
     uint16_t next = (uint16_t)(TIM2->CCR1 + s_scan_period_ticks);
     TIM2->CCR1 = next;
-    if ((int16_t)(next - (uint16_t)TIM2->CNT) <= 0) {
+    uint16_t remaining = (uint16_t)(next - (uint16_t)TIM2->CNT);
+    if (remaining > s_scan_period_ticks) {
         // A delayed interrupt can miss a compare. Restart from the current count.
         TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
     }
