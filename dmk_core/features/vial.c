@@ -598,16 +598,23 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
             break;
         }
         case VIA_SUB_SWITCH_MATRIX_STATE: {
-            uint8_t row_size = (NUM_COLS + 7) / 8;
-            memset(&response[2], 0, 30);
-            for (uint8_t r = 0; r < NUM_ROWS; r++) {
+            uint8_t row_offset = request[2];
+            response[2] = row_offset;
+            uint8_t col_bytes = (NUM_COLS + 7) / 8;
+            uint8_t max_rows = col_bytes ? (28 / col_bytes) : 0;
+            memset(&response[3], 0, 29);
+            uint8_t idx = 3;
+            for (uint8_t r = 0; r < max_rows && (uint8_t)(r + row_offset) < NUM_ROWS; r++) {
+                uint8_t actual_row = r + row_offset;
+                uint32_t value = 0;
                 for (uint8_t c = 0; c < NUM_COLS; c++) {
-                    if (matrix_is_pressed(r, c)) {
-                        uint8_t byte_idx = row_size - 1 - (c / 8);
-                        uint8_t offset = 2 + (r * row_size) + byte_idx;
-                        if (offset < 32) {
-                            response[offset] |= (uint8_t)(1U << (c % 8));
-                        }
+                    if (matrix_is_pressed(actual_row, c)) {
+                        value |= (1UL << c);
+                    }
+                }
+                for (int8_t b = (int8_t)col_bytes - 1; b >= 0; b--) {
+                    if (idx < 32) {
+                        response[idx++] = (uint8_t)((value >> (b * 8)) & 0xFF);
                     }
                 }
             }
