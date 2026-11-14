@@ -2,7 +2,7 @@
 
 void rt_cfg_defaults(rt_cfg_t *c) {
     c->rt_enabled = false;
-    c->act_pm     = 500;  /* 50 % of range                   */
+    c->act_pm     = 750;  /* 75 % of range                   */
     c->press_pm   = 30;   /* 3 %                             */
     c->release_pm = 30;   /* 3 %                             */
     c->reset_pm   = 50;   /* 5 % dead zone near the top      */

@@ -76,9 +76,9 @@ jobs:
       matrix:
         include:
           - variant: classic
-            defines: HHKB_RAPID_TRIGGER,HHKB_FACTORY_THRESHOLDS,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
           - variant: type-s
-            defines: HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_FACTORY_THRESHOLDS,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
     steps:
       - name: Checkout Code

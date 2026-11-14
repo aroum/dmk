@@ -25,9 +25,15 @@ static uint32_t s_calibrated_mask[2];
 static uint16_t s_capture_base[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
-static rt_cfg_t s_rt_cfg;
-static uint16_t s_classic_release_pm = 100; // Default 10% travel hysteresis
-static uint8_t s_actuation_offset_pct = 50;
+static rt_cfg_t s_rt_cfg = {
+    .rt_enabled = true,
+    .act_pm = 750,
+    .press_pm = 25,
+    .release_pm = 25,
+    .reset_pm = 50,
+};
+static uint16_t s_classic_release_pm = 100; // Default 10% travel hysteresis (0.4 mm)
+static uint8_t s_actuation_offset_pct = 75;
 
 static uint8_t s_scan_rate = 4; // 1000 Hz
 static bool s_oversampling_requested = false;
@@ -161,8 +167,8 @@ void hhkb_calibration_save_to_eeprom(void) {
 void hhkb_calibration_load(void) {
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)USER_EEPROM_ADDR;
     rt_cfg_defaults(&s_rt_cfg);
-    s_rt_cfg.act_pm = 500;
-    s_actuation_offset_pct = 50;
+    s_rt_cfg.act_pm = 750;
+    s_actuation_offset_pct = 75;
     s_classic_release_pm = 100;
     s_rt_cfg.press_pm = 25;
     s_rt_cfg.release_pm = 25;
