@@ -182,16 +182,29 @@ uint8_t const desc_configuration[] = {
 #define EPNUM_VIAL_IN 0x82
 #endif
 
+#ifndef TUD_HID_INOUT_ASYM_DESCRIPTOR
+#define TUD_HID_INOUT_ASYM_DESCRIPTOR(_itfnum, _stridx, _boot_protocol, _report_desc_len, _epout, _epout_size, _epin, _epin_size, _ep_interval) \
+  /* Interface */\
+  9, TUSB_DESC_INTERFACE, _itfnum, 0, 2, TUSB_CLASS_HID, (uint8_t)((_boot_protocol) ? (uint8_t)HID_SUBCLASS_BOOT : 0), _boot_protocol, _stridx,\
+  /* HID descriptor */\
+  9, HID_DESC_TYPE_HID, U16_TO_U8S_LE(0x0111), 0, 1, HID_DESC_TYPE_REPORT, U16_TO_U8S_LE(_report_desc_len),\
+  /* Endpoint Out */\
+  7, TUSB_DESC_ENDPOINT, _epout, TUSB_XFER_INTERRUPT, U16_TO_U8S_LE(_epout_size), _ep_interval, \
+  /* Endpoint In */\
+  7, TUSB_DESC_ENDPOINT, _epin, TUSB_XFER_INTERRUPT, U16_TO_U8S_LE(_epin_size), _ep_interval
+#endif
+
 #ifdef VIAL
-    // Interface 1: Vial Raw HID Descriptor (IN & OUT endpoints)
-    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_VIAL,             // Interface number
-                             0,                        // String index
-                             HID_ITF_PROTOCOL_NONE,    // Protocol code
-                             sizeof(desc_vial_report), // HID report descriptor length
-                             EPNUM_VIAL_OUT,           // Endpoint address (OUT endpoint)
-                             EPNUM_VIAL_IN,            // Endpoint address (IN endpoint)
-                             32,                       // Endpoint size (32 bytes)
-                             1),                       // Polling interval in milliseconds
+    // Interface 1: Vial Raw HID Descriptor (OUT: 64 bytes, IN: 32 bytes)
+    TUD_HID_INOUT_ASYM_DESCRIPTOR(ITF_NUM_VIAL,             // Interface number
+                                  0,                        // String index
+                                  HID_ITF_PROTOCOL_NONE,    // Protocol code
+                                  sizeof(desc_vial_report), // HID report descriptor length
+                                  EPNUM_VIAL_OUT,           // Endpoint address (OUT endpoint)
+                                  64,                       // Endpoint OUT size (64 bytes for short-packet completion)
+                                  EPNUM_VIAL_IN,            // Endpoint address (IN endpoint)
+                                  32,                       // Endpoint IN size (32 bytes)
+                                  1),                       // Polling interval in milliseconds
 #endif
 
 #ifdef DEBUG_CONSOLE_ENABLE
