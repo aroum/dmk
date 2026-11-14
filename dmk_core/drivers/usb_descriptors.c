@@ -2,6 +2,16 @@
 #include "led.h"
 #include "tusb.h"
 #include "vial.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern void usb_notify_task(void);
+void debug_console_flush(void);
+void debug_console_printf(const char *fmt, ...);
 
 #include "rgb.h"
 
@@ -51,6 +61,33 @@ uint8_t const desc_vial_report[] = {
 };
 #endif
 
+#ifdef DEBUG_CONSOLE_ENABLE
+// QMK / VIA Debug Console descriptor (Usage Page 0xFF31, Usage 0x0074)
+uint8_t const desc_console_report[] = {
+    0x06, 0x31, 0xFF, // Usage Page (Vendor Defined 0xFF31)
+    0x09, 0x74,       // Usage (Vendor Defined 0x0074)
+    0xa1, 0x01,       // Collection (Application)
+    0x09, 0x75,       //   Usage (Vendor Defined 0x0075)
+    0x15, 0x00,       //   Logical Minimum (0)
+    0x26, 0xFF, 0x00, //   Logical Maximum (255)
+    0x75, 0x08,       //   Report Size (8)
+    0x95, 0x20,       //   Report Count (32)
+    0x81, 0x02,       //   Input (Data, Var, Abs)
+    0xc0              // End Collection
+};
+#endif
+
+enum {
+    ITF_NUM_KEYBOARD = 0,
+#ifdef VIAL
+    ITF_NUM_VIAL,
+#endif
+#ifdef DEBUG_CONSOLE_ENABLE
+    ITF_NUM_CONSOLE,
+#endif
+    ITF_TOTAL
+};
+
 // Device descriptor
 tusb_desc_device_t const desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
@@ -85,7 +122,13 @@ tusb_desc_device_t const desc_device = {
 #define EPNUM_MIDI_IN 0x83
 #endif
 
-#if defined(VIAL) && defined(MIDI_USB)
+#if defined(DEBUG_CONSOLE_ENABLE) && defined(VIAL) && defined(MIDI_USB)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
+#define TOTAL_INTERFACES 5
+#elif defined(DEBUG_CONSOLE_ENABLE) && defined(VIAL)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN)
+#define TOTAL_INTERFACES 3
+#elif defined(VIAL) && defined(MIDI_USB)
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_MIDI_DESC_LEN)
 #define TOTAL_INTERFACES 4
 #elif defined(VIAL)
@@ -133,7 +176,7 @@ uint8_t const desc_configuration[] = {
                        HID_POLL_INTERVAL_MS),   // Polling interval in milliseconds (1ms = 1000Hz)
 
 #ifndef EPNUM_VIAL_OUT
-#define EPNUM_VIAL_OUT 0x02
+#define EPNUM_VIAL_OUT 0x04
 #endif
 #ifndef EPNUM_VIAL_IN
 #define EPNUM_VIAL_IN 0x82
@@ -141,7 +184,7 @@ uint8_t const desc_configuration[] = {
 
 #ifdef VIAL
     // Interface 1: Vial Raw HID Descriptor (IN & OUT endpoints)
-    TUD_HID_INOUT_DESCRIPTOR(1,                        // Interface number
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_VIAL,             // Interface number
                              0,                        // String index
                              HID_ITF_PROTOCOL_NONE,    // Protocol code
                              sizeof(desc_vial_report), // HID report descriptor length
@@ -149,6 +192,20 @@ uint8_t const desc_configuration[] = {
                              EPNUM_VIAL_IN,            // Endpoint address (IN endpoint)
                              32,                       // Endpoint size (32 bytes)
                              1),                       // Polling interval in milliseconds
+#endif
+
+#ifdef DEBUG_CONSOLE_ENABLE
+#ifndef EPNUM_CONSOLE_IN
+#define EPNUM_CONSOLE_IN 0x83
+#endif
+    // Interface 2: QMK / VIA Debug Console HID Descriptor (IN endpoint)
+    TUD_HID_DESCRIPTOR(ITF_NUM_CONSOLE,
+                       0,
+                       HID_ITF_PROTOCOL_NONE,
+                       sizeof(desc_console_report),
+                       EPNUM_CONSOLE_IN,
+                       32,
+                       1),
 #endif
 
 #ifdef MIDI_USB
@@ -212,8 +269,13 @@ uint8_t const *tud_descriptor_other_speed_configuration_cb(uint8_t index) {
 // HID report descriptor callback
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
 #ifdef VIAL
-    if (instance == 1) {
+    if (instance == ITF_NUM_VIAL) {
         return desc_vial_report;
+    }
+#endif
+#ifdef DEBUG_CONSOLE_ENABLE
+    if (instance == ITF_NUM_CONSOLE) {
+        return desc_console_report;
     }
 #endif
     (void)instance;
@@ -229,6 +291,9 @@ void tud_mount_cb(void) {
     led_resume();
     rgb_resume();
     USB_HID_ResyncKeyboard();
+#ifdef DEBUG_CONSOLE_ENABLE
+    debug_console_printf("[BOOT] HID console ready\r\n");
+#endif
 }
 
 // Invoked when device is unmounted
@@ -272,18 +337,49 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 static uint8_t pending_vial_response[32];
 static volatile bool has_pending_vial_response = false;
 
+volatile uint32_t vial_rx_count = 0;
+volatile uint32_t vial_tx_submit_count = 0;
+volatile uint32_t vial_tx_complete_count = 0;
+volatile uint32_t vial_tx_fail_count = 0;
+
 void vial_flush_pending_report(void) {
-    if (has_pending_vial_response && tud_hid_n_ready(1)) {
-        has_pending_vial_response = false;
-        tud_hid_n_report(1, 0, pending_vial_response, 32);
+    if (has_pending_vial_response && tud_hid_n_ready(ITF_NUM_VIAL)) {
+        if (tud_hid_n_report(ITF_NUM_VIAL, 0, pending_vial_response, 32)) {
+            has_pending_vial_response = false;
+            vial_tx_submit_count++;
+        } else {
+            vial_tx_fail_count++;
+        }
     }
 }
 
 void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_t len) {
     (void)report;
     (void)len;
-    if (instance == 1) {
+#ifdef VIAL
+    if (instance == ITF_NUM_VIAL) {
+        vial_tx_complete_count++;
         vial_flush_pending_report();
+    }
+#endif
+#ifdef DEBUG_CONSOLE_ENABLE
+    if (instance == ITF_NUM_CONSOLE) {
+        debug_console_flush();
+    }
+#endif
+}
+#endif
+
+#ifdef DEBUG_CONSOLE_ENABLE
+static uint32_t s_last_diag_tick = 0;
+void vial_diag_task(void) {
+    uint32_t now = xTaskGetTickCount();
+    if ((now - s_last_diag_tick) >= pdMS_TO_TICKS(1000)) {
+        s_last_diag_tick = now;
+        debug_console_printf("[VIA_DIAG] rx=%lu tx_sub=%lu tx_cpl=%lu tx_fail=%lu pend=%d\r\n",
+                             (unsigned long)vial_rx_count, (unsigned long)vial_tx_submit_count,
+                             (unsigned long)vial_tx_complete_count, (unsigned long)vial_tx_fail_count,
+                             has_pending_vial_response ? 1 : 0);
     }
 }
 #endif
@@ -293,13 +389,16 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
                            uint16_t bufsize) {
     (void)report_id;
 #ifdef VIAL
-    if (instance == 1) {
+    if (instance == ITF_NUM_VIAL) {
         if (bufsize >= 32) {
+            vial_rx_count++;
             uint8_t response[32];
             vial_process_packet(buffer, response);
-            if (tud_hid_n_ready(1)) {
-                tud_hid_n_report(1, 0, response, 32);
+            if (tud_hid_n_report(ITF_NUM_VIAL, 0, response, 32)) {
+                vial_tx_submit_count++;
+                has_pending_vial_response = false;
             } else {
+                vial_tx_fail_count++;
                 memcpy(pending_vial_response, response, 32);
                 has_pending_vial_response = true;
             }
@@ -335,4 +434,66 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
     }
     return _desc_str;
+}
+
+#define CONSOLE_BUF_SIZE 256
+static char s_console_buf[CONSOLE_BUF_SIZE];
+static volatile uint16_t s_console_head = 0;
+static volatile uint16_t s_console_tail = 0;
+
+void debug_console_write(const char *buf, size_t len) {
+    if (!buf || len == 0) return;
+    bool running = xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED;
+    if (running) taskENTER_CRITICAL();
+    for (size_t i = 0; i < len; i++) {
+        uint16_t next = (s_console_head + 1) % CONSOLE_BUF_SIZE;
+        if (next == s_console_tail) {
+            s_console_tail = (s_console_tail + 1) % CONSOLE_BUF_SIZE;
+        }
+        s_console_buf[s_console_head] = buf[i];
+        s_console_head = next;
+    }
+    if (running) {
+        taskEXIT_CRITICAL();
+        usb_notify_task();
+    }
+}
+
+void debug_console_printf(const char *fmt, ...) {
+    char tmp[96];
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(tmp, sizeof(tmp), fmt, args);
+    va_end(args);
+    if (len > 0) {
+        if ((size_t)len > sizeof(tmp) - 1) len = sizeof(tmp) - 1;
+        debug_console_write(tmp, len);
+    }
+}
+
+void debug_console_flush(void) {
+#ifdef DEBUG_CONSOLE_ENABLE
+    if (!tud_mounted() || tud_suspended()) return;
+    if (!tud_hid_n_ready(ITF_NUM_CONSOLE)) return;
+
+    if (s_console_head == s_console_tail) return;
+
+    uint8_t packet[32];
+    memset(packet, 0, sizeof(packet));
+
+    bool running = xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED;
+    if (running) taskENTER_CRITICAL();
+
+    size_t count = 0;
+    while (s_console_tail != s_console_head && count < sizeof(packet)) {
+        packet[count++] = (uint8_t)s_console_buf[s_console_tail];
+        s_console_tail = (s_console_tail + 1) % CONSOLE_BUF_SIZE;
+    }
+
+    if (running) taskEXIT_CRITICAL();
+
+    if (count > 0) {
+        tud_hid_n_report(ITF_NUM_CONSOLE, 0, packet, sizeof(packet));
+    }
+#endif
 }

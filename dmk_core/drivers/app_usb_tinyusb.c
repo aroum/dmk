@@ -151,6 +151,12 @@ static void usb_device_task(void *param) {
         vial_flush_pending_report();
         vial_eeprom_task();
 #endif
+#ifdef DEBUG_CONSOLE_ENABLE
+        extern void vial_diag_task(void);
+        vial_diag_task();
+        extern void debug_console_flush(void);
+        debug_console_flush();
+#endif
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2));
     }
 }
@@ -204,6 +210,12 @@ bool USB_HID_Init(void) {
     xTaskCreate(usb_device_task, "usbd", 512, NULL, TASK_PRIO_USBD, &s_usb_task_handle);
 #endif
     return (s_usb_task_handle != NULL);
+}
+
+void usb_notify_task(void) {
+    if (s_usb_task_handle) {
+        xTaskNotifyGive(s_usb_task_handle);
+    }
 }
 
 static bool usb_hid_wait_ready(int timeout_ms) {
