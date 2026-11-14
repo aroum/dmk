@@ -2,17 +2,19 @@
 
 DMK firmware runs natively on the factory STM32L072CZ microcontroller of the wired USB-C Happy Hacking Keyboard (HHKB Professional Classic series). No hardware modifications, soldering, or disassembly are required.
 
-## Model Matrix
+## Supported ANSI Models (60-key US Layout)
 
-| Commercial Name | Model Number | Color | Keycaps | Switch Type | Container ID | Firmware Target |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **HHKB Professional Classic (White)** | `PD-KB401W` | White / Gray | Printed | Classic Topre 45g | `AHHX01` | `classic` |
-| **HHKB Professional Classic (Charcoal)** | `PD-KB401B` | Charcoal | Printed | Classic Topre 45g | `AHHX01` | `classic` |
-| **HHKB Professional Classic (White, Blank)** | `PD-KB401WN` | White / Gray | Blank (無刻印) | Classic Topre 45g | `AHHX01` | `classic` |
-| **HHKB Professional Classic (Charcoal, Blank)** | `PD-KB401BN` | Charcoal | Blank (無刻印) | Classic Topre 45g | `AHHX01` | `classic` |
-| **HHKB Classic Type-S (White)** | `PD-KB401WSC` | White / Gray | Printed | Silent Type-S 45g | `AHHS01` | `type-s` |
-| **HHKB Classic Type-S (Charcoal)** | `PD-KB401BSC` | Charcoal | Printed | Silent Type-S 45g | `AHHS01` | `type-s` |
-| **HHKB Classic Type-S (Snow)** | `PD-KB401YSC` | Snow (All-White) | Printed / Blank | Silent Type-S 45g | `AHHS01` | `type-s` |
+The following 7 models represent the physical 60-key ANSI (US Layout) revisions fully supported out of the box:
+
+| Commercial Name | Model Number | Layout | Color | Keycaps | Switch Type | Container ID | Firmware Target |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **HHKB Professional Classic (White)** | `PD-KB401W` | ANSI 60-key | White / Gray | Printed | Classic Topre 45g | `AHHX01` | `classic` |
+| **HHKB Professional Classic (Charcoal)** | `PD-KB401B` | ANSI 60-key | Charcoal | Printed | Classic Topre 45g | `AHHX01` | `classic` |
+| **HHKB Professional Classic (White, Blank)** | `PD-KB401WN` | ANSI 60-key | White / Gray | Blank (無刻印) | Classic Topre 45g | `AHHX01` | `classic` |
+| **HHKB Professional Classic (Charcoal, Blank)** | `PD-KB401BN` | ANSI 60-key | Charcoal | Blank (無刻印) | Classic Topre 45g | `AHHX01` | `classic` |
+| **HHKB Classic Type-S (White)** | `PD-KB401WSC` | ANSI 60-key | White / Gray | Printed | Silent Type-S 45g | `AHHS01` | `type-s` |
+| **HHKB Classic Type-S (Charcoal)** | `PD-KB401BSC` | ANSI 60-key | Charcoal | Printed | Silent Type-S 45g | `AHHS01` | `type-s` |
+| **HHKB Classic Type-S (Snow)** | `PD-KB401YSC` | ANSI 60-key | Snow (All-White) | Printed / Blank | Silent Type-S 45g | `AHHS01` | `type-s` |
 
 ---
 
@@ -41,10 +43,11 @@ DMK firmware runs natively on the factory STM32L072CZ microcontroller of the wir
 | **HHKB Pro Classic Type-S JIS (White)** | `PD-KB421WSC` | White (白) | 69-key JIS | Hardware identical; matrix pending |
 | **HHKB Pro Classic Type-S JIS (Snow)** | `PD-KB421YSC` | Snow (雪) | 69-key JIS | Hardware identical; matrix pending |
 
-### Technical Analysis:
-- **Hardware Architecture:** The `PD-KB421` series shares the exact same core controller architecture as the ANSI models (STMicroelectronics STM32L072, identical analog sensing frontend, dual-bank bootloader, and USB flasher protocol).
+### Technical Analysis & Hardware Auto-Detection:
+- **Unified Factory Firmware Distribution:** Crucially, PFU does not provide separate firmware packages for JIS models on their official website. The official updates (`HHKB410_FW_A429.hfb` for Classic and `HHKB401_FW_A803.hfb` for Classic Type-S) are identical for both ANSI and JIS models. The stock firmware automatically detects whether it is running on an ANSI or JIS board at startup (likely via a hardware strapping resistor on an unpopulated GPIO, an EEPROM descriptor flag, or sensing line pull).
+- **Core Hardware Architecture:** The `PD-KB421` series shares the exact same core controller architecture as the ANSI models (STMicroelectronics STM32L072, identical analog sensing frontend, dual-bank bootloader, and USB flasher protocol).
 - **Matrix Routing Difference:** The Japanese layout features **69 physical keys** (incorporating arrow cluster, dedicated Kana/Henkan keys, and split spacebar row). Because of the higher key count, the analog multiplexer addressing (U1/U2) and row strobe lines differ from the standard 60-key ANSI matrix (15 columns × 4 rows).
-- **Current Status:** Not yet supported out-of-the-box in the main firmware target to prevent improper key mapping.
+- **Current Status:** Not yet supported out-of-the-box in the DMK firmware target pending matrix map reverse-engineering.
 
 ### Call for Hardware Testers & Volunteers:
 If you own a `PD-KB421` model, you can assist in enabling support:
