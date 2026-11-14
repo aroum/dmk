@@ -172,8 +172,43 @@ static uint8_t from_via_mods(uint8_t via_mod) {
 uint16_t to_via_keycode(uint32_t dmk_key) {
     if (dmk_key == K_TRNS)
         return 0x0001;
+    if ((dmk_key & 0xFF000000) == DMK_CONSUMER) {
+        uint16_t usage = (uint16_t)(dmk_key & 0xFFFF);
+        switch (usage) {
+            case 0xE2: return 0x00A8; // KC_AUDIO_MUTE
+            case 0xE9: return 0x00A9; // KC_AUDIO_VOL_UP
+            case 0xEA: return 0x00AA; // KC_AUDIO_VOL_DOWN
+            case 0xB5: return 0x00AB; // KC_MEDIA_NEXT_TRACK
+            case 0xB6: return 0x00AC; // KC_MEDIA_PREV_TRACK
+            case 0xB7: return 0x00AD; // KC_MEDIA_STOP
+            case 0xCD: return 0x00AE; // KC_MEDIA_PLAY_PAUSE
+            case 0x183: return 0x00AF; // KC_MEDIA_SELECT
+            case 0xB8: return 0x00B0; // KC_MEDIA_EJECT
+            case 0x18A: return 0x00B1; // KC_MAIL
+            case 0x192: return 0x00B2; // KC_CALCULATOR
+            case 0x194: return 0x00B3; // KC_MY_COMPUTER
+            case 0x221: return 0x00B4; // KC_WWW_SEARCH
+            case 0x223: return 0x00B5; // KC_WWW_HOME
+            case 0x224: return 0x00B6; // KC_WWW_BACK
+            case 0x225: return 0x00B7; // KC_WWW_FORWARD
+            case 0x226: return 0x00B8; // KC_WWW_STOP
+            case 0x227: return 0x00B9; // KC_WWW_REFRESH
+            case 0x22A: return 0x00BA; // KC_WWW_FAVORITES
+            case 0xB3: return 0x00BB; // KC_MEDIA_FAST_FORWARD
+            case 0xB4: return 0x00BC; // KC_MEDIA_REWIND
+            case 0x6F: return 0x00BD; // KC_BRIGHTNESS_UP
+            case 0x70: return 0x00BE; // KC_BRIGHTNESS_DOWN
+            default: return 0x0000;
+        }
+    }
+    if (dmk_key == K_PWR)
+        return 0x00A5; // KC_SYSTEM_POWER
+    if (dmk_key == K_SLEP)
+        return 0x00A6; // KC_SYSTEM_SLEEP
+    if (dmk_key == K_WAKE)
+        return 0x00A7; // KC_SYSTEM_WAKE
     if (dmk_key >= K_RGB_TOGG && dmk_key <= K_RGB_RST)
-        return 0x7820 + (dmk_key - K_RGB_TOGG);
+        return (uint16_t)dmk_key;
     if (dmk_key == K_BOOTLOADER)
         return 0x7C00;
     if (dmk_key >= 0xC0 && dmk_key <= 0xDF)
@@ -196,10 +231,10 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
         return 0x5220 | (dmk_key - L_0);
     if ((dmk_key >= 0x7100 && dmk_key <= 0x71FF) || (dmk_key >= 0x7A00 && dmk_key <= 0x7AFF) ||
         (dmk_key >= 0x7E00 && dmk_key <= 0x7F3F))
-        return dmk_key;
+        return (uint16_t)dmk_key;
     if (dmk_key >= HID_KEY_MOUSE_UP && dmk_key <= HID_KEY_MOUSE_ACCEL2)
         return to_via_mouse_keycode((uint8_t)dmk_key);
-    return (dmk_key <= 0xFF) ? dmk_key : 0x0000;
+    return (dmk_key <= 0xFF) ? (uint16_t)dmk_key : 0x0000;
 }
 
 // Helper function to map VIA 16-bit keycodes to DMK 32-bit keycodes
@@ -217,6 +252,38 @@ uint32_t from_via_keycode(uint16_t via_key) {
         return K_BOOTLOADER;
     if (via_key >= 0x7700 && via_key <= 0x771F)
         return 0xC0 + (via_key - 0x7700);
+
+    // VIA / QMK System and Consumer media keys
+    switch (via_key) {
+        case 0x00A5: return K_PWR;
+        case 0x00A6: return K_SLEP;
+        case 0x00A7: return K_WAKE;
+        case 0x00A8: return K_MUTE;
+        case 0x00A9: return K_VOLU;
+        case 0x00AA: return K_VOLD;
+        case 0x00AB: return K_MNXT;
+        case 0x00AC: return K_MPRV;
+        case 0x00AD: return K_MSTP;
+        case 0x00AE: return K_MPLY;
+        case 0x00AF: return K_MSEL;
+        case 0x00B0: return K_EJCT;
+        case 0x00B1: return K_MAIL;
+        case 0x00B2: return K_CALC;
+        case 0x00B3: return K_MYCM;
+        case 0x00B4: return K_WSCH;
+        case 0x00B5: return K_WHOM;
+        case 0x00B6: return K_WBAK;
+        case 0x00B7: return K_WFWD;
+        case 0x00B8: return K_WSTP;
+        case 0x00B9: return K_WREF;
+        case 0x00BA: return K_WFAV;
+        case 0x00BB: return K_MFFD;
+        case 0x00BC: return K_MRWD;
+        case 0x00BD: return K_BRIU;
+        case 0x00BE: return K_BRID;
+        default: break;
+    }
+
     if ((via_key >= 0x00CD && via_key <= 0x00D5) || (via_key >= 0x00D9 && via_key <= 0x00DF))
         return from_via_mouse_keycode((uint8_t)via_key);
     if (via_key >= 0x0002 && via_key <= 0x00FF)
@@ -268,8 +335,12 @@ static void vial_storage_init_default(void) {
     }
 }
 
+#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_baikal) || defined(MCU_nrf52840)
+#define VIAL_HAS_BUILTIN_STORAGE 1
+#endif
+
 #ifdef MCU_milandr
-static void vial_eeprom_load(void) {
+bool vial_platform_storage_load(void) {
     const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)EEPROM_STORAGE_ADDR;
     if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
         memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
@@ -277,6 +348,7 @@ static void vial_eeprom_load(void) {
     } else {
         vial_storage_init_default();
     }
+    return true;
 }
 
 static __RAMFUNC void vial_eeprom_write_flash(void) {
@@ -293,7 +365,7 @@ static __RAMFUNC void vial_eeprom_write_flash(void) {
     __enable_irq();
 }
 
-static void vial_eeprom_save_now(void) {
+void vial_platform_storage_save_now(void) {
     vial_storage.data.magic = VIAL_EEPROM_MAGIC;
     rgb_get_config(vial_storage.data.rgb_cfg);
     if (memcmp((const void *)EEPROM_STORAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
@@ -312,7 +384,7 @@ static void vial_eeprom_save_now(void) {
 _Static_assert(sizeof(vial_storage_t) <= FLASH_SECTOR_SIZE, "Vial storage exceeds its reserved sector");
 _Static_assert(sizeof(vial_storage_t) % FLASH_PAGE_SIZE == 0, "Vial storage must fill whole flash pages");
 
-static void vial_eeprom_load(void) {
+bool vial_platform_storage_load(void) {
     const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
     if (flash_storage->data.magic == VIAL_EEPROM_MAGIC) {
         memcpy(&vial_storage.data, &flash_storage->data, sizeof(vial_storage_data_t));
@@ -320,9 +392,10 @@ static void vial_eeprom_load(void) {
     } else {
         vial_storage_init_default();
     }
+    return true;
 }
 
-static void vial_eeprom_save_now(void) {
+void vial_platform_storage_save_now(void) {
     vial_storage.data.magic = VIAL_EEPROM_MAGIC;
     rgb_get_config(vial_storage.data.rgb_cfg);
     const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
@@ -352,7 +425,7 @@ static void vial_eeprom_save_now(void) {
 // We reserve the top 4 KB block (0xA003F000 - 0xA003FFFF) for non-volatile Vial/RGB config.
 #define BAIKAL_FLASH_STORAGE_ADDR 0xA003F000UL
 
-static void vial_eeprom_load(void) {
+bool vial_platform_storage_load(void) {
     const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)BAIKAL_FLASH_STORAGE_ADDR;
     if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
         memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
@@ -360,9 +433,10 @@ static void vial_eeprom_load(void) {
     } else {
         vial_storage_init_default();
     }
+    return true;
 }
 
-static void vial_eeprom_save_now(void) {
+void vial_platform_storage_save_now(void) {
     vial_storage.data.magic = VIAL_EEPROM_MAGIC;
     rgb_get_config(vial_storage.data.rgb_cfg);
     if (memcmp((const void *)BAIKAL_FLASH_STORAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
@@ -399,7 +473,7 @@ static void vial_eeprom_save_now(void) {
 // Reserved page for Vial / RGB persistent storage: 0x000EE000 (1 page = 4096 bytes)
 #define NRF_FLASH_STORAGE_PAGE_ADDR 0x000EE000UL
 
-static void vial_eeprom_load(void) {
+bool vial_platform_storage_load(void) {
     const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)NRF_FLASH_STORAGE_PAGE_ADDR;
     if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
         memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
@@ -407,9 +481,10 @@ static void vial_eeprom_load(void) {
     } else {
         vial_storage_init_default();
     }
+    return true;
 }
 
-static void vial_eeprom_save_now(void) {
+void vial_platform_storage_save_now(void) {
     vial_storage.data.magic = VIAL_EEPROM_MAGIC;
     rgb_get_config(vial_storage.data.rgb_cfg);
     if (memcmp((const void *)NRF_FLASH_STORAGE_PAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
@@ -423,16 +498,33 @@ static void vial_eeprom_save_now(void) {
 }
 #endif
 
-#if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350) && !defined(MCU_baikal) && !defined(MCU_nrf52840)
 __attribute__((weak)) void vial_keyboard_keymap_load(void) {}
 __attribute__((weak)) void vial_keyboard_keymap_save(void) {}
 __attribute__((weak)) void vial_keyboard_keymap_poll(void) {}
-static inline void vial_eeprom_load(void) {
+
+__attribute__((weak)) void vial_platform_storage_poll(void) {
+    vial_keyboard_keymap_poll();
+}
+
+#ifndef VIAL_HAS_BUILTIN_STORAGE
+__attribute__((weak)) bool vial_platform_storage_load(void) {
     vial_storage_init_default();
     vial_keyboard_keymap_load();
+    return true;
 }
-static inline void vial_eeprom_save_now(void) { vial_keyboard_keymap_save(); }
+
+__attribute__((weak)) void vial_platform_storage_save_now(void) {
+    vial_keyboard_keymap_save();
+}
 #endif
+
+static inline void vial_eeprom_load(void) {
+    vial_platform_storage_load();
+}
+
+static inline void vial_eeprom_save_now(void) {
+    vial_platform_storage_save_now();
+}
 
 void vial_eeprom_save(void) {
     s_eeprom_dirty_time = xTaskGetTickCount();
@@ -443,9 +535,7 @@ __attribute__((weak)) void vial_keyboard_eeprom_task(void) {}
 
 void vial_eeprom_task(void) {
     vial_keyboard_eeprom_task();
-#if !defined(MCU_milandr) && !defined(MCU_rp2040) && !defined(MCU_rp2350) && !defined(MCU_baikal) && !defined(MCU_nrf52840)
-    vial_keyboard_keymap_poll();
-#endif
+    vial_platform_storage_poll();
     if (s_eeprom_dirty) {
         TickType_t now = xTaskGetTickCount();
         if ((now - s_eeprom_dirty_time) >= pdMS_TO_TICKS(VIAL_EEPROM_SAVE_DELAY_MS)) {

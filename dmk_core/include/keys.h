@@ -207,6 +207,8 @@
 #define DMK_CONSUMER_AC_STOP (DMK_CONSUMER | 0x226)
 #define DMK_CONSUMER_AC_REFRESH (DMK_CONSUMER | 0x227)
 #define DMK_CONSUMER_AC_BOOKMARKS (DMK_CONSUMER | 0x22A)
+#define DMK_CONSUMER_BRIGHTNESS_UP (DMK_CONSUMER | 0x6F)
+#define DMK_CONSUMER_BRIGHTNESS_DOWN (DMK_CONSUMER | 0x70)
 
 // Generic Desktop Page(0x01) - System Control
 #define HID_USAGE_SYSTEM_POWER_DOWN 0x81
@@ -492,21 +494,21 @@
 #define MOD_GUI 0x08  // Left GUI/Win
 
 // Custom / Layer codes
-#define K_LYRUP 0xA5
-#define K_LYRDWN 0xA6
-#define K_RGB_TOGG 0xA7
-#define K_RGB_NEXT 0xA8
-#define K_RGB_PREV 0xA9
-#define K_RGB_HUI 0xAA
-#define K_RGB_HUD 0xAB
-#define K_RGB_SAI 0xAC
-#define K_RGB_SAD 0xAD
-#define K_RGB_VAI 0xAE
-#define K_RGB_VAD 0xAF
-#define K_RGB_SPI 0xB0
-#define K_RGB_SPD 0xB1
-#define K_RGB_RST 0xB2
-#define K_BOOTLOADER 0xB3
+#define K_LYRUP 0x7C01
+#define K_LYRDWN 0x7C02
+#define K_RGB_TOGG 0x7820
+#define K_RGB_NEXT 0x7821
+#define K_RGB_PREV 0x7822
+#define K_RGB_HUI 0x7823
+#define K_RGB_HUD 0x7824
+#define K_RGB_SAI 0x7825
+#define K_RGB_SAD 0x7826
+#define K_RGB_VAI 0x7827
+#define K_RGB_VAD 0x7828
+#define K_RGB_SPI 0x7829
+#define K_RGB_SPD 0x782A
+#define K_RGB_RST 0x782B
+#define K_BOOTLOADER 0x7C00
 
 #define RGB_TOGG K_RGB_TOGG
 #define RGB_NEXT K_RGB_NEXT
@@ -567,6 +569,8 @@
 #define K_WREF DMK_CONSUMER_AC_REFRESH
 #define K_WWW_FAVORITES DMK_CONSUMER_AC_BOOKMARKS
 #define K_WFAV DMK_CONSUMER_AC_BOOKMARKS
+#define K_BRIU DMK_CONSUMER_BRIGHTNESS_UP
+#define K_BRID DMK_CONSUMER_BRIGHTNESS_DOWN
 
 // Mousekeys (Virtual USB HID Mouse Emulation)
 #define HID_KEY_MOUSE_UP 0xF0

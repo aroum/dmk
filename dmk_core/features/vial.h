@@ -17,9 +17,15 @@ extern "C" {
 #endif
 
 #ifdef VIAL
+#ifndef VIAL_COMBO_ENTRIES
 #define VIAL_COMBO_ENTRIES 8
+#endif
+#ifndef DYNAMIC_KEYMAP_MACRO_COUNT
 #define DYNAMIC_KEYMAP_MACRO_COUNT 16
+#endif
+#ifndef DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE
 #define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 2048
+#endif
 
 typedef struct {
     uint16_t input[4];
@@ -64,6 +70,9 @@ void vial_init(void);
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 void vial_eeprom_task(void);
 void vial_eeprom_save(void);
+bool vial_platform_storage_load(void);
+void vial_platform_storage_save_now(void);
+void vial_platform_storage_poll(void);
 void vial_macro_send(uint8_t id);
 bool vial_macro_has_active(void);
 TickType_t vial_macro_check_timeouts(TickType_t now);
