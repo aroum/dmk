@@ -50,6 +50,10 @@ int main(void) {
 
     // Initialize board indicator and lock LEDs
     led_init();
+#if defined(MCU_stm32l072)
+    // Keep PA8 lit to visually confirm successful platform and LED initialization
+    GPIOA->BSRR = (1U << 8);
+#endif
 
     // Initialize USB HID / MIDI hardware and endpoints
     usb_init();

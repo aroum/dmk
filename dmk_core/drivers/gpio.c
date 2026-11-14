@@ -408,11 +408,45 @@ void hal_sleep_us(uint32_t us) {
     }
 }
 
+__attribute__((section(".RamFunc"), noinline))
 void platform_bootloader_jump(void) {
-    // Jump to ST System Memory Bootloader (0x1FF00000)
-    void (*sys_bootloader)(void) = (void (*)(void))(*((volatile uint32_t *)0x1FF00004));
-    __set_MSP(*((volatile uint32_t *)0x1FF00000));
-    sys_bootloader();
+    __disable_irq();
+
+    // Unlock FLASH_PECR using PEKEY1 & PEKEY2 if locked
+    if (FLASH->PECR & FLASH_PECR_PELOCK) {
+        FLASH->PEKEYR = 0x89ABCDEF;
+        FLASH->PEKEYR = 0x02030405;
+    }
+    while (FLASH->PECR & FLASH_PECR_PELOCK);
+
+    // Unlock Program memory using PRGKEY1 & PRGKEY2 if PRGLOCK is set
+    if (FLASH->PECR & FLASH_PECR_PRGLOCK) {
+        FLASH->PRGKEYR = 0x8C9DAEBF; // FLASH_PRGKEY1
+        FLASH->PRGKEYR = 0x13141516; // FLASH_PRGKEY2
+    }
+    while (FLASH->PECR & FLASH_PECR_PRGLOCK);
+
+    while (FLASH->SR & FLASH_SR_BSY);
+
+    FLASH->SR = FLASH_SR_EOP | FLASH_SR_WRPERR | FLASH_SR_PGAERR
+              | FLASH_SR_SIZERR | FLASH_SR_OPTVERR | FLASH_SR_RDERR
+              | FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR;
+
+    // Set ERASE and PROG bits in PECR for page erase
+    FLASH->PECR |= (FLASH_PECR_ERASE | FLASH_PECR_PROG);
+
+    // Erase the first page of Bank 2 (0x08010000) so MCU resets into Bank 1 recovery updater
+    *(volatile uint32_t *)0x08010000 = 0x00000000;
+
+    while (FLASH->SR & FLASH_SR_BSY);
+
+    FLASH->PECR &= ~(FLASH_PECR_ERASE | FLASH_PECR_PROG);
+    FLASH->PECR |= FLASH_PECR_PRGLOCK;
+    FLASH->PECR |= FLASH_PECR_PELOCK;
+
+    // Trigger system reset into Bank 1 stock PFU bootloader
+    NVIC_SystemReset();
+    while (1) { __NOP(); }
 }
 
 #endif
