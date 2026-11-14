@@ -1,6 +1,6 @@
 **Язык:** [Русский](backup-restore.md) | [English](../en/backup-restore.md)
 
-**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [VIA](via.md)
+**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [Модели](models.md) • [VIA](via.md) • [Отладка](debug.md)
 
 # Бэкап и восстановление
 

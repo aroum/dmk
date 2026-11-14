@@ -26,7 +26,7 @@ static uint16_t s_capture_base[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
 static rt_cfg_t s_rt_cfg = {
-    .rt_enabled = true,
+    .rt_enabled = false,
     .act_pm = 750,
     .press_pm = 25,
     .release_pm = 25,
@@ -48,7 +48,7 @@ static volatile bool s_settings_dirty = false;
 static volatile TickType_t s_settings_dirty_time = 0;
 
 // Debug console & monitoring
-static volatile uint8_t s_debug_flags = DEBUG_FLAG_TOPRE;
+static volatile uint8_t s_debug_flags = 0;
 static volatile uint32_t s_matrix_scans_total = 0;
 static volatile uint32_t s_matrix_scans_prev = 0;
 static volatile uint32_t s_matrix_rate_hz = 0;
@@ -172,7 +172,8 @@ void hhkb_calibration_load(void) {
     s_classic_release_pm = 100;
     s_rt_cfg.press_pm = 25;
     s_rt_cfg.release_pm = 25;
-    s_rt_cfg.rt_enabled = true;
+    s_rt_cfg.rt_enabled = false;
+    s_debug_flags = 0;
 
     if (cal->magic == USER_EEPROM_MAGIC) {
         // Versioned format with CRC16

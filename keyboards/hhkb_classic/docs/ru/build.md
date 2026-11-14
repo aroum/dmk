@@ -1,6 +1,6 @@
 **Язык:** [Русский](build.md) | [English](../en/build.md)
 
-**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [VIA](via.md)
+**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [Модели](models.md) • [VIA](via.md) • [Отладка](debug.md)
 
 # Сборка
 

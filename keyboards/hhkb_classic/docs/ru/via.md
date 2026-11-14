@@ -1,6 +1,6 @@
 **Язык:** [Русский](via.md) | [English](../en/via.md)
 
-**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [VIA](via.md)
+**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [Модели](models.md) • [VIA](via.md) • [Отладка](debug.md)
 
 # [VIA](https://www.usevia.app/)
 

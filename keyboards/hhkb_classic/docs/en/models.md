@@ -1,3 +1,7 @@
+**Language:** [English](models.md) | [Русский](../ru/models.md)
+
+**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA](via.md) • [Debug](debug.md)
+
 # Supported HHKB Classic Models
 
 DMK firmware runs natively on the factory STM32L072CZ microcontroller of the wired USB-C Happy Hacking Keyboard (HHKB Professional Classic series). No hardware modifications, soldering, or disassembly are required.

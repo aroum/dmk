@@ -1,3 +1,7 @@
+**Язык:** [Русский](models.md) | [English](../en/models.md)
+
+**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [Модели](models.md) • [VIA](via.md) • [Отладка](debug.md)
+
 # Поддерживаемые модели HHKB Classic
 
 Кастомная прошивка DMK работает непосредственно на штатном контроллере STM32L072CZ проводных клавиатур линейки Happy Hacking Keyboard (HHKB Professional Classic). Замена контроллера, пайка или разборка клавиатуры не требуются.
