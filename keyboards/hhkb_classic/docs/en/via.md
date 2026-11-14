@@ -59,13 +59,18 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 3. Fully press all keys you want to calibrate to record peak travel.
 4. Click **Finish and save** to write calibration to EEPROM (only positions with valid travel range are updated).
 
+> [!TIP]
+> **Visual Tracking via Key Tester (Test Matrix):**
+> Switching between VIA tabs **does not reset** active calibration — the state remains held in MCU RAM until *Finish and save* is clicked.
+> After clicking **Start calibration**, you can navigate directly to the **Key Tester** tab in VIA's top navigation bar and toggle on **Test Matrix**. In this mode, the visual layout lights up every physically actuated switch, giving you an immediate visual confirmation of which keys have already been bottomed out and which ones remain.
+> Once all keys are pressed, return to **Configure** → **HHKB Settings** → **Calibration** and click **Finish and save**.
+
 > [!NOTE]
 > **Calibration Status Counter and Real-Time Monitoring in VIA:**
 > The `Calibration status` label (e.g. `In progress: 10/60 keys`) does not update automatically in real time while typing because the VIA web client does not poll custom controls continuously.
 > To refresh the displayed count, click the **Refresh status** button or switch between submenus.
 >
-> For continuous live tracking, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*).
-> Switching to the **HID Console** tab **does not reset** or interrupt calibration: the MCU holds calibration state in RAM until you return to the *Calibration* menu and click **Finish and save** (or disconnect USB). You can safely start calibration, switch to HID Console to observe live progress and per-key travel values, then return and save.
+> For continuous live tracking, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*) to observe the textual progress bar and per-key travel peak updates.
 
 ## Debug
 

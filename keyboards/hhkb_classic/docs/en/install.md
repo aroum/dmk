@@ -9,7 +9,7 @@
 
 > [!TIP]
 > **Recommended initial key calibration after first flashing:**
-> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all 60 keys after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and live monitoring details are provided in the [VIA guide](via.md#key-calibration-process).
+> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all 60 keys after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the *Key Tester* (*Test Matrix*) tab are provided in the [VIA guide](via.md#key-calibration-process).
 
 ## Before flashing
 
