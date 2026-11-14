@@ -62,8 +62,8 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 
 [Workflow Build Firmware](../../../../.github/workflows/build_test.yml) запускается для `push` и `pull_request` в `main`/`master`; его можно запустить вручную через **Actions → Build Firmware → Run workflow**. После успешного запуска скачайте в разделе **Artifacts** нужный архив:
 
-- `hhkb-classic-classic-max-adc-hfb` — обычная Classic, модель `AHHX01`, версия HFB A4.50.
-- `hhkb-classic-type-s-max-adc-hfb` — Classic Type-S, модель `AHHS01`, версия HFB A8.50.
+- `dmk-hhkb-classic-classic-via.hfb` — обычная Classic, модель `AHHX01`, версия HFB A4.50.
+- `dmk-hhkb-classic-type-s-via.hfb` — Classic Type-S, модель `AHHS01`, версия HFB A8.50.
 
 В каждом архиве лежат `.hfb` для выбранной модели и [via.json](../../via.json) для загрузки пользовательского меню через вкладку Design [веб-версии VIA](https://www.usevia.app/). Выбирайте архив по модели клавиатуры; сборка Type-S пока проверена компилятором, на плате проверялась обычная Classic.
 

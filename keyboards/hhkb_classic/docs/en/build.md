@@ -62,8 +62,8 @@ The current linked STM32L072 image reserves 20,480 bytes of RAM: 288 bytes `.dat
 
 The [Build Firmware workflow](../../../../.github/workflows/build_test.yml) runs on pushes and pull requests targeting `main`/`master`. You can also start it through **Actions → Build Firmware → Run workflow**. After a successful run, download the appropriate archive under **Artifacts**:
 
-- `hhkb-classic-classic-max-adc-hfb` — standard Classic, model `AHHX01`, HFB version A4.50.
-- `hhkb-classic-type-s-max-adc-hfb` — Classic Type-S, model `AHHS01`, HFB version A8.50.
+- `dmk-hhkb-classic-classic-via.hfb` — standard Classic, model `AHHX01`, HFB version A4.50.
+- `dmk-hhkb-classic-type-s-via.hfb` — Classic Type-S, model `AHHS01`, HFB version A8.50.
 
 Each archive contains the model-specific `.hfb` and [via.json](../../via.json) for loading the custom menu through the [VIA web app](https://www.usevia.app/) Design tab. Select the archive that matches your keyboard. The Type-S build has been compiler-checked; physical board verification so far covers the standard Classic.
 

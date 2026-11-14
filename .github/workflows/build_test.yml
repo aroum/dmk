@@ -103,13 +103,13 @@ jobs:
         run: |
           python3 -m json.tool keyboards/hhkb_classic/via.json > /dev/null
           mkdir -p build/hhkb-release
-          cp build/hhkb-script/*.hfb build/hhkb-release/
+          cp build/hhkb-script/*.hfb build/hhkb-release/dmk-hhkb-classic-${{ matrix.variant }}-via.hfb
           cp keyboards/hhkb_classic/via.json build/hhkb-release/
 
       - name: Upload HFB
         uses: actions/upload-artifact@v7
         with:
-          name: hhkb-classic-${{ matrix.variant }}-max-adc-hfb
+          name: dmk-hhkb-classic-${{ matrix.variant }}-via.hfb
           path: build/hhkb-release/
           retention-days: 3
           if-no-files-found: error
