@@ -23,7 +23,10 @@ By default, all debug logging channels are **disabled** to avoid unnecessary MCU
 2. Open **HHKB Settings** → **Debug** submenu.
 3. Toggle the desired logging flags:
    - **Topre Matrix Stream** — prints state transition events (press/release) with matrix coordinates `(col, row)`, raw ADC count (`raw`), normalized value (`norm` from 0 to 1000 permille), and current key status.
-   - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key, completion percentage `[====>    ] X% (N/60)`, and save readiness notifications.
+   - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), completion percentage `[====>    ] X% (N/60)`, and save readiness notifications.
+     
+     > [!NOTE]
+     > Switching between the **Configure** tab and **HID Console** does not interrupt or reset calibration — the state remains active in MCU RAM until *Finish and save* is clicked. Console monitoring provides uninterrupted real-time visibility without having to manually refresh the status counter in the calibration menu.
    - **Polling Rate Monitor** — outputs periodic reports of the actual matrix scan rate and USB task frequency (e.g. `[RATE] Matrix: 1000 Hz, USB: 500 Hz`).
    - **VIA Telemetry Diag** — prints incoming VIA/Vial requests, commands, and parameter modifications.
 

@@ -114,6 +114,13 @@
               ]
             },
             {
+              "label": "Live updates",
+              "type": "label",
+              "content": [
+                "Status does not update live. Click Refresh status or view HID Console."
+              ]
+            },
+            {
               "label": "Start calibration",
               "type": "button",
               "options": [

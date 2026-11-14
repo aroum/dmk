@@ -60,8 +60,11 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 4. Click **Finish and save** to write calibration to EEPROM (only positions with valid travel range are updated).
 
 > [!NOTE]
-> **Calibration Status Counter in VIA:**
+> **Calibration Status Counter and Real-Time Monitoring in VIA:**
 > The `Calibration status` label (e.g. `In progress: 10/60 keys`) does not update automatically in real time while typing because the VIA web client does not poll custom controls continuously.
-> To refresh the displayed count, click the **Refresh status** button or switch between submenus. For a continuous live progress stream, enable **Calibration Monitor** under *Debug* and view the **HID Console** tab.
+> To refresh the displayed count, click the **Refresh status** button or switch between submenus.
+>
+> For continuous live tracking, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*).
+> Switching to the **HID Console** tab **does not reset** or interrupt calibration: the MCU holds calibration state in RAM until you return to the *Calibration* menu and click **Finish and save** (or disconnect USB). You can safely start calibration, switch to HID Console to observe live progress and per-key travel values, then return and save.
 
 Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.
