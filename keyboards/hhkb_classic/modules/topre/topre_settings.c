@@ -42,14 +42,28 @@ static volatile bool s_settings_dirty = false;
 static volatile TickType_t s_settings_dirty_time = 0;
 
 // Debug console & monitoring
-static volatile bool s_debug_enabled = false;
+static volatile bool s_debug_enabled = true;
 static volatile uint8_t s_dbg_col = 0;
 static volatile uint8_t s_dbg_row = 0;
 static volatile uint16_t s_dbg_raw = 0;
 static volatile uint16_t s_dbg_norm = 0;
 static volatile bool s_dbg_down = false;
-static uint16_t s_last_reported_raw = 0;
-static bool s_last_reported_down = false;
+static uint16_t s_last_reported_raw[MATRIX_COLS][MATRIX_ROWS];
+static uint32_t s_last_reported_down_mask[2] = {0, 0};
+
+static inline bool is_reported_down(uint8_t col, uint8_t row) {
+    uint8_t idx = (col << 2) | (row & 3);
+    return (s_last_reported_down_mask[idx / 32] & (1U << (idx % 32))) != 0;
+}
+
+static inline void set_reported_down(uint8_t col, uint8_t row, bool down) {
+    uint8_t idx = (col << 2) | (row & 3);
+    if (down) {
+        s_last_reported_down_mask[idx / 32] |= (1U << (idx % 32));
+    } else {
+        s_last_reported_down_mask[idx / 32] &= ~(1U << (idx % 32));
+    }
+}
 
 static uint16_t compute_crc16(const uint8_t *data, size_t len) {
     uint16_t crc = 0xFFFF;
@@ -388,23 +402,42 @@ void hhkb_set_debug_enabled(bool enabled) {
 }
 
 void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed) {
+    if (col >= MATRIX_COLS || row >= MATRIX_ROWS) return;
+
     uint16_t base = s_cal_baseline[col][row];
-    if (raw > base + 50 || is_pressed || s_last_reported_down) {
+    bool was_pressed = is_reported_down(col, row);
+
+    if (!s_debug_enabled) return;
+
+    // 1. Immediate notification on state transitions (Press / Release)
+    if (is_pressed != was_pressed) {
+        set_reported_down(col, row, is_pressed);
+        s_last_reported_raw[col][row] = raw;
         s_dbg_col = col;
         s_dbg_row = row;
         s_dbg_raw = raw;
         s_dbg_norm = norm;
         s_dbg_down = is_pressed;
+        debug_console_printf("[Topre] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
+            col, row, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
+        return;
+    }
 
-        if (s_debug_enabled) {
-            int16_t diff = (int16_t)(raw - s_last_reported_raw);
-            if (diff > 15 || diff < -15 || is_pressed != s_last_reported_down) {
-                s_last_reported_raw = raw;
-                s_last_reported_down = is_pressed;
-                debug_console_printf("[Topre] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
-                    col, row, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
-            }
+    // 2. Continuous travel updates while key is pressed or significantly actuated (travel >= 5%)
+    if (is_pressed || norm >= 50) {
+        int16_t diff = (int16_t)(raw - s_last_reported_raw[col][row]);
+        if (diff > 40 || diff < -40) {
+            s_last_reported_raw[col][row] = raw;
+            s_dbg_col = col;
+            s_dbg_row = row;
+            s_dbg_raw = raw;
+            s_dbg_norm = norm;
+            s_dbg_down = is_pressed;
+            debug_console_printf("[Topre] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
+                col, row, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
         }
+    } else if (norm < 50 && !is_pressed && s_last_reported_raw[col][row] != base) {
+        s_last_reported_raw[col][row] = base;
     }
 }
 

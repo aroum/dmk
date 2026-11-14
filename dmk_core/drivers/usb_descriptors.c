@@ -458,14 +458,19 @@ void debug_console_write(const char *buf, size_t len) {
     if (!buf || len == 0) return;
     bool running = xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED;
     if (running) taskENTER_CRITICAL();
-    for (size_t i = 0; i < len; i++) {
-        uint16_t next = (s_console_head + 1) % CONSOLE_BUF_SIZE;
-        if (next == s_console_tail) {
-            s_console_tail = (s_console_tail + 1) % CONSOLE_BUF_SIZE;
+
+    uint16_t head = s_console_head;
+    uint16_t tail = s_console_tail;
+    size_t free_space = (tail > head) ? (tail - head - 1) : (CONSOLE_BUF_SIZE - 1 - (head - tail));
+
+    if (len <= free_space) {
+        for (size_t i = 0; i < len; i++) {
+            s_console_buf[s_console_head] = buf[i];
+            s_console_head = (s_console_head + 1) % CONSOLE_BUF_SIZE;
         }
-        s_console_buf[s_console_head] = buf[i];
-        s_console_head = next;
     }
+    // Drop entire message if buffer is full to prevent tearing and corrupted lines
+
     if (running) {
         taskEXIT_CRITICAL();
         usb_notify_task();
