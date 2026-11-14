@@ -71,8 +71,8 @@ function(build_keyboard KEYBOARD_NAME)
     
     target_include_directories(${TARGET_NAME} PRIVATE
         "${ACTUAL_KEYBOARD_DIR}"
-        ${DMK_COMMON_INC}
         ${PLATFORM_INC}
+        ${DMK_COMMON_INC}
     )
     
     # Check for VIAL and CUSTOM_MATRIX configurations

@@ -35,7 +35,9 @@
 
 #define CFG_TUD_ENDPOINT0_SIZE 64
 
-#ifdef VIAL
+#if defined(DEBUG_CONSOLE_ENABLE) && defined(VIAL)
+#define CFG_TUD_HID 3
+#elif defined(VIAL)
 #define CFG_TUD_HID 2
 #else
 #define CFG_TUD_HID 1
