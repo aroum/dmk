@@ -32,7 +32,7 @@ If the error persists, open `chrome://device-log`, try connecting through VIA ag
 
 ## VIA vs Vial
 
-[VIA](https://www.usevia.app/) supports the custom **HHKB Settings** interface: Scan Rate, Calibration, Rapid Trigger, and LED. These custom controls are available only in the VIA web app. Rapid Trigger is shown only by firmware built with `HHKB_RAPID_TRIGGER`.
+[VIA](https://www.usevia.app/) supports the custom **HHKB Settings** interface: Scan Rate, Calibration, Rapid Trigger, LED, and Debug. These custom controls are available only in the VIA web app. Rapid Trigger is shown only by firmware built with `HHKB_RAPID_TRIGGER`.
 
 Vial uses `vial.json` and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
 
@@ -66,5 +66,11 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 >
 > For continuous live tracking, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*).
 > Switching to the **HID Console** tab **does not reset** or interrupt calibration: the MCU holds calibration state in RAM until you return to the *Calibration* menu and click **Finish and save** (or disconnect USB). You can safely start calibration, switch to HID Console to observe live progress and per-key travel values, then return and save.
+
+## Debug
+
+The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels (Topre Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
+
+For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and Topre sensor response curves, see [Debugging and HID Console](debug.md).
 
 Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.

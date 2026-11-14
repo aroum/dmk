@@ -9,13 +9,7 @@
 
 > [!TIP]
 > **Recommended initial key calibration after first flashing:**
-> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all 60 keys after initial flashing to match your specific PCB and conical spring tolerances:
-> 1. Open the [VIA web app](https://www.usevia.app/), load `via.json` (via *Design* tab → *Load Draft Definition*), and navigate to **HHKB Settings** → **Calibration**.
-> 2. Enable the **Use custom calibration** toggle and make sure no keys are currently pressed.
-> 3. Click **Start calibration** (the MCU captures the resting baseline capacitance for all keys).
-> 4. Fully bottom-out all 60 keys one by one. You can track progress using the *Refresh status* button or via the *HID Console* tab in real time (after enabling *Calibration Monitor* in the *Debug* menu).
-> 5. Click **Finish and save** to store your calibrated values into EEPROM.
-> For full details, see the [VIA Calibration Process](via.md#key-calibration-process).
+> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all 60 keys after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and live monitoring details are provided in the [VIA guide](via.md#key-calibration-process).
 
 ## Before flashing
 
