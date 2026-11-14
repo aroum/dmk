@@ -11,6 +11,10 @@
 3. Open the new **Design** tab, choose **Load Draft Definition**, and select `via.json` from this directory or the release assets.
 4. Connect the keyboard and open **HHKB Settings**.
 
+> [!TIP]
+> **Blank keycaps (missing legends) on Layer 0:**
+> If the keys on Layer 0 appear blank upon connecting to VIA, this is an asynchronous WebHID rendering race in the VIA web client. Simply click **Layer 1** and then return to **Layer 0** (`Layer 1 → Layer 0`) to immediately render all key legends from the cache.
+
 ## Chromium on Linux sees the HHKB, but VIA cannot connect
 
 If VIA detects **HHKB Professional Classic** with VID/PID `cafe:4010` but reports that the keyboard is not responding, try granting Chromium access to its `/dev/hidraw*` devices. This rule grants the active local session user access to devices with this VID/PID.
