@@ -2,9 +2,9 @@ name: Build Firmware
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   workflow_dispatch:
 
 jobs:
@@ -65,6 +65,7 @@ jobs:
           name: firmware-${{ matrix.keyboard }}-${{ matrix.mcu }}
           path: |
             build/dmk_*
+          retention-days: 3
           if-no-files-found: error
 
   build-hhkb-classic:
@@ -110,4 +111,5 @@ jobs:
         with:
           name: hhkb-classic-${{ matrix.variant }}-max-adc-hfb
           path: build/hhkb-release/
+          retention-days: 3
           if-no-files-found: error
