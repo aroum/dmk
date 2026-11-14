@@ -88,6 +88,9 @@ def device_model(type_number: str):
     # PD-KB401WN (White Blank), PD-KB401BN (Charcoal Blank)
     if name in ("PD-KB401W", "PD-KB401B", "PD-KB401WN", "PD-KB401BN"):
         return "AHHX01"
+    # JIS models (69-key matrix multiplexing, pending tester verification):
+    if name in ("PD-KB421BSC", "PD-KB421WSC", "PD-KB421YSC") or name.startswith("PD-KB421"):
+        return "JIS_UNSUPPORTED"
     return None
 
 def validate_container(data: bytes, expected_model=None, *, check_crc=True, check_model=True):
@@ -103,6 +106,8 @@ def validate_container(data: bytes, expected_model=None, *, check_crc=True, chec
             raise ValueError("Invalid HFB firmware CRC")
     model = data[65554:65560].decode("ascii", errors="replace")
     if check_model:
+        if expected_model == "JIS_UNSUPPORTED":
+            raise ValueError("JIS models (PD-KB421 series) are not yet supported: 69-key matrix routing differs from 60-key ANSI. Use --skip-model-check only for experimental testing.")
         if expected_model is None:
             raise ValueError("Cannot determine keyboard model; use --skip-model-check only if intentional")
         if model != expected_model:
