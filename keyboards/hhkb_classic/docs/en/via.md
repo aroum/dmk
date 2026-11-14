@@ -52,6 +52,16 @@ With the updated firmware and `via.json`, assign **System 1** or **System 2** in
 
 The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel. It is a configuration scale rather than a mechanical measurement.
 
-Calibration Start captures released baselines. Fully press the keys to update, then use Finish and save. Only positions with a valid signal range are changed.
+### Key Calibration Process
+
+1. Toggle on **Use custom calibration** and ensure all keys are released.
+2. Click **Start calibration** to record baseline capacitance levels.
+3. Fully press all keys you want to calibrate to record peak travel.
+4. Click **Finish and save** to write calibration to EEPROM (only positions with valid travel range are updated).
+
+> [!NOTE]
+> **Calibration Status Counter in VIA:**
+> The `Calibration status` label (e.g. `In progress: 10/60 keys`) does not update automatically in real time while typing because the VIA web client does not poll custom controls continuously.
+> To refresh the displayed count, click the **Refresh status** button or switch between submenus. For a continuous live progress stream, enable **Calibration Monitor** under *Debug* and view the **HID Console** tab.
 
 Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.
