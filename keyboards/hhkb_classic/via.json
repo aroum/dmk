@@ -997,12 +997,30 @@
           "label": "Debug",
           "content": [
             {
-              "label": "Live ADC & Console Output",
+              "label": "Topre Matrix Stream",
               "type": "toggle",
               "content": [
                 "id_hhkb_debug_enable",
                 0,
                 19
+              ]
+            },
+            {
+              "label": "VIA Telemetry Diag",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_debug_via",
+                0,
+                23
+              ]
+            },
+            {
+              "label": "Polling Rate Monitor",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_debug_rate",
+                0,
+                24
               ]
             },
             {

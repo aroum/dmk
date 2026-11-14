@@ -42,7 +42,10 @@ static volatile bool s_settings_dirty = false;
 static volatile TickType_t s_settings_dirty_time = 0;
 
 // Debug console & monitoring
-static volatile bool s_debug_enabled = true;
+static volatile uint8_t s_debug_flags = DEBUG_FLAG_TOPRE;
+static volatile uint32_t s_matrix_scans_total = 0;
+static volatile uint32_t s_matrix_scans_prev = 0;
+static volatile uint32_t s_matrix_rate_hz = 0;
 static volatile uint8_t s_dbg_col = 0;
 static volatile uint8_t s_dbg_row = 0;
 static volatile uint16_t s_dbg_raw = 0;
@@ -130,7 +133,7 @@ void hhkb_calibration_save_to_eeprom(void) {
                 (s_tap_preferred ? 2 : 0) |
                 (s_oversampling_requested ? 4 : 0) |
                 (s_custom_calibration ? 8 : 0) |
-                (s_debug_enabled ? 16 : 0) |
+                ((s_debug_flags & DEBUG_FLAG_TOPRE) ? 16 : 0) |
                 ((s_system & 1) << 5) |
                 ((s_led_mode[0] & 3) << 6);
 
@@ -176,7 +179,11 @@ void hhkb_calibration_load(void) {
             s_tap_preferred = (cal->flags & 2) != 0;
             s_oversampling_requested = (cal->flags & 4) != 0;
             s_custom_calibration = (cal->flags & 8) != 0;
-            s_debug_enabled = (cal->flags & 16) != 0;
+            if (cal->flags & 16) {
+                s_debug_flags |= DEBUG_FLAG_TOPRE;
+            } else {
+                s_debug_flags &= ~DEBUG_FLAG_TOPRE;
+            }
             s_system = (cal->flags >> 5) & 1;
             s_led_mode[0] = (cal->flags >> 6) & 3;
 
@@ -395,11 +402,39 @@ uint8_t hhkb_get_actuation_point_pct(void) {
 }
 
 // Debug API
-bool hhkb_get_debug_enabled(void) { return s_debug_enabled; }
-void hhkb_set_debug_enabled(bool enabled) {
-    s_debug_enabled = enabled;
-    hhkb_settings_mark_dirty();
+bool hhkb_get_debug_flag(uint8_t flag) {
+    return (s_debug_flags & flag) != 0;
 }
+
+void hhkb_set_debug_flag(uint8_t flag, bool enabled) {
+    if (enabled) {
+        s_debug_flags |= flag;
+    } else {
+        s_debug_flags &= ~flag;
+    }
+    if (flag == DEBUG_FLAG_TOPRE) {
+        hhkb_settings_mark_dirty();
+    }
+}
+
+void hhkb_record_matrix_scan(void) {
+    s_matrix_scans_total++;
+}
+
+uint32_t hhkb_get_matrix_rate_hz(void) {
+    return s_matrix_rate_hz;
+}
+
+void hhkb_calc_rates(uint32_t elapsed_ms) {
+    if (elapsed_ms == 0) return;
+    uint32_t total = s_matrix_scans_total;
+    uint32_t diff = total - s_matrix_scans_prev;
+    s_matrix_scans_prev = total;
+    s_matrix_rate_hz = (uint32_t)(((uint64_t)diff * 1000ULL + (elapsed_ms / 2)) / elapsed_ms);
+}
+
+bool hhkb_get_debug_enabled(void) { return hhkb_get_debug_flag(DEBUG_FLAG_TOPRE); }
+void hhkb_set_debug_enabled(bool enabled) { hhkb_set_debug_flag(DEBUG_FLAG_TOPRE, enabled); }
 
 void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed) {
     if (col >= MATRIX_COLS || row >= MATRIX_ROWS) return;
@@ -407,7 +442,7 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
     uint16_t base = s_cal_baseline[col][row];
     bool was_pressed = is_reported_down(col, row);
 
-    if (!s_debug_enabled) return;
+    if (!hhkb_get_debug_flag(DEBUG_FLAG_TOPRE)) return;
 
     // 1. Immediate notification on state transitions (Press / Release)
     if (is_pressed != was_pressed) {

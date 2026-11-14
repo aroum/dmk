@@ -66,6 +66,18 @@ void hhkb_set_actuation_point_pct(uint8_t pct);
 uint8_t hhkb_get_actuation_point_pct(void);
 
 // Debug Console & Monitoring API
+enum {
+    DEBUG_FLAG_TOPRE = 1U << 0, // 0x01: Topre matrix debug [Topre]
+    DEBUG_FLAG_VIA   = 1U << 1, // 0x02: VIA telemetry diag [VIA_DIAG]
+    DEBUG_FLAG_RATE  = 1U << 2, // 0x04: Polling/scan rate monitor [RATE]
+};
+
+bool hhkb_get_debug_flag(uint8_t flag);
+void hhkb_set_debug_flag(uint8_t flag, bool enabled);
+void hhkb_record_matrix_scan(void);
+uint32_t hhkb_get_matrix_rate_hz(void);
+void hhkb_calc_rates(uint32_t elapsed_ms);
+
 bool hhkb_get_debug_enabled(void);
 void hhkb_set_debug_enabled(bool enabled);
 void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed);

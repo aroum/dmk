@@ -384,15 +384,48 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_
 #endif
 
 #ifdef DEBUG_CONSOLE_ENABLE
+__attribute__((weak)) void hhkb_calc_rates(uint32_t elapsed_ms) { (void)elapsed_ms; }
+__attribute__((weak)) uint32_t hhkb_get_matrix_rate_hz(void) { return 0; }
+__attribute__((weak)) bool hhkb_get_debug_flag(uint8_t flag) {
+    (void)flag;
+    return false;
+}
+__attribute__((weak)) uint8_t hhkb_get_scan_rate(void) { return 4; }
+
 static uint32_t s_last_diag_tick = 0;
+static uint32_t s_usb_loop_total = 0;
+static uint32_t s_usb_loop_prev = 0;
+
 void vial_diag_task(void) {
+    s_usb_loop_total++;
     uint32_t now = xTaskGetTickCount();
-    if ((now - s_last_diag_tick) >= pdMS_TO_TICKS(1000)) {
+    uint32_t elapsed_ticks = now - s_last_diag_tick;
+    if (elapsed_ticks >= pdMS_TO_TICKS(1000)) {
         s_last_diag_tick = now;
-        debug_console_printf("[VIA_DIAG] rx=%lu tx_sub=%lu tx_cpl=%lu tx_fail=%lu pend=%d\r\n",
-                             (unsigned long)vial_rx_count, (unsigned long)vial_tx_submit_count,
-                             (unsigned long)vial_tx_complete_count, (unsigned long)vial_tx_fail_count,
-                             has_pending_vial_response ? 1 : 0);
+        uint32_t elapsed_ms = (uint32_t)(elapsed_ticks * portTICK_PERIOD_MS);
+        if (elapsed_ms == 0) elapsed_ms = 1000;
+
+        uint32_t usb_diff = s_usb_loop_total - s_usb_loop_prev;
+        s_usb_loop_prev = s_usb_loop_total;
+        uint32_t usb_rate_hz = (uint32_t)(((uint64_t)usb_diff * 1000ULL + (elapsed_ms / 2)) / elapsed_ms);
+
+        hhkb_calc_rates(elapsed_ms);
+
+        if (hhkb_get_debug_flag(1U << 1)) { // DEBUG_FLAG_VIA
+            debug_console_printf("[VIA_DIAG] rx=%lu tx_sub=%lu tx_cpl=%lu tx_fail=%lu pend=%d\r\n",
+                                 (unsigned long)vial_rx_count, (unsigned long)vial_tx_submit_count,
+                                 (unsigned long)vial_tx_complete_count, (unsigned long)vial_tx_fail_count,
+                                 has_pending_vial_response ? 1 : 0);
+        }
+
+        if (hhkb_get_debug_flag(1U << 2)) { // DEBUG_FLAG_RATE
+            static const uint16_t s_target_rates[5] = {50, 125, 250, 500, 1000};
+            uint8_t r_idx = hhkb_get_scan_rate();
+            uint16_t target_hz = (r_idx <= 4) ? s_target_rates[r_idx] : 1000;
+            debug_console_printf("[RATE] matrix=%lu Hz (target: %u Hz), usb_loop=%lu Hz\r\n",
+                                 (unsigned long)hhkb_get_matrix_rate_hz(), target_hz,
+                                 (unsigned long)usb_rate_hz);
+        }
     }
 }
 #endif
