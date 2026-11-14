@@ -8,7 +8,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
-    if (id < 1 || id > 25) return false;
+    if (id < 1 || id > 27) return false;
     if (request[0] == 0x08) {
         if (id == 12) {
             const char *status = hhkb_settings_storage_writable() ? "Writable" : "Occupied: not saved";
@@ -21,6 +21,10 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
             response[3] = hhkb_get_debug_flag(DEBUG_FLAG_RATE);
         } else if (id == 25) {
             response[3] = hhkb_get_debug_flag(DEBUG_FLAG_CAL);
+        } else if (id == 26) {
+            hhkb_get_cal_status_str((char *)&response[3], 28);
+        } else if (id == 27) {
+            response[3] = 0;
         } else if (id == 20) {
             hhkb_get_debug_key_str((char *)&response[3], 28);
         } else if (id == 21) {
@@ -45,7 +49,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         return true;
     }
     if (request[0] == 0x07) {
-        if (id == 12 || (id >= 20 && id <= 22)) return false;
+        if (id == 12 || id == 26 || (id >= 20 && id <= 22)) return false;
         if (id == 19) {
             if (request[3] > 1) return false;
             hhkb_set_debug_flag(DEBUG_FLAG_TOPRE, request[3] != 0);
@@ -73,6 +77,8 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
             hhkb_calibration_finish();
         } else if (id == 9 || id == 10) {
             hhkb_set_led_mode(id - 9, request[3]);
+        } else if (id == 27) {
+            // Refresh action: triggers VIA to re-read submenu controls
         } else if (id != 7 && id != 8) {
             hhkb_rt_set(id, request[3]);
         }

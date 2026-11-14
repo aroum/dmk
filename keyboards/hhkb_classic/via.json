@@ -105,6 +105,15 @@
               ]
             },
             {
+              "label": "Calibration status",
+              "type": "label",
+              "content": [
+                "id_hhkb_cal_status",
+                0,
+                26
+              ]
+            },
+            {
               "label": "Start calibration",
               "type": "button",
               "options": [
@@ -114,6 +123,18 @@
                 "id_hhkb_cal_start",
                 0,
                 7
+              ]
+            },
+            {
+              "label": "Refresh status",
+              "type": "button",
+              "options": [
+                1
+              ],
+              "content": [
+                "id_hhkb_cal_refresh",
+                0,
+                27
               ]
             },
             {

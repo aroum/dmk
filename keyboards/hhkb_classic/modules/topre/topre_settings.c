@@ -506,6 +506,23 @@ void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
     snprintf(buf, max_len, "Travel: %u.%u%%", s_dbg_norm / 10, s_dbg_norm % 10);
 }
 
+void hhkb_get_cal_status_str(char *buf, size_t max_len) {
+    if (s_calibration_mode) {
+        uint8_t count = (uint8_t)(__builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]));
+        snprintf(buf, max_len, "In progress: %u/60 keys", count);
+    } else {
+        uint8_t custom_count = 0;
+        for (uint8_t c = 0; c < MATRIX_COLS; c++) {
+            for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
+                if (s_cal_peak[c][r] >= s_cal_baseline[c][r] + RT_MIN_RANGE) {
+                    custom_count++;
+                }
+            }
+        }
+        snprintf(buf, max_len, "Saved (%u/60 keys)", custom_count);
+    }
+}
+
 rt_cfg_t hhkb_get_scan_cfg(void) {
     taskENTER_CRITICAL();
     rt_cfg_t cfg = s_rt_cfg;
