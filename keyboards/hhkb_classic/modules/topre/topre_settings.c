@@ -22,6 +22,8 @@ static bool s_capture_baseline = false;
 static uint8_t s_cal_baseline_samples = 0;
 static uint16_t s_cal_baseline_accum[MATRIX_COLS][MATRIX_ROWS];
 static uint32_t s_calibrated_mask[2];
+static uint32_t s_cal_down_mask[2];
+static uint16_t s_cal_press_start_peak[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_base[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
@@ -266,6 +268,8 @@ void hhkb_calibration_start(void) {
     s_cal_baseline_samples = CAL_BASELINE_SAMPLES;
     s_calibrated_mask[0] = 0;
     s_calibrated_mask[1] = 0;
+    s_cal_down_mask[0] = 0;
+    s_cal_down_mask[1] = 0;
     s_capture_baseline = true;
     s_calibration_mode = true;
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
@@ -521,8 +525,21 @@ void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
 }
 void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
     if (val > s_capture_peak[col][row]) s_capture_peak[col][row] = val;
-    if (val >= s_capture_base[col][row] + RT_MIN_RANGE) {
-        uint8_t k_idx = col * 4 + row;
+
+    uint16_t press_thresh = s_capture_base[col][row] + RT_MIN_RANGE;
+    uint16_t release_thresh = s_capture_base[col][row] + (RT_MIN_RANGE / 2);
+    uint8_t k_idx = col * 4 + row;
+    bool is_down = (k_idx < 32)
+        ? ((s_cal_down_mask[0] & (1U << k_idx)) != 0)
+        : ((s_cal_down_mask[1] & (1U << (k_idx - 32))) != 0);
+
+    if (!is_down && val >= press_thresh) {
+        // Transition: key pressed down
+        if (k_idx < 32) s_cal_down_mask[0] |= (1U << k_idx);
+        else s_cal_down_mask[1] |= (1U << (k_idx - 32));
+
+        s_cal_press_start_peak[col][row] = s_capture_peak[col][row];
+
         bool newly_calibrated = false;
         if (k_idx < 32) {
             if (!(s_calibrated_mask[0] & (1U << k_idx))) {
@@ -548,6 +565,16 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
                 debug_console_printf("[CAL] >>> All 60 keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
             }
         }
+    } else if (is_down && val < release_thresh) {
+        // Transition: key released
+        if (k_idx < 32) s_cal_down_mask[0] &= ~(1U << k_idx);
+        else s_cal_down_mask[1] &= ~(1U << (k_idx - 32));
+
+        uint16_t old_peak = s_cal_press_start_peak[col][row];
+        uint16_t new_peak = s_capture_peak[col][row];
+        if (old_peak > press_thresh && new_peak > old_peak + 20 && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+            debug_console_printf("[CAL] Key C%u R%u peak updated: %u -> %u\r\n", col, row, old_peak, new_peak);
+        }
     }
 }
 bool hhkb_cal_is_capturing_baseline(void) { return s_calibration_mode && s_capture_baseline; }
@@ -557,6 +584,7 @@ void hhkb_cal_decrement_samples(void) {
             for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
                 s_capture_base[c][r] = (uint16_t)(s_cal_baseline_accum[c][r] / CAL_BASELINE_SAMPLES);
                 s_capture_peak[c][r] = s_capture_base[c][r];
+                s_cal_press_start_peak[c][r] = s_capture_base[c][r];
             }
         }
         s_capture_baseline = false;
