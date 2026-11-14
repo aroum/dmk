@@ -992,6 +992,47 @@
               ]
             }
           ]
+        },
+        {
+          "label": "Debug",
+          "content": [
+            {
+              "label": "Live ADC & Console Output",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_debug_enable",
+                0,
+                19
+              ]
+            },
+            {
+              "label": "Active key",
+              "type": "label",
+              "content": [
+                "id_hhkb_debug_key",
+                0,
+                20
+              ]
+            },
+            {
+              "label": "ADC raw / range",
+              "type": "label",
+              "content": [
+                "id_hhkb_debug_raw",
+                0,
+                21
+              ]
+            },
+            {
+              "label": "Travel & state",
+              "type": "label",
+              "content": [
+                "id_hhkb_debug_travel",
+                0,
+                22
+              ]
+            }
+          ]
         }
       ]
     }
