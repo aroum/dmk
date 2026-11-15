@@ -1399,8 +1399,5 @@
         }
       ]
     }
-  ],
-  "features": {
-    "encoder": true
-  }
+  ]
 }
