@@ -9,11 +9,17 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
-    if (id < 1 || id > 27) return false;
+    if (id < 1 || id > 28) return false;
     if (request[0] == 0x08) {
         if (id == 12) {
             const char *status = hhkb_settings_storage_writable() ? "Writable" : "Occupied: not saved";
             strcpy((char *)&response[3], status);
+        } else if (id == 28) {
+#ifndef DMK_FW_VERSION
+#define DMK_FW_VERSION "unknown"
+#endif
+            strncpy((char *)&response[3], DMK_FW_VERSION, 28);
+            response[31] = '\0';
         } else if (id == 19) {
             response[3] = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
         } else if (id == 23) {
@@ -50,7 +56,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         return true;
     }
     if (request[0] == 0x07) {
-        if (id == 12 || id == 26 || (id >= 20 && id <= 22)) return false;
+        if (id == 12 || id == 26 || id == 28 || (id >= 20 && id <= 22)) return false;
         if (id == 19) {
             if (request[3] > 1) return false;
             hhkb_set_debug_flag(DEBUG_FLAG_TOPRE, request[3] != 0);

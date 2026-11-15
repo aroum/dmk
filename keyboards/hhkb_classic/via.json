@@ -1023,6 +1023,15 @@
           "label": "Debug",
           "content": [
             {
+              "label": "Firmware Version",
+              "type": "label",
+              "content": [
+                "id_hhkb_fw_version",
+                0,
+                28
+              ]
+            },
+            {
               "label": "Topre Matrix Stream",
               "type": "toggle",
               "content": [

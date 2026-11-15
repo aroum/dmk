@@ -41,6 +41,52 @@ if(DEFINE)
         endif()
     endforeach()
 endif()
+
+# Determine firmware version (CalVer tag or YY.MM.DD-hash)
+if(DEFINED ENV{DMK_FW_VERSION})
+    set(DMK_FW_VERSION "$ENV{DMK_FW_VERSION}")
+elseif(DEFINED ENV{GITHUB_REF_TYPE} AND "$ENV{GITHUB_REF_TYPE}" STREQUAL "tag")
+    set(DMK_FW_VERSION "$ENV{GITHUB_REF_NAME}")
+else()
+    execute_process(
+        COMMAND git describe --tags --exact-match
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE _GIT_TAG
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(_GIT_TAG)
+        set(DMK_FW_VERSION "${_GIT_TAG}")
+    else()
+        execute_process(
+            COMMAND git log -1 --format=%cd --date=format:%y.%m.%d
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            OUTPUT_VARIABLE _GIT_DATE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        execute_process(
+            COMMAND git rev-parse --short=7 HEAD
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            OUTPUT_VARIABLE _GIT_HASH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(_GIT_DATE AND _GIT_HASH)
+            set(DMK_FW_VERSION "${_GIT_DATE}-${_GIT_HASH}")
+        elseif(DEFINED ENV{GITHUB_SHA})
+            string(SUBSTRING "$ENV{GITHUB_SHA}" 0 7 _CI_HASH)
+            string(TIMESTAMP _CURRENT_DATE "%y.%m.%d")
+            set(DMK_FW_VERSION "${_CURRENT_DATE}-${_CI_HASH}")
+        else()
+            string(TIMESTAMP _FALLBACK_DATE "%y.%m.%d")
+            set(DMK_FW_VERSION "${_FALLBACK_DATE}-dev")
+        endif()
+    endif()
+endif()
+
+message(STATUS "Firmware version: ${DMK_FW_VERSION}")
+add_compile_definitions(DMK_FW_VERSION="${DMK_FW_VERSION}")
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "MinSizeRel" CACHE STRING "Choose the type of build" FORCE)
 endif()

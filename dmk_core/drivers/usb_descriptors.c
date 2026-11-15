@@ -227,15 +227,21 @@ uint8_t const desc_configuration[] = {
 #endif
 };
 
+#ifndef DMK_FW_VERSION
+#define DMK_FW_VERSION "unknown"
+#endif
+
 // String Descriptors
 char const *string_desc_arr[] = {
     (const char[]){0x09, 0x04}, // Supported language (English - 0x0409)
     "dmk",                      // Manufacturer string
     VIAL_KEYBOARD_NAME,         // Product string
-#ifdef VIAL
-    "vial:f64c2b3c", // Serial number string for Vial detection
+#if defined(VIA_V3) || defined(USE_VIA_V3)
+    DMK_FW_VERSION,             // Firmware version string for VIA builds
+#elif defined(VIAL)
+    "vial:f64c2b3c",            // Serial number string for Vial detection
 #else
-    "123456", // Serial number string
+    DMK_FW_VERSION,             // Serial number string
 #endif
 };
 
