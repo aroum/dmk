@@ -96,11 +96,13 @@ void capybara_matrix_hardware_init(void) {
     GPIOC->MODER |=  (1U << (14 * 2));
     GPIOC->BSRR = (1U << 14);
 
-    // 4. Configure Discharge Pin (PA1) as Push-Pull Output, initial LOW (discharge active)
+    // 4. Configure Discharge Pin (PA1): open-drain, LOW discharges, HIGH releases the node
+    GPIOA->BRR = (1U << 1);
+    GPIOA->OTYPER |= (1U << 1);
+    GPIOA->PUPDR &= ~(3U << (1 * 2));
     GPIOA->MODER &= ~(3U << (1 * 2));
     GPIOA->MODER |=  (1U << (1 * 2));
     GPIOA->OSPEEDR |= (3U << (1 * 2));
-    GPIOA->BRR = (1U << 1);
 
     // 5. Configure Discrete Switch: KNOB_SW (PB3) as Input with Pull-Up
     GPIOB->MODER &= ~(3U << (3 * 2));
