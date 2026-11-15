@@ -1369,7 +1369,7 @@
               ]
             },
             {
-              "label": "Topre Matrix Stream",
+              "label": "EC Matrix Stream",
               "type": "toggle",
               "content": [
                 "id_hhkb_debug_enable",

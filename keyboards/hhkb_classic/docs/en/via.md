@@ -74,7 +74,7 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 
 ## Debug
 
-The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels (Topre Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
+The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels (EC Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
 
 For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and Topre sensor response curves, see [Debugging and HID Console](debug.md).
 

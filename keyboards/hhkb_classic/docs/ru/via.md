@@ -74,7 +74,7 @@ Vial использует `vial.json` и умеет изменять раскл�
 
 ## Отладка (Debug)
 
-В меню **HHKB Settings** → **Debug** доступны переключатели диагностических каналов прошивки (Topre Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
+В меню **HHKB Settings** → **Debug** доступны переключатели диагностических каналов прошивки (EC Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
 
 Подробное руководство по настройке вкладки HID Console в VIA, описанию каналов логирования и анализу данных датчиков Topre приведено в отдельном документе: [Отладка и HID Console](debug.md).
 
