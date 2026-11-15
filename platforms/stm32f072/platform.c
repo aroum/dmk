@@ -11,34 +11,7 @@ void USB_IRQHandler(void) {
     tud_int_handler(0);
 }
 
-#define DFU_BOOTLOADER_TOKEN_ADDR   0x20003F80UL
-#define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
-#define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
-#define STM32F072_SYSMEM_BASE       0x1FFFC800UL
-
 void platform_init(void) {
-    // 0. Safeguard check for DFU bootloader request token
-    if (*(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR == DFU_BOOTLOADER_TOKEN_MAGIC1 &&
-        *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) == DFU_BOOTLOADER_TOKEN_MAGIC2) {
-        *(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR = 0;
-        *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) = 0;
-
-        RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
-        SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
-        __DSB();
-        __ISB();
-        uint32_t boot_sp = *(volatile uint32_t *)STM32F072_SYSMEM_BASE;
-        uint32_t boot_entry = *(volatile uint32_t *)(STM32F072_SYSMEM_BASE + 4);
-        __asm__ volatile (
-            "msr msp, %0\n"
-            "bx %1\n"
-            :
-            : "r" (boot_sp), "r" (boot_entry)
-            : "memory"
-        );
-        while (1) { __NOP(); }
-    }
-
     // 1. Enable Flash Prefetch Buffer and set latency to 1 wait state for 48 MHz operation
     FLASH->ACR |= FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY;
     while ((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY);

@@ -421,19 +421,7 @@ void hal_sleep_us(uint32_t us) {
 
 __attribute__((section(".RamFunc"), noinline))
 void platform_bootloader_jump(void) {
-    // STM32 DFU Bootloader jump:
-    // Write 64-bit bootloader token in top of SRAM and trigger system reset.
-    // System reset returns all clocks, USB, DMA, and peripherals to clean POR defaults
-    // before early startup remaps 0x00000000 to System Memory (0x1FF00000 on L072, 0x1FFFC800 on F072)
-    // and executes the factory ST DFU bootloader.
     __disable_irq();
-#if defined(MCU_stm32l072)
-    *(volatile uint32_t *)0x20004F80UL = 0xDEADBEEFUL;
-    *(volatile uint32_t *)0x20004F84UL = 0xCAFEBABEL;
-#else
-    *(volatile uint32_t *)0x20003F80UL = 0xDEADBEEFUL;
-    *(volatile uint32_t *)0x20003F84UL = 0xCAFEBABEL;
-#endif
     NVIC_SystemReset();
     while (1) { __NOP(); }
 }

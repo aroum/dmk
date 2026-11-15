@@ -123,40 +123,14 @@ const uint8_t APBPrescTable[8]  = {0, 0, 0, 0, 1, 2, 3, 4};
   * @param  None
   * @retval None
   */
-#define DFU_BOOTLOADER_TOKEN_ADDR   0x20003F80UL
-#define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
-#define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
-#define STM32F072_SYSMEM_BASE       0x1FFFC800UL
-
 void SystemInit(void)
 {
-  if (*(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR == DFU_BOOTLOADER_TOKEN_MAGIC1 &&
-      *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) == DFU_BOOTLOADER_TOKEN_MAGIC2) {
-    *(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR = 0;
-    *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) = 0;
-
-    // Enable SYSCFG peripheral clock
-    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
-
-    // Remap System Memory (0x1FFFC800) to 0x00000000 (MEM_MODE = 01)
-    SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
-
-    __DSB();
-    __ISB();
-
-    uint32_t boot_sp = *(volatile uint32_t *)STM32F072_SYSMEM_BASE;
-    uint32_t boot_entry = *(volatile uint32_t *)(STM32F072_SYSMEM_BASE + 4);
-
-    __asm__ volatile (
-        "msr msp, %0\n"
-        "bx %1\n"
-        :
-        : "r" (boot_sp), "r" (boot_entry)
-        : "memory"
-    );
-
-    while (1) { __NOP(); }
-  }
+  /* NOTE :SystemInit(): This function is called at startup just after reset and 
+                         before branch to main program. This call is made inside
+                         the "startup_stm32f0xx.s" file.
+                         User can setups the default system clock (System clock source, PLL Multiplier
+                         and Divider factors, AHB/APBx prescalers and Flash settings).
+   */
 }
 
 /**
