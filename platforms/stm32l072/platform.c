@@ -13,6 +13,7 @@ void USB_IRQHandler(void) {
 #define DFU_BOOTLOADER_TOKEN_ADDR   0x20004F80UL
 #define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
 #define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
+#define STM32L072_SYSMEM_BASE       0x1FF00000UL
 
 void platform_init(void) {
     // 0a. Check DFU bootloader request token
@@ -23,10 +24,18 @@ void platform_init(void) {
 
         RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
         SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
+        __DSB();
+        __ISB();
         SCB->VTOR = 0x00000000;
-        __set_MSP(*(volatile uint32_t *)0x00000000);
-        void (*bootloader_entry)(void) = (void (*)(void))(*(volatile uint32_t *)0x00000004);
-        bootloader_entry();
+        uint32_t boot_sp = *(volatile uint32_t *)STM32L072_SYSMEM_BASE;
+        uint32_t boot_entry = *(volatile uint32_t *)(STM32L072_SYSMEM_BASE + 4);
+        __asm__ volatile (
+            "msr msp, %0\n"
+            "bx %1\n"
+            :
+            : "r" (boot_sp), "r" (boot_entry)
+            : "memory"
+        );
         while (1) { __NOP(); }
     }
 

@@ -86,9 +86,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         } else if (id == 9 || id == 10) {
             hhkb_set_led_mode(id - 9, request[3]);
         } else if (id == 29) {
-            if (request[3]) {
-                platform_bootloader_jump();
-            }
+            platform_bootloader_jump();
         } else if (id == 27) {
             // Refresh action
         } else if (id != 7 && id != 8) {

@@ -153,6 +153,7 @@
 #define DFU_BOOTLOADER_TOKEN_ADDR   0x20004F80UL
 #define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
 #define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
+#define STM32L072_SYSMEM_BASE       0x1FF00000UL
 
 void SystemInit (void)
 {
@@ -167,15 +168,22 @@ void SystemInit (void)
     // Remap System Memory (0x1FF00000 on STM32L072) to 0x00000000 (MEM_MODE = 01)
     SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
 
+    __DSB();
+    __ISB();
+
     // Vector Table Relocation to 0x00000000
     SCB->VTOR = 0x00000000;
 
-    // Set Main Stack Pointer from remapped system memory (0x00000000)
-    __set_MSP(*(volatile uint32_t *)0x00000000);
+    uint32_t boot_sp = *(volatile uint32_t *)STM32L072_SYSMEM_BASE;
+    uint32_t boot_entry = *(volatile uint32_t *)(STM32L072_SYSMEM_BASE + 4);
 
-    // Jump to Bootloader entry point from remapped system memory (0x00000004)
-    void (*bootloader_entry)(void) = (void (*)(void))(*(volatile uint32_t *)0x00000004);
-    bootloader_entry();
+    __asm__ volatile (
+        "msr msp, %0\n"
+        "bx %1\n"
+        :
+        : "r" (boot_sp), "r" (boot_entry)
+        : "memory"
+    );
 
     while (1) { __NOP(); }
   }
