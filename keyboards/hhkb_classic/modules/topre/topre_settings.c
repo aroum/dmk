@@ -13,8 +13,8 @@
 #define HHKB_SETTINGS_SAVE_DELAY_MS 500U
 
 static uint16_t s_cal_baseline[MATRIX_COLS][MATRIX_ROWS];
-static uint16_t s_cal_peak[MATRIX_COLS][MATRIX_ROWS];
-static rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
+uint16_t s_cal_peak[MATRIX_COLS][MATRIX_ROWS];
+rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
 
 static bool s_custom_calibration = true;
 static bool s_calibration_mode = false;

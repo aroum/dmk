@@ -139,8 +139,12 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     bool capture = hhkb_cal_is_capturing_baseline();
     bool is_calibrating = hhkb_is_calibrating();
     rt_cfg_t scan_cfg = hhkb_get_scan_cfg();
+    bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
 
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+        const uint16_t *col_peak = s_cal_peak[col];
+        rt_key_t *col_keys = s_rt_keys[col];
+
         if (col == 8) {
             GPIOC->BRR  = (1U << 6);
             GPIOB->BSRR = (1U << 15);
@@ -176,22 +180,22 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
                 } else {
                     hhkb_cal_record_peak(col, row, val);
                 }
-            } else if (val > hhkb_get_cal_peak(col, row) && val < 4000) {
+            } else if (val > col_peak[row] && val < 4000) {
                 // Dynamic peak expansion
                 hhkb_update_dynamic_peak(col, row, val);
             }
 
             bool is_pressed;
+            rt_key_t *key = &col_keys[row];
 #ifdef HHKB_FACTORY_THRESHOLDS
             uint16_t threshold = get_factory_threshold(col, row);
             if (!scan_cfg.rt_enabled && !hhkb_calibration_enabled() && threshold != 0) {
                 if (prev_row & (1U << col)) threshold -= HHKB_FACTORY_HYSTERESIS;
                 is_pressed = val > threshold;
-                rt_key_reset(hhkb_get_rt_key(col, row));
+                rt_key_reset(key);
             } else
 #endif
             {
-                rt_key_t *key = hhkb_get_rt_key(col, row);
                 if (val <= key->base) {
                     key->ext = 0;
                     key->down = false;
@@ -203,8 +207,8 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             }
 
             // Feed debug monitoring only when Topre debug streaming is active
-            if (__builtin_expect(hhkb_get_debug_flag(DEBUG_FLAG_TOPRE), 0)) {
-                uint16_t norm = rt_normalize(hhkb_get_rt_key(col, row), val);
+            if (__builtin_expect(debug_topre, 0)) {
+                uint16_t norm = rt_normalize(key, val);
                 hhkb_debug_feed_sample(col, row, val, norm, is_pressed);
             }
 
