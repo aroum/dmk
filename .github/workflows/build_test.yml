@@ -152,8 +152,8 @@ jobs:
           python3 -m json.tool keyboards/le_capybara/via.json > /dev/null
           python3 -m json.tool keyboards/le_capybara/vial.json > /dev/null
           mkdir -p build/capybara-release
-          cp build/le_capybara/dmk_le_capybara_stm32f072.bin build/capybara-release/${{ matrix.artifact_name }}.bin
-          cp build/le_capybara/dmk_le_capybara_stm32f072.hex build/capybara-release/${{ matrix.artifact_name }}.hex
+          cp build/le_capybara/dmk_le_capybara_stm32f072*.bin build/capybara-release/${{ matrix.artifact_name }}.bin
+          cp build/le_capybara/dmk_le_capybara_stm32f072*.hex build/capybara-release/${{ matrix.artifact_name }}.hex
           cp keyboards/le_capybara/via.json build/capybara-release/
           cp keyboards/le_capybara/vial.json build/capybara-release/
 
