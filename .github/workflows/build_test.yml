@@ -122,10 +122,10 @@ jobs:
       matrix:
         include:
           - target: vial
-            extra_cmake: "-DVIAL_ENABLE=ON"
+            extra_cmake: "-DDEFINE=VIAL"
             artifact_name: dmk-le-capybara-vial
           - target: via
-            extra_cmake: "-DVIAL_ENABLE=OFF"
+            extra_cmake: "-DDEFINE=VIA_V3"
             artifact_name: dmk-le-capybara-via
 
     steps:
