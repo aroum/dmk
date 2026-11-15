@@ -155,7 +155,16 @@ void matrix_task(void *pvParameters) {
         uint32_t work_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         if (work_us > s_matrix_work_max_us) s_matrix_work_max_us = work_us;
 #endif
-#ifndef HHKB_SCAN_1KHZ
+#ifdef HHKB_SCAN_1KHZ
+        // Drop overdue timer notifications to prevent
+        // starvation of USB and keyboard tasks.
+        uint32_t missed = ulTaskNotifyTake(pdTRUE, 0);
+#ifdef HHKB_SCAN_DIAGNOSTICS
+        s_matrix_scan_deadline_misses += missed;
+#else
+        (void)missed;
+#endif
+#else
         vTaskDelay(pdMS_TO_TICKS(1));
 #endif
     }
