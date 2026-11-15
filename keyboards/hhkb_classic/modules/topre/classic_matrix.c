@@ -158,7 +158,9 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             scan_wait_since(settle_start, 2);
 
-            taskENTER_CRITICAL();
+            uint32_t saved_primask = __get_PRIMASK();
+            __disable_irq();
+
             // Discharge capacitor C57
             GPIOC->BSRR = (1U << 8);
             scan_delay_us(2);
@@ -170,7 +172,8 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             uint16_t val = adc_read_sample();
             GPIOB->BSRR = row_pins[row];
-            taskEXIT_CRITICAL();
+
+            __set_PRIMASK(saved_primask);
 
             settle_start = (uint16_t)TIM2->CNT;
 
