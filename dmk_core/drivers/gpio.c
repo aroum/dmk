@@ -461,13 +461,14 @@ void platform_bootloader_jump(void) {
     while (1) { __NOP(); }
 #else
     // STM32F072 DFU Bootloader jump:
-    // Magic token in RAM at 0x20000000 or reset with BOOT0
+    // Write 64-bit bootloader token in top of SRAM and trigger system reset.
+    // System reset returns all clocks (HSI 8 MHz), USB, DMA, and peripherals
+    // to clean POR defaults before SystemInit remaps 0x00000000 to System Memory
+    // and executes the factory ST DFU bootloader.
     __disable_irq();
-    // System Memory on STM32F042/072 is at 0x1FFFC800
-    // Remap system memory or jump directly
-    void (*bootloader_entry)(void) = (void (*)(void))(*((uint32_t *)0x1FFFC804));
-    __set_MSP(*((uint32_t *)0x1FFFC800));
-    bootloader_entry();
+    *(volatile uint32_t *)0x20003F80UL = 0xDEADBEEFUL;
+    *(volatile uint32_t *)0x20003F84UL = 0xCAFEBABEL;
+    NVIC_SystemReset();
     while (1) { __NOP(); }
 #endif
 }

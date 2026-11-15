@@ -123,14 +123,32 @@ const uint8_t APBPrescTable[8]  = {0, 0, 0, 0, 1, 2, 3, 4};
   * @param  None
   * @retval None
   */
+#define DFU_BOOTLOADER_TOKEN_ADDR   0x20003F80UL
+#define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
+#define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
+
 void SystemInit(void)
 {
-  /* NOTE :SystemInit(): This function is called at startup just after reset and 
-                         before branch to main program. This call is made inside
-                         the "startup_stm32f0xx.s" file.
-                         User can setups the default system clock (System clock source, PLL Multiplier
-                         and Divider factors, AHB/APBx prescalers and Flash settings).
-   */
+  if (*(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR == DFU_BOOTLOADER_TOKEN_MAGIC1 &&
+      *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) == DFU_BOOTLOADER_TOKEN_MAGIC2) {
+    *(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR = 0;
+    *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) = 0;
+
+    // Enable SYSCFG peripheral clock
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+    // Remap System Memory (0x1FFFC800) to 0x00000000 (MEM_MODE = 01)
+    SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
+
+    // Set Main Stack Pointer from remapped system memory (0x00000000)
+    __set_MSP(*(volatile uint32_t *)0x00000000);
+
+    // Jump to Bootloader entry point from remapped system memory (0x00000004)
+    void (*bootloader_entry)(void) = (void (*)(void))(*(volatile uint32_t *)0x00000004);
+    bootloader_entry();
+
+    while (1) { __NOP(); }
+  }
 }
 
 /**

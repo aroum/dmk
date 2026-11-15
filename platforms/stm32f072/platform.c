@@ -11,7 +11,25 @@ void USB_IRQHandler(void) {
     tud_int_handler(0);
 }
 
+#define DFU_BOOTLOADER_TOKEN_ADDR   0x20003F80UL
+#define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
+#define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
+
 void platform_init(void) {
+    // 0. Safeguard check for DFU bootloader request token
+    if (*(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR == DFU_BOOTLOADER_TOKEN_MAGIC1 &&
+        *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) == DFU_BOOTLOADER_TOKEN_MAGIC2) {
+        *(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR = 0;
+        *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) = 0;
+
+        RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+        SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
+        __set_MSP(*(volatile uint32_t *)0x00000000);
+        void (*bootloader_entry)(void) = (void (*)(void))(*(volatile uint32_t *)0x00000004);
+        bootloader_entry();
+        while (1) { __NOP(); }
+    }
+
     // 1. Enable Flash Prefetch Buffer and set latency to 1 wait state for 48 MHz operation
     FLASH->ACR |= FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY;
     while ((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY);
