@@ -349,9 +349,14 @@ void platform_bootloader_jump(void) {
     NVIC_SystemReset();
 }
 
-#elif defined(MCU_stm32l072)
+#elif defined(MCU_stm32l072) || defined(MCU_stm32f072)
+#if defined(MCU_stm32l072)
 #include "stm32l0xx.h"
 #include "stm32l0xx_ll_gpio.h"
+#else
+#include "stm32f0xx.h"
+#include "stm32f0xx_ll_gpio.h"
+#endif
 
 static inline GPIO_TypeDef* stm32_get_port(pin_t pin) {
     uint8_t port_idx = pin >> 4;
@@ -360,8 +365,14 @@ static inline GPIO_TypeDef* stm32_get_port(pin_t pin) {
         case 1: return GPIOB;
         case 2: return GPIOC;
         case 3: return GPIOD;
+#if defined(GPIOE)
         case 4: return GPIOE;
+#endif
+#if defined(GPIOF)
+        case 5: return GPIOF;
+#elif defined(GPIOH)
         case 5: return GPIOH;
+#endif
         default: return GPIOA;
     }
 }
@@ -402,14 +413,15 @@ void hal_gpio_pull_up(pin_t pin) {
 }
 
 void hal_sleep_us(uint32_t us) {
-    // 32 MHz Cortex-M0+ loop (~6 iterations per microsecond)
-    for (volatile uint32_t i = 0; i < (us * 6); i++) {
+    // 32-48 MHz Cortex-M0/M0+ loop (~6-8 iterations per microsecond)
+    for (volatile uint32_t i = 0; i < (us * 8); i++) {
         __NOP();
     }
 }
 
 __attribute__((section(".RamFunc"), noinline))
 void platform_bootloader_jump(void) {
+#if defined(MCU_stm32l072)
     __disable_irq();
 
     // Unlock FLASH_PECR using PEKEY1 & PEKEY2 if locked
@@ -447,6 +459,17 @@ void platform_bootloader_jump(void) {
     // Trigger system reset into Bank 1 stock PFU bootloader
     NVIC_SystemReset();
     while (1) { __NOP(); }
+#else
+    // STM32F072 DFU Bootloader jump:
+    // Magic token in RAM at 0x20000000 or reset with BOOT0
+    __disable_irq();
+    // System Memory on STM32F042/072 is at 0x1FFFC800
+    // Remap system memory or jump directly
+    void (*bootloader_entry)(void) = (void (*)(void))(*((uint32_t *)0x1FFFC804));
+    __set_MSP(*((uint32_t *)0x1FFFC800));
+    bootloader_entry();
+    while (1) { __NOP(); }
+#endif
 }
 
 #endif

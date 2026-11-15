@@ -113,3 +113,51 @@ jobs:
           path: build/hhkb-release/
           retention-days: 3
           if-no-files-found: error
+
+  build-le-capybara:
+    name: Build Le Capybara (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: vial
+            extra_cmake: "-DVIAL_ENABLE=ON"
+            artifact_name: dmk-le-capybara-vial
+          - target: via
+            extra_cmake: "-DVIAL_ENABLE=OFF"
+            artifact_name: dmk-le-capybara-via
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install Toolchain and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - name: Build Firmware (${{ matrix.target }})
+        run: |
+          cmake -B build/le_capybara -DKEYBOARD=le_capybara ${{ matrix.extra_cmake }}
+          cmake --build build/le_capybara
+
+      - name: Package Le Capybara Artifacts
+        run: |
+          python3 -m json.tool keyboards/le_capybara/via.json > /dev/null
+          python3 -m json.tool keyboards/le_capybara/vial.json > /dev/null
+          mkdir -p build/capybara-release
+          cp build/le_capybara/dmk_le_capybara_stm32f072.bin build/capybara-release/${{ matrix.artifact_name }}.bin
+          cp build/le_capybara/dmk_le_capybara_stm32f072.hex build/capybara-release/${{ matrix.artifact_name }}.hex
+          cp keyboards/le_capybara/via.json build/capybara-release/
+          cp keyboards/le_capybara/vial.json build/capybara-release/
+
+      - name: Upload Le Capybara Firmware Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: build/capybara-release/
+          retention-days: 3
+          if-no-files-found: error

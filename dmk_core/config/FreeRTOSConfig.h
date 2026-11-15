@@ -77,6 +77,11 @@
 #define vPortSVCHandler     SVC_Handler
 #define xPortPendSVHandler  PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
+#elif defined(MCU_stm32f072)
+#define configCPU_CLOCK_HZ (48000000UL)
+#define vPortSVCHandler     SVC_Handler
+#define xPortPendSVHandler  PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler
 #endif
 
 #define configIDLE_SHOULD_YIELD 1
@@ -108,8 +113,8 @@
 #if defined(MCU_baikal)
 // The FreeRTOS heap resides in shared TCM. Increase this budget if needed.
 #define configTOTAL_HEAP_SIZE (3 * 1024)
-#elif defined(MCU_stm32l072)
-// STM32L072 has 20 KiB SRAM total
+#elif defined(MCU_stm32l072) || defined(MCU_stm32f072)
+// STM32L072 has 20 KiB SRAM, STM32F072 has 16 KiB SRAM
 #define configTOTAL_HEAP_SIZE (3 * 1024)
 #else
 #define configTOTAL_HEAP_SIZE (8 * 1024)
