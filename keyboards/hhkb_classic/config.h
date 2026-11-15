@@ -30,7 +30,7 @@
 #define HOLD_TAP_TAP_PREFERRED 0
 #define QUICK_TAP_TERM 150
 #define HHKB_SCAN_1KHZ 1
-#define HHKB_SCAN_DIAGNOSTICS 1
+// #define HHKB_SCAN_DIAGNOSTICS 1
 
 /* --- Matrix Geometry --- */
 #define MATRIX_ROWS 4
