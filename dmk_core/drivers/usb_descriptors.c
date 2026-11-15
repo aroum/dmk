@@ -501,7 +501,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     return _desc_str;
 }
 
-#define CONSOLE_BUF_SIZE 192
+#define CONSOLE_BUF_SIZE 256
 static char s_console_buf[CONSOLE_BUF_SIZE];
 static volatile uint16_t s_console_head = 0;
 static volatile uint16_t s_console_tail = 0;
@@ -530,7 +530,7 @@ void debug_console_write(const char *buf, size_t len) {
 }
 
 void debug_console_printf(const char *fmt, ...) {
-    char tmp[96];
+    char tmp[128];
     va_list args;
     va_start(args, fmt);
     int len = vsnprintf(tmp, sizeof(tmp), fmt, args);
