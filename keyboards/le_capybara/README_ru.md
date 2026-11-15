@@ -52,6 +52,21 @@
 
 ### 1. Сборка прошивки
 
+#### С использованием `build_all.sh` (Linux / macOS) или `build_all.bat` / `build_all.ps1` (Windows):
+
+```bash
+# Linux / macOS (сборка с очисткой директории)
+./build_all.sh -b le_capybara -c
+
+# Windows (Командная строка / cmd.exe)
+build_all.bat -b le_capybara -c
+
+# Windows (PowerShell)
+.\build_all.ps1 -Keyboard le_capybara -Clean
+```
+
+#### Напрямую через CMake:
+
 ```bash
 # Сборка с поддержкой Vial (по умолчанию)
 cmake -B build/le_capybara -DKEYBOARD=le_capybara

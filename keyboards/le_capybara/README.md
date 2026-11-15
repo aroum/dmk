@@ -52,6 +52,21 @@ Alternative high-performance electro-capacitive (Topre-compatible) firmware for 
 
 ### 1. Build Firmware
 
+#### Using `build_all.sh` (Linux / macOS) or `build_all.bat` / `build_all.ps1` (Windows):
+
+```bash
+# Linux / macOS (build with clean configuration)
+./build_all.sh -b le_capybara -c
+
+# Windows (Command Prompt / Batch)
+build_all.bat -b le_capybara -c
+
+# Windows (PowerShell)
+.\build_all.ps1 -Keyboard le_capybara -Clean
+```
+
+#### Using CMake directly:
+
 ```bash
 # Build with Vial support (default)
 cmake -B build/le_capybara -DKEYBOARD=le_capybara

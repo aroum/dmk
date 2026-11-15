@@ -70,22 +70,41 @@ sudo udevadm trigger
 
 ---
 
-## Запись прошивки
+## Сборка и прошивка
 
-### С использованием CMake
+### Вариант A: Через `build_all.sh` / `build_all.bat` (Рекомендуется)
 
 В корневом каталоге репозитория DMK:
 
 ```bash
-# Сборка прошивки
+# Linux / macOS
+./build_all.sh -b le_capybara -c
+
+# Windows (командная строка / cmd.exe)
+build_all.bat -b le_capybara -c
+
+# Windows (PowerShell)
+.\build_all.ps1 -Keyboard le_capybara -Clean
+```
+
+После компиляции выполните прошивку через `dfu-util` или таргет CMake, как показано ниже.
+
+### Вариант B: Напрямую через CMake
+
+```bash
+# Сборка с поддержкой Vial (по умолчанию)
 cmake -B build/le_capybara -DKEYBOARD=le_capybara
 cmake --build build/le_capybara
 
-# Автоматическая прошивка устройства
+# Сборка с интерактивными меню VIA v3
+cmake -B build/le_capybara_via -DKEYBOARD=le_capybara -DVIAL_ENABLE=OFF
+cmake --build build/le_capybara_via
+
+# Автоматическая прошивка устройства через таргет CMake
 cmake --build build/le_capybara --target flash
 ```
 
-### Прямой вызов `dfu-util`
+### Вариант C: Прямой вызов `dfu-util`
 
 Вы можете вручную вызвать утилиту `dfu-util` для созданного бинарного файла:
 

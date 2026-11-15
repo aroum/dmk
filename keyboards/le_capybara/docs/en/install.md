@@ -70,24 +70,43 @@ There are two primary methods to put the Le Capybara into DFU mode:
 
 ---
 
-## Flashing the Firmware
+## Building & Flashing the Firmware
 
-### Using CMake
+### Option A: Using `build_all.sh` / `build_all.bat` (Recommended)
 
 From the root of the DMK repository:
 
 ```bash
-# Build the target
+# Linux / macOS
+./build_all.sh -b le_capybara -c
+
+# Windows (cmd.exe / batch)
+build_all.bat -b le_capybara -c
+
+# Windows (PowerShell)
+.\build_all.ps1 -Keyboard le_capybara -Clean
+```
+
+After building, flash using `dfu-util` or CMake target as shown below.
+
+### Option B: Using CMake Directly
+
+```bash
+# Build with Vial support (default)
 cmake -B build/le_capybara -DKEYBOARD=le_capybara
 cmake --build build/le_capybara
 
-# Flash directly to hardware
+# Build with VIA v3 custom controls
+cmake -B build/le_capybara_via -DKEYBOARD=le_capybara -DVIAL_ENABLE=OFF
+cmake --build build/le_capybara_via
+
+# Flash directly to hardware using the CMake target
 cmake --build build/le_capybara --target flash
 ```
 
-### Using `dfu-util` Directly
+### Option C: Using `dfu-util` Directly
 
-You can also invoke `dfu-util` manually on the generated binary:
+You can invoke `dfu-util` manually on the compiled binary:
 
 ```bash
 dfu-util -a 0 -d 0483:df11 -s 0x08000000:leave -D build/le_capybara/dmk_le_capybara_stm32f072.bin
