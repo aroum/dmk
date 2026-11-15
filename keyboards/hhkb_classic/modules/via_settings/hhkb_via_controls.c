@@ -1,4 +1,5 @@
 #include "classic_matrix.h"
+#include "hal_gpio.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -83,6 +84,8 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
             hhkb_calibration_finish();
         } else if (id == 9 || id == 10) {
             hhkb_set_led_mode(id - 9, request[3]);
+        } else if (id == 29 && request[3]) {
+            platform_bootloader_jump();
         } else if (id == 27) {
             // Refresh action: triggers VIA to re-read submenu controls
         } else if (id != 7 && id != 8) {

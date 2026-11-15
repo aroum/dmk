@@ -10,8 +10,27 @@ void USB_IRQHandler(void) {
     tud_int_handler(0);
 }
 
+#define DFU_BOOTLOADER_TOKEN_ADDR   0x20004F80UL
+#define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
+#define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
+
 void platform_init(void) {
-    // 0. Early check: If SW6 is ON, branch immediately to Bank 1 (stock factory firmware)
+    // 0a. Check DFU bootloader request token
+    if (*(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR == DFU_BOOTLOADER_TOKEN_MAGIC1 &&
+        *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) == DFU_BOOTLOADER_TOKEN_MAGIC2) {
+        *(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR = 0;
+        *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) = 0;
+
+        RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+        SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
+        SCB->VTOR = 0x00000000;
+        __set_MSP(*(volatile uint32_t *)0x00000000);
+        void (*bootloader_entry)(void) = (void (*)(void))(*(volatile uint32_t *)0x00000004);
+        bootloader_entry();
+        while (1) { __NOP(); }
+    }
+
+    // 0b. Early check: If SW6 is ON, branch immediately to Bank 1 (stock factory firmware)
     hhkb_early_dip_check();
 
     // Debug LED: initialize PA8 & PA9 outputs

@@ -421,56 +421,21 @@ void hal_sleep_us(uint32_t us) {
 
 __attribute__((section(".RamFunc"), noinline))
 void platform_bootloader_jump(void) {
-#if defined(MCU_stm32l072)
-    __disable_irq();
-
-    // Unlock FLASH_PECR using PEKEY1 & PEKEY2 if locked
-    if (FLASH->PECR & FLASH_PECR_PELOCK) {
-        FLASH->PEKEYR = 0x89ABCDEF;
-        FLASH->PEKEYR = 0x02030405;
-    }
-    while (FLASH->PECR & FLASH_PECR_PELOCK);
-
-    // Unlock Program memory using PRGKEY1 & PRGKEY2 if PRGLOCK is set
-    if (FLASH->PECR & FLASH_PECR_PRGLOCK) {
-        FLASH->PRGKEYR = 0x8C9DAEBF; // FLASH_PRGKEY1
-        FLASH->PRGKEYR = 0x13141516; // FLASH_PRGKEY2
-    }
-    while (FLASH->PECR & FLASH_PECR_PRGLOCK);
-
-    while (FLASH->SR & FLASH_SR_BSY);
-
-    FLASH->SR = FLASH_SR_EOP | FLASH_SR_WRPERR | FLASH_SR_PGAERR
-              | FLASH_SR_SIZERR | FLASH_SR_OPTVERR | FLASH_SR_RDERR
-              | FLASH_SR_FWWERR | FLASH_SR_NOTZEROERR;
-
-    // Set ERASE and PROG bits in PECR for page erase
-    FLASH->PECR |= (FLASH_PECR_ERASE | FLASH_PECR_PROG);
-
-    // Erase the first page of Bank 2 (0x08010000) so MCU resets into Bank 1 recovery updater
-    *(volatile uint32_t *)0x08010000 = 0x00000000;
-
-    while (FLASH->SR & FLASH_SR_BSY);
-
-    FLASH->PECR &= ~(FLASH_PECR_ERASE | FLASH_PECR_PROG);
-    FLASH->PECR |= FLASH_PECR_PRGLOCK;
-    FLASH->PECR |= FLASH_PECR_PELOCK;
-
-    // Trigger system reset into Bank 1 stock PFU bootloader
-    NVIC_SystemReset();
-    while (1) { __NOP(); }
-#else
-    // STM32F072 DFU Bootloader jump:
+    // STM32 DFU Bootloader jump:
     // Write 64-bit bootloader token in top of SRAM and trigger system reset.
-    // System reset returns all clocks (HSI 8 MHz), USB, DMA, and peripherals
-    // to clean POR defaults before SystemInit remaps 0x00000000 to System Memory
+    // System reset returns all clocks, USB, DMA, and peripherals to clean POR defaults
+    // before early startup remaps 0x00000000 to System Memory (0x1FF00000 on L072, 0x1FFFC800 on F072)
     // and executes the factory ST DFU bootloader.
     __disable_irq();
+#if defined(MCU_stm32l072)
+    *(volatile uint32_t *)0x20004F80UL = 0xDEADBEEFUL;
+    *(volatile uint32_t *)0x20004F84UL = 0xCAFEBABEL;
+#else
     *(volatile uint32_t *)0x20003F80UL = 0xDEADBEEFUL;
     *(volatile uint32_t *)0x20003F84UL = 0xCAFEBABEL;
+#endif
     NVIC_SystemReset();
     while (1) { __NOP(); }
-#endif
 }
 
 #endif

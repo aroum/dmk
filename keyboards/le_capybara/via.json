@@ -1403,6 +1403,18 @@
                 0,
                 25
               ]
+            },
+            {
+              "label": "Reboot to ST DFU",
+              "type": "button",
+              "options": [
+                1
+              ],
+              "content": [
+                "id_hhkb_reboot_dfu",
+                0,
+                29
+              ]
             }
           ]
         }

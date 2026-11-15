@@ -150,8 +150,36 @@
   * @param  None
   * @retval None
   */
+#define DFU_BOOTLOADER_TOKEN_ADDR   0x20004F80UL
+#define DFU_BOOTLOADER_TOKEN_MAGIC1 0xDEADBEEFUL
+#define DFU_BOOTLOADER_TOKEN_MAGIC2 0xCAFEBABEL
+
 void SystemInit (void)
 {
+  if (*(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR == DFU_BOOTLOADER_TOKEN_MAGIC1 &&
+      *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) == DFU_BOOTLOADER_TOKEN_MAGIC2) {
+    *(volatile uint32_t *)DFU_BOOTLOADER_TOKEN_ADDR = 0;
+    *(volatile uint32_t *)(DFU_BOOTLOADER_TOKEN_ADDR + 4) = 0;
+
+    // Enable SYSCFG peripheral clock
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+    // Remap System Memory (0x1FF00000 on STM32L072) to 0x00000000 (MEM_MODE = 01)
+    SYSCFG->CFGR1 = (SYSCFG->CFGR1 & ~SYSCFG_CFGR1_MEM_MODE) | SYSCFG_CFGR1_MEM_MODE_0;
+
+    // Vector Table Relocation to 0x00000000
+    SCB->VTOR = 0x00000000;
+
+    // Set Main Stack Pointer from remapped system memory (0x00000000)
+    __set_MSP(*(volatile uint32_t *)0x00000000);
+
+    // Jump to Bootloader entry point from remapped system memory (0x00000004)
+    void (*bootloader_entry)(void) = (void (*)(void))(*(volatile uint32_t *)0x00000004);
+    bootloader_entry();
+
+    while (1) { __NOP(); }
+  }
+
   /* Configure the Vector Table location add offset address ------------------*/
 #if defined (USER_VECT_TAB_ADDRESS)
   SCB->VTOR = VECT_TAB_BASE_ADDRESS | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM */
