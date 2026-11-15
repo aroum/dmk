@@ -7,9 +7,9 @@
 
 ## Overview
 
-The **HHKB Studio** represents a radical departure from the traditional Topre electro-capacitive architecture. It is an all-in-one workstation keyboard featuring hot-swappable mechanical switches, an integrated center Pointing Stick (TrackPoint) with three physical mouse buttons, four optical/capacitive Gesture Pads on the chassis bezels, and dual-mode USB-C / Bluetooth Low Energy connectivity.
+The **HHKB Studio** represents a radical departure from the traditional Topre electro-capacitive architecture. It is an all-in-one workstation keyboard featuring hot-swappable mechanical switches, an integrated center Pointing Stick (TrackPoint) with three physical mouse buttons, four capacitive Gesture Pads on the chassis bezels, and dual-mode USB-C / Bluetooth Low Energy connectivity.
 
-Porting the open-source **DMK (Dynamic Matrix Keyboard)** firmware to the HHKB Studio requires substantial reverse-engineering due to the high density of peripheral subsystems and auxiliary sensor controllers.
+Porting the open-source **DMK** firmware to the HHKB Studio requires substantial reverse-engineering due to the high density of peripheral subsystems and auxiliary sensor controllers.
 
 ---
 

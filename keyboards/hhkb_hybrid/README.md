@@ -9,7 +9,7 @@
 
 The **HHKB Professional HYBRID** and **HYBRID Type-S** represent the dual-mode (USB-C & Bluetooth Low Energy) generation of the Happy Hacking Keyboard family. 
 
-The primary goal of this subproject is to port the open-source **DMK (Dynamic Matrix Keyboard)** firmware to run natively on the keyboard's internal STM32 microcontroller. This brings Vial / VIA runtime configuration, high-speed Topre scanning, customizable actuation points, and Rapid Trigger capabilities to the HYBRID series, while preserving the factory Bluetooth transceiver functionality.
+The primary goal of this subproject is to port the open-source **DMK** firmware to run natively on the keyboard's internal STM32 microcontroller. This brings Vial / VIA runtime configuration, high-speed Topre scanning, customizable actuation points, and Rapid Trigger capabilities to the HYBRID series, while preserving the factory Bluetooth transceiver functionality.
 
 According to hardware teardowns and community contributions, the controller motherboard architecture is closely related to the HHKB Professional Classic, with the addition of a dedicated Bluetooth subsystem, battery power management, and wireless antennas. Crucially, the physical controller PCB is shared across both ANSI and JIS models.
 
