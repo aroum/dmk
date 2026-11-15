@@ -16,6 +16,10 @@ extern "C" {
 
 void hhkb_matrix_hardware_init(void);
 bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]);
+#ifdef HHKB_SCAN_DIAGNOSTICS
+void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full);
+void hhkb_reset_scan_diagnostics_peaks(void);
+#endif
 
 #ifdef __cplusplus
 }

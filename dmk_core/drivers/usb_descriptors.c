@@ -391,6 +391,14 @@ __attribute__((weak)) bool hhkb_get_debug_flag(uint8_t flag) {
     return false;
 }
 __attribute__((weak)) uint8_t hhkb_get_scan_rate(void) { return 4; }
+__attribute__((weak)) void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full) {
+    if (scan_us) *scan_us = 0;
+    if (scan_max_us) *scan_max_us = 0;
+    if (work_max_us) *work_max_us = 0;
+    if (missed) *missed = 0;
+    if (q_full) *q_full = 0;
+}
+__attribute__((weak)) void hhkb_reset_scan_diagnostics_peaks(void) {}
 
 static uint32_t s_last_diag_tick = 0;
 static uint32_t s_usb_loop_total = 0;
@@ -422,9 +430,20 @@ void vial_diag_task(void) {
             static const uint16_t s_target_rates[5] = {50, 125, 250, 500, 1000};
             uint8_t r_idx = hhkb_get_scan_rate();
             uint16_t target_hz = (r_idx <= 4) ? s_target_rates[r_idx] : 1000;
+#ifdef HHKB_SCAN_DIAGNOSTICS
+            uint32_t scan_us = 0, scan_max_us = 0, work_max_us = 0, missed = 0, q_full = 0;
+            hhkb_get_scan_diagnostics(&scan_us, &scan_max_us, &work_max_us, &missed, &q_full);
+            debug_console_printf("[SCAN] target=%u actual=%lu Hz | raw=%lu us (max %lu) work_max=%lu us | miss=%lu q_full=%lu (usb=%lu)\r\n",
+                                 target_hz, (unsigned long)hhkb_get_matrix_rate_hz(),
+                                 (unsigned long)scan_us, (unsigned long)scan_max_us,
+                                 (unsigned long)work_max_us, (unsigned long)missed, (unsigned long)q_full,
+                                 (unsigned long)usb_rate_hz);
+            hhkb_reset_scan_diagnostics_peaks();
+#else
             debug_console_printf("[RATE] matrix=%lu Hz (target: %u Hz), usb_loop=%lu Hz\r\n",
                                  (unsigned long)hhkb_get_matrix_rate_hz(), target_hz,
                                  (unsigned long)usb_rate_hz);
+#endif
         }
     }
 }

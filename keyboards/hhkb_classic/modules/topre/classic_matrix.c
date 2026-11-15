@@ -202,9 +202,11 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
                 }
             }
 
-            // Feed debug monitoring
-            uint16_t norm = rt_normalize(hhkb_get_rt_key(col, row), val);
-            hhkb_debug_feed_sample(col, row, val, norm, is_pressed);
+            // Feed debug monitoring only when Topre debug streaming is active
+            if (__builtin_expect(hhkb_get_debug_flag(DEBUG_FLAG_TOPRE), 0)) {
+                uint16_t norm = rt_normalize(hhkb_get_rt_key(col, row), val);
+                hhkb_debug_feed_sample(col, row, val, norm, is_pressed);
+            }
 
             if (is_pressed) current_matrix[row] |= (1U << col);
             else current_matrix[row] &= ~(1U << col);

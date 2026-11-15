@@ -17,7 +17,7 @@ static uint8_t s_scan_phase;
 static uint8_t s_scan_rate_applied;
 
 static void update_scan_period(void) {
-    static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 950};
+    static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000};
     uint8_t rate = hhkb_get_scan_rate();
     if (rate > 4) rate = 4;
     s_scan_rate_applied = rate;
@@ -155,17 +155,27 @@ void matrix_task(void *pvParameters) {
         uint32_t work_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         if (work_us > s_matrix_work_max_us) s_matrix_work_max_us = work_us;
 #endif
-#ifdef HHKB_SCAN_1KHZ
-        // Discard periods that elapsed during this pass so a late scan does not
-        // consume the CPU time needed by the keyboard and USB tasks.
-        uint32_t missed = ulTaskNotifyTake(pdTRUE, 0);
-#ifdef HHKB_SCAN_DIAGNOSTICS
-        s_matrix_scan_deadline_misses += missed;
-#else
-        (void)missed;
-#endif
-#else
+#ifndef HHKB_SCAN_1KHZ
         vTaskDelay(pdMS_TO_TICKS(1));
 #endif
     }
 }
+
+#ifdef HHKB_SCAN_DIAGNOSTICS
+void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full) {
+    if (scan_us) *scan_us = s_matrix_scan_us;
+    if (scan_max_us) *scan_max_us = s_matrix_scan_max_us;
+    if (work_max_us) *work_max_us = s_matrix_work_max_us;
+#ifdef HHKB_SCAN_1KHZ
+    if (missed) *missed = s_matrix_scan_deadline_misses;
+#else
+    if (missed) *missed = 0;
+#endif
+    if (q_full) *q_full = s_matrix_queue_full;
+}
+
+void hhkb_reset_scan_diagnostics_peaks(void) {
+    s_matrix_scan_max_us = 0;
+    s_matrix_work_max_us = 0;
+}
+#endif
