@@ -9,7 +9,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
-    if (id < 1 || id > 28) return false;
+    if (id < 1 || id > 29) return false;
     if (request[0] == 0x08) {
         if (id == 12) {
             const char *status = hhkb_settings_storage_writable() ? "Writable" : "Occupied: not saved";
@@ -30,7 +30,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
             response[3] = hhkb_get_debug_flag(DEBUG_FLAG_CAL);
         } else if (id == 26) {
             hhkb_get_cal_status_str((char *)&response[3], 28);
-        } else if (id == 27) {
+        } else if (id == 27 || id == 29) {
             response[3] = 0;
         } else if (id == 20) {
             hhkb_get_debug_key_str((char *)&response[3], 28);
@@ -84,8 +84,10 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
             hhkb_calibration_finish();
         } else if (id == 9 || id == 10) {
             hhkb_set_led_mode(id - 9, request[3]);
-        } else if (id == 29 && request[3]) {
-            platform_bootloader_jump();
+        } else if (id == 29) {
+            if (request[3]) {
+                platform_bootloader_jump();
+            }
         } else if (id == 27) {
             // Refresh action: triggers VIA to re-read submenu controls
         } else if (id != 7 && id != 8) {
