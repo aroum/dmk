@@ -73,6 +73,16 @@ When Vial support is enabled, a secondary **Raw HID** USB interface is initializ
 >
 > Unlike Vial, the VIA v3 specification supports creating custom controls in the keyboard JSON definition. These can be used, for example, for calibrating HE and EC switches, adjusting actuation points, and setting up Rapid Trigger. This functionality is supported only via the official web client https://usevia.app.
 
+### Dynamic Firmware Version Query (VIA v3)
+
+In VIA v3 mode, the keyboard firmware reports its exact build version dynamically to VIA via the custom value protocol (`0x08`, Channel 0, ID 28).
+
+- **Source of truth:** The version string is compiled directly into the binary firmware image (`DMK_FW_VERSION`) by CMake during the build process, never hardcoded in the `via.json` file.
+- **CalVer releases:** Official releases built from git tags use standard CalVer format (e.g., `26.11.15`).
+- **Nightly / Dev builds:** Automated and local development builds use the date and short git commit hash (e.g., `26.11.15-b8c21fe`).
+- **VIA Debug menu:** In the VIA web configurator, navigating to **Debug** shows **Firmware Version**, which automatically queries the controller via WebHID and displays the runtime version.
+- **USB Device Descriptor:** In VIA v3 builds, this version string also serves as the USB Serial Number descriptor, making it visible in OS device managers and browser connection dialogs.
+
 ---
 
 ## How it Works

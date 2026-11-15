@@ -76,6 +76,13 @@ Under the **LAYOUT** tab in VIA:
 - **Tapping Term:** Configures Mod-Tap and Layer-Tap timeout (50 ms – 500 ms).
 - **Quick Tap:** Configures quick double-tap hold repeat (0 ms – 500 ms).
 
+### 4. Debug & Diagnostics
+- **Firmware Version:** Dynamically queries and displays the exact runtime firmware build version (`DMK_FW_VERSION`, e.g. `26.11.15` or `26.11.15-b8c21fe`) directly from controller memory over VIA protocol (channel 0, ID 28).
+- **Topre Matrix Stream:** Toggles real-time streaming of capacitive matrix values.
+- **VIA Telemetry Diag:** Diagnostic logging of VIA communication packets.
+- **Polling Rate Monitor:** Real-time matrix scanning frequency telemetry.
+- **Calibration Monitor:** Live monitoring of baseline capacitance and tracking drift.
+
 ---
 
 ## Key Calibration Process

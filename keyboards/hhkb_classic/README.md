@@ -51,9 +51,9 @@ The original firmware can be restored using the documented Bank 1/SW6 recovery p
 
 ## VIA vs Vial
 
-[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via.json`.
+[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED, as well as a **Debug** menu displaying the dynamic **Firmware Version** read directly from controller memory. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via.json`.
 
-Vial supports runtime keymap editing through `vial.json`, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, and Rapid Trigger settings.
+Vial supports runtime keymap editing through `vial.json`, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, Rapid Trigger settings, and runtime version queries.
 
 ## DIP switches
 

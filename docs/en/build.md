@@ -411,3 +411,21 @@ When flashing nRF52840, you can specify `--nrf-port auto` to automatically detec
 ```bash
 ./build_all.sh -b kabarga --mcu nrf52840 -cu --nrf-port auto
 ```
+
+---
+
+## Firmware Versioning (CalVer)
+
+DMK uses Calendar Versioning (CalVer) in `YY.MM.DD` format (e.g., `26.11.15`).
+
+The version string `DMK_FW_VERSION` is embedded directly into the binary firmware image by CMake at compile time:
+
+- **Release Builds (git tags):** When HEAD matches a git release tag (e.g., `git describe --tags --exact-match`), that tag is used directly (e.g., `26.11.15`).
+- **Development / Nightly Builds:** If HEAD is not an exact tag, the version is automatically composed from the latest commit date and 7-character short commit hash: `YY.MM.DD-<hash>` (e.g., `26.11.15-b8c21fe`).
+- **CI / Environment Overrides:** You can manually specify a version by setting the `DMK_FW_VERSION` environment variable or CMake variable before building:
+  ```bash
+  cmake -B build -DKEYBOARD=hhkb_classic -DDMK_FW_VERSION="26.11.15"
+  ```
+- **Runtime Exposure:** The version is exposed via:
+  1. USB Device Serial Number descriptor for VIA v3 builds (visible in OS device trees and browser HID dialogs).
+  2. VIA v3 Custom Value Protocol (Channel 0, ID 28) displayed in the VIA **Debug** menu.
