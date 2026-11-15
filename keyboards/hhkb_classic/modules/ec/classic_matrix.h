@@ -2,7 +2,7 @@
 #define CLASSIC_MATRIX_H
 
 #include "config.h"
-#include "topre_settings.h"
+#include "ec_settings.h"
 #include <stdbool.h>
 #include <stdint.h>
 

@@ -98,7 +98,7 @@ cmake --build build/le_capybara --target flash
 - `config.h` — геометрия матрицы, назначение пинов и конфигурация модулей.
 - `capybara_matrix.c` / `capybara_matrix.h` — сканирование аналогового мультиплексора и управление пином разряда.
 - `matrix.c` — задача опроса матрицы и генерация событий нажатий.
-- `topre_settings.c` / `topre_settings.h` — хранение калибровок и эмуляция EEPROM во Flash.
+- `ec_settings.c` / `ec_settings.h` — хранение калибровок и эмуляция EEPROM во Flash.
 - `rapid_trigger.c` / `rapid_trigger.h` — логика работы Rapid Trigger.
 - `hhkb_via_controls.c` — обработка интерактивных команд и меню VIA.
 - `via.json` — определение клавиатуры и меню настроек для VIA v3.

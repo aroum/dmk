@@ -1,4 +1,4 @@
-#include "topre_settings.h"
+#include "ec_settings.h"
 #include "capybara_matrix.h"
 #include "settings_storage_guard.h"
 #include "usb_descriptors.h"

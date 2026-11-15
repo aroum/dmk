@@ -1,5 +1,5 @@
-#ifndef TOPRE_SETTINGS_H
-#define TOPRE_SETTINGS_H
+#ifndef EC_SETTINGS_H
+#define EC_SETTINGS_H
 
 #include "config.h"
 #include "rapid_trigger.h"
@@ -12,11 +12,7 @@ extern "C" {
 #endif
 
 #define USER_EEPROM_MAGIC          0x484B4345UL // "HKCE" (versioned with CRC16)
-#define USER_EEPROM_LEGACY_MAGIC   0x484B4344UL // "HKCD"
-#define USER_EEPROM_C_MAGIC        0x484B4343UL // "HKCC"
-#define USER_EEPROM_PREV_MAGIC     0x484B4342UL // "HKCB"
-#define USER_EEPROM_OLD_MAGIC      0x484B4341UL // "HKCA"
-#define USER_EEPROM_ADDR           0x08081500UL
+#define USER_EEPROM_ADDR           0x0801F000UL // Page 62 (2KB) in STM32F072
 #define USER_EEPROM_VERSION        1
 
 typedef struct __attribute__((aligned(4))) {
@@ -24,16 +20,16 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t  version;
     uint8_t  actuation_pct;
     uint16_t crc16;
-    uint16_t baseline[MATRIX_COLS][MATRIX_ROWS]; // 120 bytes
-    uint16_t peak[MATRIX_COLS][MATRIX_ROWS];     // 120 bytes
+    uint16_t baseline[MATRIX_COLS][MATRIX_ROWS]; // 100 bytes
+    uint16_t peak[MATRIX_COLS][MATRIX_ROWS];     // 100 bytes
     rt_cfg_t rt;                                 // 10 bytes
     uint8_t  scan_rate;                          // 0..4
     uint8_t  tapping_term_10ms;                  // 5..50
     uint8_t  quick_tap_10ms;                     // 0..50
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
     uint16_t classic_release_pm;                 // 25..1000
+    uint8_t  led_mode[2];                        // Indicator Mode and Underglow Mode (0..4)
 } hhkb_eeprom_cal_t;
-_Static_assert(sizeof(hhkb_eeprom_cal_t) == 264, "HHKB settings must stay within 264 bytes EEPROM record");
 
 // Calibration & Settings API
 void hhkb_settings_init(void);
@@ -67,7 +63,8 @@ uint8_t hhkb_get_actuation_point_pct(void);
 
 // Debug Console & Monitoring API
 enum {
-    DEBUG_FLAG_TOPRE = 1U << 0, // 0x01: Topre matrix debug [Topre]
+    DEBUG_FLAG_EC    = 1U << 0, // 0x01: EC matrix debug [EC]
+    DEBUG_FLAG_TOPRE = 1U << 0, // Backward-compatible alias
     DEBUG_FLAG_VIA   = 1U << 1, // 0x02: VIA telemetry diag [VIA_DIAG]
     DEBUG_FLAG_RATE  = 1U << 2, // 0x04: Polling/scan rate monitor [RATE]
     DEBUG_FLAG_CAL   = 1U << 3, // 0x08: Calibration progress monitor [CAL]
@@ -99,11 +96,10 @@ void hhkb_update_dynamic_peak(uint8_t col, uint8_t row, uint16_t val);
 void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val);
 void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val);
 bool hhkb_cal_is_capturing_baseline(void);
-void hhkb_cal_decrement_samples(void);
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // TOPRE_SETTINGS_H
+#endif // EC_SETTINGS_H

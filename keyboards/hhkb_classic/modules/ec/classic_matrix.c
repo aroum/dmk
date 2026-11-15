@@ -1,5 +1,5 @@
 #include "classic_matrix.h"
-#include "topre_settings.h"
+#include "ec_settings.h"
 #include "rapid_trigger.h"
 #include "stm32l0xx.h"
 #include "stm32l0xx_ll_adc.h"

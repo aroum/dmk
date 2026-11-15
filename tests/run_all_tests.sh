@@ -136,12 +136,12 @@ clang -Wall -Wextra -Wno-unused-variable -DVIAL -DconfigTICK_RATE_HZ=1000 \
 "${SCRIPT_DIR}/tests/test_vial_keycodes"
 rm -f "${SCRIPT_DIR}/tests/test_vial_keycodes"
 
-if [[ -f "${SCRIPT_DIR}/keyboards/hhkb_classic/modules/topre/rapid_trigger.c" ]]; then
+if [[ -f "${SCRIPT_DIR}/keyboards/hhkb_classic/modules/ec/rapid_trigger.c" ]]; then
     # HHKB Classic host-only algorithm and EEPROM guard tests
     HHKB_TEST_DIR="${SCRIPT_DIR}/tests/hhkb_classic"
     HHKB_MODULES_DIR="${SCRIPT_DIR}/keyboards/hhkb_classic/modules"
-    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${HHKB_MODULES_DIR}/topre" \
-        "${HHKB_MODULES_DIR}/topre/rapid_trigger.c" "${HHKB_TEST_DIR}/test_rapid_trigger.c" \
+    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${HHKB_MODULES_DIR}/ec" \
+        "${HHKB_MODULES_DIR}/ec/rapid_trigger.c" "${HHKB_TEST_DIR}/test_rapid_trigger.c" \
         -o "${HHKB_TEST_DIR}/test_rapid_trigger"
     "${HHKB_TEST_DIR}/test_rapid_trigger"
     rm -f "${HHKB_TEST_DIR}/test_rapid_trigger"

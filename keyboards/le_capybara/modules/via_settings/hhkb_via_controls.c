@@ -1,5 +1,5 @@
 #include "capybara_matrix.h"
-#include "topre_settings.h"
+#include "ec_settings.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>

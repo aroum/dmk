@@ -98,7 +98,7 @@ For detailed installation instructions, see [Install Guide](docs/en/install.md).
 - `config.h` — Matrix geometry, pin assignments, and firmware feature switches.
 - `capybara_matrix.c` / `capybara_matrix.h` — Analog multiplexer scanning and discharge sequencing.
 - `matrix.c` — Matrix scan task and event generation.
-- `topre_settings.c` / `topre_settings.h` — Persistent calibration, thresholds, and Flash EEPROM emulation.
+- `ec_settings.c` / `ec_settings.h` — Persistent calibration, thresholds, and Flash EEPROM emulation.
 - `rapid_trigger.c` / `rapid_trigger.h` — Rapid Trigger algorithm implementation.
 - `hhkb_via_controls.c` — VIA custom UI controls handler.
 - `via.json` — VIA v3 definition with layout choices and custom menus.

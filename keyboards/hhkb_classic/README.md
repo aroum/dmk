@@ -81,7 +81,7 @@ Realforce R3 and newer models use a similar firmware-update container format, so
 
 ## Directory structure
 
-- `modules/topre/` — matrix scanning, ADC, calibration, and Rapid Trigger.
+- `modules/ec/` — matrix scanning, ADC, calibration, and Rapid Trigger.
 - `modules/dip_switch/` — DIP switch input.
 - `modules/via_settings/` — VIA commands and persistent settings.
 - `modules/indicators_system/` — LEDs and the two-system layer selector.

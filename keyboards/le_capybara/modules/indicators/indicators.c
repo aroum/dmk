@@ -3,7 +3,7 @@
 #include "hooks.h"
 #include "layers.h"
 #include "rgb.h"
-#include "topre_settings.h"
+#include "ec_settings.h"
 #include "tusb.h"
 #include <stdbool.h>
 #include <stdint.h>
