@@ -66,6 +66,11 @@
 #define ENCODER_PINS_B { PB5 }
 #define ENCODER_RESOLUTION 2
 
+/* --- RGB: WS2812, 11 LEDs --- */
+#define RGB_PIN PA15
+#define RGB_NUM 11
+#define RGB_LIMIT_VAL 60
+
 /* --- Layout Mapping (37 unique positions matching vial.json) --- */
 // clang-format off
 #define LAYOUT { \
