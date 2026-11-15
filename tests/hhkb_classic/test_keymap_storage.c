@@ -84,5 +84,39 @@ int main(void) {
     poll_all();
     assert(mock_eeprom[12] == 0x1234 && mock_eeprom[SLOT_WORDS + 12] == 0x5678);
     assert(active_slot == -1);
+
+    // Verify migration from DMK1 legacy snapshots
+    memset(mock_eeprom, 0, sizeof mock_eeprom);
+    mock_eeprom[0] = SLOT_MAGIC_V1;
+    mock_eeprom[1] = 1;
+    mock_eeprom[3] = SLOT_COMMIT;
+    for (unsigned i = 0; i < V1_KEYMAP_WORDS; i++) mock_eeprom[4 + i] = 0x1000 + i;
+    mock_eeprom[2] = slot_v1_hash(&mock_eeprom[0]);
+
+    uint32_t *v1_slot1 = &mock_eeprom[V1_SLOT_WORDS];
+    v1_slot1[0] = SLOT_MAGIC_V1;
+    v1_slot1[1] = 2;
+    v1_slot1[3] = SLOT_COMMIT;
+    for (unsigned i = 0; i < V1_KEYMAP_WORDS; i++) v1_slot1[4 + i] = 0x2000 + i;
+    v1_slot1[2] = slot_v1_hash(v1_slot1);
+
+    restart();
+    assert(dynamic_keymap[0][0] == 0x2000);
+    assert(dynamic_keymap[3][59] == 0x2000 + 239);
+
+    poll_all();
+    assert(active_slot == 0);
+    assert(mock_eeprom[0] == SLOT_MAGIC_V2);
+
+    dynamic_keymap[0][0] = 0x9999;
+    vial_keyboard_keymap_save();
+    poll_all();
+    assert(active_slot == 1);
+    assert(mock_eeprom[SLOT_WORDS] == SLOT_MAGIC_V2);
+
+    restart();
+    assert(dynamic_keymap[0][0] == 0x9999);
+    assert(dynamic_keymap[3][59] == 0x2000 + 239);
+
     return 0;
 }

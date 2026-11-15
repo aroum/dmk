@@ -10,8 +10,13 @@
 #ifndef SLOT_ADDRESS
 #define SLOT_ADDRESS 0x08080600UL
 #endif
-#define SLOT_MAGIC  0x324b4d44UL // 'DMK2' (Keymap + Combos + Macros)
-#define SLOT_COMMIT 0x54494d43UL // 'CMIT'
+#define SLOT_MAGIC_V1 0x314b4d44UL // 'DMK1' (Keymap only)
+#define SLOT_MAGIC_V2 0x324b4d44UL // 'DMK2' (Keymap + Combos + Macros)
+#define SLOT_MAGIC    SLOT_MAGIC_V2
+#define SLOT_COMMIT   0x54494d43UL // 'CMIT'
+
+#define V1_KEYMAP_WORDS 240U
+#define V1_SLOT_WORDS   (4U + V1_KEYMAP_WORDS)
 
 #define KEYMAP_WORDS  (DYNAMIC_KEYMAP_MAX_LAYERS * NUM_KEYS)
 #define COMBO_WORDS   ((VIAL_COMBO_ENTRIES * sizeof(vial_combo_entry_t) + 3U) / 4U)
@@ -32,6 +37,9 @@ static bool pending;
 static volatile const uint32_t *slot(unsigned n) {
     return (volatile const uint32_t *)(SLOT_ADDRESS + n * SLOT_WORDS * 4U);
 }
+static volatile const uint32_t *slot_v1(unsigned n) {
+    return (volatile const uint32_t *)(SLOT_ADDRESS + n * V1_SLOT_WORDS * 4U);
+}
 static uint32_t hash_word(uint32_t hash, uint32_t word) {
     for (unsigned n = 0; n < 4; n++) { hash ^= word & 0xffU; hash *= 16777619U; word >>= 8; }
     return hash;
@@ -41,13 +49,28 @@ static uint32_t slot_hash(volatile const uint32_t *p) {
     for (unsigned i = 0; i < PAYLOAD_WORDS; i++) h = hash_word(h, p[4 + i]);
     return h;
 }
+static uint32_t slot_v1_hash(volatile const uint32_t *p) {
+    uint32_t h = hash_word(2166136261U, p[1]);
+    for (unsigned i = 0; i < V1_KEYMAP_WORDS; i++) h = hash_word(h, p[4 + i]);
+    return h;
+}
 static bool valid(unsigned n) {
     volatile const uint32_t *p = slot(n);
     return p[0] == SLOT_MAGIC && p[3] == SLOT_COMMIT && p[2] == slot_hash(p);
 }
+static bool valid_v1(unsigned n) {
+    volatile const uint32_t *p = slot_v1(n);
+    return p[0] == SLOT_MAGIC_V1 && p[3] == SLOT_COMMIT && p[2] == slot_v1_hash(p);
+}
+static bool has_valid_v1(void) {
+    return valid_v1(0) || valid_v1(1);
+}
 static bool writable(unsigned n) {
     volatile const uint32_t *p = slot(n);
     if (p[0] == SLOT_MAGIC) return true;
+    if (n == 0 && p[0] == SLOT_MAGIC_V1) return true;
+    if (valid(1 - n)) return true;
+    if (has_valid_v1()) return true;
     for (unsigned i = 0; i < SLOT_WORDS; i++) if (p[i] != 0) return false;
     return true;
 }
@@ -56,7 +79,18 @@ void vial_keyboard_keymap_load(void) {
     if (a && b) active_slot = (int32_t)(slot(1)[1] - slot(0)[1]) > 0 ? 1 : 0;
     else if (a) active_slot = 0;
     else if (b) active_slot = 1;
-    else return;
+    else {
+        bool v1_a = valid_v1(0), v1_b = valid_v1(1);
+        if (!v1_a && !v1_b) return;
+        int v1_slot = (v1_a && v1_b) ? ((int32_t)(slot_v1(1)[1] - slot_v1(0)[1]) > 0 ? 1 : 0) : (v1_a ? 0 : 1);
+        volatile const uint32_t *p = slot_v1((unsigned)v1_slot);
+        generation = p[1];
+        uint32_t *dst = &dynamic_keymap[0][0];
+        for (unsigned i = 0; i < KEYMAP_WORDS; i++) dst[i] = p[4 + i];
+        memset(&vial_storage, 0, sizeof(vial_storage));
+        pending = true;
+        return;
+    }
     volatile const uint32_t *p = slot((unsigned)active_slot);
     generation = p[1];
     uint32_t *dst = &dynamic_keymap[0][0];
