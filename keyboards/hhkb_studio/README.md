@@ -111,3 +111,15 @@ If you own an HHKB Studio and have access to basic lab or debugging tools, we wo
    * Logic analyzer captures of communication between the main MCU, gesture controllers, and Bluetooth module.
 
 If you are interested in contributing hardware data or collaborating on reverse-engineering, please open an issue or start a discussion on our GitHub repository.
+
+---
+
+## External References & Community Teardowns
+
+* **Qiita Teardown & Disassembly Walkthrough (Japanese):**  
+  [目覚めるとHHKB Studioのポッチから霊圧が消えていた #分解 (FrozenVoice / Qiita)](https://qiita.com/FrozenVoice/items/1d7dbad19d621e8d434c)  
+  Detailed disassembly steps showing the lower chassis screw layout (under rubber feet and battery compartment), flat ribbon cable connectors, multi-layer stacked PCB architecture, switch removal requirement, and pointing stick module mounting.
+
+* **Reddit Modding & PCB Discussion:**  
+  [Modding HHKB Studio (r/HHKB)](https://www.reddit.com/r/HHKB/comments/1khi71b/modding_hhkb_studio/)  
+  Community discussion covering teardown observations, internal construction, switch swapping, and hardware modding notes.
