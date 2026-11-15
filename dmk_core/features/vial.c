@@ -335,7 +335,7 @@ static void vial_storage_init_default(void) {
     }
 }
 
-#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_baikal) || defined(MCU_nrf52840)
+#if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_baikal) || defined(MCU_nrf52840) || defined(MCU_stm32f072)
 #define VIAL_HAS_BUILTIN_STORAGE 1
 #endif
 
@@ -494,6 +494,75 @@ void vial_platform_storage_save_now(void) {
     taskENTER_CRITICAL();
     nrf_nvmc_page_erase(NRF_FLASH_STORAGE_PAGE_ADDR);
     nrf_nvmc_write_words(NRF_FLASH_STORAGE_PAGE_ADDR, (const uint32_t *)&vial_storage.data, sizeof(vial_storage_data_t) / 4);
+    taskEXIT_CRITICAL();
+}
+#endif
+
+#if defined(MCU_stm32f072)
+#include "stm32f0xx.h"
+
+// Flash layout on STM32F072 (128 KB total: 0x08000000 - 0x0801FFFF, 2 KB page size):
+// App firmware: 0x08000000 - 0x0801EFFF (~124 KB).
+// Page 62 (0x0801F000 - 0x0801F7FF): Topre calibration & RT settings.
+// Page 63 (0x0801F800 - 0x0801FFFF): Non-volatile Vial storage (Keymap, macros, combos, RGB config).
+#define STM32F072_FLASH_STORAGE_ADDR 0x0801F800UL
+
+bool vial_platform_storage_load(void) {
+    const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)STM32F072_FLASH_STORAGE_ADDR;
+    if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
+        memcpy(&vial_storage.data, flash_storage, sizeof(vial_storage_data_t));
+        rgb_set_config(vial_storage.data.rgb_cfg);
+        for (uint8_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
+            for (uint8_t k = 0; k < NUM_KEYS; k++) {
+                dynamic_keymap[l][k] = vial_storage.data.keymap[l][k];
+            }
+        }
+    } else {
+        vial_storage_init_default();
+    }
+    return true;
+}
+
+void vial_platform_storage_save_now(void) {
+    vial_storage.data.magic = VIAL_EEPROM_MAGIC;
+    for (uint8_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
+        for (uint8_t k = 0; k < NUM_KEYS; k++) {
+            vial_storage.data.keymap[l][k] = dynamic_keymap[l][k];
+        }
+    }
+    rgb_get_config(vial_storage.data.rgb_cfg);
+
+    if (memcmp((const void *)STM32F072_FLASH_STORAGE_ADDR, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+
+    if (FLASH->CR & FLASH_CR_LOCK) {
+        FLASH->KEYR = 0x45670123UL;
+        FLASH->KEYR = 0xCDEF89ABUL;
+    }
+
+    while (FLASH->SR & FLASH_SR_BSY);
+    FLASH->CR |= FLASH_CR_PER;
+    FLASH->AR = STM32F072_FLASH_STORAGE_ADDR;
+    FLASH->CR |= FLASH_CR_STRT;
+    while (FLASH->SR & FLASH_SR_BSY);
+    FLASH->CR &= ~FLASH_CR_PER;
+
+    const uint16_t *src_hwords = (const uint16_t *)&vial_storage.data;
+    size_t num_hwords = (sizeof(vial_storage_data_t) + 1) / 2;
+    volatile uint16_t *dst = (volatile uint16_t *)STM32F072_FLASH_STORAGE_ADDR;
+
+    FLASH->CR |= FLASH_CR_PG;
+    for (size_t i = 0; i < num_hwords; i++) {
+        dst[i] = src_hwords[i];
+        while (FLASH->SR & FLASH_SR_BSY);
+    }
+    FLASH->CR &= ~FLASH_CR_PG;
+
+    FLASH->CR |= FLASH_CR_LOCK;
+
     taskEXIT_CRITICAL();
 }
 #endif

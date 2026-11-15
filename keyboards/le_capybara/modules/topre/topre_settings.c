@@ -136,6 +136,8 @@ void hhkb_calibration_save_to_eeprom(void) {
                 ((s_debug_flags & DEBUG_FLAG_TOPRE) ? 16 : 0) |
                 ((s_system & 1) << 5) |
                 ((s_led_mode[0] & 3) << 6);
+    cal.led_mode[0] = s_led_mode[0];
+    cal.led_mode[1] = s_led_mode[1];
 
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
@@ -199,6 +201,8 @@ void hhkb_calibration_load(void) {
             }
             s_system = (cal->flags >> 5) & 1;
             s_led_mode[0] = (cal->flags >> 6) & 3;
+            if (cal->led_mode[0] <= 4) s_led_mode[0] = cal->led_mode[0];
+            if (cal->led_mode[1] <= 4) s_led_mode[1] = cal->led_mode[1];
 
             if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= 1000) s_rt_cfg.act_pm = cal->rt.act_pm;
             if (cal->rt.press_pm >= 25 && cal->rt.press_pm <= 1000) s_rt_cfg.press_pm = cal->rt.press_pm;

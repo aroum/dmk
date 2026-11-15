@@ -28,6 +28,7 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t  quick_tap_10ms;                     // 0..50
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
     uint16_t classic_release_pm;                 // 25..1000
+    uint8_t  led_mode[2];                        // Indicator Mode and Underglow Mode (0..4)
 } hhkb_eeprom_cal_t;
 
 // Calibration & Settings API

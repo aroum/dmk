@@ -142,6 +142,14 @@ static void set_all_leds(uint32_t color) {
         set_led_color(i, s_overlay_active[i] ? s_overlay[i] : color);
 }
 
+static TaskHandle_t s_rgb_task_handle = NULL;
+
+static inline void rgb_notify_change(void) {
+    if (s_rgb_task_handle != NULL) {
+        xTaskNotifyGive(s_rgb_task_handle);
+    }
+}
+
 void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
     if (index >= RGB_NUM) return;
     rgb_lock();
@@ -149,6 +157,7 @@ void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
     s_overlay_active[index] = true;
     set_led_color(index, color);
     rgb_unlock();
+    rgb_notify_change();
 }
 
 void rgb_clear_pixel_raw(uint32_t index) {
@@ -156,6 +165,7 @@ void rgb_clear_pixel_raw(uint32_t index) {
     rgb_lock();
     s_overlay_active[index] = false;
     rgb_unlock();
+    rgb_notify_change();
 }
 
 static bool s_rgb_suspended = false;
@@ -182,14 +192,6 @@ void rgb_init(void) {
 #ifdef RGB_PIN
     ws2812_init(RGB_PIN, RGB_NUM);
 #endif
-}
-
-static TaskHandle_t s_rgb_task_handle = NULL;
-
-static inline void rgb_notify_change(void) {
-    if (s_rgb_task_handle != NULL) {
-        xTaskNotifyGive(s_rgb_task_handle);
-    }
 }
 
 static uint32_t animation_tick = 0;
