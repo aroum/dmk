@@ -6,12 +6,19 @@
 
 #include "FreeRTOS.h"
 #include "keys.h"
+#include "vial.h"
 
 TickType_t g_mock_ticks = 0;
 const uint32_t keymap[1][60] = {{0}};
 const size_t keymap_layers = 1;
 
 void bootloader_jump(void) {}
+static unsigned settings_erases, keymap_erases, resets;
+static bool reset_allowed = true;
+bool vial_keyboard_reset_allowed(void) { return reset_allowed; }
+bool vial_keyboard_settings_reset(void) { ++settings_erases; return true; }
+bool vial_keyboard_keymap_reset(void) { ++keymap_erases; return true; }
+void platform_system_reset(void) { ++resets; }
 int16_t keyboard_get_flat_key_index(uint8_t row, uint8_t col) { (void)row; (void)col; return 0; }
 void keyboard_send_key(uint16_t key, bool pressed) { (void)key; (void)pressed; }
 static bool s_mock_matrix[16][32] = {{0}};
@@ -112,6 +119,33 @@ int main(void) {
     vial_process_packet(req, resp);
     assert(resp[5] == 0x08); // High byte has bit (11 - 8) = bit 3 set
     assert(resp[6] == 0x08); // Low byte still has bit 3 set
+
+    memset(req, 0, sizeof(req));
+    req[0] = 0x07;
+    req[2] = 38; // Reset button
+    req[3] = 1;
+    vial_process_packet(req, resp);
+    assert(resp[0] == 0xFF);
+    req[2] = 37; // Arm reset
+    vial_process_packet(req, resp);
+    assert(resp[0] == 0x07);
+    req[2] = 38;
+    reset_allowed = false;
+    vial_process_packet(req, resp);
+    assert(resp[0] == 0xFF);
+    vial_eeprom_task();
+    assert(settings_erases == 0 && keymap_erases == 0 && resets == 0);
+    reset_allowed = true;
+    req[2] = 37;
+    vial_process_packet(req, resp);
+    req[2] = 38;
+    vial_process_packet(req, resp);
+    assert(resp[0] == 0x07);
+    vial_eeprom_task();
+    assert(settings_erases == 0 && keymap_erases == 0 && resets == 0);
+    g_mock_ticks += 150;
+    vial_eeprom_task();
+    assert(settings_erases == 1 && keymap_erases == 1 && resets == 1);
 
     puts("vial keycode translation tests passed");
     return 0;

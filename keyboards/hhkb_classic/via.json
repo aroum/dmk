@@ -1114,6 +1114,28 @@
                 0,
                 25
               ]
+            },
+            {
+              "label": "Factory reset",
+              "type": "label",
+              "content": ["Erases DMK settings, calibration and keymaps."]
+            },
+            {
+              "label": "Arm settings reset",
+              "type": "toggle",
+              "content": ["id_dmk_reset_arm", 0, 37]
+            },
+            {
+              "label": "Erase all DMK settings",
+              "type": "button",
+              "options": [1],
+              "content": ["id_dmk_reset_execute", 0, 38],
+              "showIf": "{id_dmk_reset_arm} == 1"
+            },
+            {
+              "label": "Reset status",
+              "type": "label",
+              "content": ["id_dmk_reset_status", 0, 39]
             }
           ]
         }

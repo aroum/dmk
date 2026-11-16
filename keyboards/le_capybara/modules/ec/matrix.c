@@ -31,9 +31,6 @@ void matrix_task(void *pvParameters) {
     static const TickType_t scan_periods_ms[] = {20, 8, 4, 2, 1};
 
     for (;;) {
-        // 1. Process delayed EEPROM saves for calibration and settings
-        vial_keyboard_eeprom_task();
-
         // Check power saving condition: host disconnected (not mounted) or USB suspended
         if (keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
             // Disable both MUXes to minimize current draw

@@ -2,6 +2,7 @@
 #include "classic_matrix.h"
 #include "settings_storage_guard.h"
 #include "usb_descriptors.h"
+#include "dip_switch.h"
 #include "stm32l0xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -109,6 +110,30 @@ static uint16_t get_default_peak(uint8_t col, uint8_t row) {
 }
 
 #define WORD_ALIGNED_SIZE(n) (((n) + 3U) & ~3U)
+extern bool hhkb_eeprom_clear_words(volatile uint32_t *dst, size_t words);
+
+bool vial_keyboard_reset_allowed(void) {
+#if defined(HHKB_SW6_REBOOT_TO_BANK1) && HHKB_SW6_REBOOT_TO_BANK1
+    return !dip_switch_get(DIP_SW6);
+#else
+    return true;
+#endif
+}
+
+bool vial_keyboard_settings_reset(void) {
+    s_settings_dirty = false;
+    volatile uint32_t *words = (volatile uint32_t *)USER_EEPROM_ADDR;
+    const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)words;
+    size_t current_size = cal->magic == USER_EEPROM_MAGIC && cal->version == USER_EEPROM_VERSION
+        ? sizeof(*cal) : offsetof(hhkb_eeprom_cal_t, curve);
+    size_t size = hhkb_settings_owned_size(cal->magic, current_size,
+        offsetof(hhkb_eeprom_cal_t, rt), WORD_ALIGNED_SIZE(offsetof(hhkb_eeprom_cal_t, scan_rate)),
+        offsetof(hhkb_eeprom_cal_t, curve));
+    if (size == SIZE_MAX) return true; // Foreign data has no DMK record to reset.
+    // The version is cleared near the end of the erase. The appended bytes are cleared first.
+    return hhkb_eeprom_clear_words(words, size / sizeof(*words));
+}
+
 bool hhkb_settings_storage_writable(void) {
     const volatile uint8_t *bytes = (const volatile uint8_t *)USER_EEPROM_ADDR;
     if (bytes[4] != USER_EEPROM_VERSION || *(const volatile uint32_t *)bytes != USER_EEPROM_MAGIC) {

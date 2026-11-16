@@ -11,6 +11,9 @@
 #include "usb.h"
 #include "vial_generated.h"
 #include <string.h>
+#ifdef VIA_FULL_SETTINGS_RESET
+#include "hal_gpio.h"
+#endif
 
 // Magic includes matrix dimensions so stale flash data is ignored after config changes
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
@@ -312,6 +315,48 @@ uint32_t from_via_keycode(uint16_t via_key) {
 static volatile bool s_eeprom_dirty = false;
 static volatile TickType_t s_eeprom_dirty_time = 0;
 
+#ifdef VIA_FULL_SETTINGS_RESET
+enum {
+    VIA_RESET_ARM = 37,
+    VIA_RESET_EXECUTE,
+    VIA_RESET_STATUS,
+};
+static bool s_reset_armed, s_reset_pending, s_reset_erased;
+static TickType_t s_reset_requested_at;
+static const char *s_reset_status = "Ready";
+
+__attribute__((weak)) bool vial_keyboard_reset_allowed(void) { return true; }
+static bool vial_platform_settings_reset(void);
+
+static bool vial_settings_reset_command(const uint8_t *request, uint8_t *response) {
+    if (request[1] != 0 || request[2] < VIA_RESET_ARM || request[2] > VIA_RESET_STATUS)
+        return false;
+
+    if (request[0] == VIA_CUSTOM_GET_VALUE) {
+        response[3] = request[2] == VIA_RESET_ARM && s_reset_armed;
+        if (request[2] == VIA_RESET_STATUS) strcpy((char *)&response[3], s_reset_status);
+    } else if (request[0] == VIA_CUSTOM_SET_VALUE && request[2] == VIA_RESET_ARM &&
+               request[3] <= 1 && !s_reset_pending && !s_reset_erased) {
+        s_reset_armed = request[3] != 0;
+        s_reset_status = s_reset_armed ? "Armed" : "Ready";
+    } else if (request[0] == VIA_CUSTOM_SET_VALUE && request[2] == VIA_RESET_EXECUTE &&
+               request[3] == 1 && s_reset_armed && !s_reset_pending && !s_reset_erased) {
+        s_reset_armed = false;
+        if (vial_keyboard_reset_allowed()) {
+            s_reset_pending = true;
+            s_reset_requested_at = xTaskGetTickCount();
+            s_reset_status = "Resetting...";
+        } else {
+            s_reset_status = "Set SW6 to OFF";
+            response[0] = 0xFF;
+        }
+    } else {
+        response[0] = 0xFF;
+    }
+    return true;
+}
+#endif
+
 static void vial_storage_init_default(void) {
     memset(&vial_storage, 0, sizeof(vial_storage));
     vial_storage.data.magic = VIAL_EEPROM_MAGIC;
@@ -507,6 +552,40 @@ void vial_platform_storage_save_now(void) {
 // Page 63 (0x0801F800 - 0x0801FFFF): Non-volatile Vial storage (Keymap, macros, combos, RGB config).
 #define STM32F072_FLASH_STORAGE_ADDR 0x0801F800UL
 
+#ifdef VIA_FULL_SETTINGS_RESET
+bool vial_stm32f072_erase_settings_page(uint32_t address) {
+    const volatile uint32_t *page = (const volatile uint32_t *)address;
+    const uint32_t errors = FLASH_SR_PGERR | FLASH_SR_WRPERR;
+    taskENTER_CRITICAL();
+    if (FLASH->CR & FLASH_CR_LOCK) {
+        FLASH->KEYR = 0x45670123UL;
+        FLASH->KEYR = 0xCDEF89ABUL;
+    }
+    if (FLASH->CR & FLASH_CR_LOCK) {
+        taskEXIT_CRITICAL();
+        return false;
+    }
+    while (FLASH->SR & FLASH_SR_BSY) {}
+    FLASH->SR = errors | FLASH_SR_EOP;
+    FLASH->CR |= FLASH_CR_PER;
+    FLASH->AR = address;
+    FLASH->CR |= FLASH_CR_STRT;
+    while (FLASH->SR & FLASH_SR_BSY) {}
+    FLASH->CR &= ~FLASH_CR_PER;
+    FLASH->CR |= FLASH_CR_LOCK;
+    bool ok = !(FLASH->SR & errors);
+    FLASH->SR = errors | FLASH_SR_EOP;
+    taskEXIT_CRITICAL();
+    for (unsigned i = 0; ok && i < 2048 / sizeof(*page); ++i)
+        ok = page[i] == UINT32_MAX;
+    return ok;
+}
+
+static bool vial_platform_settings_reset(void) {
+    return vial_stm32f072_erase_settings_page(STM32F072_FLASH_STORAGE_ADDR);
+}
+#endif
+
 bool vial_platform_storage_load(void) {
     const vial_storage_data_t *flash_storage = (const vial_storage_data_t *)STM32F072_FLASH_STORAGE_ADDR;
     if (flash_storage->magic == VIAL_EEPROM_MAGIC) {
@@ -602,7 +681,31 @@ void vial_eeprom_save(void) {
 
 __attribute__((weak)) void vial_keyboard_eeprom_task(void) {}
 
+#if defined(VIA_FULL_SETTINGS_RESET) && defined(MCU_stm32l072)
+extern bool vial_keyboard_keymap_reset(void);
+static bool vial_platform_settings_reset(void) {
+    return vial_keyboard_keymap_reset();
+}
+#endif
+
 void vial_eeprom_task(void) {
+#ifdef VIA_FULL_SETTINGS_RESET
+    if (s_reset_pending) {
+        // Give the USB task time to deliver the button acknowledgement before erasing.
+        if ((xTaskGetTickCount() - s_reset_requested_at) < pdMS_TO_TICKS(150)) return;
+        s_reset_pending = false;
+        if (!vial_keyboard_reset_allowed()) {
+            s_reset_status = "Set SW6 to OFF";
+            return;
+        }
+        s_reset_erased = vial_keyboard_settings_reset() && vial_platform_settings_reset();
+        s_eeprom_dirty = false;
+        s_reset_status = s_reset_erased ? "Set SW6 OFF and reconnect" : "Reset failed; retry";
+        if (s_reset_erased && vial_keyboard_reset_allowed()) platform_system_reset();
+        return;
+    }
+    if (s_reset_erased) return;
+#endif
     vial_keyboard_eeprom_task();
     vial_platform_storage_poll();
     if (s_eeprom_dirty) {
@@ -630,6 +733,10 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
     memcpy(response, request, 32);
 
     uint8_t command_id = request[0];
+#ifdef VIA_FULL_SETTINGS_RESET
+    if ((command_id == VIA_CUSTOM_GET_VALUE || command_id == VIA_CUSTOM_SET_VALUE) &&
+        vial_settings_reset_command(request, response)) return;
+#endif
     switch (command_id) {
     case VIA_GET_PROTOCOL_VERSION: {
 #if defined(VIA_PROTOCOL_VERSION)

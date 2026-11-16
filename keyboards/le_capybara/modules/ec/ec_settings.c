@@ -2,6 +2,7 @@
 #include "capybara_matrix.h"
 #include "settings_storage_guard.h"
 #include "usb_descriptors.h"
+#include "vial.h"
 #include "stm32f0xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -279,6 +280,11 @@ void vial_keyboard_eeprom_task(void) {
         ec_curve_rebuild();
         hhkb_calibration_save_to_eeprom();
     }
+}
+
+bool vial_keyboard_settings_reset(void) {
+    s_settings_dirty = false;
+    return vial_stm32f072_erase_settings_page(USER_EEPROM_ADDR);
 }
 
 void hhkb_calibration_start(void) {

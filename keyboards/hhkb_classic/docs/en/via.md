@@ -90,4 +90,10 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
 
 For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and EC sensor response curves, see [Debugging and HID Console](debug.md).
 
+### Reset all DMK settings
+
+In the [VIA web app](https://www.usevia.app/), open **Debug**, enable **Arm settings reset**, and click **Erase all DMK settings**. The keyboard restarts with the default layout, calibration, and settings. Custom keymaps, macros, and combos are erased.
+
+Keep SW6 OFF when using the reset. DMK preserves the factory calibration and both firmware banks.
+
 Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.

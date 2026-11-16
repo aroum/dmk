@@ -44,6 +44,13 @@ typedef struct {
 #endif
 } vial_storage_data_t;
 
+#ifdef VIA_FULL_SETTINGS_RESET
+bool vial_keyboard_settings_reset(void);
+#ifdef MCU_stm32f072
+bool vial_stm32f072_erase_settings_page(uint32_t address);
+#endif
+#endif
+
 typedef union {
     vial_storage_data_t data;
     uint8_t padding[((sizeof(vial_storage_data_t) + 255) / 256) * 256];

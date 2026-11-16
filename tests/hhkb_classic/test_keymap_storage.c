@@ -118,5 +118,29 @@ int main(void) {
     assert(dynamic_keymap[0][0] == 0x9999);
     assert(dynamic_keymap[3][59] == 0x2000 + 239);
 
+    // Reset removes both current generations, even with another save queued.
+    vial_keyboard_keymap_save();
+    mock_eeprom[2 * SLOT_WORDS] = 0x11223344;
+    assert(vial_keyboard_keymap_reset());
+    poll_all();
+    restart();
+    for (unsigned i = 0; i < 2 * SLOT_WORDS; ++i) assert(mock_eeprom[i] == 0);
+    assert(mock_eeprom[2 * SLOT_WORDS] == 0x11223344);
+    assert(active_slot == -1 && dynamic_keymap[0][0] == 0);
+
+    // A legacy slot can begin in the middle of the current slot layout.
+    v1_slot1[0] = SLOT_MAGIC_V1;
+    v1_slot1[1] = 1;
+    v1_slot1[3] = SLOT_COMMIT;
+    v1_slot1[4] = 42;
+    v1_slot1[2] = slot_v1_hash(v1_slot1);
+    mock_eeprom[10] = 0x1234;
+    restart();
+    assert(dynamic_keymap[0][0] == 42);
+    assert(vial_keyboard_keymap_reset());
+    restart();
+    assert(dynamic_keymap[0][0] == 0);
+    assert(mock_eeprom[10] == 0x1234);
+
     return 0;
 }

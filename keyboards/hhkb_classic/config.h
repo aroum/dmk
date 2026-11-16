@@ -3,6 +3,7 @@
 
 #define VIAL_KEYBOARD_NAME "HHKB Professional Classic"
 #define VIA_V3 1
+#define VIA_FULL_SETTINGS_RESET 1
 #ifdef HHKB_RAPID_TRIGGER
 #define VIA_FIRMWARE_VERSION 2U
 #else

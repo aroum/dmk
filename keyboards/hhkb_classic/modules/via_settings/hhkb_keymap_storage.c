@@ -121,6 +121,29 @@ static bool write_word(volatile uint32_t *dst, uint32_t value) {
     FLASH->PECR |= FLASH_PECR_PELOCK;
     return ok;
 }
+
+bool hhkb_eeprom_clear_words(volatile uint32_t *dst, size_t words) {
+    // Leave the ownership marker in place until the rest is cleared, so a retry is safe.
+    while (words != 0)
+        if (!write_word(&dst[--words], 0)) return false;
+    return true;
+}
+
+bool vial_keyboard_keymap_reset(void) {
+    pending = false;
+    target_slot = -1;
+    active_slot = -1;
+    bool first_v2 = slot(0)[0] == SLOT_MAGIC_V2;
+    bool second_v2 = slot(1)[0] == SLOT_MAGIC_V2;
+    // The second legacy header lies inside the first current slot.
+    bool first_v1 = slot_v1(0)[0] == SLOT_MAGIC_V1;
+    bool second_v1 = !first_v2 && slot_v1(1)[0] == SLOT_MAGIC_V1;
+    if (second_v2 && !hhkb_eeprom_clear_words((volatile uint32_t *)slot(1), SLOT_WORDS)) return false;
+    if (second_v1 && !hhkb_eeprom_clear_words((volatile uint32_t *)slot_v1(1), V1_SLOT_WORDS)) return false;
+    if (first_v2 && !hhkb_eeprom_clear_words((volatile uint32_t *)slot(0), SLOT_WORDS)) return false;
+    if (first_v1 && !hhkb_eeprom_clear_words((volatile uint32_t *)slot_v1(0), V1_SLOT_WORDS)) return false;
+    return true;
+}
 /* One EEPROM word per poll keeps the USB task responsive during a full save. */
 void vial_keyboard_keymap_poll(void) {
     if (target_slot < 0) {

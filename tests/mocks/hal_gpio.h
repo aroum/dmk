@@ -26,5 +26,6 @@ static inline bool hal_gpio_snapshot_get(hal_gpio_snapshot_t s, pin_t pin) {
     (void)s; (void)pin; return false;
 }
 static inline void hal_sleep_us(uint32_t us) { (void)us; }
+void platform_system_reset(void);
 
 #endif // MOCK_HAL_GPIO_H

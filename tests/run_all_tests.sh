@@ -126,7 +126,7 @@ clang -Wall -Wextra -I "${SCRIPT_DIR}/tests/mocks" -I "${SCRIPT_DIR}/dmk_core/in
 "${SCRIPT_DIR}/tests/test_features"
 rm -f "${SCRIPT_DIR}/tests/test_features"
 
-clang -Wall -Wextra -Wno-unused-variable -DVIAL -DconfigTICK_RATE_HZ=1000 \
+clang -Wall -Wextra -Wno-unused-variable -DVIAL -DMCU_stm32l072 -DconfigTICK_RATE_HZ=1000 \
     -I "${SCRIPT_DIR}/keyboards/hhkb_classic" -I "${SCRIPT_DIR}/platforms/stm32l072" \
     -I "${SCRIPT_DIR}/tests/mocks" -I "${SCRIPT_DIR}/dmk_core/include" \
     -I "${SCRIPT_DIR}/dmk_core/config" -I "${SCRIPT_DIR}/dmk_core/features" \

@@ -97,6 +97,10 @@ Under the **LAYOUT** tab in VIA:
 
 ---
 
+### Reset all DMK settings
+
+In the [VIA web app](https://www.usevia.app/), open **Debug**, enable **Arm settings reset**, and click **Erase all DMK settings**. The keyboard restarts with the default layout, calibration, and settings. Custom keymaps, macros, and combos are erased.
+
 ## Key Calibration Process
 
 To ensure reliable actuation across all conical spring switches:
