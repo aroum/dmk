@@ -74,6 +74,10 @@
 #define RGB_PIN PA15
 #define RGB_NUM 11
 #define RGB_LIMIT_VAL 60
+#ifndef STM32F072_WS2812_PA15_DMA
+// Match the reference Le Capybara firmware's GPIO transmitter.
+#define STM32F072_WS2812_PA15_DMA 0
+#endif
 
 /* --- Layout Mapping (37 unique positions matching vial.json) --- */
 // clang-format off

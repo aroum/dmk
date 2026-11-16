@@ -14,14 +14,20 @@
 #endif
 #endif
 
+#ifndef STM32F072_WS2812_PA15_DMA
+#define STM32F072_WS2812_PA15_DMA 1
+#endif
+
+static uint32_t ws2812_colors[WS2812_MAX_LEDS];
+static uint32_t ws2812_len = 0;
+static uint32_t ws2812_pin = 0;
+
+#if STM32F072_WS2812_PA15_DMA
 // Two trailing zero samples let the CCR preload latch LOW before DMA completes.
 #define WS2812_DMA_BUF_LEN (WS2812_MAX_LEDS * 24 + 2)
 
 // TIM2 duty counts fit in one byte. DMA zero-extends each count to a word.
 static uint8_t ws2812_dma_buf[WS2812_DMA_BUF_LEN];
-static uint32_t ws2812_colors[WS2812_MAX_LEDS];
-static uint32_t ws2812_len = 0;
-static uint32_t ws2812_pin = 0;
 static volatile bool ws2812_dma_busy = false;
 
 // -----------------------------------------------------------------------------
@@ -116,9 +122,10 @@ static void ws2812_show_tim2_dma(void) {
     TIM2->DIER = TIM_DIER_UDE;
     TIM2->CR1 |= TIM_CR1_CEN;
 }
+#endif
 
 // -----------------------------------------------------------------------------
-// Fallback GPIO Bit-Bang Implementation (for non-PA15 pins on STM32F072)
+// GPIO Bit-Bang Implementation
 // -----------------------------------------------------------------------------
 
 #define NOP1   __asm__ volatile("nop")
@@ -163,13 +170,17 @@ void ws2812_init(uint32_t pin, uint32_t length) {
     ws2812_len = (length <= WS2812_MAX_LEDS) ? length : WS2812_MAX_LEDS;
     memset(ws2812_colors, 0, sizeof(ws2812_colors));
 
+#if STM32F072_WS2812_PA15_DMA
     if (pin == PA15) {
         ws2812_init_tim2_dma();
     } else {
+#endif
         hal_gpio_init((pin_t)pin);
         hal_gpio_set_dir((pin_t)pin, true);
         hal_gpio_put((pin_t)pin, false);
+#if STM32F072_WS2812_PA15_DMA
     }
+#endif
     hal_sleep_us(400); // WS2812 reset latch
 }
 
@@ -183,6 +194,7 @@ void ws2812_show(void) {
     if (ws2812_len == 0)
         return;
 
+#if STM32F072_WS2812_PA15_DMA
     if (ws2812_pin == PA15) {
         // Keep interrupts enabled while waiting for the final LOW latch.
         ws2812_show_tim2_dma();
@@ -192,6 +204,7 @@ void ws2812_show(void) {
         hal_sleep_us(350);
         return;
     }
+#endif
 
     // Fallback: cycle-accurate GPIO bitbang
     for (uint32_t i = 0; i < ws2812_len; i++) {

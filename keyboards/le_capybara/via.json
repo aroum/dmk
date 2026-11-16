@@ -1307,7 +1307,7 @@
           "label": "RGB / Indicators",
           "content": [
             {
-              "label": "Indicator Mode",
+              "label": "Front Indicator 1",
               "type": "dropdown",
               "options": [
                 [
@@ -1338,7 +1338,7 @@
               ]
             },
             {
-              "label": "Underglow Mode",
+              "label": "Front Indicator 2",
               "type": "dropdown",
               "options": [
                 [

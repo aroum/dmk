@@ -69,7 +69,7 @@ void keyboard_platform_tick(TickType_t now) {
     bool sys_active = (hhkb_get_system() != 0);
 
 #if defined(RGB_NUM) && (RGB_NUM >= 11)
-    // Front Indicator 0 (LED 0): "Indicator Mode"
+    // First front indicator (LED 0).
     uint8_t mode0 = hhkb_get_led_mode(0);
     uint32_t col0 = get_indicator_color(mode0, heartbeat, fn_active, sys_active);
     if (col0 != s_last_col0) {
@@ -77,7 +77,7 @@ void keyboard_platform_tick(TickType_t now) {
         s_last_col0 = col0;
     }
 
-    // Front Indicator 1 (LED 1): "Underglow Mode" / Indicator 1
+    // Second front indicator (LED 1).
     uint8_t mode1 = hhkb_get_led_mode(1);
     uint32_t col1 = (mode1 == 0) ? 0x000000 : get_indicator_color(mode1, heartbeat, fn_active, sys_active);
     if (col1 != s_last_col1) {
