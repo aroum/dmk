@@ -17,7 +17,8 @@
 // Two trailing zero samples let the CCR preload latch LOW before DMA completes.
 #define WS2812_DMA_BUF_LEN (WS2812_MAX_LEDS * 24 + 2)
 
-static uint16_t ws2812_dma_buf[WS2812_DMA_BUF_LEN];
+// TIM2 duty counts fit in one byte. DMA zero-extends each count to a word.
+static uint8_t ws2812_dma_buf[WS2812_DMA_BUF_LEN];
 static uint32_t ws2812_colors[WS2812_MAX_LEDS];
 static uint32_t ws2812_len = 0;
 static uint32_t ws2812_pin = 0;
@@ -71,7 +72,8 @@ static void ws2812_init_tim2_dma(void) {
     DMA1_Channel2->CCR = 0;
     DMA1_Channel2->CPAR = (uint32_t)&TIM2->CCR1;
     DMA1_Channel2->CMAR = (uint32_t)ws2812_dma_buf;
-    DMA1_Channel2->CCR = DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_PSIZE_0 | DMA_CCR_MSIZE_0 |
+    // CCR1 is 32-bit on TIM2. Narrow APB writes replicate the value.
+    DMA1_Channel2->CCR = DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_PSIZE_1 |
                          DMA_CCR_PL_1 | DMA_CCR_TCIE | DMA_CCR_TEIE;
 
     NVIC_SetPriority(DMA1_Channel2_3_IRQn, 3);
