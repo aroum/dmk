@@ -140,11 +140,16 @@ if [[ -f "${SCRIPT_DIR}/keyboards/hhkb_classic/modules/ec/rapid_trigger.c" ]]; t
     # HHKB Classic host-only algorithm and EEPROM guard tests
     HHKB_TEST_DIR="${SCRIPT_DIR}/tests/hhkb_classic"
     HHKB_MODULES_DIR="${SCRIPT_DIR}/keyboards/hhkb_classic/modules"
-    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${HHKB_MODULES_DIR}/ec" \
+    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${HHKB_MODULES_DIR}/ec" -I "${SCRIPT_DIR}/dmk_core/include" \
         "${HHKB_MODULES_DIR}/ec/rapid_trigger.c" "${HHKB_TEST_DIR}/test_rapid_trigger.c" \
         -o "${HHKB_TEST_DIR}/test_rapid_trigger"
     "${HHKB_TEST_DIR}/test_rapid_trigger"
     rm -f "${HHKB_TEST_DIR}/test_rapid_trigger"
+    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${SCRIPT_DIR}/tests/split_mocks" \
+        -I "${SCRIPT_DIR}/dmk_core/include" "${SCRIPT_DIR}/dmk_core/features/ec_curve.c" \
+        "${HHKB_TEST_DIR}/test_ec_curve.c" -o "${HHKB_TEST_DIR}/test_ec_curve"
+    "${HHKB_TEST_DIR}/test_ec_curve"
+    rm -f "${HHKB_TEST_DIR}/test_ec_curve"
     clang -std=c11 -Wall -Wextra -Werror -I "${HHKB_MODULES_DIR}/via_settings" \
         "${HHKB_TEST_DIR}/test_settings_storage_guard.c" -o "${HHKB_TEST_DIR}/test_settings_storage_guard"
     "${HHKB_TEST_DIR}/test_settings_storage_guard"

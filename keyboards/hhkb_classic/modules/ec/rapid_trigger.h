@@ -44,6 +44,8 @@ uint16_t rt_normalize(const rt_key_t *k, uint16_t raw);
 
 /* Feed one raw ADC sample, returns the logical key state (true = pressed). */
 bool     rt_update(rt_key_t *k, const rt_cfg_t *c, uint16_t raw);
+bool     rt_update_curve(rt_key_t *k, const rt_cfg_t *c, uint16_t raw, const uint16_t *lut);
+uint16_t rt_normalize_curve(const rt_key_t *k, uint16_t raw, const uint16_t *lut);
 
 #ifdef __cplusplus
 }

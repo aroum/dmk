@@ -1,5 +1,6 @@
 #include "classic_matrix.h"
 #include "ec_settings.h"
+#include "ec_curve.h"
 #include "rapid_trigger.h"
 #include "stm32l0xx.h"
 #include "stm32l0xx_ll_adc.h"
@@ -139,6 +140,18 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     bool capture = hhkb_cal_is_capturing_baseline();
     bool is_calibrating = hhkb_is_calibrating();
     rt_cfg_t scan_cfg = hhkb_get_scan_cfg();
+    const uint16_t *curve = ec_curve_lut;
+    static uint32_t curve_revision;
+    if (curve_revision != ec_curve_revision) {
+        curve_revision = ec_curve_revision;
+        for (uint8_t col = 0; col < MATRIX_COLS; ++col)
+            for (uint8_t row = 0; row < MATRIX_ROWS; ++row)
+                rt_key_reset(hhkb_get_rt_key(col, row));
+    }
+    uint16_t max_travel = curve ? curve[125] : 1000;
+    if (scan_cfg.act_pm > max_travel) scan_cfg.act_pm = max_travel;
+    if (scan_cfg.press_pm > max_travel) scan_cfg.press_pm = max_travel;
+    if (scan_cfg.release_pm > max_travel) scan_cfg.release_pm = max_travel;
     bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
 
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -192,7 +205,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             rt_key_t *key = &col_keys[row];
 #ifdef HHKB_FACTORY_THRESHOLDS
             uint16_t threshold = get_factory_threshold(col, row);
-            if (!scan_cfg.rt_enabled && !hhkb_calibration_enabled() && threshold != 0) {
+            if (!curve && !scan_cfg.rt_enabled && !hhkb_calibration_enabled() && threshold != 0) {
                 if (prev_row & (1U << col)) threshold -= HHKB_FACTORY_HYSTERESIS;
                 is_pressed = val > threshold;
                 rt_key_reset(key);
@@ -205,13 +218,13 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
                     key->latched = false;
                     is_pressed = false;
                 } else {
-                    is_pressed = rt_update(key, &scan_cfg, val);
+                    is_pressed = rt_update_curve(key, &scan_cfg, val, curve);
                 }
             }
 
             // Feed debug monitoring only when Topre debug streaming is active
             if (__builtin_expect(debug_topre, 0)) {
-                uint16_t norm = rt_normalize(key, val);
+                uint16_t norm = rt_normalize_curve(key, val, curve);
                 hhkb_debug_feed_sample(col, row, val, norm, is_pressed);
             }
 

@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "rapid_trigger.h"
+#include "ec_curve.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -13,7 +14,7 @@ extern "C" {
 
 #define USER_EEPROM_MAGIC          0x484B4345UL // "HKCE" (versioned with CRC16)
 #define USER_EEPROM_ADDR           0x0801F000UL // Page 62 (2KB) in STM32F072
-#define USER_EEPROM_VERSION        1
+#define USER_EEPROM_VERSION        2
 
 typedef struct __attribute__((aligned(4))) {
     uint32_t magic;
@@ -29,7 +30,12 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
     uint16_t classic_release_pm;                 // 25..1000
     uint8_t  led_mode[2];                        // Indicator Mode and Underglow Mode (0..4)
+    uint8_t v1_padding[2];
+    uint8_t curve[EC_CURVE_FIELDS];
+    uint8_t debug_flags;
+    uint8_t reserved;
 } hhkb_eeprom_cal_t;
+_Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 228, "Preserve the v1 settings record");
 
 // Calibration & Settings API
 void hhkb_settings_init(void);

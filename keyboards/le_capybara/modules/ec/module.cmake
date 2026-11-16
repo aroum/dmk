@@ -1,4 +1,5 @@
 target_sources(${TARGET_NAME} PRIVATE
+    "${DMK_ROOT}/dmk_core/features/ec_curve.c"
     "${CMAKE_CURRENT_LIST_DIR}/capybara_matrix.c"
     "${CMAKE_CURRENT_LIST_DIR}/matrix.c"
     "${CMAKE_CURRENT_LIST_DIR}/rapid_trigger.c"

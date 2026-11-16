@@ -1,4 +1,5 @@
 #include "classic_matrix.h"
+#include "ec_curve.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -8,6 +9,16 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
+    if (id >= EC_CURVE_ENABLE && id <= EC_CURVE_STATUS) {
+        if (request[0] == 0x08) {
+            if (id == EC_CURVE_STATUS) strcpy((char *)&response[3], ec_curve_status);
+            else response[3] = ec_curve_settings[id - EC_CURVE_ENABLE];
+            return true;
+        }
+        if (request[0] != 0x07 || !ec_curve_set(id, request[3])) return false;
+        hhkb_settings_mark_dirty();
+        return true;
+    }
     if (id < 1 || id > 29) return false;
     if (request[0] == 0x08) {
         if (id == 12) {

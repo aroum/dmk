@@ -20,6 +20,7 @@
 #define VIAL 1
 #endif
 #define DEBUG_CONSOLE_ENABLE 1
+#define CONSOLE_BUF_SIZE 128
 #define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 224
 
 #include "pin_defs.h"

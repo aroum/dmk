@@ -20,7 +20,7 @@ static bool s_custom_calibration = true;
 static bool s_calibration_mode = false;
 static bool s_capture_baseline = false;
 static uint8_t s_cal_baseline_samples = 0;
-static uint16_t s_cal_baseline_accum[MATRIX_COLS][MATRIX_ROWS];
+
 static uint32_t s_calibrated_mask[2];
 static uint32_t s_cal_down_mask[2];
 static uint16_t s_cal_press_start_peak[MATRIX_COLS][MATRIX_ROWS];
@@ -110,10 +110,15 @@ static uint16_t get_default_peak(uint8_t col, uint8_t row) {
 
 #define WORD_ALIGNED_SIZE(n) (((n) + 3U) & ~3U)
 bool hhkb_settings_storage_writable(void) {
-    return hhkb_settings_region_writable((volatile const uint8_t *)USER_EEPROM_ADDR,
+    const volatile uint8_t *bytes = (const volatile uint8_t *)USER_EEPROM_ADDR;
+    if (bytes[4] != USER_EEPROM_VERSION || *(const volatile uint32_t *)bytes != USER_EEPROM_MAGIC) {
+        for (size_t i = offsetof(hhkb_eeprom_cal_t, curve); i < sizeof(hhkb_eeprom_cal_t); ++i)
+            if (bytes[i] != 0) return false;
+    }
+    return hhkb_settings_region_writable(bytes,
         sizeof(hhkb_eeprom_cal_t), offsetof(hhkb_eeprom_cal_t, rt),
         WORD_ALIGNED_SIZE(offsetof(hhkb_eeprom_cal_t, scan_rate)),
-        sizeof(hhkb_eeprom_cal_t));
+        offsetof(hhkb_eeprom_cal_t, curve));
 }
 
 void hhkb_settings_mark_dirty(void) {
@@ -129,11 +134,14 @@ void hhkb_calibration_save_to_eeprom(void) {
     }
     while (FLASH->PECR & FLASH_PECR_PELOCK);
 
-    hhkb_eeprom_cal_t cal;
+    hhkb_eeprom_cal_t cal = {0};
     cal.magic = USER_EEPROM_MAGIC;
     cal.version = USER_EEPROM_VERSION;
     cal.actuation_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
     cal.rt = s_rt_cfg;
+    memcpy(cal.curve, ec_curve_settings, sizeof(cal.curve));
+    cal.debug_flags = s_debug_flags;
+    memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
     cal.classic_release_pm = s_classic_release_pm;
     cal.scan_rate = (s_scan_rate & 0x7F) | (s_power_saving ? 0x80 : 0);
     cal.tapping_term_10ms = s_tapping_term_10ms;
@@ -169,6 +177,12 @@ void hhkb_calibration_save_to_eeprom(void) {
 
 void hhkb_calibration_load(void) {
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)USER_EEPROM_ADDR;
+    for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+            s_cal_baseline[col][row] = get_default_baseline(col, row);
+            s_cal_peak[col][row] = get_default_peak(col, row);
+        }
+    }
     rt_cfg_defaults(&s_rt_cfg);
     s_rt_cfg.act_pm = 750;
     s_actuation_offset_pct = 75;
@@ -180,8 +194,14 @@ void hhkb_calibration_load(void) {
 
     if (cal->magic == USER_EEPROM_MAGIC) {
         // Versioned format with CRC16
-        uint16_t expected_crc = compute_crc16((const uint8_t *)&cal->baseline, sizeof(*cal) - offsetof(hhkb_eeprom_cal_t, baseline));
-        if (cal->crc16 == expected_crc) {
+        bool current = cal->version == USER_EEPROM_VERSION;
+        size_t size = current ? sizeof(*cal) : offsetof(hhkb_eeprom_cal_t, curve);
+        uint16_t expected_crc = compute_crc16((const uint8_t *)&cal->baseline, size - offsetof(hhkb_eeprom_cal_t, baseline));
+        if ((current || cal->version == 1) && cal->crc16 == expected_crc) {
+            if (current) {
+                for (unsigned i = 0; i < EC_CURVE_FIELDS; ++i)
+                    ec_curve_set(EC_CURVE_ENABLE + i, cal->curve[i]);
+            }
             uint8_t raw_rate = cal->scan_rate & 0x7F;
             if (raw_rate <= 4) s_scan_rate = raw_rate;
             s_power_saving = (cal->scan_rate & 0x80) != 0;
@@ -198,15 +218,20 @@ void hhkb_calibration_load(void) {
             }
             s_system = (cal->flags >> 5) & 1;
             s_led_mode[0] = (cal->flags >> 6) & 3;
+            if (current) {
+                for (unsigned i = 0; i < 2; ++i)
+                    if (cal->led_mode[i] <= 4) s_led_mode[i] = cal->led_mode[i];
+                s_debug_flags = cal->debug_flags;
+            }
 
-            if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= 1000) s_rt_cfg.act_pm = cal->rt.act_pm;
-            if (cal->rt.press_pm >= 25 && cal->rt.press_pm <= 1000) s_rt_cfg.press_pm = cal->rt.press_pm;
-            if (cal->rt.release_pm >= 25 && cal->rt.release_pm <= 1000) s_rt_cfg.release_pm = cal->rt.release_pm;
+            if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= (current ? 1125 : 1000)) s_rt_cfg.act_pm = cal->rt.act_pm;
+            if (cal->rt.press_pm >= 25 && cal->rt.press_pm <= (current ? 1125 : 1000)) s_rt_cfg.press_pm = cal->rt.press_pm;
+            if (cal->rt.release_pm >= 25 && cal->rt.release_pm <= (current ? 1125 : 1000)) s_rt_cfg.release_pm = cal->rt.release_pm;
             if (cal->rt.reset_pm <= 150) s_rt_cfg.reset_pm = cal->rt.reset_pm;
             if (s_rt_cfg.act_pm <= s_rt_cfg.reset_pm) s_rt_cfg.act_pm = s_rt_cfg.reset_pm + 25;
             s_rt_cfg.rt_enabled = cal->rt.rt_enabled;
             s_actuation_offset_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
-            if (cal->classic_release_pm >= 25 && cal->classic_release_pm <= 1000) s_classic_release_pm = cal->classic_release_pm;
+            if (cal->classic_release_pm >= 25 && cal->classic_release_pm <= (current ? 1125 : 1000)) s_classic_release_pm = cal->classic_release_pm;
 
             for (uint8_t col = 0; col < MATRIX_COLS; col++) {
                 for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
@@ -253,6 +278,7 @@ void hhkb_calibration_load(void) {
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
+    ec_curve_rebuild();
 }
 
 void vial_keyboard_eeprom_task(void) {
@@ -262,12 +288,13 @@ void vial_keyboard_eeprom_task(void) {
         taskENTER_CRITICAL();
         s_settings_dirty = false;
         taskEXIT_CRITICAL();
+        ec_curve_rebuild();
         hhkb_calibration_save_to_eeprom();
     }
 }
 
 void hhkb_calibration_start(void) {
-    memset(s_cal_baseline_accum, 0, sizeof(s_cal_baseline_accum));
+    memset(s_capture_base, 0, sizeof(s_capture_base));
     s_cal_baseline_samples = CAL_BASELINE_SAMPLES;
     s_calibrated_mask[0] = 0;
     s_calibrated_mask[1] = 0;
@@ -398,7 +425,7 @@ void hhkb_rt_set(uint8_t id, uint8_t value) {
             s_rt_cfg.reset_pm = value * 25;
             if (s_rt_cfg.act_pm <= s_rt_cfg.reset_pm) s_rt_cfg.act_pm = s_rt_cfg.reset_pm + 25;
         }
-    } else if (value >= 1 && value <= 40) {
+    } else if (value >= 1 && value <= 45) {
         uint16_t pm = value * 25;
         if (id == 1) {
             if (pm <= s_rt_cfg.reset_pm) pm = s_rt_cfg.reset_pm + 25;
@@ -513,7 +540,12 @@ void hhkb_get_debug_raw_str(char *buf, size_t max_len) {
 }
 
 void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
-    snprintf(buf, max_len, "Travel: %u.%u%%", s_dbg_norm / 10, s_dbg_norm % 10);
+    if (ec_curve_lut) {
+        unsigned depth_um = s_dbg_norm * 4u;
+        snprintf(buf, max_len, "Travel: %u.%03u mm", depth_um / 1000, depth_um % 1000);
+    } else {
+        snprintf(buf, max_len, "Travel: %u.%u%%", s_dbg_norm / 10, s_dbg_norm % 10);
+    }
 }
 
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
@@ -548,7 +580,7 @@ void hhkb_update_dynamic_peak(uint8_t col, uint8_t row, uint16_t val) {
     rt_key_set_range(&s_rt_keys[col][row], s_cal_baseline[col][row], s_cal_peak[col][row]);
 }
 void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
-    s_cal_baseline_accum[col][row] += val;
+    s_capture_base[col][row] += val;
 }
 void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
     if (val > s_capture_peak[col][row]) s_capture_peak[col][row] = val;
@@ -609,7 +641,7 @@ void hhkb_cal_decrement_samples(void) {
     if (--s_cal_baseline_samples == 0) {
         for (uint8_t c = 0; c < MATRIX_COLS; c++) {
             for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-                s_capture_base[c][r] = (uint16_t)(s_cal_baseline_accum[c][r] / CAL_BASELINE_SAMPLES);
+                s_capture_base[c][r] /= CAL_BASELINE_SAMPLES;
                 s_capture_peak[c][r] = s_capture_base[c][r];
                 s_cal_press_start_peak[c][r] = s_capture_base[c][r];
             }

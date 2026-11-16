@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "rapid_trigger.h"
+#include "ec_curve.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -17,7 +18,7 @@ extern "C" {
 #define USER_EEPROM_PREV_MAGIC     0x484B4342UL // "HKCB"
 #define USER_EEPROM_OLD_MAGIC      0x484B4341UL // "HKCA"
 #define USER_EEPROM_ADDR           0x08081500UL
-#define USER_EEPROM_VERSION        1
+#define USER_EEPROM_VERSION        2
 
 typedef struct __attribute__((aligned(4))) {
     uint32_t magic;
@@ -31,9 +32,13 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t  tapping_term_10ms;                  // 5..50
     uint8_t  quick_tap_10ms;                     // 0..50
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
-    uint16_t classic_release_pm;                 // 25..1000
+    uint16_t classic_release_pm;
+    uint8_t curve[EC_CURVE_FIELDS];
+    uint8_t led_mode[2];
+    uint8_t debug_flags;
+    uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
-_Static_assert(sizeof(hhkb_eeprom_cal_t) == 264, "HHKB settings must stay within 264 bytes EEPROM record");
+_Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 264, "Preserve the v1 settings record");
 
 // Calibration & Settings API
 void hhkb_settings_init(void);

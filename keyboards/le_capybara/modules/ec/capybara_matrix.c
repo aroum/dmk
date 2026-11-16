@@ -1,5 +1,6 @@
 #include "capybara_matrix.h"
 #include "ec_settings.h"
+#include "ec_curve.h"
 #include "rapid_trigger.h"
 #include "stm32f0xx.h"
 #include "stm32f0xx_ll_gpio.h"
@@ -139,7 +140,20 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
     bool capture = hhkb_cal_is_capturing_baseline();
     bool is_calibrating = hhkb_is_calibrating();
+    bool custom_calibration = hhkb_calibration_enabled();
     rt_cfg_t scan_cfg = hhkb_get_scan_cfg();
+    const uint16_t *curve = ec_curve_lut;
+    static uint32_t curve_revision;
+    if (curve_revision != ec_curve_revision) {
+        curve_revision = ec_curve_revision;
+        for (uint8_t col = 0; col < MATRIX_COLS; ++col)
+            for (uint8_t row = 0; row < MATRIX_ROWS; ++row)
+                rt_key_reset(hhkb_get_rt_key(col, row));
+    }
+    uint16_t max_travel = curve ? curve[125] : 1000;
+    if (scan_cfg.act_pm > max_travel) scan_cfg.act_pm = max_travel;
+    if (scan_cfg.press_pm > max_travel) scan_cfg.press_pm = max_travel;
+    if (scan_cfg.release_pm > max_travel) scan_cfg.release_pm = max_travel;
     bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
 
     // 1. Scan EC Topre Matrix (Rows 0..3, Cols 0..9)
@@ -169,15 +183,15 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
             }
             if (is_calibrating) {
                 hhkb_cal_record_peak(col, row, sample);
-            } else if (sample > col_peak[row]) {
+            } else if (custom_calibration && sample > col_peak[row]) {
                 hhkb_update_dynamic_peak(col, row, sample);
             }
 
             rt_key_t *key = &col_keys[row];
-            bool is_pressed = rt_update(key, &scan_cfg, sample);
+            bool is_pressed = rt_update_curve(key, &scan_cfg, sample, curve);
 
             if (debug_topre && sample > (key->base + 100)) {
-                hhkb_debug_feed_sample(col, row, sample, rt_normalize(key, sample), is_pressed);
+                hhkb_debug_feed_sample(col, row, sample, rt_normalize_curve(key, sample, curve), is_pressed);
             }
 
             bool was_pressed = (current_matrix[row] & (1U << col)) != 0;

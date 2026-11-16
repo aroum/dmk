@@ -99,6 +99,12 @@ static uint16_t get_default_peak(uint8_t col, uint8_t row) {
     return 2000;
 }
 
+static void apply_calibrated_range(uint8_t col, uint8_t row) {
+    uint16_t base = s_custom_calibration ? s_cal_baseline[col][row] : get_default_baseline(col, row);
+    uint16_t peak = s_custom_calibration ? s_cal_peak[col][row] : get_default_peak(col, row);
+    rt_key_set_range(&s_rt_keys[col][row], base, peak);
+}
+
 bool hhkb_settings_storage_writable(void) {
     return true;
 }
@@ -126,6 +132,8 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.version = USER_EEPROM_VERSION;
     cal.actuation_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
     cal.rt = s_rt_cfg;
+    memcpy(cal.curve, ec_curve_settings, sizeof(cal.curve));
+    cal.debug_flags = s_debug_flags;
     cal.classic_release_pm = s_classic_release_pm;
     cal.scan_rate = (s_scan_rate & 0x7F) | (s_power_saving ? 0x80 : 0);
     cal.tapping_term_10ms = s_tapping_term_10ms;
@@ -176,6 +184,12 @@ void hhkb_calibration_save_to_eeprom(void) {
 
 void hhkb_calibration_load(void) {
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)USER_EEPROM_ADDR;
+    for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+            s_cal_baseline[col][row] = get_default_baseline(col, row);
+            s_cal_peak[col][row] = get_default_peak(col, row);
+        }
+    }
     rt_cfg_defaults(&s_rt_cfg);
     s_rt_cfg.act_pm = 600;
     s_actuation_offset_pct = 60;
@@ -186,8 +200,14 @@ void hhkb_calibration_load(void) {
     s_debug_flags = 0;
 
     if (cal->magic == USER_EEPROM_MAGIC) {
-        uint16_t expected_crc = compute_crc16((const uint8_t *)&cal->baseline, sizeof(*cal) - offsetof(hhkb_eeprom_cal_t, baseline));
-        if (cal->crc16 == expected_crc) {
+        bool current = cal->version == USER_EEPROM_VERSION;
+        size_t size = current ? sizeof(*cal) : offsetof(hhkb_eeprom_cal_t, curve);
+        uint16_t expected_crc = compute_crc16((const uint8_t *)&cal->baseline, size - offsetof(hhkb_eeprom_cal_t, baseline));
+        if ((current || cal->version == 1) && cal->crc16 == expected_crc) {
+            if (current) {
+                for (unsigned i = 0; i < EC_CURVE_FIELDS; ++i)
+                    ec_curve_set(EC_CURVE_ENABLE + i, cal->curve[i]);
+            }
             uint8_t raw_rate = cal->scan_rate & 0x7F;
             if (raw_rate <= 4) s_scan_rate = raw_rate;
             s_power_saving = (cal->scan_rate & 0x80) != 0;
@@ -206,15 +226,16 @@ void hhkb_calibration_load(void) {
             s_led_mode[0] = (cal->flags >> 6) & 3;
             if (cal->led_mode[0] <= 4) s_led_mode[0] = cal->led_mode[0];
             if (cal->led_mode[1] <= 4) s_led_mode[1] = cal->led_mode[1];
+            if (current) s_debug_flags = cal->debug_flags;
 
-            if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= 1000) s_rt_cfg.act_pm = cal->rt.act_pm;
-            if (cal->rt.press_pm >= 25 && cal->rt.press_pm <= 1000) s_rt_cfg.press_pm = cal->rt.press_pm;
-            if (cal->rt.release_pm >= 25 && cal->rt.release_pm <= 1000) s_rt_cfg.release_pm = cal->rt.release_pm;
+            if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= (current ? 1125 : 1000)) s_rt_cfg.act_pm = cal->rt.act_pm;
+            if (cal->rt.press_pm >= 25 && cal->rt.press_pm <= (current ? 1125 : 1000)) s_rt_cfg.press_pm = cal->rt.press_pm;
+            if (cal->rt.release_pm >= 25 && cal->rt.release_pm <= (current ? 1125 : 1000)) s_rt_cfg.release_pm = cal->rt.release_pm;
             if (cal->rt.reset_pm <= 300) s_rt_cfg.reset_pm = cal->rt.reset_pm;
             s_rt_cfg.rt_enabled = cal->rt.rt_enabled;
 
             s_actuation_offset_pct = cal->actuation_pct;
-            if (cal->classic_release_pm >= 25 && cal->classic_release_pm <= 1000)
+            if (cal->classic_release_pm >= 25 && cal->classic_release_pm <= (current ? 1125 : 1000))
                 s_classic_release_pm = cal->classic_release_pm;
 
             for (uint8_t c = 0; c < MATRIX_COLS; c++) {
@@ -237,7 +258,7 @@ void hhkb_calibration_load(void) {
 
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-            rt_key_set_range(&s_rt_keys[c][r], s_cal_baseline[c][r], s_cal_peak[c][r]);
+            apply_calibrated_range(c, r);
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
@@ -245,11 +266,13 @@ void hhkb_calibration_load(void) {
 
 void hhkb_settings_init(void) {
     hhkb_calibration_load();
+    ec_curve_rebuild();
 }
 
 void vial_keyboard_eeprom_task(void) {
     if (s_settings_dirty && (xTaskGetTickCount() - s_settings_dirty_time) >= pdMS_TO_TICKS(HHKB_SETTINGS_SAVE_DELAY_MS)) {
         s_settings_dirty = false;
+        ec_curve_rebuild();
         hhkb_calibration_save_to_eeprom();
     }
 }
@@ -284,7 +307,7 @@ void hhkb_calibration_finish(void) {
                     s_cal_peak[c][r] = s_capture_peak[c][r];
                 }
             }
-            rt_key_set_range(&s_rt_keys[c][r], s_cal_baseline[c][r], s_cal_peak[c][r]);
+            apply_calibrated_range(c, r);
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
@@ -293,7 +316,15 @@ void hhkb_calibration_finish(void) {
 
 bool hhkb_calibration_enabled(void) { return s_custom_calibration; }
 void hhkb_calibration_set_enabled(bool enabled) {
+    taskENTER_CRITICAL();
     s_custom_calibration = enabled;
+    for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+            apply_calibrated_range(col, row);
+            rt_key_reset(&s_rt_keys[col][row]);
+        }
+    }
+    taskEXIT_CRITICAL();
     hhkb_settings_mark_dirty();
 }
 bool hhkb_is_calibrating(void) { return s_calibration_mode; }
@@ -360,6 +391,8 @@ uint8_t hhkb_rt_get(uint8_t id) {
 }
 
 void hhkb_rt_set(uint8_t id, uint8_t value) {
+    if (id == 6 && value > 12) return;
+    if ((id == 1 || id == 4 || id == 5 || id == 11) && (value < 1 || value > 45)) return;
     switch (id) {
         case 1: s_rt_cfg.act_pm = (uint16_t)value * 25; break;
         case 3: s_rt_cfg.rt_enabled = (value != 0); break;
@@ -413,7 +446,11 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
     snprintf(buf, max_len, s_calibration_mode ? "Calibrating..." : "Calibrated");
 }
 
-rt_cfg_t hhkb_get_scan_cfg(void) { return s_rt_cfg; }
+rt_cfg_t hhkb_get_scan_cfg(void) {
+    rt_cfg_t cfg = s_rt_cfg;
+    if (!cfg.rt_enabled) cfg.release_pm = s_classic_release_pm;
+    return cfg;
+}
 uint16_t hhkb_get_cal_baseline(uint8_t col, uint8_t row) { return s_cal_baseline[col][row]; }
 uint16_t hhkb_get_cal_peak(uint8_t col, uint8_t row) { return s_cal_peak[col][row]; }
 
