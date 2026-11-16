@@ -151,7 +151,7 @@ To ensure reliable actuation across all conical spring switches:
 
 1. Navigate to **Capybara Settings** → **Calibration**.
 2. Toggle on **Use custom calibration** and make sure all keys are released.
-3. Click **Start calibration** to record baseline capacitance levels.
+3. Click **Start calibration** to record baseline capacitance levels. Baseline capture takes exactly **16 matrix scan cycles** (16 ms at 1000 Hz), averaging the accumulated samples divided by 16 to set the zero-travel baseline.
 4. Fully press and bottom out all keys across the board to measure each key's peak travel capacity.
 5. Release all keys, then click **Finish and save**. A key is saved only if it had a stable baseline, moved far enough, and returned to rest. Other keys keep their previous calibration.
 

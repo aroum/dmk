@@ -110,7 +110,7 @@ The custom settings interface consists of 6 submenus:
 ### Key Calibration Process
 
 1. Toggle on **Use custom calibration** and ensure all keys are released.
-2. Click **Start calibration** to record baseline capacitance levels.
+2. Click **Start calibration** to record baseline resting capacitance levels. The baseline capture takes exactly **16 consecutive matrix scan cycles** (taking only 16 ms at a 1000 Hz scan rate; with 4x oversampling enabled, each sample hardware-averages 4 ADC conversions). The accumulated sums are divided by 16 and saved as the zero-travel reference for each individual switch.
 3. Fully press all keys you want to calibrate to record peak travel.
 4. Click **Finish and save** to write calibration to EEPROM (only positions with valid travel range are updated).
 
