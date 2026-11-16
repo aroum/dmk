@@ -78,11 +78,10 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 > Once all keys are pressed, return to **Configure** → **HHKB Settings** → **Calibration** and click **Finish and save**.
 
 > [!NOTE]
-> **Calibration Status Counter and Real-Time Monitoring in VIA:**
-> The `Calibration status` label (e.g. `In progress: 10/60 keys`) does not update automatically in real time while typing because the VIA web client does not poll custom controls continuously.
-> To refresh the displayed count, click the **Refresh status** button or switch between submenus.
+> **Status Label Updates in VIA (Curve status, Calibration status, Settings EEPROM):**
+> Dynamic status labels (such as `Curve status`, `Calibration status`, `Settings EEPROM`, and similar fields) do not continuously poll or update live in the VIA web interface. Due to the architecture of WebHID and the VIA web app, updated values for these labels are retrieved from the controller only when switching between submenus or reloading the page in the browser (F5 / Ctrl+R / Cmd+R). If you adjust curve parameters or perform key calibration, reload the VIA page or switch menus to read the updated status.
 >
-> For continuous live tracking, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*) to observe the textual progress bar and per-key travel peak updates.
+> For continuous live tracking of calibration progress and sensor activity, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*) to observe the textual progress bar and per-key travel peak updates.
 
 ## Debug
 

@@ -33,6 +33,10 @@ This guide covers how to load the definition file, configure layouts, tune elect
 > **Blank keycaps on initial connection:**
 > If keycaps appear blank upon connecting, simply click **Layer 1** and then click back to **Layer 0** (`Layer 1 → Layer 0`) to trigger VIA's rendering update.
 
+> [!NOTE]
+> **Status Label Updates in VIA (Curve status, Calibration status, Settings EEPROM):**
+> Dynamic status labels (such as `Curve status`, `Calibration status`, `Settings EEPROM`, and similar fields) do not continuously poll or update live in the VIA web interface. Due to the architecture of WebHID and the VIA web app, updated values for these labels are retrieved from the controller only when switching between submenus or reloading the page in the browser (F5 / Ctrl+R / Cmd+R). If you adjust curve parameters or perform key calibration, reload the VIA page or switch menus to read the updated status.
+
 ---
 
 ## Linux udev Rules for WebHID
