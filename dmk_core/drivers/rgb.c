@@ -5,6 +5,9 @@
 #ifndef RGB_LIMIT_VAL
 #define RGB_LIMIT_VAL 255
 #endif
+#ifndef RGB_REFRESH_INTERVAL_S
+#define RGB_REFRESH_INTERVAL_S 0
+#endif
 
 #include "FreeRTOS.h"
 #include "hal_gpio.h"
@@ -20,6 +23,8 @@ extern void ws2812_set_color(uint32_t index, uint32_t color);
 extern void ws2812_show(void);
 
 #ifdef POWER_PIN
+static bool s_rgb_powered;
+
 static void power_pin_init(void) {
     hal_gpio_init(POWER_PIN);
     hal_gpio_set_dir(POWER_PIN, true);
@@ -27,12 +32,20 @@ static void power_pin_init(void) {
 
 static void power_pin_set(bool on) {
     hal_gpio_put(POWER_PIN, on);
+    s_rgb_powered = on;
 }
 #endif
 
 // Raw pixels are persistent overlays on top of the animation frame.
 static uint32_t s_overlay[RGB_NUM];
 static bool s_overlay_active[RGB_NUM];
+static bool s_rgb_suspended;
+static uint8_t s_rgb_frame[RGB_NUM][3];
+static uint8_t s_rgb_sent_frame[RGB_NUM][3];
+static bool s_rgb_frame_sent;
+#if RGB_REFRESH_INTERVAL_S > 0
+static TickType_t s_rgb_last_send;
+#endif
 static StaticSemaphore_t s_rgb_mutex_storage;
 static SemaphoreHandle_t s_rgb_mutex;
 
@@ -113,6 +126,10 @@ static uint32_t hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v) {
  * @param color 32-bit packed RGB color.
  */
 static void set_led_color(uint32_t index, uint32_t color) {
+    if (index >= RGB_NUM)
+        return;
+    if (!s_rgb_suspended && s_overlay_active[index])
+        color = s_overlay[index];
 #if defined(RGB_LIMIT_VAL) && (RGB_LIMIT_VAL < 255)
     uint8_t r = (color >> 16) & 0xFF;
     uint8_t g = (color >> 8) & 0xFF;
@@ -129,11 +146,40 @@ static void set_led_color(uint32_t index, uint32_t color) {
     if (index >= SPLIT_RGB_OFFSET && index - SPLIT_RGB_OFFSET < 255)
         split_set_remote_rgb((uint8_t)(index - SPLIT_RGB_OFFSET), color);
 #ifdef RGB_MAP
+    index = rgb_map[index];
+#endif
     if (index < RGB_NUM) {
-        ws2812_set_color(rgb_map[index], color);
+        s_rgb_frame[index][0] = (uint8_t)(color >> 16);
+        s_rgb_frame[index][1] = (uint8_t)(color >> 8);
+        s_rgb_frame[index][2] = (uint8_t)color;
     }
-#else
-    ws2812_set_color(index, color);
+}
+
+// Compare the final physical frame after effects, overlays and brightness limits.
+static void rgb_send_frame(void) {
+#ifdef POWER_PIN
+    if (!s_rgb_powered)
+        return;
+#endif
+    bool send = !s_rgb_frame_sent ||
+                memcmp(s_rgb_frame, s_rgb_sent_frame, sizeof(s_rgb_frame)) != 0;
+#if RGB_REFRESH_INTERVAL_S > 0
+    const TickType_t refresh_ticks = RGB_REFRESH_INTERVAL_S * configTICK_RATE_HZ;
+    send |= (TickType_t)(xTaskGetTickCount() - s_rgb_last_send) >= refresh_ticks;
+#endif
+    if (!send)
+        return;
+
+    for (uint32_t i = 0; i < RGB_NUM; ++i) {
+        const uint8_t *pixel = s_rgb_frame[i];
+        uint32_t color = ((uint32_t)pixel[0] << 16) | ((uint32_t)pixel[1] << 8) | pixel[2];
+        ws2812_set_color(i, color);
+    }
+    ws2812_show();
+    memcpy(s_rgb_sent_frame, s_rgb_frame, sizeof(s_rgb_frame));
+    s_rgb_frame_sent = true;
+#if RGB_REFRESH_INTERVAL_S > 0
+    s_rgb_last_send = xTaskGetTickCount();
 #endif
 }
 
@@ -153,6 +199,10 @@ static inline void rgb_notify_change(void) {
 void rgb_set_pixel_raw(uint32_t index, uint32_t color) {
     if (index >= RGB_NUM) return;
     rgb_lock();
+    if (s_overlay_active[index] && s_overlay[index] == color) {
+        rgb_unlock();
+        return;
+    }
     s_overlay[index] = color;
     s_overlay_active[index] = true;
     set_led_color(index, color);
@@ -168,11 +218,9 @@ void rgb_clear_pixel_raw(uint32_t index) {
     rgb_notify_change();
 }
 
-static bool s_rgb_suspended = false;
-
 void rgb_show(void) {
     rgb_lock();
-    if (!s_rgb_suspended) ws2812_show();
+    if (!s_rgb_suspended) rgb_send_frame();
     rgb_unlock();
 }
 
@@ -212,7 +260,10 @@ void rgb_task(void *pvParameters) {
             continue;
         }
 #ifdef POWER_PIN
-        power_pin_set(rgb_enabled && rgb_mode != 0);
+        if (rgb_enabled && rgb_mode != 0 && !s_rgb_powered) {
+            power_pin_set(true);
+            s_rgb_frame_sent = false;
+        }
 #endif
         if (rgb_enabled && rgb_mode != 0) {
             // Scale tick progression based on speed, clamped to minimum 16 to
@@ -344,11 +395,14 @@ void rgb_task(void *pvParameters) {
             }
             for (uint32_t i = 0; i < RGB_NUM; ++i)
                 if (s_overlay_active[i]) set_led_color(i, s_overlay[i]);
-            ws2812_show();
         } else {
             set_all_leds(0);
-            ws2812_show();
         }
+        rgb_send_frame();
+#ifdef POWER_PIN
+        if (s_rgb_powered && (!rgb_enabled || rgb_mode == 0))
+            power_pin_set(false);
+#endif
         rgb_unlock();
 
         bool is_static = !rgb_enabled || (rgb_mode == 0) || (rgb_mode == RGBLIGHT_MODE_STATIC_LIGHT) ||
@@ -358,13 +412,26 @@ void rgb_task(void *pvParameters) {
 #endif
             ;
 
+        uint32_t notified;
         if (is_static) {
-            // Static mode: periodically refresh (500ms) to self-heal against glitches, or wake immediately on change
-            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
+#if RGB_REFRESH_INTERVAL_S > 0
+            notified = ulTaskNotifyTake(pdTRUE, RGB_REFRESH_INTERVAL_S * configTICK_RATE_HZ);
+#else
+            notified = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+#endif
         } else {
             // Animated mode: run at 50fps (20ms delay), but wake up early if setting changes
-            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20));
+            notified = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20));
         }
+#if defined(NUM_ROWS_SPLIT) && defined(NUM_COLS_SPLIT)
+        if (notified && !is_master()) {
+            // Collect successive split pixels before rendering the strip.
+            vTaskDelay(pdMS_TO_TICKS(20));
+            ulTaskNotifyTake(pdTRUE, 0);
+        }
+#else
+        (void)notified;
+#endif
     }
 }
 
@@ -616,10 +683,12 @@ void rgb_suspend(void) {
         return;
     }
     s_rgb_suspended = true;
+    memset(s_rgb_frame, 0, sizeof(s_rgb_frame));
     for (uint32_t i = 0; i < RGB_NUM; ++i) {
-        ws2812_set_color(i, 0);
+        set_led_color(i, 0);
     }
-    ws2812_show();
+    s_rgb_frame_sent = false;
+    rgb_send_frame();
 #ifdef POWER_PIN
     power_pin_set(false);
 #endif
@@ -633,6 +702,7 @@ void rgb_resume(void) {
         return;
     }
     s_rgb_suspended = false;
+    s_rgb_frame_sent = false;
 #ifdef POWER_PIN
     power_pin_set(true);
 #endif

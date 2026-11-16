@@ -2,13 +2,12 @@
 #include "MDR32FxQI_rst_clk.h"
 #include "MDR32FxQI_ssp.h"
 #include "pin_defs.h"
+#include "hal_gpio.h"
 #include <stdbool.h>
 #include <string.h>
 
 #define WS2812_MAX_LEDS 64
-#define RGB_RESET_WORDS 20
-
-static uint16_t _rgb[RGB_RESET_WORDS + WS2812_MAX_LEDS * 6];
+static uint16_t _rgb[WS2812_MAX_LEDS * 6];
 static uint32_t ws2812_len = 0;
 static MDR_SSP_TypeDef *active_ssp = MDR_SSP1;
 static uint32_t active_ssp_idx = 1;
@@ -106,7 +105,7 @@ void ws2812_set_color(uint32_t index, uint32_t color) {
     uint8_t b = color & 0xFF;
 
     uint32_t grb = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
-    uint32_t word_idx = RGB_RESET_WORDS + index * 6;
+    uint32_t word_idx = index * 6;
 
     for (int w = 0; w < 6; w++) {
         uint16_t word_val = 0;
@@ -122,9 +121,10 @@ void ws2812_set_color(uint32_t index, uint32_t color) {
 }
 
 void ws2812_show(void) {
+    uint32_t primask = __get_PRIMASK();
     __disable_irq();
 
-    for (uint32_t i = 0; i < RGB_RESET_WORDS + ws2812_len * 6; ++i) {
+    for (uint32_t i = 0; i < ws2812_len * 6; ++i) {
         while (SSP_GetFlagStatus(active_ssp, SSP_FLAG_TNF) == RESET) {
         }
         SSP_SendData(active_ssp, _rgb[i]);
@@ -136,5 +136,6 @@ void ws2812_show(void) {
     while (SSP_GetFlagStatus(active_ssp, SSP_FLAG_BSY) == SET) {
     }
 
-    __enable_irq();
+    __set_PRIMASK(primask);
+    hal_sleep_us(350);
 }

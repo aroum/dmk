@@ -493,6 +493,8 @@ WS2812 RGB LED strips can be controlled by defining the count, connection pin, m
 ```
 
 - `RGB_LIMIT_VAL`: Optional maximum brightness threshold (values `0` to `255`, default: `255`). Restricts the upper bound of the LED current draw by hardware-clamping the brightness parameter inside the engine.
+- `RGB_REFRESH_INTERVAL_S`: Seconds between retransmissions of an unchanged RGB frame. The default `0` sends frames only on change during normal operation. Suspend forces a black frame, including raw indicators, and resume redraws the strip. `USB_NO_HOST_SUSPEND_MS` also triggers this behavior when the host is absent.
+- `SPLIT_OUTPUT_RESYNC_MS`: Interval for resending the cached RGB and LED state to the other half. Defaults to 10000 ms. Set to `0` to keep change updates and reconnect resends only.
 
 ### Supported Effects and Animations
 

@@ -3,6 +3,7 @@
 // Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
 
 #include "hardware/pio.h"
+#include "hal_gpio.h"
 #include "WS2812.pio.h"
 #include <stdint.h>
 #include <string.h>
@@ -40,10 +41,15 @@ void ws2812_set_color(uint32_t index, uint32_t color) {
 }
 
 void ws2812_show(void) {
-    if (ws2812_sm < 0) {
+    if (ws2812_sm < 0 || ws2812_len == 0) {
         return;
     }
     for (uint32_t i = 0; i < ws2812_len; i++) {
         pio_sm_put_blocking(pio0, (uint)ws2812_sm, ws2812_buf[i]);
     }
+    while (!pio_sm_is_tx_fifo_empty(pio0, (uint)ws2812_sm)) {
+        tight_loop_contents();
+    }
+    // Allow one 24-bit word at 800 kHz plus the preceding bit to finish.
+    hal_sleep_us(32 + 350);
 }

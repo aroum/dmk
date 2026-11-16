@@ -184,8 +184,12 @@ void ws2812_show(void) {
         return;
 
     if (ws2812_pin == PA15) {
-        // Hardware TIM2 + DMA: 0 CPU overhead, 0 interrupt lock time
+        // Keep interrupts enabled while waiting for the final LOW latch.
         ws2812_show_tim2_dma();
+        while (ws2812_dma_busy) {
+            __NOP();
+        }
+        hal_sleep_us(350);
         return;
     }
 
@@ -214,4 +218,5 @@ void ws2812_show(void) {
     ws2812_send_stream(&port->BSRR, set_mask, reset_mask, ws2812_fallback_stream, ws2812_len * 3);
     port->BSRR = reset_mask;
     taskEXIT_CRITICAL();
+    hal_sleep_us(350);
 }

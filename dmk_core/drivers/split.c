@@ -61,13 +61,33 @@ static uint32_t s_remote_rgb[SPLIT_RGB_STORAGE_COUNT];
 static bool s_remote_rgb_valid[SPLIT_RGB_STORAGE_COUNT];
 static uint8_t s_remote_led_mask;
 static bool s_remote_led_valid;
+static uint8_t s_remote_rgb_pending[SPLIT_RGB_STORAGE_COUNT];
+static uint8_t s_remote_led_pending;
+static TickType_t s_output_last_resync;
+
+#define SPLIT_OUTPUT_REPEATS 3
+#ifndef SPLIT_OUTPUT_RESYNC_MS
+#define SPLIT_OUTPUT_RESYNC_MS 10000U
+#endif
+
+static void split_resync_outputs(TickType_t now) {
+    taskENTER_CRITICAL();
+    s_remote_led_pending = s_remote_led_valid ? SPLIT_OUTPUT_REPEATS : 0;
+    for (unsigned i = 0; i < SPLIT_REMOTE_RGB_COUNT; ++i)
+        s_remote_rgb_pending[i] = s_remote_rgb_valid[i] ? SPLIT_OUTPUT_REPEATS : 0;
+    s_output_last_resync = now;
+    taskEXIT_CRITICAL();
+}
 
 void split_set_remote_leds(uint8_t mask) {
     bool running = xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED;
     if (running && !is_master()) return;
     if (running) taskENTER_CRITICAL();
-    s_remote_led_mask = mask;
-    s_remote_led_valid = true;
+    if (!s_remote_led_valid || s_remote_led_mask != mask) {
+        s_remote_led_mask = mask;
+        s_remote_led_valid = true;
+        s_remote_led_pending = SPLIT_OUTPUT_REPEATS;
+    }
     if (running) taskEXIT_CRITICAL();
 }
 
@@ -75,8 +95,12 @@ void split_set_remote_rgb(uint8_t index, uint32_t rgb) {
     bool running = xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED;
     if (index >= SPLIT_REMOTE_RGB_COUNT || (running && !is_master())) return;
     if (running) taskENTER_CRITICAL();
-    s_remote_rgb[index] = rgb & 0xFFFFFFu;
-    s_remote_rgb_valid[index] = true;
+    rgb &= 0xFFFFFFu;
+    if (!s_remote_rgb_valid[index] || s_remote_rgb[index] != rgb) {
+        s_remote_rgb[index] = rgb;
+        s_remote_rgb_valid[index] = true;
+        s_remote_rgb_pending[index] = SPLIT_OUTPUT_REPEATS;
+    }
     if (running) taskEXIT_CRITICAL();
 }
 
@@ -86,6 +110,10 @@ void split_set_remote_rgb(uint8_t index, uint32_t rgb) {
 static bool split_next_output_packet(split_packet_t *packet) {
     static unsigned next_slot;
     static uint8_t sequence;
+    TickType_t now = xTaskGetTickCount();
+    if (SPLIT_OUTPUT_RESYNC_MS > 0 &&
+        (TickType_t)(now - s_output_last_resync) >= pdMS_TO_TICKS(SPLIT_OUTPUT_RESYNC_MS))
+        split_resync_outputs(now);
     const unsigned slots = 1u + SPLIT_REMOTE_RGB_COUNT;
     for (unsigned attempt = 0; attempt < slots; ++attempt) {
         unsigned slot = next_slot++ % slots;
@@ -93,10 +121,12 @@ static bool split_next_output_packet(split_packet_t *packet) {
         uint32_t value;
         taskENTER_CRITICAL();
         if (slot == 0) {
-            valid = s_remote_led_valid;
+            valid = s_remote_led_pending != 0;
+            if (valid) --s_remote_led_pending;
             value = s_remote_led_mask;
         } else {
-            valid = s_remote_rgb_valid[slot - 1];
+            valid = s_remote_rgb_pending[slot - 1] != 0;
+            if (valid) --s_remote_rgb_pending[slot - 1];
             value = s_remote_rgb[slot - 1];
         }
         taskEXIT_CRITICAL();
@@ -400,7 +430,6 @@ void split_process_received_byte(uint8_t byte) {
                 } else {
                     uint32_t color = ((uint32_t)pkt.pressed << 16) | ((uint32_t)pkt.green << 8) | pkt.blue;
                     rgb_set_pixel_raw(pkt.col, color);
-                    rgb_show();
                 }
             }
             count = 0;
@@ -408,6 +437,12 @@ void split_process_received_byte(uint8_t byte) {
             // Only the master interprets matrix packets. This also prevents a
             // UART echo from injecting the slave's own events into its queue.
             if (!is_master()) { count = 0; return; }
+            xSemaphoreTake(s_remote_mutex, portMAX_DELAY);
+            if (!s_remote_connected)
+                split_resync_outputs(now);
+            s_remote_last_seen = now;
+            s_remote_connected = true;
+            xSemaphoreGive(s_remote_mutex);
             // Respond before a potentially blocking matrix enqueue, while the
             // sender still holds its reply window open.
             if (is_master()) {
@@ -420,8 +455,6 @@ void split_process_received_byte(uint8_t byte) {
                 }
             }
             xSemaphoreTake(s_remote_mutex, portMAX_DELAY);
-            s_remote_last_seen = now;
-            s_remote_connected = true;
             bool changed = s_remote_pressed[pkt.row][pkt.col] != (pkt.pressed != 0);
             s_remote_pressed[pkt.row][pkt.col] = pkt.pressed != 0;
             if (changed) {

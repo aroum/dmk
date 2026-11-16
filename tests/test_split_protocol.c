@@ -106,10 +106,10 @@ int main(void) {
     assert(led_mask == 0x05 && event_count == 0);
     split_make_rgb_packet(&packet, 2, 1, 0x123456);
     feed(&packet);
-    assert(rgb_index == 1 && rgb_color == 0x123456 && show_count == 1);
+    assert(rgb_index == 1 && rgb_color == 0x123456 && show_count == 0);
     packet.blue ^= 1;
     feed(&packet);
-    assert(show_count == 1);
+    assert(show_count == 0);
     matrix_event_t event = {.row = 1, .col = 2, .pressed = 1};
     split_make_packet(&packet, &event);
     g_mock_ticks += 21; // discard any partial candidate from the corrupt frame
@@ -191,9 +191,13 @@ int main(void) {
     feed(&packet);
     assert(reply_count == 2 && split_packet_valid(&last_reply));
     assert(last_reply.col == 1); // next cached output is RGB index 1
+    split_set_remote_leds(0x13);
+    split_set_remote_rgb(1, 0xAABBCC);
+    assert(!split_test_next_output_packet(&packet));
+    g_mock_ticks += 10000;
     usb_mounted = false;
     feed(&last_reply);
-    assert(rgb_index == 1 && rgb_color == 0xAABBCC && show_count == 2);
+    assert(rgb_index == 1 && rgb_color == 0xAABBCC && show_count == 0);
     // Record the production transmitter's GPIO edges, then replay those exact
     // edges into the production receiver on the other half.
     usb_mounted = false;
