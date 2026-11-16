@@ -643,8 +643,8 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
             uint8_t filled = (uint8_t)((count * 20U) / 60U);
             for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
             bar[20] = '\0';
-            debug_console_printf("[CAL] [%s] %u%% (%u/60) | Key C%u R%u peak: %u\r\n",
-                                 bar, pct, count, col, row, s_capture_peak[col][row]);
+            debug_console_printf("[CAL] [%s] %u%% (%u/60) | Key R%u C%u peak: %u (base: %u)\r\n",
+                                 bar, pct, count, row, col, s_capture_peak[col][row], s_capture_base[col][row]);
             if (count >= 60) {
                 debug_console_printf("[CAL] >>> All 60 keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
             }
@@ -657,7 +657,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
         uint16_t old_peak = s_cal_press_start_peak[col][row];
         uint16_t new_peak = s_capture_peak[col][row];
         if (old_peak > press_thresh && new_peak > old_peak + 20 && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            debug_console_printf("[CAL] Key C%u R%u peak updated: %u -> %u\r\n", col, row, old_peak, new_peak);
+            debug_console_printf("[CAL] Key R%u C%u peak updated: %u -> %u\r\n", row, col, old_peak, new_peak);
         }
     }
 }

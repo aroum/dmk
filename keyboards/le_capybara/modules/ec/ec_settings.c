@@ -533,9 +533,19 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
         if (val >= s_capture_base[col][row] + RT_MIN_RANGE &&
             !(s_calibrated_mask[idx / 32] & bit)) {
             s_calibrated_mask[idx / 32] |= bit;
-            if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
-                debug_console_printf("[CAL] R%u C%u ADC=%u baseline=%u\r\n",
-                                     row, col, val, s_capture_base[col][row]);
+            if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+                uint8_t count = (uint8_t)(__builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]));
+                uint8_t pct = (uint8_t)((count * 100U) / 36U);
+                char bar[21];
+                uint8_t filled = (uint8_t)((count * 20U) / 36U);
+                for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
+                bar[20] = '\0';
+                debug_console_printf("[CAL] [%s] %u%% (%u/36) | Key R%u C%u peak: %u (base: %u)\r\n",
+                                     bar, pct, count, row, col, val, s_capture_base[col][row]);
+                if (count >= 36) {
+                    debug_console_printf("[CAL] >>> All 36 keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
+                }
+            }
         }
     }
 }
