@@ -465,8 +465,9 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
 
     if (selected) s_stream_raw = raw;
     s_dbg_col = col; s_dbg_row = row; s_dbg_raw = raw; s_dbg_norm = norm; s_dbg_down = is_pressed;
-    debug_console_printf("[EC] R%u C%u %s ADC=%u travel=%u pm\r\n",
-                         row, col, is_pressed ? "DOWN" : "UP", raw, norm);
+    debug_console_printf("[EC] R%u C%u : raw=%u base=%u peak=%u travel=%u%% %s\r\n",
+                         row, col, raw, s_cal_baseline[col][row], s_cal_peak[col][row],
+                         norm / 10, is_pressed ? "DN" : "UP");
 }
 
 void hhkb_get_debug_key_str(char *buf, size_t max_len) {
