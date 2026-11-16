@@ -192,11 +192,9 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             bool was_pressed = (current_matrix[row] & (1U << col)) != 0;
             bool transitioned = is_pressed != was_pressed;
-            if (debug_ec && transitioned) {
+            if (debug_ec) {
                 uint16_t travel = rt_normalize_curve(key, sample, curve);
-                hhkb_debug_feed_sample(col, row, sample, travel, is_pressed);
-                debug_console_printf("[EC] R%u C%u %s ADC=%u travel=%u pm\r\n",
-                                     row, col, is_pressed ? "DOWN" : "UP", sample, travel);
+                hhkb_debug_feed_sample(col, row, sample, travel, is_pressed, transitioned);
             }
             if (transitioned) {
                 if (is_pressed) {

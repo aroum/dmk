@@ -90,7 +90,7 @@ Under the **LAYOUT** tab in VIA:
 
 ### 4. Debug & Diagnostics
 - **Firmware Version:** Dynamically queries and displays the exact runtime firmware build version (`DMK_FW_VERSION`, e.g. `26.11.15` or `26.11.15-b8c21fe`) directly from controller memory over VIA protocol (channel 0, ID 28).
-- **EC Matrix Stream:** Logs capacitive key press and release transitions to the HID console. Each `[EC]` line includes matrix coordinates, the raw ADC sample, and the travel value used by the firmware.
+- **EC Matrix Stream:** Logs press and release transitions immediately, then reports travel changes of the most recently pressed key while it moves. Changes smaller than 40 ADC counts are suppressed to limit console traffic. Each `[EC]` line includes matrix coordinates, the raw ADC sample, and the travel value used by the firmware.
 - **VIA Telemetry Diag:** Diagnostic logging of VIA communication packets.
 - **Polling Rate Monitor:** Real-time matrix scanning frequency telemetry.
 - **Calibration Monitor:** Live monitoring of baseline capacitance and tracking drift.

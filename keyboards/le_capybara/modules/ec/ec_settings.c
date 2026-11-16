@@ -61,22 +61,10 @@ static volatile uint8_t s_dbg_row = 0;
 static volatile uint16_t s_dbg_raw = 0;
 static volatile uint16_t s_dbg_norm = 0;
 static volatile bool s_dbg_down = false;
-static uint16_t s_last_reported_raw[MATRIX_COLS][MATRIX_ROWS];
-static uint32_t s_last_reported_down_mask[2] = {0, 0};
-
-static inline bool is_reported_down(uint8_t col, uint8_t row) {
-    uint8_t idx = (col << 2) | (row & 3);
-    return (s_last_reported_down_mask[idx / 32] & (1U << (idx % 32))) != 0;
-}
-
-static inline void set_reported_down(uint8_t col, uint8_t row, bool down) {
-    uint8_t idx = (col << 2) | (row & 3);
-    if (down) {
-        s_last_reported_down_mask[idx / 32] |= (1U << (idx % 32));
-    } else {
-        s_last_reported_down_mask[idx / 32] &= ~(1U << (idx % 32));
-    }
-}
+static uint16_t s_stream_raw;
+static bool s_stream_active;
+static uint8_t s_stream_col;
+static uint8_t s_stream_row;
 
 static uint16_t compute_crc16(const uint8_t *data, size_t len) {
     uint16_t crc = 0xFFFF;
@@ -459,8 +447,26 @@ void hhkb_calc_rates(uint32_t elapsed_ms) {
 bool hhkb_get_debug_enabled(void) { return hhkb_get_debug_flag(DEBUG_FLAG_TOPRE); }
 void hhkb_set_debug_enabled(bool enabled) { hhkb_set_debug_flag(DEBUG_FLAG_TOPRE, enabled); }
 
-void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed) {
+void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed, bool transitioned) {
+    if (transitioned && is_pressed) {
+        s_stream_active = true;
+        s_stream_col = col;
+        s_stream_row = row;
+    }
+
+    bool selected = s_stream_active && col == s_stream_col && row == s_stream_row;
+    int32_t delta = (int32_t)raw - s_stream_raw;
+    if (!transitioned && (!selected || norm < 50 || (delta > -40 && delta < 40))) {
+        if (selected && norm < 50 && !is_pressed) {
+            s_stream_active = false;
+        }
+        return;
+    }
+
+    if (selected) s_stream_raw = raw;
     s_dbg_col = col; s_dbg_row = row; s_dbg_raw = raw; s_dbg_norm = norm; s_dbg_down = is_pressed;
+    debug_console_printf("[EC] R%u C%u %s ADC=%u travel=%u pm\r\n",
+                         row, col, is_pressed ? "DOWN" : "UP", raw, norm);
 }
 
 void hhkb_get_debug_key_str(char *buf, size_t max_len) {

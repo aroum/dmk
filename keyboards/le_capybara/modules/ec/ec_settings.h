@@ -86,7 +86,7 @@ void hhkb_calc_rates(uint32_t elapsed_ms);
 
 bool hhkb_get_debug_enabled(void);
 void hhkb_set_debug_enabled(bool enabled);
-void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed);
+void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t norm, bool is_pressed, bool transitioned);
 void hhkb_get_debug_key_str(char *buf, size_t max_len);
 void hhkb_get_debug_raw_str(char *buf, size_t max_len);
 void hhkb_get_debug_travel_str(char *buf, size_t max_len);
