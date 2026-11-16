@@ -14,8 +14,8 @@
 #endif
 #endif
 
-// PWM + DMA: 24 bits per LED + 1 trailing zero to clamp output LOW
-#define WS2812_DMA_BUF_LEN (WS2812_MAX_LEDS * 24 + 1)
+// Two trailing zero samples let the CCR preload latch LOW before DMA completes.
+#define WS2812_DMA_BUF_LEN (WS2812_MAX_LEDS * 24 + 2)
 
 static uint16_t ws2812_dma_buf[WS2812_DMA_BUF_LEN];
 static uint32_t ws2812_colors[WS2812_MAX_LEDS];
@@ -24,18 +24,19 @@ static uint32_t ws2812_pin = 0;
 static volatile bool ws2812_dma_busy = false;
 
 // -----------------------------------------------------------------------------
-// Hardware PWM + DMA Implementation (PA15 -> TIM2_CH1, AF2, DMA1 Channel 5)
+// PA15 -> TIM2_CH1 (AF2), with TIM2_UP requests on DMA1 Channel 2.
 // -----------------------------------------------------------------------------
 
-void DMA1_Channel4_5_6_7_IRQHandler(void) {
-    if (DMA1->ISR & DMA_ISR_TCIF5) {
-        // Clear Channel 5 transfer complete & global interrupt flags
-        DMA1->IFCR = DMA_IFCR_CTCIF5 | DMA_IFCR_CGIF5;
-        DMA1_Channel5->CCR &= ~DMA_CCR_EN;
+void DMA1_Channel2_3_IRQHandler(void) {
+    if (DMA1->ISR & (DMA_ISR_TCIF2 | DMA_ISR_TEIF2)) {
+        DMA1->IFCR = DMA_IFCR_CGIF2;
+        DMA1_Channel2->CCR &= ~DMA_CCR_EN;
 
         // Stop timer counter and keep output LOW
         TIM2->CR1 &= ~TIM_CR1_CEN;
+        TIM2->DIER = 0;
         TIM2->CCR1 = 0;
+        TIM2->EGR = TIM_EGR_UG;
 
         ws2812_dma_busy = false;
     }
@@ -64,19 +65,17 @@ static void ws2812_init_tim2_dma(void) {
     // PWM Mode 1 on Channel 1, preload enabled
     TIM2->CCMR1 = (6U << TIM_CCMR1_OC1M_Pos) | TIM_CCMR1_OC1PE;
     TIM2->CCER = TIM_CCER_CC1E;  // Active high, enable output
-    TIM2->DIER = TIM_DIER_CC1DE; // Trigger DMA on CC1 event
+    TIM2->DIER = 0;
     TIM2->CR1 |= TIM_CR1_ARPE;   // Preload ARR
 
-    // Configure DMA1 Channel 5 (TIM2_CH1 request on STM32F072)
-    DMA1_Channel5->CCR = 0;
-    DMA1_Channel5->CPAR = (uint32_t)&TIM2->CCR1;
-    DMA1_Channel5->CMAR = (uint32_t)ws2812_dma_buf;
-    DMA1_Channel5->CCR = DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_PSIZE_0 | DMA_CCR_MSIZE_0 |
-                         DMA_CCR_PL_1 | DMA_CCR_TCIE;
+    DMA1_Channel2->CCR = 0;
+    DMA1_Channel2->CPAR = (uint32_t)&TIM2->CCR1;
+    DMA1_Channel2->CMAR = (uint32_t)ws2812_dma_buf;
+    DMA1_Channel2->CCR = DMA_CCR_MINC | DMA_CCR_DIR | DMA_CCR_PSIZE_0 | DMA_CCR_MSIZE_0 |
+                         DMA_CCR_PL_1 | DMA_CCR_TCIE | DMA_CCR_TEIE;
 
-    // Enable DMA Channel 4..7 interrupt in NVIC
-    NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn, 3);
-    NVIC_EnableIRQ(DMA1_Channel4_5_6_7_IRQn);
+    NVIC_SetPriority(DMA1_Channel2_3_IRQn, 3);
+    NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 }
 
 static void ws2812_show_tim2_dma(void) {
@@ -84,6 +83,7 @@ static void ws2812_show_tim2_dma(void) {
     while (ws2812_dma_busy) {
         __NOP();
     }
+    hal_sleep_us(350);
 
     uint32_t bit_idx = 0;
     for (uint32_t i = 0; i < ws2812_len; i++) {
@@ -101,17 +101,17 @@ static void ws2812_show_tim2_dma(void) {
         }
     }
 
-    // Trailing zero to hold line LOW
+    // The first zero becomes active before the final DMA write raises TC.
+    ws2812_dma_buf[bit_idx++] = 0;
     ws2812_dma_buf[bit_idx++] = 0;
 
     ws2812_dma_busy = true;
 
     // Set transfer length and trigger DMA
-    DMA1_Channel5->CNDTR = bit_idx;
-    DMA1_Channel5->CCR |= DMA_CCR_EN;
+    DMA1_Channel2->CNDTR = bit_idx;
+    DMA1_Channel2->CCR |= DMA_CCR_EN;
 
-    // Start timer at ARR so the first update loads the first sample immediately
-    TIM2->CNT = 59;
+    TIM2->DIER = TIM_DIER_UDE;
     TIM2->CR1 |= TIM_CR1_CEN;
 }
 
