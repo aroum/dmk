@@ -21,6 +21,7 @@ static inline bool hhkb_settings_region_writable(volatile const uint8_t *bytes,
     case 0x484b4342U: owned = old_b_size; break;
     case 0x484b4343U: owned = old_c_size; break;
     case 0x484b4344U: owned = current_size; break;
+    case 0x484b4345U: owned = current_size; break;
     default: return false;
     }
     if (owned > current_size) return false;

@@ -35,5 +35,7 @@ int main(void) {
     assert(writable(bytes));
     set_magic(bytes, 0x484b4344);
     assert(writable(bytes));
+    set_magic(bytes, 0x484b4345);
+    assert(writable(bytes));
     return 0;
 }
