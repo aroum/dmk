@@ -983,7 +983,7 @@
           "label": "LED",
           "content": [
             {
-              "label": "LED 0 (PA8)",
+              "label": "Blue LED (PA8)",
               "type": "dropdown",
               "options": [
                 [
@@ -1014,7 +1014,7 @@
               ]
             },
             {
-              "label": "LED 1 (PA9)",
+              "label": "Orange LED (PA9)",
               "type": "dropdown",
               "options": [
                 [
