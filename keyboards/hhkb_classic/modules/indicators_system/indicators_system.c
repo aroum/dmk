@@ -2,6 +2,7 @@
 #include "task.h"
 #include "hal_gpio.h"
 #include "hooks.h"
+#include "keyboard.h"
 #include "layers.h"
 #include "classic_matrix.h"
 #include "tusb.h"
@@ -30,9 +31,12 @@ void keyboard_platform_tick(TickType_t now) {
     bool heartbeat = ((now / pdMS_TO_TICKS(500)) & 1U) != 0;
     bool mounted = tud_mounted();
     bool suspended = tud_suspended();
+    bool power_saving_active = keyboard_power_saving_enabled() && (!mounted || suspended);
     for (uint8_t i = 0; i < 2; i++) {
         bool on = false;
-        if (!mounted && i == 0) {
+        if (power_saving_active) {
+            on = false;
+        } else if (!mounted && i == 0) {
             // Debug LED: PA8 is solid ON while FreeRTOS is running and waiting for USB host enumeration
             on = true;
         } else {
@@ -44,7 +48,7 @@ void keyboard_platform_tick(TickType_t now) {
             default: break;
             }
         }
-        hal_gpio_put(led_pins[i], on && !suspended);
+        hal_gpio_put(led_pins[i], on && !suspended && !power_saving_active);
     }
 }
 

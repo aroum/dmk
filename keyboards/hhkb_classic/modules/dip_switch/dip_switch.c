@@ -1,6 +1,7 @@
 #include "dip_switch.h"
 #include "pin_defs.h"
 #include "config.h"
+#include "ec_settings.h"
 #include "stm32l0xx.h"
 #include "stm32l0xx_ll_gpio.h"
 #include <stdbool.h>
@@ -174,11 +175,12 @@ bool dip_switch_get(dip_switch_num_t sw) {
 
 bool hhkb_is_power_saving_enabled(void) {
 #if defined(HHKB_SW6_REBOOT_TO_BANK1) && (HHKB_SW6_REBOOT_TO_BANK1 == 1)
-    // When SW6 is assigned to Bank 1 recovery, power saving defaults to standard USB mode
-    return false;
+    // When SW6 is assigned to Bank 1 recovery, power saving is controlled by VIA settings
+    return hhkb_get_power_saving();
 #else
-    // Official HHKB behavior: SW6 OFF = Power Saving Enabled; SW6 ON = Power Saving Disabled
-    return !dip_switch_get(DIP_SW6);
+    // Official HHKB behavior: SW6 OFF = Power Saving Enabled; SW6 ON = Power Saving Disabled.
+    // Also respects the VIA power saving setting.
+    return !dip_switch_get(DIP_SW6) && hhkb_get_power_saving();
 #endif
 }
 

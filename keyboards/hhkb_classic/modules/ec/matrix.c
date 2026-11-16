@@ -1,8 +1,10 @@
 #include "matrix.h"
 #include "classic_matrix.h"
+#include "keyboard.h"
 #include "queue.h"
 #include "task.h"
 #include "config.h"
+#include "tusb.h"
 #if defined(HHKB_SCAN_DIAGNOSTICS) || defined(HHKB_SCAN_1KHZ)
 #include "stm32l072xx.h"
 #endif
@@ -95,7 +97,24 @@ void matrix_task(void *pvParameters) {
     TIM2->DIER = TIM_DIER_CC1IE;
 #endif
     matrix_row_t published_state[MATRIX_ROWS] = {0};
+    bool sensor_power_down = false;
     for (;;) {
+        // Check power saving condition: host disconnected (not mounted) or USB suspended
+        if (keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
+            if (!sensor_power_down) {
+                // Disable power for capacitive sensor board and OpAmp
+                GPIOC->BRR = (1U << 14) | (1U << 7);
+                sensor_power_down = true;
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        } else if (sensor_power_down) {
+            // Restore sensor board and OpAmp power when USB host is active
+            GPIOC->BSRR = (1U << 14) | (1U << 7);
+            vTaskDelay(pdMS_TO_TICKS(10)); // Settle analog power
+            sensor_power_down = false;
+        }
+
 #ifdef HHKB_SCAN_1KHZ
         if (s_scan_rate_applied != hhkb_get_scan_rate()) {
             NVIC_DisableIRQ(TIM2_IRQn);

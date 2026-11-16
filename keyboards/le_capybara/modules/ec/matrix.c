@@ -1,10 +1,12 @@
 #include "matrix.h"
 #include "capybara_matrix.h"
 #include "ec_settings.h"
+#include "keyboard.h"
 #include "queue.h"
 #include "task.h"
 #include "config.h"
 #include "encoder.h"
+#include "tusb.h"
 #include "stm32f072xb.h"
 
 extern QueueHandle_t matrix_queue;
@@ -30,6 +32,15 @@ void matrix_task(void *pvParameters) {
     for (;;) {
         // 1. Process delayed EEPROM saves for calibration and settings
         vial_keyboard_eeprom_task();
+
+        // Check power saving condition: host disconnected (not mounted) or USB suspended
+        if (keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
+            // Disable both MUXes to minimize current draw
+            GPIOA->BSRR = (1U << 8);  // EN0 = HIGH (disabled)
+            GPIOC->BSRR = (1U << 14); // EN1 = HIGH (disabled)
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        }
 
         // 2. Scan EC capacitive and discrete key matrix
         capybara_matrix_scan_raw(s_matrix_state);

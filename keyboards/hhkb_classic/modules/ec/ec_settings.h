@@ -51,6 +51,8 @@ void vial_keyboard_eeprom_task(void);
 // Getters & Setters for VIA
 uint8_t hhkb_get_scan_rate(void);
 void hhkb_set_scan_rate(uint8_t rate);
+bool hhkb_get_power_saving(void);
+void hhkb_set_power_saving(bool enabled);
 bool hhkb_get_oversampling(void);
 void hhkb_set_oversampling(bool enabled);
 uint8_t hhkb_get_hold_tap_setting(uint8_t id);

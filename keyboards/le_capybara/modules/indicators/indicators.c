@@ -1,6 +1,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "hooks.h"
+#include "keyboard.h"
 #include "layers.h"
 #include "rgb.h"
 #include "ec_settings.h"
@@ -50,7 +51,8 @@ static uint32_t s_last_col1 = 0xFFFFFFFF;
 
 void keyboard_platform_tick(TickType_t now) {
     bool suspended = tud_suspended();
-    if (suspended) {
+    bool power_saving_active = keyboard_power_saving_enabled() && (!tud_mounted() || suspended);
+    if (power_saving_active || suspended) {
         if (s_last_col0 != 0) {
             rgb_set_pixel_raw(0, 0);
             s_last_col0 = 0;

@@ -38,6 +38,7 @@ static uint16_t s_classic_release_pm = 100;
 static uint8_t s_actuation_offset_pct = 60;
 
 static uint8_t s_scan_rate = 4; // 1000 Hz
+static bool s_power_saving = true; // Enabled by default
 static bool s_oversampling_requested = false;
 static uint8_t s_tapping_term_10ms = 22; // 220 ms
 static uint8_t s_quick_tap_10ms = 15;    // 150 ms
@@ -126,7 +127,7 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.actuation_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
     cal.rt = s_rt_cfg;
     cal.classic_release_pm = s_classic_release_pm;
-    cal.scan_rate = s_scan_rate;
+    cal.scan_rate = (s_scan_rate & 0x7F) | (s_power_saving ? 0x80 : 0);
     cal.tapping_term_10ms = s_tapping_term_10ms;
     cal.quick_tap_10ms = s_quick_tap_10ms;
     cal.flags = (s_permissive_hold ? 1 : 0) |
@@ -187,7 +188,9 @@ void hhkb_calibration_load(void) {
     if (cal->magic == USER_EEPROM_MAGIC) {
         uint16_t expected_crc = compute_crc16((const uint8_t *)&cal->baseline, sizeof(*cal) - offsetof(hhkb_eeprom_cal_t, baseline));
         if (cal->crc16 == expected_crc) {
-            if (cal->scan_rate <= 4) s_scan_rate = cal->scan_rate;
+            uint8_t raw_rate = cal->scan_rate & 0x7F;
+            if (raw_rate <= 4) s_scan_rate = raw_rate;
+            s_power_saving = (cal->scan_rate & 0x80) != 0;
             if (cal->tapping_term_10ms >= 5 && cal->tapping_term_10ms <= 50) s_tapping_term_10ms = cal->tapping_term_10ms;
             if (cal->quick_tap_10ms <= 50) s_quick_tap_10ms = cal->quick_tap_10ms;
             s_permissive_hold = (cal->flags & 1) != 0;
@@ -299,6 +302,13 @@ bool hhkb_cal_is_capturing_baseline(void) { return s_capture_baseline; }
 uint8_t hhkb_get_scan_rate(void) { return s_scan_rate; }
 void hhkb_set_scan_rate(uint8_t rate) {
     if (rate <= 4) { s_scan_rate = rate; hhkb_settings_mark_dirty(); }
+}
+
+bool hhkb_get_power_saving(void) { return s_power_saving; }
+void hhkb_set_power_saving(bool enabled) {
+    if (s_power_saving == enabled) return;
+    s_power_saving = enabled;
+    hhkb_settings_mark_dirty();
 }
 bool hhkb_get_oversampling(void) { return s_oversampling_requested; }
 void hhkb_set_oversampling(bool enabled) {
@@ -437,3 +447,9 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
 }
 
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row) { return &s_rt_keys[col][row]; }
+
+// Override core weak power saving check
+bool keyboard_power_saving_enabled(void) {
+    return hhkb_get_power_saving();
+}
+

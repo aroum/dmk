@@ -1020,6 +1020,27 @@
           ]
         },
         {
+          "label": "Power Saving",
+          "content": [
+            {
+              "label": "Power Saving Mode",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_power_saving",
+                0,
+                29
+              ]
+            },
+            {
+              "label": "Description",
+              "type": "label",
+              "content": [
+                "Powers down sensors, matrix scan, and LEDs when disconnected from USB host."
+              ]
+            }
+          ]
+        },
+        {
           "label": "Debug",
           "content": [
             {
