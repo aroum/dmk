@@ -12,7 +12,7 @@
 
 /*
  * VIAL & VIA GUI Support:
- * Set to 1 (or leave #define VIAL) to enable runtime GUI keymap remap and custom Topre tuning menus.
+ * Set to 1 (or leave #define VIAL) to enable runtime GUI keymap remap and custom EC tuning menus.
  * To completely disable Vial/VIA and save flash/RAM, comment out '#define VIAL' below:
  * // #define VIAL
  */
@@ -47,7 +47,7 @@
 #error "HHKB matrix dimensions must match VIA dimensions"
 #endif
 
-// {ROW, COL} coordinate mapping from physical key position to Topre matrix (Duncaen / QMK)
+// {ROW, COL} coordinate mapping from physical key position to EC matrix (Duncaen / QMK)
 // clang-format off
 #define LAYOUT { \
     {1, 0}, {1, 3}, {1, 1}, {1, 2}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {1, 11}, {1, 8}, {1, 9}, {1, 10}, {1, 12}, {1, 14}, {1, 13}, \
@@ -60,7 +60,7 @@
 // clang-format on
 
 /* --- Matrix Connection Mode --- */
-// Custom Topre electrostatic capacitive scanning driver
+// Custom EC electrostatic capacitive scanning driver
 #define CUSTOM_MATRIX 1
 #define MATRIX_TYPE CUSTOM
 

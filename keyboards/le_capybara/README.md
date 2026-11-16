@@ -4,7 +4,7 @@
 
 # Le Capybara DMK Firmware
 
-Alternative high-performance electro-capacitive (Topre-compatible) firmware for the **Le Capybara** keyboard designed by sporkus. Powered by the DMK engine and FreeRTOS, running natively on the **STM32F072C8T6** MCU.
+Alternative high-performance electro-capacitive (EC-compatible) firmware for the **Le Capybara** keyboard designed by sporkus. Powered by the DMK engine and FreeRTOS, running natively on the **STM32F072C8T6** MCU.
 
 **Documentation:** [Install](docs/en/install.md) • [VIA & Configuration](docs/en/via.md)
 
@@ -12,7 +12,7 @@ Alternative high-performance electro-capacitive (Topre-compatible) firmware for 
 
 ## Features
 
-- **Electro-Capacitive (Topre) Matrix Engine:**
+- **Electro-Capacitive (EC) Matrix Engine:**
   - High-frequency 1000 Hz continuous matrix scan rate.
   - Per-key baseline tracking and drift compensation.
   - Runtime capacitive calibration saved directly to MCU Flash memory (Page 62).
@@ -37,7 +37,7 @@ Alternative high-performance electro-capacitive (Topre-compatible) firmware for 
 | :--- | :--- |
 | **MCU** | STMicroelectronics STM32F072C8T6 (ARM Cortex-M0, 48 MHz) |
 | **Flash / RAM** | 128 KB Flash / 16 KB SRAM |
-| **Switch Technology** | Electro-Capacitive (Conical Spring Topre-style) |
+| **Switch Technology** | Electro-Capacitive (Conical Spring EC-style) |
 | **Key Count** | 37–40 keys (depending on thumb cluster layout) + Encoder |
 | **ADC Channel** | 12-bit ADC on PA2 |
 | **Discharge Pin** | PA1 (Drain / Discharge) |

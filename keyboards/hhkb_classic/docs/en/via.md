@@ -88,6 +88,6 @@ The millimetre scale maps a calibrated signal range to a nominal 4 mm key travel
 
 The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels (EC Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
 
-For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and Topre sensor response curves, see [Debugging and HID Console](debug.md).
+For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and EC sensor response curves, see [Debugging and HID Console](debug.md).
 
 Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.

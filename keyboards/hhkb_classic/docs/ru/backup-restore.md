@@ -101,7 +101,7 @@ savebin hhkb_bank1_bootloader_64k.bin 0x08000000 0x00010000
 // 3. Заводской Bank 2: 64 КБ
 savebin hhkb_bank2_stock_firmware_64k.bin 0x08010000 0x00010000
 
-// 4. Встроенный EEPROM: 6 КБ, калибровки Topre, серийный номер и флаги
+// 4. Встроенный EEPROM: 6 КБ, калибровки EC, серийный номер и флаги
 savebin hhkb_eeprom_6k.bin 0x08080000 0x00001800
 
 // 5. Option Bytes STM32L072: защита и параметры загрузки

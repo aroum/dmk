@@ -4,7 +4,7 @@
 
 # Debug and HID Console
 
-DMK firmware for HHKB Classic provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking Topre capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
+DMK firmware for HHKB Classic provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking EC capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
 
 By default, all debug logging channels are **disabled** to avoid unnecessary MCU and USB bus overhead.
 
@@ -35,9 +35,9 @@ By default, all debug logging channels are **disabled** to avoid unnecessary MCU
 
 ---
 
-## Non-linear Topre Capacitive Sensor Response
+## Non-linear EC Capacitive Sensor Response
 
-The Topre capacitive switch relies on a conical spring compressing against PCB sensing pads. The resulting capacitance change follows a distinctly non-linear response relative to physical key travel:
+The EC capacitive switch relies on a conical spring compressing against PCB sensing pads. The resulting capacitance change follows a distinctly non-linear response relative to physical key travel:
 
 | Physical Key Travel | Sensor Value (% / ‰) | Mechanism Behavior & Physics |
 |---|---|---|

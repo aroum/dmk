@@ -503,7 +503,7 @@ void vial_platform_storage_save_now(void) {
 
 // Flash layout on STM32F072 (128 KB total: 0x08000000 - 0x0801FFFF, 2 KB page size):
 // App firmware: 0x08000000 - 0x0801EFFF (~124 KB).
-// Page 62 (0x0801F000 - 0x0801F7FF): Topre calibration & RT settings.
+// Page 62 (0x0801F000 - 0x0801F7FF): EC calibration & RT settings.
 // Page 63 (0x0801F800 - 0x0801FFFF): Non-volatile Vial storage (Keymap, macros, combos, RGB config).
 #define STM32F072_FLASH_STORAGE_ADDR 0x0801F800UL
 

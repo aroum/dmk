@@ -9,11 +9,11 @@ extern "C" {
 #endif
 
 /*
- * Rapid Trigger for analog (Topre capacitive) keys.
+ * Rapid Trigger for analog (EC capacitive) keys.
  *
  * All thresholds are in PERMILLE (1/1000) of the per-key calibrated signal
  * range (baseline = key at rest, peak = key bottomed out). 10 = 1.0 %.
- * The Topre signal is not linear in travel, so these are NOT millimetres.
+ * The EC signal is not linear in travel, so these are NOT millimetres.
  */
 
 #define RT_FULL_SCALE    1000  /* calibrated range maps to 0..1000 permille */

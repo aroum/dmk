@@ -508,7 +508,7 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
         s_dbg_raw = raw;
         s_dbg_norm = norm;
         s_dbg_down = is_pressed;
-        debug_console_printf("[Topre] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
+        debug_console_printf("[EC] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
             col, row, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
         return;
     }
@@ -523,7 +523,7 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
             s_dbg_raw = raw;
             s_dbg_norm = norm;
             s_dbg_down = is_pressed;
-            debug_console_printf("[Topre] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
+            debug_console_printf("[EC] C%u R%u: raw=%u base=%u peak=%u travel=%u%% %s\r\n",
                 col, row, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
         }
     } else if (norm < 50 && !is_pressed && s_last_reported_raw[col][row] != base) {

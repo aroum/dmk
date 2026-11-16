@@ -35,7 +35,7 @@
 #define EC_ROWS 4
 #define EC_COLS 10
 
-/* --- Topre / EC Matrix Configuration --- */
+/* --- EC Matrix Configuration --- */
 #ifndef CUSTOM_MATRIX
 #define CUSTOM_MATRIX 1
 #endif

@@ -118,7 +118,7 @@ The `:leave` flag instructs the STM32 to automatically exit DFU mode and execute
 
 ## Post-Flashing Initial Calibration
 
-Topre / electro-capacitive keyboards rely on capacitive sensing influenced by PCB tolerances and conical spring seating.
+EC / electro-capacitive keyboards rely on capacitive sensing influenced by PCB tolerances and conical spring seating.
 
 > [!TIP]
 > After your first flash, perform key calibration in VIA to ensure optimal switch responsiveness. Follow the step-by-step instructions in the [VIA Configuration Guide](via.md#key-calibration-process).

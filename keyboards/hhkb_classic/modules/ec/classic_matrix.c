@@ -222,7 +222,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
                 }
             }
 
-            // Feed debug monitoring only when Topre debug streaming is active
+            // Feed debug monitoring only when EC debug streaming is active
             if (__builtin_expect(debug_topre, 0)) {
                 uint16_t norm = rt_normalize_curve(key, val, curve);
                 hhkb_debug_feed_sample(col, row, val, norm, is_pressed);

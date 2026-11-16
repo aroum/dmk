@@ -9,7 +9,7 @@
 
 The **HHKB Professional HYBRID** and **HYBRID Type-S** represent the dual-mode (USB-C & Bluetooth Low Energy) generation of the Happy Hacking Keyboard family. 
 
-The primary goal of this subproject is to port the open-source **DMK** firmware to run natively on the keyboard's internal STM32 microcontroller. This brings Vial / VIA runtime configuration, high-speed Topre scanning, customizable actuation points, and Rapid Trigger capabilities to the HYBRID series, while preserving the factory Bluetooth transceiver functionality.
+The primary goal of this subproject is to port the open-source **DMK** firmware to run natively on the keyboard's internal STM32 microcontroller. This brings Vial / VIA runtime configuration, high-speed EC scanning, customizable actuation points, and Rapid Trigger capabilities to the HYBRID series, while preserving the factory Bluetooth transceiver functionality.
 
 According to hardware teardowns and community contributions, the controller motherboard architecture is closely related to the HHKB Professional Classic, with the addition of a dedicated Bluetooth subsystem, battery power management, and wireless antennas. Crucially, the physical controller PCB is shared across both ANSI and JIS models.
 
@@ -21,7 +21,7 @@ According to hardware teardowns and community contributions, the controller moth
 Unlike simple single-MCU keyboards, the HHKB HYBRID employs an asymmetric dual-controller design:
 * **Application & Matrix Processor (STM32):**
   * Microcontroller: STMicroelectronics STM32 series (similar to the STM32L072 ARM Cortex-M0+ found in the Classic).
-  * Responsibilities: Driving the capacitive Topre matrix multiplexers, high-speed analog ADC sensing, key travel calculations, debounce/filtering, USB-C device stack, and power-saving sleep logic.
+  * Responsibilities: Driving the capacitive EC matrix multiplexers, high-speed analog ADC sensing, key travel calculations, debounce/filtering, USB-C device stack, and power-saving sleep logic.
 * **Wireless & Bluetooth Subsystem (Nordic nRF52832):**
   * Module: **Taiyo Yuden EYSHCNZWZ** ([Datasheet](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf)).
   * Core: **Nordic Semiconductor nRF52832** (32-bit ARM Cortex-M4F @ 64 MHz, 512 KB Flash, 64 KB RAM, Bluetooth 5.0 Low Energy).
@@ -30,7 +30,7 @@ Unlike simple single-MCU keyboards, the HHKB HYBRID employs an asymmetric dual-c
   * Dedicated high-speed serial bus (UART or SPI with hardware flow control and handshake interrupt lines) connecting the STM32 and nRF52832.
   * The STM32 sends formatted key state reports and battery status to the Nordic module; the Nordic module relays host pairing commands, connection states, and wake-up events to the STM32.
 
-### 2. Analog Topre Sensing Frontend
+### 2. Analog EC Sensing Frontend
 * Shares the same discrete capacitive sensing circuit topology as the Classic:
   * Discrete operational amplifier / comparator for integration and charge amplification.
   * Analog multiplexers (e.g. 74HC4051) for column selection.
@@ -78,14 +78,14 @@ All models share the same underlying controller PCB architecture:
 
 | Commercial Name | Model Number | Layout | Case Color | Keycap Color | Legends | Switch Type | Hardware Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **HHKB Pro HYBRID (White)** | `PD-KB800W` | ANSI 60-key | White | White / Gray | Dyesub Printed | Standard Topre 45g | Planned |
-| **HHKB Pro HYBRID (Charcoal)** | `PD-KB800B` | ANSI 60-key | Charcoal | Charcoal | Dyesub Printed | Standard Topre 45g | Planned |
-| **HHKB Pro HYBRID (White, Blank)** | `PD-KB800WN` | ANSI 60-key | White | White / Gray | Blank (無刻印) | Standard Topre 45g | Planned |
-| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal | Charcoal | Blank (無刻印) | Standard Topre 45g | Planned |
-| **HHKB Pro HYBRID JIS (White)** | `PD-KB820W` | JIS 69-key | White | White / Gray | Dyesub Printed | Standard Topre 45g | Planned |
-| **HHKB Pro HYBRID JIS (Charcoal)** | `PD-KB820B` | JIS 69-key | Charcoal | Charcoal | Dyesub Printed | Standard Topre 45g | Planned |
+| **HHKB Pro HYBRID (White)** | `PD-KB800W` | ANSI 60-key | White | White / Gray | Dyesub Printed | Standard EC 45g | Planned |
+| **HHKB Pro HYBRID (Charcoal)** | `PD-KB800B` | ANSI 60-key | Charcoal | Charcoal | Dyesub Printed | Standard EC 45g | Planned |
+| **HHKB Pro HYBRID (White, Blank)** | `PD-KB800WN` | ANSI 60-key | White | White / Gray | Blank (無刻印) | Standard EC 45g | Planned |
+| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal | Charcoal | Blank (無刻印) | Standard EC 45g | Planned |
+| **HHKB Pro HYBRID JIS (White)** | `PD-KB820W` | JIS 69-key | White | White / Gray | Dyesub Printed | Standard EC 45g | Planned |
+| **HHKB Pro HYBRID JIS (Charcoal)** | `PD-KB820B` | JIS 69-key | Charcoal | Charcoal | Dyesub Printed | Standard EC 45g | Planned |
 
-### 2. HHKB Professional HYBRID Type-S (Silenced Topre + Bluetooth 5.0)
+### 2. HHKB Professional HYBRID Type-S (Silenced EC + Bluetooth 5.0)
 
 | Commercial Name | Model Number | Layout | Case Color | Keycap Color | Legends | Switch Type | Hardware Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |

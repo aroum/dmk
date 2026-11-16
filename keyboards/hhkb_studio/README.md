@@ -7,7 +7,7 @@
 
 ## Overview
 
-The **HHKB Studio** represents a radical departure from the traditional Topre electro-capacitive architecture. It is an all-in-one workstation keyboard featuring hot-swappable mechanical switches, an integrated center Pointing Stick (TrackPoint) with three physical mouse buttons, four capacitive Gesture Pads on the chassis bezels, and dual-mode USB-C / Bluetooth Low Energy connectivity.
+The **HHKB Studio** represents a radical departure from the traditional EC electro-capacitive architecture. It is an all-in-one workstation keyboard featuring hot-swappable mechanical switches, an integrated center Pointing Stick (TrackPoint) with three physical mouse buttons, four capacitive Gesture Pads on the chassis bezels, and dual-mode USB-C / Bluetooth Low Energy connectivity.
 
 Porting the open-source **DMK** firmware to the HHKB Studio requires substantial reverse-engineering due to the high density of peripheral subsystems and auxiliary sensor controllers.
 
@@ -56,8 +56,8 @@ Based on initial teardowns and community documentation, the HHKB Studio utilizes
 * **Auxiliary Controllers:** Driven by dedicated capacitive touch slider controllers (e.g. Azoteq IQS or Microchip CAP series) communicating with the main MCU over shared I2C or SPI buses with interrupt-on-touch signaling.
 
 ### 4. Switch Matrix
-* **Mechanism:** Unlike classic Topre capacitive sensing, the Studio uses **mechanical MX-compatible hot-swappable switches** (factory custom 45g linear silent switches) on a conventional digital switch matrix with switching diodes.
-* No analog charge-integrator or Topre multiplexer frontend is present.
+* **Mechanism:** Unlike classic EC capacitive sensing, the Studio uses **mechanical MX-compatible hot-swappable switches** (factory custom 45g linear silent switches) on a conventional digital switch matrix with switching diodes.
+* No analog charge-integrator or EC multiplexer frontend is present.
 
 ### 5. Wireless Subsystem
 * Powered by a Nordic Semiconductor **nRF52** series SoC managing Bluetooth 5.0 Low Energy, multi-device host pairing (up to 4 profiles), and power profiles powered by 4× AA batteries or USB-C bus power.
@@ -68,7 +68,7 @@ Based on initial teardowns and community documentation, the HHKB Studio utilizes
 
 | Feature | HHKB Professional Classic | HHKB Professional HYBRID | HHKB Studio |
 | :--- | :--- | :--- | :--- |
-| **Switch Technology** | Electro-capacitive Topre 45g | Electro-capacitive Topre 45g | Mechanical Hot-Swap MX (Linear 45g) |
+| **Switch Technology** | Electro-capacitive EC 45g | Electro-capacitive EC 45g | Mechanical Hot-Swap MX (Linear 45g) |
 | **Main MCU** | STM32L072CZ (ARM Cortex-M0+) | STM32 series (similar to Classic) | STM32L4 series (ARM Cortex-M4) |
 | **Wireless Transceiver** | None (Wired USB-C only) | Taiyo Yuden EYSHCNZWZ (nRF52832) | Nordic nRF52 series (BLE 5.0) |
 | **Pointing Device** | None | None | Isometric Pointing Stick + 3 Mouse Buttons |

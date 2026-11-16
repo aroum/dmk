@@ -101,7 +101,7 @@ savebin hhkb_bank1_bootloader_64k.bin 0x08000000 0x00010000
 // 3. Original Bank 2: 64 KB
 savebin hhkb_bank2_stock_firmware_64k.bin 0x08010000 0x00010000
 
-// 4. Internal EEPROM: 6 KB, Topre calibration, serial number, and flags
+// 4. Internal EEPROM: 6 KB, EC calibration, serial number, and flags
 savebin hhkb_eeprom_6k.bin 0x08080000 0x00001800
 
 // 5. STM32L072 Option Bytes: protection and boot parameters
