@@ -1,4 +1,6 @@
 /build
+/build_capybara/
+/build_hhkb/
 /.cache
 .DS_Store
 **/.DS_Store
