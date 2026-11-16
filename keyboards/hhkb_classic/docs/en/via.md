@@ -176,7 +176,11 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
 
 - **Calibration Monitor:** Live step-by-step progress logging for key calibration. Outputs baseline capture completion, real-time peak updates per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), a visual progress bar `[====>    ] X% (N/60)`, and ready-to-save notification.
 
-- **Polling Rate Monitor:** Periodic telemetry logging actual matrix scan and USB loop frequencies (e.g. `[RATE] matrix=1000 Hz, usb_loop=500 Hz`).
+- **Polling Rate Monitor:** Periodic telemetry logging actual matrix scan and USB loop frequencies (e.g. `[RATE] matrix=1000 Hz (target: 1000 Hz), usb_loop=500 Hz`).
+  > [!NOTE]
+  > **Matrix Scan Rate (`matrix`) vs USB Task Loop (`usb_loop`):**
+  > - `matrix`: The actual physical hardware scan frequency of the capacitive matrix. At 1000 Hz, scanning executes strictly every 1 ms under FreeRTOS timing.
+  > - `usb_loop`: The iteration frequency of the background USB service task. The task sleeps on `ulTaskNotifyTake(..., pdMS_TO_TICKS(2))` with a **2 ms timeout**. When there is no active typing or streaming debug traffic, it wakes up on the 2 ms timeout (~500 Hz) to conserve CPU cycles and power. As soon as keystrokes or data packets arrive, it wakes up instantly on task notification without latency at full 1000 Hz USB polling (`bInterval=1`). Seeing `usb_loop=500 Hz` during idle periods is expected and indicates healthy power-efficient scheduling.
 
 - **VIA Telemetry Diag:** Diagnostic logging of incoming and outgoing VIA v3 protocol packets (`[VIA_DIAG] rx=... tx_sub=...`).
 
