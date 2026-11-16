@@ -89,10 +89,17 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
 
 For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and EC sensor response curves, see [Debugging and HID Console](debug.md).
 
-### Reset all DMK settings
+### Reset all DMK settings (Factory reset)
 
-In the [VIA web app](https://www.usevia.app/), open **Debug**, enable **Arm settings reset**, and click **Erase all DMK settings**. The keyboard restarts with the default layout, calibration, and settings. Custom keymaps, macros, and combos are erased.
+In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debug**:
+1. Enable the safety switch **Arm settings reset**.
+2. Click the button **Erase all DMK settings** that appears.
+3. Observe the operational state in **Reset status** (`Ready` → `Armed` → `Resetting...`).
 
-Keep SW6 OFF when using the reset. DMK preserves the factory calibration and both firmware banks.
-
-Settings and calibration are stored in EEPROM at `0x08081500`. [VIA](https://www.usevia.app/) keymaps use the reserved EEPROM slots separately.
+**How reset works and what it erases:**
+- **Accidental trigger protection:** The erase button is hidden and disarmed until the *Arm settings reset* toggle is engaged.
+- **EEPROM configuration & calibration erase:** Firmware clears the user EEPROM region (starting at `0x08081500`), wiping custom capacitance baseline/peak calibrations, travel curve lookup tables, actuation point, Rapid Trigger sensitivities, scan rate, debug flags, and indicator modes.
+- **Dynamic VIA/Vial keymap reset:** All dynamic keymap layers, macros, combos, and key overrides stored in EEPROM are erased, reverting the keyboard to its default compiled-in ROM keymap.
+- **Bootloader & factory calibration safety:** The reset operation affects **only** DMK runtime settings. The original PFU Topre factory calibration data (stored at `0x08081100`/`0x08081200`) and both firmware banks (Bank 1 recovery bootloader and Bank 2) remain untouched.
+- **Automatic reboot:** Once the EEPROM regions are cleared, the microcontroller automatically executes a software system reset (`platform_system_reset()`) and boots up cleanly with default parameters.
+- **DIP SW6 safety check:** DIP switch **SW6** on the rear of the keyboard must be in the **OFF** position to allow settings reset. If SW6 is ON, the reset status will show `Set SW6 to OFF` and the operation will be aborted.

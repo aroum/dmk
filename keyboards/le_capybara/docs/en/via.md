@@ -101,9 +101,18 @@ Under the **LAYOUT** tab in VIA:
 
 ---
 
-### Reset all DMK settings
+### Reset all DMK settings (Factory reset)
 
-In the [VIA web app](https://www.usevia.app/), open **Debug**, enable **Arm settings reset**, and click **Erase all DMK settings**. The keyboard restarts with the default layout, calibration, and settings. Custom keymaps, macros, and combos are erased.
+In the [VIA web app](https://www.usevia.app/), open **Capybara Settings** → **Debug**:
+1. Enable the safety switch **Arm settings reset**.
+2. Click the button **Erase all DMK settings** that appears.
+3. Observe the operational state in **Reset status** (`Ready` → `Armed` → `Resetting...`).
+
+**How reset works and what it erases:**
+- **Accidental trigger protection:** The erase button is hidden and disarmed until the *Arm settings reset* toggle is engaged.
+- **EEPROM configuration & calibration erase:** Firmware clears the emulation Flash sector on STM32F072 (Page 62 at `0x0801F000`), wiping custom baseline/peak capacitance calibrations, travel curve lookup tables, actuation point, Rapid Trigger sensitivities, scan rate, debug flags, and RGB indicator modes.
+- **Dynamic VIA/Vial keymap reset:** All dynamic keymap layers, macros, combos, and key overrides are erased, reverting the keyboard to its default compiled-in ROM keymap.
+- **Automatic reboot:** Once memory sectors are cleared, the microcontroller automatically executes a software system reset (`platform_system_reset()`) and boots up cleanly with default parameters.
 
 ## Key Calibration Process
 
