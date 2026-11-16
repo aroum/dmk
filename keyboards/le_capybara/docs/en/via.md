@@ -87,15 +87,39 @@ The custom settings interface consists of 6 submenus:
 - **Tap preferred:** Favors the tap keycode over the modifier/layer during fast typing.
 - **Quick tap:** Quick double-tap hold interval (0–500 ms, 0 disables).
 
-### 2. Calibration
+### 2. Calibration and 5-Point PCHIP Travel Curve
+Electro-capacitive switches have an inherently non-linear capacitance curve. DMK converts raw ADC values into physical travel depth using **5-point monotonic piecewise cubic Hermite interpolating polynomials (PCHIP)**:
+- **5 Anchor Nodes:**
+  1. $0.0\text{ mm}$ $\rightarrow$ $0\%$ ADC signal (released key at rest, baseline).
+  2. $1.0\text{ mm}$ $\rightarrow$ **ADC at 1 mm (%)** (range 2–94%).
+  3. $2.0\text{ mm}$ $\rightarrow$ **ADC at 2 mm (%)** (range 4–96%).
+  4. $3.0\text{ mm}$ $\rightarrow$ **ADC at 3 mm (%)** (range 6–98%).
+  5. **Maximum travel** $\rightarrow$ $100\%$ ADC signal (switch bottom-out, peak, range 3.1–4.5 mm).
+- **Mathematical Guarantees:**
+  - Preserves strict monotonicity across interpolation intervals: no overshoot, oscillation, or slope inversion.
+  - **Smoothing:** Configurable from $0.0$ (piecewise linear) to $1.0$ (smooth PCHIP spline).
+  - **Steepness Check:** Maximum slope cannot exceed 4x gain ($>32$ units per step). Rejection triggers fallback with `Curve too steep (max 4x)`.
+  - **Actuation Point vs. Maximum Travel Guard:** Firmware clamps the runtime actuation point and Rapid Trigger thresholds so they never exceed maximum physical travel (`max_travel = curve[125]`):
+    ```c
+    uint16_t max_travel = curve ? curve[125] : 1000;
+    if (scan_cfg.act_pm > max_travel) scan_cfg.act_pm = max_travel;
+    ```
+    This prevents actuation thresholds from ever being set beyond physical bottom-out.
+
+To visualize and tune the curve interactively via `uv`:
+```bash
+uv run tools/ec_curve_visualizer.py
+```
+
+**Calibration Controls:**
 - **Use travel curve:** Enables non-linear ADC travel curve transformation.
 - **ADC at 1 mm (%), ADC at 2 mm (%), ADC at 3 mm (%):** Normalized curve anchor points (2–94%, 4–96%, 6–98%).
 - **Maximum travel:** Total physical switch travel (3.1–4.5 mm in 0.1 mm increments).
-- **Smoothing:** Curve smoothing factor from 0.0 (piecewise linear) to 1.0 (monotonic PCHIP spline).
-- **Curve status:** RAM lookup table validation status (`Valid curve` or error description).
+- **Smoothing:** Curve smoothing factor from 0.0 to 1.0.
+- **Curve status:** RAM lookup table validation status (`Active` / error message).
 - **Use custom calibration:** Enables user-level sensor calibration.
 - **Calibration status:** Shows active calibration state (`In progress: X/36 keys` / `Calibrated`).
-- **Start calibration:** Captures resting baseline capacitance levels.
+- **Start calibration:** Captures resting baseline capacitance levels (16 scan cycles).
 - **Print status to HID Console:** Dumps active calibration progress and peak travel metrics to the VIA HID Console.
 - **Finish and save:** Validates key travels and commits calibration to persistent memory.
 - **Actuation point:** Travel depth required to trigger keypress (0.1–4.0 mm, default 2.2 mm).
@@ -125,6 +149,18 @@ The custom settings interface consists of 6 submenus:
 ### 6. Debug & Diagnostics
 - **Firmware Version:** Displays the compiled DMK firmware build version (`DMK_FW_VERSION`).
 - **EC Matrix Stream:** Real-time stream of keystroke events and travel samples `[EC]` to the HID Console.
+  - **Message Format:**
+    ```text
+    [EC] R<row> C<col> : raw=<raw> base=<base> peak=<peak> travel=<norm/10>% <DN|UP>
+    ```
+  - **Field Explanations:**
+    - `R<row> C<col>` — Matrix coordinates for row and column.
+    - `raw=<raw>` — Current 12-bit raw ADC count (0–4095).
+    - `base=<base>` — Resting capacitance baseline reading.
+    - `peak=<peak>` — Full bottom-out capacitance peak.
+    - `travel=<norm/10>%` — Key travel depth percentage (0–100%).
+    - `DN` / `UP` — Binary key state (`DN` = pressed, `UP` = released).
+  - **Filtering:** Intermediate travel updates are emitted only on transitions or if ADC reading changes by more than **±40 counts**.
 - **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
 - **Polling Rate Monitor:** Real-time matrix scanning frequency telemetry.
 - **Calibration Monitor:** Live monitoring of baseline capacitance and tracking drift.

@@ -64,20 +64,44 @@ The custom settings interface consists of 6 submenus:
 - **Tap preferred:** Favors the tap action over the modifier/layer when rolling keys during fast typing.
 - **Quick tap:** Quick double-tap hold interval (0–500 ms in 10 ms steps; 0 disables, default 150 ms).
 
-### 2. Calibration
-- **Use travel curve:** Enables non-linear ADC travel curve transformation.
-- **ADC at 1 mm (%), ADC at 2 mm (%), ADC at 3 mm (%):** Normalized curve anchor points (2–94%, 4–96%, 6–98%).
-- **Maximum travel:** Physical total switch travel (3.1–4.5 mm in 0.1 mm increments).
-- **Smoothing:** Curve interpolation from 0.0 (piecewise linear) to 1.0 (monotonic PCHIP spline).
-- **Curve status:** Status of RAM lookup table validation (`Valid curve` or error description).
-- **Use custom calibration:** Toggles between PFU factory calibration thresholds and user-calibrated values.
-- **Calibration status:** Shows active calibration state (`In progress: X/60 keys` / `Calibrated`).
-- **Start calibration:** Captures resting baseline capacitance levels.
-- **Print status to HID Console:** Dumps active calibration progress and peak travel metrics to the VIA HID Console.
-- **Finish and save:** Validates key travels and commits calibration to EEPROM.
-- **Actuation point:** Travel depth required to trigger keypress (0.1–4.0 mm in 0.1 mm steps).
-- **Release hysteresis:** Release buffer travel below actuation point in classic mode (0.1–4.0 mm in 0.1 mm steps).
-- **Settings EEPROM:** User EEPROM block availability status (`Writable` / `Occupied`).
+### 2. Calibration and 5-Point PCHIP Travel Curve
+Topre electro-capacitive switches exhibit a non-linear capacitance response curve: capacitance grows slowly during initial elastomer dome compression, then rises steeply once the dome collapses (tactile bump) around 2 mm. To accurately convert raw ADC values into linear physical travel distances, DMK implements a **5-point monotonic piecewise cubic Hermite interpolating polynomial (PCHIP)** with adjustable smoothing:
+- **5 Anchor Points:**
+  1. $0.0\text{ mm}$ $\rightarrow$ $0\%$ ADC signal (released key at rest, baseline).
+  2. $1.0\text{ mm}$ $\rightarrow$ **ADC at 1 mm (%)** point (range 2–94%).
+  3. $2.0\text{ mm}$ $\rightarrow$ **ADC at 2 mm (%)** point (range 4–96%).
+  4. $3.0\text{ mm}$ $\rightarrow$ **ADC at 3 mm (%)** point (range 6–98%).
+  5. **Maximum travel** $\rightarrow$ $100\%$ ADC signal (fully bottomed-out key, peak, range 3.1–4.5 mm).
+- **Mathematics & PCHIP Algorithm:**
+  - Slopes are computed between neighboring points while strictly preserving monotonicity: the generated curve is guaranteed never to overshoot or oscillate, and will never decrease during downward key travel.
+  - **Smoothing** parameter (range $0.0$ to $1.0$): controls transition curvature. At $0.0$, the response is piecewise linear; at $1.0$, it is a smooth monotonic PCHIP curve.
+  - **Steepness Guard:** The algorithm checks the maximum derivative. If slope exceeds 4x gain (more than 32 travel units per ADC quant), the curve is safely rejected with status `Curve too steep (max 4x)` and firmware falls back to standard linear travel response.
+  - **Actuation Point vs. Maximum Travel Guard:** Firmware enforces an absolute safety clamp in runtime scanning: if the configured actuation point or Rapid Trigger press/release threshold exceeds the maximum travel depth (`max_travel = curve[125]`), firmware clamps it to `max_travel`:
+    ```c
+    uint16_t max_travel = curve ? curve[125] : 1000;
+    if (scan_cfg.act_pm > max_travel) scan_cfg.act_pm = max_travel;
+    ```
+    This guarantees that key actuation can never be configured beyond the physically possible travel depth of the switch.
+
+To preview and interactively tune the 5-point curve from the repository root, run the visualizer via `uv`:
+```bash
+uv run tools/ec_curve_visualizer.py
+```
+
+**Calibration Submenu Controls:**
+- **Use travel curve:** Enables the non-linear 5-point PCHIP curve.
+- **ADC at 1 mm (%), ADC at 2 mm (%), ADC at 3 mm (%):** Normalized intermediate anchor points. Points must have at least 2% spacing.
+- **Maximum travel:** Physical switch bottom-out depth (3.1–4.5 mm in 0.1 mm increments).
+- **Smoothing:** Curve smoothing factor (0.0 to 1.0).
+- **Curve status:** RAM lookup table status (`Active`, `Disabled`, `Points need 2% spacing`, `Curve too steep (max 4x)`).
+- **Use custom calibration:** Selects between PFU factory calibration constants and user calibration.
+- **Calibration status:** Displays calibration progress.
+- **Start calibration:** Begins baseline capacitance capture (16 matrix scan cycles).
+- **Print status to HID Console:** Dumps active calibration progress and peak metrics to VIA HID Console.
+- **Finish and save:** Validates and commits calibration to EEPROM.
+- **Actuation point:** Actuation depth (0.1–4.0 mm in 0.1 mm steps).
+- **Release hysteresis:** Classic mode release buffer (0.1–4.0 mm in 0.1 mm steps).
+- **Settings EEPROM:** Availability of EEPROM storage (`Writable` / `Occupied`).
 
 ### 3. Rapid Trigger
 - **Rapid Trigger:** Toggles continuous dynamic keystroke tracking without requiring keys to return to the top.
@@ -126,11 +150,35 @@ The custom settings interface consists of 6 submenus:
 >
 > For continuous live tracking of calibration progress and sensor activity, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*) to observe the textual progress bar and per-key travel peak updates.
 
-## Debug
+## Debugging and HID Console
 
-The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels (EC Matrix Stream, Calibration Monitor, Polling Rate Monitor, VIA Telemetry Diag).
+The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels. By default, all diagnostic output is disabled to prevent unnecessary MCU and USB bus traffic.
 
-For a complete guide on configuring the VIA HID Console, inspecting real-time matrix logs, and EC sensor response curves, see [Debugging and HID Console](debug.md).
+### 1. Enabling the HID Console Tab in VIA
+1. Open VIA settings by clicking the top gear icon (**Settings**).
+2. Enable **Show HID Console tab**.
+3. A new **HID Console** tab will appear in the top navigation bar.
+
+### 2. Logging Channels and Output Formats
+- **EC Matrix Stream:** Real-time stream of capacitive sensor samples `[EC]`.
+  - **Message Format:**
+    ```text
+    [EC] R<row> C<col> : raw=<raw> base=<base> peak=<peak> travel=<norm/10>% <DN|UP>
+    ```
+  - **Field Explanations:**
+    - `R<row> C<col>` — Matrix coordinates of the switch row and column.
+    - `raw=<raw>` — Current 12-bit raw ADC reading (0–4095).
+    - `base=<base>` — Resting capacitance baseline captured during calibration.
+    - `peak=<peak>` — Peak capacitance reading at full bottom-out.
+    - `travel=<norm/10>%` — Computed physical key travel percentage (0–100%) normalized against the PCHIP curve.
+    - `DN` / `UP` — Binary actuation state (`DN` = pressed, `UP` = released).
+  - **Quiet Threshold Filtering:** To avoid flooding the console and USB buffers, intermediate travel updates are sent only when the raw ADC signal changes by more than **±40 units**, or instantly upon any transition (`DN` $\leftrightarrow$ `UP`).
+
+- **Calibration Monitor:** Live step-by-step progress logging for key calibration. Outputs baseline capture completion, real-time peak updates per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), a visual progress bar `[====>    ] X% (N/60)`, and ready-to-save notification.
+
+- **Polling Rate Monitor:** Periodic telemetry logging actual matrix scan and USB loop frequencies (e.g. `[RATE] matrix=1000 Hz, usb_loop=500 Hz`).
+
+- **VIA Telemetry Diag:** Diagnostic logging of incoming and outgoing VIA v3 protocol packets (`[VIA_DIAG] rx=... tx_sub=...`).
 
 ### Reset all DMK settings (Factory reset)
 
