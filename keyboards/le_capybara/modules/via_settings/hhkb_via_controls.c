@@ -1,6 +1,7 @@
 #include "capybara_matrix.h"
 #include "ec_settings.h"
 #include "ec_curve.h"
+#include "usb_descriptors.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -88,7 +89,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         } else if (id == 18) {
             if (request[3] > 1) return false;
             hhkb_set_oversampling(request[3] != 0);
-        } else if (id >= 14) {
+        } else if (id >= 14 && id <= 17) {
             hhkb_set_hold_tap_setting(id - 14, request[3]);
         } else if (id == 13) {
             hhkb_set_scan_rate(request[3]);
@@ -101,7 +102,11 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         } else if (id == 9 || id == 10) {
             hhkb_set_led_mode(id - 9, request[3]);
         } else if (id == 27) {
-            // Refresh action
+            if (request[3]) {
+                char status[28];
+                hhkb_get_cal_status_str(status, sizeof(status));
+                debug_console_printf("[CAL] %s\r\n", status);
+            }
         } else if (id != 7 && id != 8) {
             hhkb_rt_set(id, request[3]);
         }

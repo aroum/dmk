@@ -325,7 +325,7 @@ void hhkb_calibration_finish(void) {
     }
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
         uint8_t count = (uint8_t)(__builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]));
-        debug_console_printf("[CAL] Calibration complete and saved to EEPROM (%u/60 keys updated).\r\n", count);
+        debug_console_printf("[CAL] Finished. Updated %u/60 keys.\r\n", count);
     }
     s_calibration_mode = false;
     s_custom_calibration = true;

@@ -58,8 +58,8 @@ Reconnect the USB cable and reload the VIA page.
   - Key Calibration and Live Progress Monitor
   - Rapid Trigger (Press / Release sensitivity, dead zone)
   - Layout options (Classique 4-key vs 36-Key Split 6-key thumb cluster)
-  - Real-time diagnostic channels (Topre matrix stream, polling rate monitor)
-- **Vial:** Lightweight graphical keymap and macro editing. Vial does not support custom proprietary vendor menus; use VIA v3 when tuning Topre capacitive and Rapid Trigger thresholds.
+  - Real-time diagnostic channels (EC matrix stream, polling rate monitor)
+- **Vial:** Lightweight graphical keymap and macro editing. Vial does not support custom proprietary vendor menus; use VIA v3 when tuning EC capacitive and Rapid Trigger thresholds.
 
 ---
 
@@ -90,7 +90,7 @@ Under the **LAYOUT** tab in VIA:
 
 ### 4. Debug & Diagnostics
 - **Firmware Version:** Dynamically queries and displays the exact runtime firmware build version (`DMK_FW_VERSION`, e.g. `26.11.15` or `26.11.15-b8c21fe`) directly from controller memory over VIA protocol (channel 0, ID 28).
-- **EC Matrix Stream:** Toggles real-time streaming of capacitive matrix values.
+- **EC Matrix Stream:** Logs capacitive key press and release transitions to the HID console. Each `[EC]` line includes matrix coordinates, the raw ADC sample, and the travel value used by the firmware.
 - **VIA Telemetry Diag:** Diagnostic logging of VIA communication packets.
 - **Polling Rate Monitor:** Real-time matrix scanning frequency telemetry.
 - **Calibration Monitor:** Live monitoring of baseline capacitance and tracking drift.

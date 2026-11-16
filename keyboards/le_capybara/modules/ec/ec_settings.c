@@ -278,8 +278,7 @@ void vial_keyboard_eeprom_task(void) {
 }
 
 void hhkb_calibration_start(void) {
-    s_calibration_mode = true;
-    s_capture_baseline = true;
+    s_calibration_mode = false;
     s_cal_baseline_samples = 0;
     memset(s_cal_baseline_accum, 0, sizeof(s_cal_baseline_accum));
     memset(s_calibrated_mask, 0, sizeof(s_calibrated_mask));
@@ -291,20 +290,32 @@ void hhkb_calibration_start(void) {
             s_cal_press_start_peak[c][r] = 0;
         }
     }
+    s_capture_baseline = true;
+    s_calibration_mode = true;
+    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
+        debug_console_printf("[CAL] Started. Release all keys.\r\n");
 }
 
 void hhkb_calibration_finish(void) {
     if (!s_calibration_mode) return;
     s_calibration_mode = false;
+    bool baseline_ready = !s_capture_baseline;
     s_capture_baseline = false;
+    if (!baseline_ready) {
+        if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
+            debug_console_printf("[CAL] Baseline incomplete. Start again.\r\n");
+        return;
+    }
 
+    unsigned updated = 0;
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
             uint8_t idx = (c * MATRIX_ROWS) + r;
             if (s_calibrated_mask[idx / 32] & (1U << (idx % 32))) {
-                if (s_capture_peak[c][r] > s_capture_base[c][r] + 100) {
+                if (s_capture_peak[c][r] >= s_capture_base[c][r] + RT_MIN_RANGE) {
                     s_cal_baseline[c][r] = s_capture_base[c][r];
                     s_cal_peak[c][r] = s_capture_peak[c][r];
+                    ++updated;
                 }
             }
             apply_calibrated_range(c, r);
@@ -312,6 +323,8 @@ void hhkb_calibration_finish(void) {
         }
     }
     hhkb_settings_mark_dirty();
+    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
+        debug_console_printf("[CAL] Finished. Updated %u keys.\r\n", updated);
 }
 
 bool hhkb_calibration_enabled(void) { return s_custom_calibration; }
@@ -443,7 +456,10 @@ void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
     snprintf(buf, max_len, "%u pm %s", s_dbg_norm, s_dbg_down ? "DOWN" : "UP");
 }
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
-    snprintf(buf, max_len, s_calibration_mode ? "Calibrating..." : "Calibrated");
+    unsigned count = __builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]);
+    if (s_capture_baseline) snprintf(buf, max_len, "Capturing baseline");
+    else if (s_calibration_mode) snprintf(buf, max_len, "Measured: %u keys", count);
+    else snprintf(buf, max_len, "Idle");
 }
 
 rt_cfg_t hhkb_get_scan_cfg(void) {
@@ -463,7 +479,7 @@ void hhkb_update_dynamic_peak(uint8_t col, uint8_t row, uint16_t val) {
 
 void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
     s_cal_baseline_accum[col][row] += val;
-    if (col == MATRIX_COLS - 1 && row == MATRIX_ROWS - 1) {
+    if (col == EC_COLS - 1 && row == EC_ROWS - 1) {
         if (++s_cal_baseline_samples >= CAL_BASELINE_SAMPLES) {
             s_capture_baseline = false;
             for (uint8_t c = 0; c < MATRIX_COLS; c++) {
@@ -471,15 +487,25 @@ void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
                     s_capture_base[c][r] = s_cal_baseline_accum[c][r] / CAL_BASELINE_SAMPLES;
                 }
             }
+            if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
+                debug_console_printf("[CAL] Baseline ready. Press keys fully.\r\n");
         }
     }
 }
 
 void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
+    if (s_capture_baseline) return;
     uint8_t idx = (col * MATRIX_ROWS) + row;
     if (val > s_capture_peak[col][row]) {
         s_capture_peak[col][row] = val;
-        s_calibrated_mask[idx / 32] |= (1U << (idx % 32));
+        uint32_t bit = 1U << (idx % 32);
+        if (val >= s_capture_base[col][row] + RT_MIN_RANGE &&
+            !(s_calibrated_mask[idx / 32] & bit)) {
+            s_calibrated_mask[idx / 32] |= bit;
+            if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
+                debug_console_printf("[CAL] R%u C%u ADC=%u baseline=%u\r\n",
+                                     row, col, val, s_capture_base[col][row]);
+        }
     }
 }
 

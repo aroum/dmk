@@ -2,6 +2,7 @@
 #include "ec_settings.h"
 #include "ec_curve.h"
 #include "rapid_trigger.h"
+#include "usb_descriptors.h"
 #include "stm32f0xx.h"
 #include "stm32f0xx_ll_gpio.h"
 #include "stm32f0xx_ll_rcc.h"
@@ -130,7 +131,7 @@ void capybara_matrix_hardware_init(void) {
     ADC1->CR |= ADC_CR_ADEN;
     while (!(ADC1->ISR & ADC_ISR_ADRDY));
 
-    // Initialize Topre settings, calibration and Rapid Trigger structures
+    // Initialize EC settings, calibration and Rapid Trigger structures
     hhkb_settings_init();
 }
 
@@ -156,7 +157,7 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
     if (scan_cfg.release_pm > max_travel) scan_cfg.release_pm = max_travel;
     bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
 
-    // 1. Scan EC Topre Matrix (Rows 0..3, Cols 0..9)
+    // 1. Scan the EC matrix (rows 0..3, cols 0..9).
     for (uint8_t col = 0; col < EC_COLS; col++) {
         select_col(col);
         const uint16_t *col_peak = s_cal_peak[col];
@@ -182,7 +183,7 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
                 hhkb_cal_accumulate_baseline(col, row, sample);
             }
             if (is_calibrating) {
-                hhkb_cal_record_peak(col, row, sample);
+                if (!capture) hhkb_cal_record_peak(col, row, sample);
             } else if (custom_calibration && sample > col_peak[row]) {
                 hhkb_update_dynamic_peak(col, row, sample);
             }
@@ -190,12 +191,17 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
             rt_key_t *key = &col_keys[row];
             bool is_pressed = rt_update_curve(key, &scan_cfg, sample, curve);
 
-            if (debug_topre && sample > (key->base + 100)) {
-                hhkb_debug_feed_sample(col, row, sample, rt_normalize_curve(key, sample, curve), is_pressed);
-            }
-
             bool was_pressed = (current_matrix[row] & (1U << col)) != 0;
-            if (is_pressed != was_pressed) {
+            bool transitioned = is_pressed != was_pressed;
+            if (debug_topre && (transitioned || sample > key->base + 100)) {
+                uint16_t travel = rt_normalize_curve(key, sample, curve);
+                hhkb_debug_feed_sample(col, row, sample, travel, is_pressed);
+                if (transitioned) {
+                    debug_console_printf("[EC] R%u C%u %s ADC=%u travel=%u pm\r\n",
+                                         row, col, is_pressed ? "DOWN" : "UP", sample, travel);
+                }
+            }
+            if (transitioned) {
                 if (is_pressed) {
                     current_matrix[row] |= (1U << col);
                 } else {

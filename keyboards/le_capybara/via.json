@@ -448,7 +448,7 @@
               "label": "Live updates",
               "type": "label",
               "content": [
-                "Status does not update live. Click Refresh status or view HID Console."
+                "Use HID Console for live progress."
               ]
             },
             {
@@ -464,7 +464,7 @@
               ]
             },
             {
-              "label": "Refresh status",
+              "label": "Print status to HID Console",
               "type": "button",
               "options": [
                 1
