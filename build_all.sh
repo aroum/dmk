@@ -504,7 +504,11 @@ if [[ "$USB_FLASH" == true ]]; then
             echo -e "${GREEN}${MSG_FLASH_SUCCESS}${NC}"
             ;;
         rp2040|rp2350)
-            if ! command -v picotool &> /dev/null; then
+            SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE:-$0}")" && pwd)"
+            PICOTOOL="${SCRIPT_DIR}/build/_deps/picotool/picotool"
+            [[ -f "$PICOTOOL" ]] || PICOTOOL="picotool"
+
+            if ! command -v "$PICOTOOL" &> /dev/null; then
                 echo -e "${RED}${MSG_ERR_PICOTOOL}${NC}"
                 exit 1
             fi
@@ -529,7 +533,7 @@ if [[ "$USB_FLASH" == true ]]; then
 
             if [[ "$FLASH_SUCCESS" == false ]]; then
                 echo "${MSG_PICO_UPLOAD} $ELF_FILE..."
-                if ! picotool load "$ELF_FILE" -x 2>/dev/null; then
+                if ! "$PICOTOOL" load "$ELF_FILE" -x 2>/dev/null; then
                     echo -e "${RED}${MSG_PICO_BOOTSEL_ERR}${NC}"
                     echo -e "${YELLOW}${MSG_PICO_BOOTSEL_ACT}${NC}"
                     read -n 1 -s -r -p "${MSG_PICO_PRESS_KEY}"
@@ -545,7 +549,7 @@ if [[ "$USB_FLASH" == true ]]; then
                     done
 
                     if [[ "$FLASH_SUCCESS" == false ]]; then
-                        picotool load "$ELF_FILE" -x
+                        "$PICOTOOL" load "$ELF_FILE" -x
                         [[ $? -eq 0 ]] && FLASH_SUCCESS=true
                     fi
                 else
