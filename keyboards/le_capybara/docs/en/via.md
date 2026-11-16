@@ -75,29 +75,60 @@ Under the **LAYOUT** tab in VIA:
 
 ---
 
-## Capybara Settings Menu
+## Capybara Settings Menu Reference
 
-### 1. Actuation & Hysteresis
-- **Actuation Point:** Sets the travel depth required to register a keypress (0.1 mm – 4.0 mm, default 2.2 mm).
-- **Classic Hysteresis:** Sets the release distance buffer required before a key de-actuates (0.1 mm – 4.0 mm, default 0.4 mm).
+The custom settings interface consists of 6 submenus:
 
-### 2. Rapid Trigger (Dynamic Keystroke)
+### 1. Scan Rate & Timing
+- **Target scan rate:** Operating matrix scan rate (50, 125, 250, 500, or 1000 Hz).
+- **ADC oversampling (4x):** Four-times hardware ADC conversion averaging at 50–500 Hz. Automatically drops to 1x at 1000 Hz; automatically restored when rate is lowered.
+- **Tapping term:** Mod-Tap and Layer-Tap hold timeout (50–500 ms in 10 ms steps, default 220 ms).
+- **Permissive hold:** Instant hold activation when a second key is pressed and released during the tapping term.
+- **Tap preferred:** Favors the tap keycode over the modifier/layer during fast typing.
+- **Quick tap:** Quick double-tap hold interval (0–500 ms, 0 disables).
+
+### 2. Calibration
+- **Use travel curve:** Enables non-linear ADC travel curve transformation.
+- **ADC at 1 mm (%), ADC at 2 mm (%), ADC at 3 mm (%):** Normalized curve anchor points (2–94%, 4–96%, 6–98%).
+- **Maximum travel:** Total physical switch travel (3.1–4.5 mm in 0.1 mm increments).
+- **Smoothing:** Curve smoothing factor from 0.0 (piecewise linear) to 1.0 (monotonic PCHIP spline).
+- **Curve status:** RAM lookup table validation status (`Valid curve` or error description).
+- **Use custom calibration:** Enables user-level sensor calibration.
+- **Calibration status:** Shows active calibration state (`In progress: X/36 keys` / `Calibrated`).
+- **Start calibration:** Captures resting baseline capacitance levels.
+- **Print status to HID Console:** Dumps active calibration progress and peak travel metrics to the VIA HID Console.
+- **Finish and save:** Validates key travels and commits calibration to persistent memory.
+- **Actuation point:** Travel depth required to trigger keypress (0.1–4.0 mm, default 2.2 mm).
+- **Release hysteresis:** Release buffer travel below actuation point in classic mode (0.1–4.0 mm, default 0.4 mm).
+- **Settings EEPROM:** User settings storage availability status (`Writable` / `Occupied`).
+
+### 3. Rapid Trigger (Dynamic Keystroke)
 - **Enable Rapid Trigger:** Toggles continuous dynamic tracking.
-- **Press Sensitivity:** Distance the switch must travel downward from any point to re-trigger (0.1 mm – 4.0 mm, default 0.4 mm).
-- **Release Sensitivity:** Distance the switch must travel upward from any point to reset (0.1 mm – 4.0 mm, default 0.4 mm).
-- **Top Dead Zone:** Protects against unintentional actuations near key rest position (0.0 mm – 0.6 mm, default 0.2 mm).
+- **Press Sensitivity:** Distance the switch must travel downward from any point to re-trigger (0.1–4.0 mm, default 0.4 mm).
+- **Release Sensitivity:** Distance the switch must travel upward from any point to reset (0.1–4.0 mm, default 0.4 mm).
+- **Top Dead Zone:** Upper dead zone protecting against unintentional actuations near key rest position (0.0–0.6 mm, default 0.2 mm).
 
-### 3. Scan Rate & Timing
-- **Scan Rate:** Choose between 50, 125, 250, 500, or 1000 Hz.
-- **Tapping Term:** Configures Mod-Tap and Layer-Tap timeout (50 ms – 500 ms).
-- **Quick Tap:** Configures quick double-tap hold repeat (0 ms – 500 ms).
+### 4. RGB & Status Indicators (RGB / Indicators)
+- **Front Indicator 1:** Mode for the first front indicator LED:
+  - `0`: Off
+  - `1`: Debug heartbeat (1 Hz blink)
+  - `2`: Caps Lock indicator
+  - `3`: Fn layer indicator
+  - `4`: System 2 profile indicator
+- **Front Indicator 2:** Mode for the second front indicator LED (same 5 options).
 
-### 4. Debug & Diagnostics
-- **Firmware Version:** Dynamically queries and displays the exact runtime firmware build version (`DMK_FW_VERSION`, e.g. `26.11.15` or `26.11.15-b8c21fe`) directly from controller memory over VIA protocol (channel 0, ID 28).
-- **EC Matrix Stream:** Logs press and release transitions immediately, then reports travel changes of the most recently pressed key while it moves. Changes smaller than 40 ADC counts are suppressed to limit console traffic. Each `[EC]` line includes matrix coordinates, the raw ADC sample, and the travel value used by the firmware.
-- **VIA Telemetry Diag:** Diagnostic logging of VIA communication packets.
+### 5. Power Saving
+- **Power Saving Mode:** Deep power-saving toggle when no USB host is detected (power-only connection or USB suspend):
+  - When disconnected from USB host, turns off all RGB/LED indicators, disables matrix multiplexers (EN0 `PA8` and EN1 `PC14` driven HIGH), and suspends matrix scanning.
+  - When a USB host is detected, matrix scanning and lighting resume automatically.
+
+### 6. Debug & Diagnostics
+- **Firmware Version:** Displays the compiled DMK firmware build version (`DMK_FW_VERSION`).
+- **EC Matrix Stream:** Real-time stream of keystroke events and travel samples `[EC]` to the HID Console.
+- **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
 - **Polling Rate Monitor:** Real-time matrix scanning frequency telemetry.
 - **Calibration Monitor:** Live monitoring of baseline capacitance and tracking drift.
+- **Factory reset (Arm settings reset & Erase all DMK settings):** Safe complete reset of all DMK custom settings, calibrations, and keymaps.
 
 ---
 
