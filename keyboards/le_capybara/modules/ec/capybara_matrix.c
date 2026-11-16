@@ -155,7 +155,7 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
     if (scan_cfg.act_pm > max_travel) scan_cfg.act_pm = max_travel;
     if (scan_cfg.press_pm > max_travel) scan_cfg.press_pm = max_travel;
     if (scan_cfg.release_pm > max_travel) scan_cfg.release_pm = max_travel;
-    bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
+    bool debug_ec = hhkb_get_debug_flag(DEBUG_FLAG_EC);
 
     // 1. Scan the EC matrix (rows 0..3, cols 0..9).
     for (uint8_t col = 0; col < EC_COLS; col++) {
@@ -174,10 +174,9 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
             delay_nop(6);
 
             uint16_t sample = adc_read_sample();
-            taskEXIT_CRITICAL();
-
             row_low(row);
             GPIOA->BRR = (1U << 1);  // Discharge active (PA1 LOW)
+            taskEXIT_CRITICAL();
 
             if (capture) {
                 hhkb_cal_accumulate_baseline(col, row, sample);
@@ -193,13 +192,11 @@ bool capybara_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             bool was_pressed = (current_matrix[row] & (1U << col)) != 0;
             bool transitioned = is_pressed != was_pressed;
-            if (debug_topre && (transitioned || sample > key->base + 100)) {
+            if (debug_ec && transitioned) {
                 uint16_t travel = rt_normalize_curve(key, sample, curve);
                 hhkb_debug_feed_sample(col, row, sample, travel, is_pressed);
-                if (transitioned) {
-                    debug_console_printf("[EC] R%u C%u %s ADC=%u travel=%u pm\r\n",
-                                         row, col, is_pressed ? "DOWN" : "UP", sample, travel);
-                }
+                debug_console_printf("[EC] R%u C%u %s ADC=%u travel=%u pm\r\n",
+                                     row, col, is_pressed ? "DOWN" : "UP", sample, travel);
             }
             if (transitioned) {
                 if (is_pressed) {

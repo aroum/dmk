@@ -28,6 +28,7 @@ void matrix_task(void *pvParameters) {
     encoder_init();
 
     matrix_row_t published_state[MATRIX_ROWS] = {0};
+    static const TickType_t scan_periods_ms[] = {20, 8, 4, 2, 1};
 
     for (;;) {
         // 1. Process delayed EEPROM saves for calibration and settings
@@ -45,13 +46,16 @@ void matrix_task(void *pvParameters) {
         // 2. Scan EC capacitive and discrete key matrix
         capybara_matrix_scan_raw(s_matrix_state);
 
+        // Keep VIA's matrix tester live, but suppress EC key reports during calibration.
+        bool calibrating = hhkb_is_calibrating();
+
         // 3. Scan rotary encoder
         encoder_scan();
 
         // 4. Dispatch changed row snapshots to DMK event queue
         bool first_event = true;
         for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-            matrix_row_t state = s_matrix_state[row];
+            matrix_row_t state = calibrating && row < EC_ROWS ? 0 : s_matrix_state[row];
             if (state == published_state[row]) continue;
 
             matrix_event_t event = {
@@ -68,6 +72,6 @@ void matrix_task(void *pvParameters) {
             first_event = false;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1)); // 1000 Hz loop
+        vTaskDelay(pdMS_TO_TICKS(scan_periods_ms[hhkb_get_scan_rate()]));
     }
 }

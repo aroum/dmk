@@ -10,6 +10,7 @@
 
 #define TOPRE_TYPICAL_TRAVEL_COUNTS 1500U
 #define CAL_BASELINE_SAMPLES 16U
+#define CAL_REST_TOLERANCE (RT_MIN_RANGE / 3U)
 #define HHKB_SETTINGS_SAVE_DELAY_MS 500U
 
 static uint16_t s_cal_baseline[MATRIX_COLS][MATRIX_ROWS];
@@ -22,8 +23,7 @@ static bool s_capture_baseline = false;
 static uint8_t s_cal_baseline_samples = 0;
 static uint16_t s_cal_baseline_accum[MATRIX_COLS][MATRIX_ROWS];
 static uint32_t s_calibrated_mask[2];
-static uint32_t s_cal_down_mask[2];
-static uint16_t s_cal_press_start_peak[MATRIX_COLS][MATRIX_ROWS];
+static uint16_t s_capture_latest[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_base[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
@@ -240,8 +240,12 @@ void hhkb_calibration_load(void) {
 
             for (uint8_t c = 0; c < MATRIX_COLS; c++) {
                 for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-                    s_cal_baseline[c][r] = cal->baseline[c][r];
-                    s_cal_peak[c][r] = cal->peak[c][r];
+                    uint16_t base = cal->baseline[c][r];
+                    uint16_t peak = cal->peak[c][r];
+                    if (base != 0 && peak <= 4095 && peak >= base + RT_MIN_RANGE) {
+                        s_cal_baseline[c][r] = base;
+                        s_cal_peak[c][r] = peak;
+                    }
                 }
             }
         }
@@ -278,51 +282,58 @@ void vial_keyboard_eeprom_task(void) {
 }
 
 void hhkb_calibration_start(void) {
-    s_calibration_mode = false;
+    taskENTER_CRITICAL();
     s_cal_baseline_samples = 0;
     memset(s_cal_baseline_accum, 0, sizeof(s_cal_baseline_accum));
     memset(s_calibrated_mask, 0, sizeof(s_calibrated_mask));
-    memset(s_cal_down_mask, 0, sizeof(s_cal_down_mask));
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-            s_capture_base[c][r] = 0;
+            s_capture_base[c][r] = UINT16_MAX;
             s_capture_peak[c][r] = 0;
-            s_cal_press_start_peak[c][r] = 0;
+            s_capture_latest[c][r] = UINT16_MAX;
         }
     }
     s_capture_baseline = true;
     s_calibration_mode = true;
+    taskEXIT_CRITICAL();
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
         debug_console_printf("[CAL] Started. Release all keys.\r\n");
 }
 
 void hhkb_calibration_finish(void) {
-    if (!s_calibration_mode) return;
-    s_calibration_mode = false;
+    taskENTER_CRITICAL();
+    if (!s_calibration_mode) {
+        taskEXIT_CRITICAL();
+        return;
+    }
     bool baseline_ready = !s_capture_baseline;
     s_capture_baseline = false;
     if (!baseline_ready) {
+        s_calibration_mode = false;
+        taskEXIT_CRITICAL();
         if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
             debug_console_printf("[CAL] Baseline incomplete. Start again.\r\n");
         return;
     }
 
     unsigned updated = 0;
-    for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-        for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
+    for (uint8_t c = 0; c < EC_COLS; c++) {
+        for (uint8_t r = 0; r < EC_ROWS; r++) {
             uint8_t idx = (c * MATRIX_ROWS) + r;
-            if (s_calibrated_mask[idx / 32] & (1U << (idx % 32))) {
-                if (s_capture_peak[c][r] >= s_capture_base[c][r] + RT_MIN_RANGE) {
-                    s_cal_baseline[c][r] = s_capture_base[c][r];
-                    s_cal_peak[c][r] = s_capture_peak[c][r];
-                    ++updated;
-                }
+            int rest_delta = (int)s_capture_latest[c][r] - s_capture_base[c][r];
+            if ((s_calibrated_mask[idx / 32] & (1U << (idx % 32))) &&
+                rest_delta >= -(int)CAL_REST_TOLERANCE && rest_delta <= (int)CAL_REST_TOLERANCE) {
+                s_cal_baseline[c][r] = s_capture_base[c][r];
+                s_cal_peak[c][r] = s_capture_peak[c][r];
+                apply_calibrated_range(c, r);
+                ++updated;
             }
-            apply_calibrated_range(c, r);
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
-    hhkb_settings_mark_dirty();
+    s_calibration_mode = false;
+    taskEXIT_CRITICAL();
+    if (updated) hhkb_settings_mark_dirty();
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
         debug_console_printf("[CAL] Finished. Updated %u keys.\r\n", updated);
 }
@@ -479,12 +490,18 @@ void hhkb_update_dynamic_peak(uint8_t col, uint8_t row, uint16_t val) {
 
 void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
     s_cal_baseline_accum[col][row] += val;
+    if (val < s_capture_base[col][row]) s_capture_base[col][row] = val;
+    if (val > s_capture_peak[col][row]) s_capture_peak[col][row] = val;
     if (col == EC_COLS - 1 && row == EC_ROWS - 1) {
         if (++s_cal_baseline_samples >= CAL_BASELINE_SAMPLES) {
             s_capture_baseline = false;
-            for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-                for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-                    s_capture_base[c][r] = s_cal_baseline_accum[c][r] / CAL_BASELINE_SAMPLES;
+            for (uint8_t c = 0; c < EC_COLS; c++) {
+                for (uint8_t r = 0; r < EC_ROWS; r++) {
+                    uint16_t min = s_capture_base[c][r];
+                    uint16_t max = s_capture_peak[c][r];
+                    s_capture_base[c][r] = (min != 0 && max - min <= RT_MIN_RANGE)
+                        ? s_cal_baseline_accum[c][r] / CAL_BASELINE_SAMPLES : UINT16_MAX;
+                    s_capture_peak[c][r] = 0;
                 }
             }
             if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
@@ -494,7 +511,8 @@ void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
 }
 
 void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
-    if (s_capture_baseline) return;
+    if (s_capture_baseline || s_capture_base[col][row] == UINT16_MAX) return;
+    s_capture_latest[col][row] = val;
     uint8_t idx = (col * MATRIX_ROWS) + row;
     if (val > s_capture_peak[col][row]) {
         s_capture_peak[col][row] = val;

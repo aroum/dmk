@@ -105,7 +105,7 @@ To ensure reliable actuation across all conical spring switches:
 2. Toggle on **Use custom calibration** and make sure all keys are released.
 3. Click **Start calibration** to record baseline capacitance levels.
 4. Fully press and bottom out all keys across the board to measure each key's peak travel capacity.
-5. Click **Finish and save** to persist the calibrated values into MCU Flash memory (Page 62).
+5. Release all keys, then click **Finish and save**. A key is saved only if it had a stable baseline, moved far enough, and returned to rest. Other keys keep their previous calibration.
 
 > [!TIP]
 > **Visual Confirmation via Key Tester:**

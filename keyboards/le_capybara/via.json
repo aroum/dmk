@@ -423,7 +423,7 @@
               "label": "3. Save",
               "type": "label",
               "content": [
-                "Press Finish. Disable custom calibration to use defaults."
+                "Release all keys, then press Finish to save."
               ]
             },
             {
