@@ -39,6 +39,9 @@ typedef struct {
     uint8_t rgb_cfg[8];
     uint8_t macro_buffer[DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE];
     vial_combo_entry_t combos[VIAL_COMBO_ENTRIES];
+#ifdef VIA_LAYOUT_OPTIONS_MASK
+    uint32_t layout_options;
+#endif
 } vial_storage_data_t;
 
 typedef union {

@@ -103,14 +103,14 @@ function(build_keyboard KEYBOARD_NAME)
 
         # Determine preferred layout format: VIA v3 (via.json) vs Vial (vial.json)
         set(IS_VIA_V3 OFF)
-        if(CONFIG_CONTENT MATCHES "#[ \t]*define[ \t]+VIA_V3([ \t\r\n]|$)" OR
+        if(CONFIG_CONTENT MATCHES "(^|[\r\n])[ \t]*#[ \t]*define[ \t]+VIA_V3([ \t\r\n]|$)" OR
            (DEFINE AND DEFINE MATCHES "(^|[,;])VIA_V3([,;]|$)"))
             set(IS_VIA_V3 ON)
         endif()
 
         set(VIAL_JSON_CANDIDATE "${ACTUAL_KEYBOARD_DIR}/vial.json")
         set(VIA_JSON_CANDIDATE "${ACTUAL_KEYBOARD_DIR}/via.json")
-        set(VIAL_GEN_H_FILE "${ACTUAL_KEYBOARD_DIR}/vial_generated.h")
+        set(VIAL_GEN_H_FILE "${CMAKE_CURRENT_BINARY_DIR}/vial_generated.h")
 
         if(IS_VIA_V3)
             # Prefer via.json, fallback to vial.json
@@ -186,7 +186,7 @@ function(build_keyboard KEYBOARD_NAME)
                 COMMENT "Compressing ${LAYOUT_JSON_NAME} for ${KBD_BASE}"
             )
             set_source_files_properties("${VIAL_SRC}" PROPERTIES OBJECT_DEPENDS "${VIAL_GEN_H_FILE}")
-            target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+            target_include_directories(${TARGET_NAME} BEFORE PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
         endif()
     endif()
 

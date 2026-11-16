@@ -660,10 +660,17 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
             break;
         }
         case VIA_SUB_LAYOUT_OPTIONS: {
-            response[2] = 0;
-            response[3] = 0;
-            response[4] = 0;
-            response[5] = 0;
+            uint32_t options = 0;
+#ifdef VIA_LAYOUT_OPTIONS_MASK
+            // Older saved maps leave the appended field erased.
+            if (vial_storage.data.layout_options != UINT32_MAX) {
+                options = vial_storage.data.layout_options & VIA_LAYOUT_OPTIONS_MASK;
+            }
+#endif
+            response[2] = (uint8_t)(options >> 24);
+            response[3] = (uint8_t)(options >> 16);
+            response[4] = (uint8_t)(options >> 8);
+            response[5] = (uint8_t)options;
             break;
         }
         case VIA_SUB_SWITCH_MATRIX_STATE: {
@@ -705,6 +712,23 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         }
         break;
     }
+
+#ifdef VIA_LAYOUT_OPTIONS_MASK
+    case VIA_SET_KEYBOARD_VALUE: {
+        if (request[1] != VIA_SUB_LAYOUT_OPTIONS) {
+            response[0] = 0xFF;
+            break;
+        }
+        uint32_t options = ((uint32_t)request[2] << 24) | ((uint32_t)request[3] << 16) |
+                           ((uint32_t)request[4] << 8) | request[5];
+        options &= VIA_LAYOUT_OPTIONS_MASK;
+        if (vial_storage.data.layout_options != options) {
+            vial_storage.data.layout_options = options;
+            vial_eeprom_save();
+        }
+        break;
+    }
+#endif
 
     case VIA_DYNAMIC_KEYMAP_GET_LAYER_COUNT: {
         response[1] = (uint8_t)keymap_layers;

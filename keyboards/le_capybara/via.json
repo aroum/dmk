@@ -19,22 +19,8 @@
     "keymap": [
       [
         {
-          "rx": 7,
-          "ry": 1,
-          "y": 0.75,
-          "x": -1.25
-        },
-        "0,0\n\n\n\n\n\n\n\n\ne"
-      ],
-      [
-        {
-          "x": -1.25
-        },
-        "0,1\n\n\n\n\n\n\n\n\ne"
-      ],
-      [
-        {
           "rx": 7.5,
+          "ry": 1,
           "y": -0.25,
           "x": -1.75
         },
@@ -309,6 +295,7 @@
     }
   ],
   "menus": [
+    "qmk_rgblight",
     {
       "label": "Le Capybara Settings",
       "content": [
