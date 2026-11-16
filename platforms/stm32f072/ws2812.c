@@ -128,36 +128,32 @@ static void ws2812_show_tim2_dma(void) {
 // GPIO Bit-Bang Implementation
 // -----------------------------------------------------------------------------
 
-#define NOP1   __asm__ volatile("nop")
-#define NOP2   NOP1; NOP1
-#define NOP4   NOP2; NOP2
-#define NOP8   NOP4; NOP4
-#define NOP11  NOP8; NOP2; NOP1
-#define NOP22  NOP8; NOP8; NOP4; NOP2
-#define NOP26  NOP8; NOP8; NOP8; NOP2
-#define NOP39  NOP26; NOP11; NOP2
-
 static uint8_t ws2812_fallback_stream[WS2812_MAX_LEDS * 3];
 
 __attribute__((section(".RamFunc"), noinline))
 static void ws2812_send_stream(volatile uint32_t *bsrr, uint32_t set_mask, uint32_t reset_mask,
                                const uint8_t *data, uint32_t len) {
     while (len--) {
-        uint8_t byte = *data++;
-        for (int i = 0; i < 8; i++) {
-            if (byte & 0x80) {
-                *bsrr = set_mask;
-                NOP26;
-                *bsrr = reset_mask;
-                NOP22;
-            } else {
-                *bsrr = set_mask;
-                NOP11;
-                *bsrr = reset_mask;
-                NOP39;
-            }
-            byte <<= 1;
-        }
+        uint32_t bits = (uint32_t)*data++ << 24;
+        unsigned count = 8;
+        // Keep the instruction sequence between edges fixed at 48 MHz.
+        // The shorter high pulse uses the untaken branch.
+        __asm__ volatile(
+            "1: str %[set], [%[out]]\n"
+            "lsl %[bits], %[bits], #1\n"
+            "bcs 2f\n"
+            ".rept 14\n nop\n .endr\n"
+            "str %[clear], [%[out]]\n"
+            ".rept 31\n nop\n .endr\n"
+            "b 3f\n"
+            "2: .rept 30\n nop\n .endr\n"
+            "str %[clear], [%[out]]\n"
+            ".rept 16\n nop\n .endr\n"
+            "3: sub %[count], %[count], #1\n"
+            "bne 1b\n"
+            : [bits] "+&l" (bits), [count] "+&l" (count)
+            : [out] "l" (bsrr), [set] "l" (set_mask), [clear] "l" (reset_mask)
+            : "cc", "memory");
     }
 }
 
