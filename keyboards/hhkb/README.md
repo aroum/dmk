@@ -17,6 +17,12 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 
 See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, color variants, and container IDs.
 
+## Build variants
+
+All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb` and Classic Type-S with `-d HHKB_TYPE_S`. Use `-d HHKB_HYBRID` for the development build and see the [Hybrid build and patch guide](hybrid.md). `HHKB_JIS` and `HHKB_STUDIO` reserve the JIS and Studio variants and stop the build until their hardware and layouts are verified.
+
+Board notes: [Hybrid](hybrid_board_readme.md) • [Studio](studio_board_readme.md)
+
 ## Features
 
 - [VIA](https://www.usevia.app/) and Vial support for runtime keymap changes.

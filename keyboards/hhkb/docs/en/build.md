@@ -8,15 +8,15 @@ Run builds from the repository root. Use the standard DMK definition argument.
 
 ```bash
 # Classic: current full feature configuration
-./build_all.sh -b hhkb_classic -d HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
 # Classic Type-S: the same configuration plus its model definition
-./build_all.sh -b hhkb_classic -d HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
 ```powershell
-.\build_all.ps1 -Keyboard hhkb_classic -Define HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
-.\build_all.ps1 -Keyboard hhkb_classic -Define HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
 `DEFAULT_MCU` in the keyboard configuration selects STM32L072, so the build command does not need an MCU argument. `HHKB_TYPE_S` is only for Classic Type-S. The output directory contains an `.hfb` PFU container and a raw Bank 2 `.bin`; building does not flash the keyboard.

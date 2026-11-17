@@ -52,15 +52,15 @@ dfu-util -a 1 -s 0x1FF80000 -D hhkb-option-bytes.bin
 Writing a DMK Bank 2 image directly is possible:
 
 ```bash
-dfu-util -a 0 -s 0x08010000 -D build/hhkb/dmk_hhkb_classic_stm32l072.bin
+dfu-util -a 0 -s 0x08010000 -D build/hhkb/dmk_hhkb_stm32l072.bin
 ```
 
 ROM DFU does not guarantee that PFU Bank 1 metadata or EEPROM flags are updated. After reset, Bank 1 can reject the image. For normal installation use the PFU updater. A readback confirms Flash contents, not Bank 1 acceptance:
 
 ```bash
 dfu-util -a 0 -s 0x08010000:65536 -U bank2-readback.bin
-cmp -n "$(wc -c < build/hhkb/dmk_hhkb_classic_stm32l072.bin)" \
-  build/hhkb/dmk_hhkb_classic_stm32l072.bin bank2-readback.bin
+cmp -n "$(wc -c < build/hhkb/dmk_hhkb_stm32l072.bin)" \
+  build/hhkb/dmk_hhkb_stm32l072.bin bank2-readback.bin
 ```
 
 ## Full SWD / J-Link backup

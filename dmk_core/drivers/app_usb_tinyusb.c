@@ -9,6 +9,9 @@
 #include "queue.h"
 #include "task_internal.h"
 #include "tusb.h"
+#ifdef HHKB_HYBRID
+#include "hybrid.h"
+#endif
 
 #if defined(MCU_rp2350)
 #include "hardware/irq.h"
@@ -241,6 +244,12 @@ static bool usb_hid_complete_send(bool sent) {
 
 bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
     if (!report || !s_keyboard_queue) return false;
+#ifdef HHKB_HYBRID
+    if (hhkb_hybrid_on_battery()) {
+        hhkb_hybrid_report(report->Modifier, report->Keycodes);
+        return true;
+    }
+#endif
     taskENTER_CRITICAL();
     s_latest_keyboard_report = *report;
     taskEXIT_CRITICAL();

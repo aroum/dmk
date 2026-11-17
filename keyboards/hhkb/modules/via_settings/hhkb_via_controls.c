@@ -1,5 +1,8 @@
 #include "classic_matrix.h"
 #include "ec_curve.h"
+#ifdef HHKB_HYBRID
+#include "hybrid.h"
+#endif
 #include "usb_descriptors.h"
 #include <stdint.h>
 #include <stdbool.h>
@@ -10,6 +13,35 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
+    if (id == 44 && request[0] == 0x08) {
+#ifdef HHKB_HYBRID
+        response[3] = 1;
+#else
+        response[3] = 0;
+#endif
+        return true;
+    }
+#ifdef HHKB_HYBRID
+    if (id == 40 || id == 41) {
+        if (request[0] == 0x08) {
+            response[3] = id == 40 ? hhkb_bt_sleep_minutes() : hhkb_bt_matrix_wake();
+        } else if (request[0] == 0x07 && request[3] <= (id == 40 ? 60 : 1)) {
+            hhkb_bt_set_sleep(id == 40 ? request[3] : hhkb_bt_sleep_minutes(),
+                              id == 41 ? request[3] != 0 : hhkb_bt_matrix_wake());
+        } else {
+            return false;
+        }
+        return true;
+    }
+    if (id == 42 || id == 43) {
+        if (request[0] == 0x08) {
+            response[3] = 0;
+            return true;
+        }
+        return request[0] == 0x07 && (request[3] == 0 ||
+               hhkb_hybrid_request_slot(request[3] - 1, id == 43));
+    }
+#endif
     if (id >= EC_CURVE_ENABLE && id <= EC_CURVE_STATUS) {
         if (request[0] == 0x08) {
             if (id == EC_CURVE_STATUS) strcpy((char *)&response[3], ec_curve_status);

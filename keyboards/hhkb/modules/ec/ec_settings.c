@@ -39,6 +39,10 @@ static uint16_t s_classic_release_pm = 100; // Default 10% travel hysteresis (0.
 static uint8_t s_actuation_offset_pct = 75;
 
 static uint8_t s_scan_rate = 4; // 1000 Hz
+#ifdef HHKB_HYBRID
+static uint8_t s_bt_sleep_minutes = 10;
+static bool s_bt_matrix_wake;
+#endif
 static bool s_power_saving = true; // Enabled by default
 static bool s_oversampling_requested = false;
 static uint8_t s_tapping_term_10ms = 22; // 220 ms
@@ -92,10 +96,16 @@ static uint16_t compute_crc16(const uint8_t *data, size_t len) {
 
 #define HHKB_FACTORY_BASELINE_ADDR 0x08081000UL
 static uint16_t get_factory_baseline(uint8_t col, uint8_t row) {
+#ifdef HHKB_HYBRID
+    (void)col;
+    (void)row;
+    return 0; // Require DMK calibration until Hybrid factory EEPROM is mapped.
+#else
     const uint16_t *base = (const uint16_t *)HHKB_FACTORY_BASELINE_ADDR;
     uint8_t idx = (col << 3) | (row & 7);
     uint16_t val = base[idx];
     return (val >= 100 && val <= 2000) ? val : 0;
+#endif
 }
 
 static uint16_t get_default_baseline(uint8_t col, uint8_t row) {
@@ -166,6 +176,10 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.rt = s_rt_cfg;
     memcpy(cal.curve, ec_curve_settings, sizeof(cal.curve));
     cal.debug_flags = s_debug_flags;
+#ifdef HHKB_HYBRID
+    cal.reserved[0] = s_bt_sleep_minutes + 1;
+    cal.reserved[1] = s_bt_matrix_wake;
+#endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
     cal.classic_release_pm = s_classic_release_pm;
     cal.scan_rate = (s_scan_rate & 0x7F) | (s_power_saving ? 0x80 : 0);
@@ -224,6 +238,12 @@ void hhkb_calibration_load(void) {
         uint16_t expected_crc = compute_crc16((const uint8_t *)&cal->baseline, size - offsetof(hhkb_eeprom_cal_t, baseline));
         if ((current || cal->version == 1) && cal->crc16 == expected_crc) {
             if (current) {
+#ifdef HHKB_HYBRID
+                if (cal->reserved[0] >= 1 && cal->reserved[0] <= 61) {
+                    s_bt_sleep_minutes = cal->reserved[0] - 1;
+                    s_bt_matrix_wake = cal->reserved[1] == 1;
+                }
+#endif
                 for (unsigned i = 0; i < EC_CURVE_FIELDS; ++i)
                     ec_curve_set(EC_CURVE_ENABLE + i, cal->curve[i]);
             }
@@ -678,3 +698,14 @@ void hhkb_cal_decrement_samples(void) {
     }
 }
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row) { return &s_rt_keys[col][row]; }
+
+#ifdef HHKB_HYBRID
+uint8_t hhkb_bt_sleep_minutes(void) { return s_bt_sleep_minutes; }
+bool hhkb_bt_matrix_wake(void) { return s_bt_matrix_wake; }
+
+void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake) {
+    s_bt_sleep_minutes = minutes;
+    s_bt_matrix_wake = matrix_wake;
+    hhkb_settings_mark_dirty();
+}
+#endif

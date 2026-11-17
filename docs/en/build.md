@@ -424,7 +424,7 @@ The version string `DMK_FW_VERSION` is embedded directly into the binary firmwar
 - **Development / Nightly Builds:** If HEAD is not an exact tag, the version is automatically composed from the latest commit date and 7-character short commit hash: `YY.MM.DD-<hash>` (e.g., `26.11.15-b8c21fe`).
 - **CI / Environment Overrides:** You can manually specify a version by setting the `DMK_FW_VERSION` environment variable or CMake variable before building:
   ```bash
-  cmake -B build -DKEYBOARD=hhkb_classic -DDMK_FW_VERSION="26.11.15"
+  cmake -B build -DKEYBOARD=hhkb -DDMK_FW_VERSION="26.11.15"
   ```
 - **Runtime Exposure:** The version is exposed via:
   1. USB Device Serial Number descriptor for VIA v3 builds (visible in OS device trees and browser HID dialogs).

@@ -122,6 +122,15 @@ endif()
 
 # Post-build packaging into .bin and HHKB .hfb container
 function(platform_post_build TARGET_NAME)
+    if(HHKB_BUILD_HYBRID)
+        add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hfb
+            COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}> ${CMAKE_BINARY_DIR}/${TARGET_NAME}.bin
+            COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${TARGET_NAME}>
+            VERBATIM)
+        return()
+    endif()
+
     if(HHKB_TYPE_S)
         set(HFB_MODEL_ARG "--model" "AHHS01" "--version" "A8.50")
         set(MODEL_COMMENT "Type-S (AHHS01)")

@@ -264,7 +264,7 @@ if ([string]::IsNullOrWhiteSpace($Mcu)) {
 
 # Настройка целевого имени
 $Suffix = ""
-if ($Define -and $Keyboard -ne "hhkb_classic") {
+if ($Define -and $Keyboard -ne "hhkb") {
     $defLower = $Define.ToLower()
     if ($defLower.Contains("left")) {
         $Suffix = "_left"
@@ -277,7 +277,7 @@ if ($Define -and $Keyboard -ne "hhkb_classic") {
 }
 $TargetName = "dmk_${KbdBase}_${Mcu}${Suffix}"
 $BuildDir = Join-Path $ScriptDir "build"
-if ($KbdBase -eq "hhkb_classic" -and $Mcu -eq "stm32l072") { $BuildDir = Join-Path $BuildDir "hhkb-script" }
+if ($KbdBase -eq "hhkb" -and $Mcu -eq "stm32l072") { $BuildDir = Join-Path $BuildDir "hhkb-script" }
 $HrdProbe = Join-Path $ScriptDir "platforms\milandr\dep\probe\jlink4swd.cfg"
 
 if ($Clean) {
@@ -294,7 +294,7 @@ if (-not (Test-Path $BuildDir)) { New-Item -ItemType Directory -Path $BuildDir -
     if ($Mcu -eq "rp2350") { $CmakeArgs += "-DPICO_PLATFORM=rp2350" }
     if ($Memory) { $CmakeArgs += "-DMEMORY=$Memory" }
     if ($Define) { $CmakeArgs += "-DDEFINE=$Define" }
-    if ($KbdBase -eq "hhkb_classic" -and -not $Define) { $CmakeArgs += "-DDEFINE=" }
+    if ($KbdBase -eq "hhkb" -and -not $Define) { $CmakeArgs += "-DDEFINE=" }
     if ($Modules) { $CmakeArgs += "-DDMK_MODULES=$Modules" }
     if ($Mcu -eq "milandr") {
         if ($Dfu) {

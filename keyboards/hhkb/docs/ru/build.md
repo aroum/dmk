@@ -8,15 +8,15 @@
 
 ```bash
 # Classic: полная текущая конфигурация
-./build_all.sh -b hhkb_classic -d HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
 # Classic Type-S: та же конфигурация и определение модели
-./build_all.sh -b hhkb_classic -d HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
 ```powershell
-.\build_all.ps1 -Keyboard hhkb_classic -Define HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
-.\build_all.ps1 -Keyboard hhkb_classic -Define HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
 STM32L072 выбирается через `DEFAULT_MCU` в конфигурации клавиатуры, поэтому в команде сборки не нужен аргумент MCU. `HHKB_TYPE_S` нужен только для Classic Type-S. В каталоге результата создаются контейнер `.hfb` для PFU и сырой `.bin` для Bank 2; сборка не прошивает клавиатуру.

@@ -97,14 +97,14 @@ jobs:
       - name: Build HFB
         run: |
           chmod +x build_all.sh
-          ./build_all.sh -b hhkb_classic --mcu stm32l072 -d "${{ matrix.defines }}" -c
+          ./build_all.sh -b hhkb --mcu stm32l072 -d "${{ matrix.defines }}" -c
 
       - name: Package HFB and VIA layout
         run: |
-          python3 -m json.tool keyboards/hhkb_classic/via.json > /dev/null
+          python3 -m json.tool keyboards/hhkb/via.json > /dev/null
           mkdir -p build/hhkb-release
           cp build/hhkb-script/*.hfb build/hhkb-release/dmk-hhkb-classic-${{ matrix.variant }}-via.hfb
-          cp keyboards/hhkb_classic/via.json build/hhkb-release/
+          cp keyboards/hhkb/via.json build/hhkb-release/
 
       - name: Upload HFB
         uses: actions/upload-artifact@v7

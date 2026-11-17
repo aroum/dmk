@@ -1,10 +1,18 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#ifdef HHKB_HYBRID
+#define VIAL_KEYBOARD_NAME "HHKB Professional Hybrid"
+#else
 #define VIAL_KEYBOARD_NAME "HHKB Professional Classic"
+#endif
 #define VIA_V3 1
 #define VIA_FULL_SETTINGS_RESET 1
-#ifdef HHKB_RAPID_TRIGGER
+#if defined(HHKB_HYBRID) && defined(HHKB_RAPID_TRIGGER)
+#define VIA_FIRMWARE_VERSION 4U
+#elif defined(HHKB_HYBRID)
+#define VIA_FIRMWARE_VERSION 3U
+#elif defined(HHKB_RAPID_TRIGGER)
 #define VIA_FIRMWARE_VERSION 2U
 #else
 #define VIA_FIRMWARE_VERSION 1U
@@ -104,7 +112,11 @@
  *   - SW6 OFF: Power Saving Enabled (no key wakeup from USB suspend).
  *   - SW6 ON:  Power Saving Disabled (immediate key wakeup).
  */
+#ifdef HHKB_HYBRID
+#define HHKB_SW6_REBOOT_TO_BANK1 0
+#else
 #define HHKB_SW6_REBOOT_TO_BANK1 1
+#endif
 
 /* --- Status & Indicator LEDs --- */
 #define LED_PINS { A8, A9 }

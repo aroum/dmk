@@ -52,15 +52,15 @@ dfu-util -a 1 -s 0x1FF80000 -D hhkb-option-bytes.bin
 DMK можно записать непосредственно во второй банк:
 
 ```bash
-dfu-util -a 0 -s 0x08010000 -D build/hhkb/dmk_hhkb_classic_stm32l072.bin
+dfu-util -a 0 -s 0x08010000 -D build/hhkb/dmk_hhkb_stm32l072.bin
 ```
 
 ROM DFU не гарантирует обновление служебных метаданных PFU Bank 1 или флагов EEPROM. После сброса Bank 1 может отклонить образ. Для обычной установки используйте PFU-обновитель. Повторное чтение подтверждает содержимое Flash, но не принятие образа Bank 1:
 
 ```bash
 dfu-util -a 0 -s 0x08010000:65536 -U bank2-readback.bin
-cmp -n "$(wc -c < build/hhkb/dmk_hhkb_classic_stm32l072.bin)" \
-  build/hhkb/dmk_hhkb_classic_stm32l072.bin bank2-readback.bin
+cmp -n "$(wc -c < build/hhkb/dmk_hhkb_stm32l072.bin)" \
+  build/hhkb/dmk_hhkb_stm32l072.bin bank2-readback.bin
 ```
 
 ## Полный бэкап через SWD / J-Link

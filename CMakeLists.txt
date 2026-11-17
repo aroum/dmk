@@ -99,6 +99,20 @@ add_compile_options(-Os -ffunction-sections -fdata-sections)
 # Path setup
 get_filename_component(DMK_ROOT "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
 
+# HHKB model selection uses the same DEFINE list as other build features.
+if(KEYBOARD STREQUAL "hhkb")
+    string(REPLACE "," ";" HHKB_MODELS "${DEFINE}")
+    if("HHKB_STUDIO" IN_LIST HHKB_MODELS OR "HHKB_JIS" IN_LIST HHKB_MODELS)
+        message(FATAL_ERROR "HHKB Studio and JIS selectors are reserved pending board and layout verification")
+    endif()
+    if("HHKB_HYBRID" IN_LIST HHKB_MODELS)
+        if("HHKB_TYPE_S" IN_LIST HHKB_MODELS OR "HHKB_FACTORY_THRESHOLDS" IN_LIST HHKB_MODELS)
+            message(FATAL_ERROR "Classic Type-S and Classic factory thresholds are not valid for Hybrid")
+        endif()
+        set(HHKB_BUILD_HYBRID ON)
+    endif()
+endif()
+
 # Map MCU to platform directory
 if(MCU STREQUAL "rp2040" OR MCU STREQUAL "rp2350")
     set(PLATFORM_DIR "${DMK_ROOT}/platforms/raspberrypi")

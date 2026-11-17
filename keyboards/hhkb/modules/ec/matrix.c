@@ -5,6 +5,9 @@
 #include "task.h"
 #include "config.h"
 #include "tusb.h"
+#ifdef HHKB_HYBRID
+#include "hybrid.h"
+#endif
 #if defined(HHKB_SCAN_DIAGNOSTICS) || defined(HHKB_SCAN_1KHZ)
 #include "stm32l072xx.h"
 #endif
@@ -18,10 +21,21 @@ static volatile uint8_t s_scan_divider;
 static uint8_t s_scan_phase;
 static uint8_t s_scan_rate_applied;
 
+static uint8_t effective_scan_rate(void) {
+#ifdef HHKB_HYBRID
+#ifdef HHKB_BT_SCAN_50HZ
+    if (hhkb_hybrid_on_battery()) return 0;
+#else
+    if (hhkb_hybrid_on_battery()) return 5; // 5 ms period from the reference port.
+#endif
+#endif
+    return hhkb_get_scan_rate();
+}
+
 static void update_scan_period(void) {
-    static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000};
-    uint8_t rate = hhkb_get_scan_rate();
-    if (rate > 4) rate = 4;
+    static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000, 5000};
+    uint8_t rate = effective_scan_rate();
+    if (rate >= sizeof(period_us) / sizeof(period_us[0])) rate = 4;
     s_scan_rate_applied = rate;
     s_scan_period_ticks = period_us[rate] * HHKB_SCAN_TIMER_TICKS_PER_US;
     s_scan_divider = rate == 0 ? 2 : 1;
@@ -98,9 +112,64 @@ void matrix_task(void *pvParameters) {
 #endif
     matrix_row_t published_state[MATRIX_ROWS] = {0};
     bool sensor_power_down = false;
+#ifdef HHKB_HYBRID
+    hhkb_hybrid_init();
+    TickType_t last_activity = xTaskGetTickCount();
+    TickType_t last_wake_scan = last_activity;
+    bool sleeping = false;
+#endif
     for (;;) {
+        bool battery = false;
+#ifdef HHKB_HYBRID
+        battery = hhkb_hybrid_on_battery();
+        bool button = hhkb_hybrid_button();
+        TickType_t now = xTaskGetTickCount();
+        uint8_t minutes = hhkb_bt_sleep_minutes();
+        if (!battery || button || minutes == 0 || hhkb_is_calibrating()) {
+            last_activity = now;
+        } else if (!sleeping && now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)) {
+            sleeping = true;
+            TIM2->DIER = 0;
+            ulTaskNotifyTake(pdTRUE, 0);
+            ADC1->CR |= ADC_CR_ADDIS;
+            GPIOC->BRR = (1U << 14) | (1U << 7);
+            last_wake_scan = now;
+        }
+        if (sleeping) {
+            bool wake = !battery || button || minutes == 0;
+            bool scan = hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
+            if (!wake && !scan) {
+                vTaskDelay(pdMS_TO_TICKS(20));
+                continue;
+            }
+            last_wake_scan = now;
+            GPIOC->BSRR = 1U << 14;
+            ADC1->ISR = ADC_ISR_ADRDY;
+            ADC1->CR |= ADC_CR_ADEN;
+            vTaskDelay(pdMS_TO_TICKS(10));
+            if (!wake) {
+                matrix_row_t probe[MATRIX_ROWS] = {0};
+                hhkb_matrix_scan_raw(probe);
+                for (unsigned row = 0; row < MATRIX_ROWS; ++row) {
+                    if (probe[row]) wake = true;
+                }
+            }
+            if (!wake) {
+                ADC1->CR |= ADC_CR_ADDIS;
+                GPIOC->BRR = (1U << 14) | (1U << 7);
+                continue;
+            }
+            sleeping = false;
+            last_activity = xTaskGetTickCount();
+            update_scan_period();
+            TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
+            TIM2->SR = 0;
+            TIM2->DIER = TIM_DIER_CC1IE;
+        }
+        hhkb_hybrid_service();
+#endif
         // Check power saving condition: host disconnected (not mounted) or USB suspended
-        if (keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
+        if (!battery && keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
             if (!sensor_power_down) {
                 // Disable power for capacitive sensor board and OpAmp
                 GPIOC->BRR = (1U << 14) | (1U << 7);
@@ -116,7 +185,7 @@ void matrix_task(void *pvParameters) {
         }
 
 #ifdef HHKB_SCAN_1KHZ
-        if (s_scan_rate_applied != hhkb_get_scan_rate()) {
+        if (s_scan_rate_applied != effective_scan_rate()) {
             NVIC_DisableIRQ(TIM2_IRQn);
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
@@ -149,6 +218,9 @@ void matrix_task(void *pvParameters) {
         bool first_event = true;
         for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
             matrix_row_t state = s_matrix_state[row];
+#ifdef HHKB_HYBRID
+            if (state || state != published_state[row]) last_activity = xTaskGetTickCount();
+#endif
             if (state == published_state[row]) continue;
             matrix_event_t event = {
                 .row = MATRIX_EVENT_ROW_SNAPSHOT | (first_event ? MATRIX_EVENT_SCAN_START : 0) | row,

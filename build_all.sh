@@ -349,7 +349,7 @@ fi
 
 # Настройка целевого имени
 SUFFIX=""
-if [[ -n "$DEFINE" && "$KEYBOARD" != "hhkb_classic" ]]; then
+if [[ -n "$DEFINE" && "$KEYBOARD" != "hhkb" ]]; then
     DEFINE_LOWER=$(echo "$DEFINE" | tr '[:upper:]' '[:lower:]')
     if [[ "$DEFINE_LOWER" == *left* ]]; then
         SUFFIX="_left"
@@ -362,7 +362,7 @@ if [[ -n "$DEFINE" && "$KEYBOARD" != "hhkb_classic" ]]; then
 fi
 TARGET_NAME="dmk_${KBD_BASE}_${MCU}${SUFFIX}"
 BUILD_DIR="${SCRIPT_DIR}/build"
-if [[ "$KBD_BASE" == "hhkb_classic" && "$MCU" == "stm32l072" ]]; then
+if [[ "$KBD_BASE" == "hhkb" && "$MCU" == "stm32l072" ]]; then
     BUILD_DIR="${SCRIPT_DIR}/build/hhkb-script"
 fi
 HRD_PROBE="${SCRIPT_DIR}/platforms/milandr/dep/probe/jlink4swd.cfg"
@@ -387,7 +387,7 @@ if [[ "$MCU" == "rp2350" ]]; then
 fi
 [[ -n "$MEMORY" ]] && CMAKE_ARGS+=(-DMEMORY="${MEMORY}")
 [[ -n "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE="${DEFINE}")
-[[ "$KBD_BASE" == "hhkb_classic" && -z "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE=)
+[[ "$KBD_BASE" == "hhkb" && -z "$DEFINE" ]] && CMAKE_ARGS+=(-DDEFINE=)
 [[ -n "$MODULES" ]] && CMAKE_ARGS+=(-DDMK_MODULES="${MODULES}")
 if [[ "$MCU" == "milandr" ]]; then
     if [[ "$DFU_MODE" == true ]]; then

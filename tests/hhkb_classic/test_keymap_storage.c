@@ -10,7 +10,7 @@ uint32_t dynamic_keymap[4][60];
 vial_storage_t vial_storage;
 static uint32_t mock_eeprom[768];
 #define SLOT_ADDRESS ((uintptr_t)mock_eeprom)
-#include "../../keyboards/hhkb_classic/modules/via_settings/hhkb_keymap_storage.c"
+#include "../../keyboards/hhkb/modules/via_settings/hhkb_keymap_storage.c"
 
 static void restart(void) {
     active_slot = -1;

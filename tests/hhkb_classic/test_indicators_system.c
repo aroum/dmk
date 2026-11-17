@@ -16,7 +16,7 @@ void hal_gpio_put(int p, bool v) { gpio[p] = v; }
 bool tud_suspended(void) { return suspended; }
 bool tud_mounted(void) { return true; }
 bool keyboard_power_saving_enabled(void) { return power_saving; }
-#include "../../keyboards/hhkb_classic/modules/indicators_system/indicators_system.c"
+#include "../../keyboards/hhkb/modules/indicators_system/indicators_system.c"
 
 int main(void) {
     keyboard_platform_init();
