@@ -1,4 +1,7 @@
 #include "ec_settings.h"
+#ifdef HHKB_HYBRID
+#include "hybrid.h"
+#endif
 #include "classic_matrix.h"
 #include "settings_storage_guard.h"
 #include "usb_descriptors.h"
@@ -40,6 +43,7 @@ static uint8_t s_actuation_offset_pct = 75;
 
 static uint8_t s_scan_rate = 4; // 1000 Hz
 #ifdef HHKB_HYBRID
+static volatile uint8_t s_bt_scan_rate = 5; // 200 Hz
 static uint8_t s_bt_sleep_minutes = 10;
 static bool s_bt_matrix_wake;
 #endif
@@ -179,6 +183,7 @@ void hhkb_calibration_save_to_eeprom(void) {
 #ifdef HHKB_HYBRID
     cal.reserved[0] = s_bt_sleep_minutes + 1;
     cal.reserved[1] = s_bt_matrix_wake;
+    cal.reserved[2] = s_bt_scan_rate + 1;
 #endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
     cal.classic_release_pm = s_classic_release_pm;
@@ -239,6 +244,8 @@ void hhkb_calibration_load(void) {
         if ((current || cal->version == 1) && cal->crc16 == expected_crc) {
             if (current) {
 #ifdef HHKB_HYBRID
+                if (cal->reserved[2] >= 1 && cal->reserved[2] <= 6)
+                    s_bt_scan_rate = cal->reserved[2] - 1;
                 if (cal->reserved[0] >= 1 && cal->reserved[0] <= 61) {
                     s_bt_sleep_minutes = cal->reserved[0] - 1;
                     s_bt_matrix_wake = cal->reserved[1] == 1;
@@ -706,6 +713,23 @@ bool hhkb_bt_matrix_wake(void) { return s_bt_matrix_wake; }
 void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake) {
     s_bt_sleep_minutes = minutes;
     s_bt_matrix_wake = matrix_wake;
+    hhkb_settings_mark_dirty();
+}
+#endif
+
+uint8_t hhkb_get_effective_scan_rate(void) {
+#ifdef HHKB_HYBRID
+    if (hhkb_hybrid_on_battery()) return hhkb_bt_scan_rate();
+#endif
+    return hhkb_get_scan_rate();
+}
+
+#ifdef HHKB_HYBRID
+uint8_t hhkb_bt_scan_rate(void) { return s_bt_scan_rate; }
+
+void hhkb_bt_set_scan_rate(uint8_t rate) {
+    if (rate > 5 || rate == s_bt_scan_rate) return;
+    s_bt_scan_rate = rate;
     hhkb_settings_mark_dirty();
 }
 #endif

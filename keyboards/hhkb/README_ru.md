@@ -19,7 +19,7 @@
 
 ## Варианты сборки
 
-Все варианты HHKB находятся в этой папке. Classic собирается командой `./build_all.sh -b hhkb`, Classic Type-S — с флагом `-d HHKB_TYPE_S`. Для проверочной сборки Hybrid используйте `-d HHKB_HYBRID` и [инструкцию по сборке и патчингу](hybrid.md). Флаги `HHKB_JIS` и `HHKB_STUDIO` зарезервированы: сборка остановится до проверки железа и раскладок.
+Все варианты HHKB находятся в этой папке. Classic собирается командой `./build_all.sh -b hhkb -d HHKB_CLASSIC`, Classic Type-S — с флагом `-d HHKB_CLASSIC_TYPE_S`. Для проверочной сборки Hybrid используйте `-d HHKB_HYBRID` и [инструкцию по сборке и патчингу](hybrid.md). Флаги `HHKB_JIS` и `HHKB_STUDIO` зарезервированы: сборка остановится до проверки железа и раскладок.
 
 Заметки о платах: [Hybrid](hybrid_board_readme.md) • [Studio](studio_board_readme.md)
 

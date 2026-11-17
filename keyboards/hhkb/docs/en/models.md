@@ -35,7 +35,7 @@ The following 7 models represent the physical 60-key ANSI (US Layout) revisions 
 
 3. **Classic vs. Type-S:**
    - **Classic (`AHHX01`):** Standard EC switches with full 4.0 mm travel. Uses the `classic` firmware build.
-   - **Type-S (`AHHS01`):** Factory silenced EC switches with internal dampening rings and ~3.8 mm travel. Uses the `type-s` firmware build (`HHKB_TYPE_S` compile flag).
+   - **Type-S (`AHHS01`):** Factory silenced EC switches with internal dampening rings and ~3.8 mm travel. Uses the `type-s` firmware build (`HHKB_CLASSIC_TYPE_S` compile flag).
 
 ---
 

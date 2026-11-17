@@ -7,7 +7,7 @@
 ## Build definitions
 
 - `HHKB_RAPID_TRIGGER` enables Rapid Trigger and its [VIA](https://www.usevia.app/) menu.
-- `HHKB_TYPE_S` selects the Type-S HFB model.
+- `HHKB_CLASSIC_TYPE_S` selects the Type-S HFB model.
 - `HHKB_ADC_16MHZ` clocks ADC from HCLK/2 instead of HCLK/4.
 - `HHKB_ADC_OVERSAMPLING` sets the initial [VIA](https://www.usevia.app/) preference for ×4 hardware averaging. ×4 operates only at 50–500 Hz; 1000 Hz always uses ×1. The user's preference is saved in EEPROM.
 - `HHKB_ADC_DMA` transfers each synchronized ADC1 result through DMA1 Channel 1. The scanner still triggers one conversion after each row strobe and waits for completion. On the tested board with ×4 oversampling, this did not improve scan speed.

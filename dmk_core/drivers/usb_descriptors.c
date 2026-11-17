@@ -397,6 +397,7 @@ __attribute__((weak)) bool hhkb_get_debug_flag(uint8_t flag) {
     return false;
 }
 __attribute__((weak)) uint8_t hhkb_get_scan_rate(void) { return 4; }
+__attribute__((weak)) uint8_t hhkb_get_effective_scan_rate(void) { return hhkb_get_scan_rate(); }
 __attribute__((weak)) void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full) {
     if (scan_us) *scan_us = 0;
     if (scan_max_us) *scan_max_us = 0;
@@ -433,9 +434,9 @@ void vial_diag_task(void) {
         }
 
         if (hhkb_get_debug_flag(1U << 2)) { // DEBUG_FLAG_RATE
-            static const uint16_t s_target_rates[5] = {50, 125, 250, 500, 1000};
-            uint8_t r_idx = hhkb_get_scan_rate();
-            uint16_t target_hz = (r_idx <= 4) ? s_target_rates[r_idx] : 1000;
+            static const uint16_t s_target_rates[] = {50, 125, 250, 500, 1000, 200};
+            uint8_t r_idx = hhkb_get_effective_scan_rate();
+            uint16_t target_hz = (r_idx < sizeof(s_target_rates) / sizeof(s_target_rates[0])) ? s_target_rates[r_idx] : 1000;
 #ifdef HHKB_SCAN_DIAGNOSTICS
             uint32_t scan_us = 0, scan_max_us = 0, work_max_us = 0, missed = 0, q_full = 0;
             hhkb_get_scan_diagnostics(&scan_us, &scan_max_us, &work_max_us, &missed, &q_full);

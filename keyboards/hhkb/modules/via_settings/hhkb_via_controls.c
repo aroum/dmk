@@ -22,6 +22,12 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         return true;
     }
 #ifdef HHKB_HYBRID
+    if (id == 45) {
+        if (request[0] == 0x08) response[3] = hhkb_bt_scan_rate();
+        else if (request[0] == 0x07 && request[3] <= 5) hhkb_bt_set_scan_rate(request[3]);
+        else return false;
+        return true;
+    }
     if (id == 40 || id == 41) {
         if (request[0] == 0x08) {
             response[3] = id == 40 ? hhkb_bt_sleep_minutes() : hhkb_bt_matrix_wake();

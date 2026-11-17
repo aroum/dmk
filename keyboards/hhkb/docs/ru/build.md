@@ -8,18 +8,18 @@
 
 ```bash
 # Classic: полная текущая конфигурация
-./build_all.sh -b hhkb -d HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
 # Classic Type-S: та же конфигурация и определение модели
-./build_all.sh -b hhkb -d HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
 ```powershell
-.\build_all.ps1 -Keyboard hhkb -Define HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
-.\build_all.ps1 -Keyboard hhkb -Define HHKB_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
-STM32L072 выбирается через `DEFAULT_MCU` в конфигурации клавиатуры, поэтому в команде сборки не нужен аргумент MCU. `HHKB_TYPE_S` нужен только для Classic Type-S. В каталоге результата создаются контейнер `.hfb` для PFU и сырой `.bin` для Bank 2; сборка не прошивает клавиатуру.
+STM32L072 выбирается через `DEFAULT_MCU` в конфигурации клавиатуры, поэтому в команде сборки не нужен аргумент MCU. `HHKB_CLASSIC_TYPE_S` нужен только для Classic Type-S. В каталоге результата создаются контейнер `.hfb` для PFU и сырой `.bin` для Bank 2; сборка не прошивает клавиатуру.
 
 HFB получает версию A4.50 для Classic и A8.50 для Type-S. Упаковщик вычисляет обе контрольные суммы и задаёт соответствующий идентификатор модели PFU.
 
@@ -67,6 +67,6 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 
 В каждом архиве лежат `.hfb` для выбранной модели и [via.json](../../via.json) для загрузки пользовательского меню через вкладку Design [веб-версии VIA](https://www.usevia.app/). Выбирайте архив по модели клавиатуры; сборка Type-S пока проверена компилятором, на плате проверялась обычная Classic.
 
-Обе сборки используют `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S дополнительно использует `HHKB_TYPE_S`. [VIA](https://www.usevia.app/) v3 и Vial, пользовательская калибровка, настройка частоты, актуации, Rapid Trigger, LED, слоёв и hold-tap включены конфигурацией клавиатуры. `HHKB_ADC_DMA` в workflow не включён.
+Обе сборки используют `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S дополнительно использует `HHKB_CLASSIC_TYPE_S`. [VIA](https://www.usevia.app/) v3 и Vial, пользовательская калибровка, настройка частоты, актуации, Rapid Trigger, LED, слоёв и hold-tap включены конфигурацией клавиатуры. `HHKB_ADC_DMA` в workflow не включён.
 
 `HHKB_ADC_OVERSAMPLING` задаёт начальное положение переключателя [VIA](https://www.usevia.app/): ×4 действует при 50–500 Гц, а при 1000 Гц АЦП принудительно использует ×1. Выбор пользователя сохраняется и снова применяется после перехода на 500 Гц или ниже. Публикация артефакта не прошивает клавиатуру; порядок установки описан в [Установке](install.md).

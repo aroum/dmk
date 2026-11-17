@@ -107,7 +107,7 @@ void hhkb_matrix_hardware_init(void) {
 __attribute__((section(".RamFunc"), optimize("O2")))
 bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     hhkb_record_matrix_scan();
-    bool oversampling = hhkb_get_oversampling() && hhkb_get_scan_rate() <= 3;
+    bool oversampling = hhkb_get_oversampling() && hhkb_get_effective_scan_rate() != 4;
     if (oversampling != s_oversampling_applied) {
         while (ADC1->CR & ADC_CR_ADSTART);
         ADC1->CR |= ADC_CR_ADDIS;

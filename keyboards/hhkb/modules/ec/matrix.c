@@ -21,20 +21,9 @@ static volatile uint8_t s_scan_divider;
 static uint8_t s_scan_phase;
 static uint8_t s_scan_rate_applied;
 
-static uint8_t effective_scan_rate(void) {
-#ifdef HHKB_HYBRID
-#ifdef HHKB_BT_SCAN_50HZ
-    if (hhkb_hybrid_on_battery()) return 0;
-#else
-    if (hhkb_hybrid_on_battery()) return 5; // 5 ms period from the reference port.
-#endif
-#endif
-    return hhkb_get_scan_rate();
-}
-
 static void update_scan_period(void) {
     static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000, 5000};
-    uint8_t rate = effective_scan_rate();
+    uint8_t rate = hhkb_get_effective_scan_rate();
     if (rate >= sizeof(period_us) / sizeof(period_us[0])) rate = 4;
     s_scan_rate_applied = rate;
     s_scan_period_ticks = period_us[rate] * HHKB_SCAN_TIMER_TICKS_PER_US;
@@ -185,7 +174,7 @@ void matrix_task(void *pvParameters) {
         }
 
 #ifdef HHKB_SCAN_1KHZ
-        if (s_scan_rate_applied != effective_scan_rate()) {
+        if (s_scan_rate_applied != hhkb_get_effective_scan_rate()) {
             NVIC_DisableIRQ(TIM2_IRQn);
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);

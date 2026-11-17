@@ -1080,6 +1080,7 @@
           "showIf": "{id_hhkb_hybrid} == 1",
           "content": [
             {"label":"Hybrid support","type":"toggle","content":["id_hhkb_hybrid",0,44],"showIf":"{id_hhkb_hybrid} == 2"},
+            {"label":"Battery matrix scan rate","type":"dropdown","options":[["50 Hz",0],["125 Hz",1],["200 Hz",5],["250 Hz",2],["500 Hz",3],["1000 Hz",4]],"content":["id_hhkb_bt_scan_rate",0,45]},
             {"label":"Sleep timeout (minutes, 0 disables)","type":"range","options":[0,60],"content":["id_hhkb_bt_sleep",0,40]},
             {"label":"Wake with matrix (1 Hz while asleep)","type":"toggle","content":["id_hhkb_bt_matrix_wake",0,41]},
             {"label":"Select paired profile","type":"dropdown","options":[["Choose profile",0],["Profile 1",1],["Profile 2",2],["Profile 3",3],["Profile 4",4]],"content":["id_hhkb_bt_slot",0,42]},

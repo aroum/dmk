@@ -54,6 +54,8 @@ void hhkb_settings_mark_dirty(void);
 void vial_keyboard_eeprom_task(void);
 
 #ifdef HHKB_HYBRID
+uint8_t hhkb_bt_scan_rate(void);
+void hhkb_bt_set_scan_rate(uint8_t rate);
 uint8_t hhkb_bt_sleep_minutes(void);
 bool hhkb_bt_matrix_wake(void);
 void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake);
@@ -61,6 +63,7 @@ void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake);
 
 // Getters & Setters for VIA
 uint8_t hhkb_get_scan_rate(void);
+uint8_t hhkb_get_effective_scan_rate(void);
 void hhkb_set_scan_rate(uint8_t rate);
 bool hhkb_get_power_saving(void);
 void hhkb_set_power_saving(bool enabled);
