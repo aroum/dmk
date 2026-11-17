@@ -3,6 +3,7 @@
 
 #ifdef HHKB_HYBRID
 #define VIAL_KEYBOARD_NAME "HHKB Professional Hybrid"
+#define VIAL_PRODUCT_ID 0x4011
 #else
 #define VIAL_KEYBOARD_NAME "HHKB Professional Classic"
 #endif

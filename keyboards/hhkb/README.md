@@ -6,7 +6,7 @@
 
 Alternative firmware for the HHKB Professional Classic. It runs directly on the original STM32L072 controller: no controller replacement, soldering, or keyboard disassembly is required.
 
-**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md)
+**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md) • [Hybrid](hybrid.md)
 
 Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Releases page](https://github.com/aroum/dmk/releases).
 
@@ -19,7 +19,7 @@ See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, c
 
 ## Build variants
 
-All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the development build and see the [Hybrid build and patch guide](hybrid.md). `HHKB_JIS` and `HHKB_STUDIO` reserve the JIS and Studio variants and stop the build until their hardware and layouts are verified.
+All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](hybrid.md). `HHKB_JIS` and `HHKB_STUDIO` reserve the JIS and Studio variants and stop the build until their hardware and layouts are verified.
 
 Board notes: [Hybrid](hybrid_board_readme.md) • [Studio](studio_board_readme.md)
 
@@ -57,9 +57,9 @@ The original firmware can be restored using the documented Bank 1/SW6 recovery p
 
 ## VIA vs Vial
 
-[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED, as well as a **Debug** menu displaying the dynamic **Firmware Version** read directly from controller memory. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via.json`.
+[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED, as well as a **Debug** menu displaying the dynamic **Firmware Version** read directly from controller memory. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via_classic.json` for Classic or `via_hybrid.json` for Hybrid.
 
-Vial supports runtime keymap editing through `vial.json`, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, Rapid Trigger settings, and runtime version queries.
+Vial supports runtime keymap editing through `vial_classic.json` for Classic or `vial_hybrid.json` for Hybrid, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, Rapid Trigger settings, and runtime version queries.
 
 ## DIP switches
 
@@ -71,7 +71,7 @@ Possible future uses include assigning switch functions through [VIA](https://ww
 
 ### HHKB Professional Hybrid / Hybrid JIS
 
-USB mode can run DMK; Bluetooth needs separate work. A test keyboard is needed for reliable support. If you can test or provide board information, please send a Reddit DM.
+The [Hybrid build](hybrid.md) includes the stock nRF SPI transport, Bluetooth profiles, battery controls, and STOP power mode. These paths still need validation on a Hybrid keyboard. If you can test or provide board information, please send a Reddit DM.
 
 ### HHKB Professional Classic JIS
 
@@ -91,6 +91,6 @@ Realforce R3 and newer models use a similar firmware-update container format, so
 - `modules/dip_switch/` — DIP switch input.
 - `modules/via_settings/` — VIA commands and persistent settings.
 - `modules/indicators_system/` — LEDs and the two-system layer selector.
-- `via.json` — VIA v3 definition with custom controls.
-- `vial.json` — Vial definition without VIA v3 custom controls.
+- `via_classic.json`, `via_hybrid.json` — model-specific VIA v3 definitions with custom controls.
+- `vial_classic.json`, `vial_hybrid.json` — model-specific Vial definitions without VIA v3 custom controls.
 - `docs/` — board documentation and research notes.

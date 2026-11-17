@@ -245,7 +245,7 @@ static bool usb_hid_complete_send(bool sent) {
 bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
     if (!report || !s_keyboard_queue) return false;
 #ifdef HHKB_HYBRID
-    if (hhkb_hybrid_on_battery()) {
+    if (hhkb_hybrid_output_bluetooth()) {
         hhkb_hybrid_report(report->Modifier, report->Keycodes);
         return true;
     }

@@ -6,7 +6,7 @@
 
 Альтернативная прошивка для HHKB Professional Classic. Она работает на штатном STM32L072: не нужны замена контроллера, пайка или разборка клавиатуры.
 
-**Документация:** [Установка](docs/ru/install.md) • [Поддерживаемые модели](docs/ru/models.md) • [Бэкап и восстановление](docs/ru/backup-restore.md) • [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [VIA](docs/ru/via.md)
+**Документация:** [Установка](docs/ru/install.md) • [Поддерживаемые модели](docs/ru/models.md) • [Бэкап и восстановление](docs/ru/backup-restore.md) • [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [VIA](docs/ru/via.md) • [Hybrid](hybrid_ru.md)
 
 Готовые прошивки для Classic и Classic Type-S публикуются на странице [GitHub Releases](https://github.com/aroum/dmk/releases).
 
@@ -19,7 +19,7 @@
 
 ## Варианты сборки
 
-Все варианты HHKB находятся в этой папке. Classic собирается командой `./build_all.sh -b hhkb -d HHKB_CLASSIC`, Classic Type-S — с флагом `-d HHKB_CLASSIC_TYPE_S`. Для проверочной сборки Hybrid используйте `-d HHKB_HYBRID` и [инструкцию по сборке и патчингу](hybrid.md). Флаги `HHKB_JIS` и `HHKB_STUDIO` зарезервированы: сборка остановится до проверки железа и раскладок.
+Все варианты HHKB находятся в этой папке. Classic собирается командой `./build_all.sh -b hhkb -d HHKB_CLASSIC`, Classic Type-S — с флагом `-d HHKB_CLASSIC_TYPE_S`. Для сборки Hybrid используйте `-d HHKB_HYBRID` и [инструкцию по сборке и патчингу](hybrid_ru.md). Флаги `HHKB_JIS` и `HHKB_STUDIO` зарезервированы: сборка остановится до проверки железа и раскладок.
 
 Заметки о платах: [Hybrid](hybrid_board_readme.md) • [Studio](studio_board_readme.md)
 
@@ -57,9 +57,9 @@
 
 ## VIA и Vial
 
-В [VIA](https://www.usevia.app/) доступно единое меню **HHKB Settings** с подменю Scan Rate, Calibration, Rapid Trigger, LED, а также диагностическое меню **Debug** с отображением динамической **Firmware Version**, читаемой напрямую из памяти контроллера. Пользовательские контролы доступны только в веб-версии VIA, но не в Vial и не в других клиентах VIA. Чтобы загрузить их, откройте **Settings**, включите **Show Design tab**, затем на вкладке **Design** выберите **Load Draft Definition** и укажите `via.json`.
+В [VIA](https://www.usevia.app/) доступно единое меню **HHKB Settings** с подменю Scan Rate, Calibration, Rapid Trigger, LED, а также диагностическое меню **Debug** с отображением динамической **Firmware Version**, читаемой напрямую из памяти контроллера. Пользовательские контролы доступны только в веб-версии VIA, но не в Vial и не в других клиентах VIA. Чтобы загрузить их, откройте **Settings**, включите **Show Design tab**, затем на вкладке **Design** выберите **Load Draft Definition** и укажите `via_classic.json` для Classic или `via_hybrid.json` для Hybrid.
 
-Vial поддерживает изменение раскладки через `vial.json`, но не поддерживает пользовательские контролы. Для калибровки, частоты, LED, Rapid Trigger и чтения версии используйте [VIA](https://www.usevia.app/).
+Vial поддерживает изменение раскладки через `vial_classic.json` для Classic или `vial_hybrid.json` для Hybrid, но не поддерживает пользовательские контролы. Для калибровки, частоты, LED, Rapid Trigger и чтения версии используйте [VIA](https://www.usevia.app/).
 
 ## DIP-переключатели
 
@@ -71,7 +71,7 @@ DMK читает все шесть DIP-переключателей. SW6 пок�
 
 ### HHKB Professional Hybrid / Hybrid JIS
 
-DMK уже можно запустить в USB-режиме; Bluetooth требует отдельной работы. Для надёжной поддержки нужна тестовая клавиатура. Если можете помочь с тестированием или информацией о плате, напишите в Reddit DM.
+В [сборку Hybrid](hybrid_ru.md) добавлены SPI-обмен со штатным nRF, профили Bluetooth, контроль батареи и режим STOP. Эти функции ещё нужно проверить на самой клавиатуре Hybrid. Если можете помочь с тестированием или информацией о плате, напишите в Reddit DM.
 
 ### HHKB Professional Classic JIS
 

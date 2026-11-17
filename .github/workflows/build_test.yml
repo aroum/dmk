@@ -101,10 +101,10 @@ jobs:
 
       - name: Package HFB and VIA layout
         run: |
-          python3 -m json.tool keyboards/hhkb/via.json > /dev/null
+          python3 -m json.tool keyboards/hhkb/via_classic.json > /dev/null
           mkdir -p build/hhkb-release
           cp build/hhkb-script/*.hfb build/hhkb-release/dmk-hhkb-classic-${{ matrix.variant }}-via.hfb
-          cp keyboards/hhkb/via.json build/hhkb-release/
+          cp keyboards/hhkb/via_classic.json build/hhkb-release/
 
       - name: Upload HFB
         uses: actions/upload-artifact@v7

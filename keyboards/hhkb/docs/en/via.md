@@ -1,5 +1,11 @@
 **Language:** [English](via.md) | [Русский](../ru/via.md)
 
+### Hybrid battery and Bluetooth LEDs
+
+In the **Bluetooth** menu, enable the orange battery display, then click **Show battery now** or assign **BT Battery** to a key. One, two, three, or four flashes indicate 0%, 5%, 15%, or above 15%, respectively. The 100% value means all three factory low-battery thresholds are inactive; it is not a precise charge measurement. Separate toggles enable an orange low-battery warning (one flash every 30 seconds at 15%; two every 15 seconds at 5% or 0%), blue blinking while pairing (2 Hz pending, 4 Hz advertising), and 1–4 blue flashes when a profile is selected or connected. These settings are saved in EEPROM and need validation on Hybrid hardware.
+
+**PC5 short press** (0–0.5 seconds) can show the connected profile (default), show battery level, sleep, select the next Bluetooth profile, or switch between the last Bluetooth profile and USB. **PC5 long press** can turn power off (default), sleep, or pair the last Bluetooth profile. A one-second hold while OFF always powers on. The same actions have assignable **BT Power**, **BT Sleep**, **BT Pair Last**, **BT Profile**, **BT Battery**, **BT Next**, and **BT / USB** keycodes. The default inactivity timeout is 30 minutes, or at most 10 minutes during pairing. On battery, OFF and sleep without matrix wake enter STM32 STOP and stop the nRF. PC5 or USB insertion resets the controller to wake it. With matrix wake enabled, sleep samples the matrix at 1 Hz instead. When USB is absent, selecting USB is deferred until it is connected. The STOP path needs validation on Hybrid hardware.
+
 ### Travel curve
 
 The ADC dropdowns use 1% steps: 2–94% at 1 mm, 4–96% at 2 mm, and 6–98% at 3 mm. To preview the actual lookup table and check the limits, run from the repository root:
@@ -20,7 +26,7 @@ The active curve applies to actuation, classic hysteresis and Rapid Trigger. Req
 
 1. Open the [VIA web app](https://www.usevia.app/).
 2. Open **Settings** and enable **Show Design tab**.
-3. Open the new **Design** tab, choose **Load Draft Definition**, and select `via.json` from this directory or the release assets.
+3. Open the new **Design** tab, choose **Load Draft Definition**, and select `via_classic.json` for Classic or `via_hybrid.json` for Hybrid from the keyboard directory or release assets.
 4. Connect the keyboard and open **HHKB Settings**.
 
 > [!TIP]
@@ -38,7 +44,7 @@ EOF
 sudo udevadm control --reload-rules
 ```
 
-Unplug and reconnect the keyboard's USB cable, reload VIA, and select the HHKB through **Authorize device**. Use the same `via.json`.
+Unplug and reconnect the keyboard's USB cable, reload VIA, and select the HHKB through **Authorize device**. Use the same `via_classic.json`.
 
 If the error persists, open `chrome://device-log`, try connecting through VIA again, and check for entries containing `HID` or `hidraw`.
 
@@ -46,11 +52,11 @@ If the error persists, open `chrome://device-log`, try connecting through VIA ag
 
 [VIA](https://www.usevia.app/) supports the custom **HHKB Settings** interface: Scan Rate, Calibration, Rapid Trigger, LED, and Debug. These custom controls are available only in the VIA web app. Rapid Trigger is shown only by firmware built with `HHKB_RAPID_TRIGGER`.
 
-Vial uses `vial.json` and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
+Vial uses `vial_classic.json` for Classic and `vial_hybrid.json` for Hybrid and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
 
 ## Select a system
 
-With the updated firmware and `via.json`, assign **System 1** or **System 2** in the VIA keycode picker. Through **Any**, use `0x7E00` for System 1 and `0x7E01` for System 2. System 1 uses layers 0 and 1, and System 2 uses layers 2 and 3. Place each selector where it can be reached from the other system.
+With the updated firmware and `via_classic.json`, assign **System 1** or **System 2** in the VIA keycode picker. Through **Any**, use `0x7E00` for System 1 and `0x7E01` for System 2. System 1 uses layers 0 and 1, and System 2 uses layers 2 and 3. Place each selector where it can be reached from the other system.
 
 ## HHKB Settings Menu Reference
 

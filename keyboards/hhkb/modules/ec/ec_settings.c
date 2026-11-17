@@ -44,8 +44,12 @@ static uint8_t s_actuation_offset_pct = 75;
 static uint8_t s_scan_rate = 4; // 1000 Hz
 #ifdef HHKB_HYBRID
 static volatile uint8_t s_bt_scan_rate = 5; // 200 Hz
-static uint8_t s_bt_sleep_minutes = 10;
+static uint8_t s_bt_sleep_minutes = 30;
 static bool s_bt_matrix_wake;
+static uint8_t s_bt_indicator_flags = 0x0f;
+static uint8_t s_bt_short_action = 1; // Stock: show the connected profile.
+static uint8_t s_bt_long_action = 0;  // Stock: power off after 2 seconds.
+static uint8_t s_bt_last_slot;
 #endif
 static bool s_power_saving = true; // Enabled by default
 static bool s_oversampling_requested = false;
@@ -182,8 +186,10 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.debug_flags = s_debug_flags;
 #ifdef HHKB_HYBRID
     cal.reserved[0] = s_bt_sleep_minutes + 1;
-    cal.reserved[1] = s_bt_matrix_wake;
-    cal.reserved[2] = s_bt_scan_rate + 1;
+    cal.reserved[1] = (s_bt_matrix_wake ? 1 : 0) |
+                      (s_bt_indicator_flags << 1) | (s_bt_short_action << 5);
+    cal.reserved[2] = 0x80 | (s_bt_scan_rate + 1) |
+                      (s_bt_long_action << 3) | (s_bt_last_slot << 5);
 #endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
     cal.classic_release_pm = s_classic_release_pm;
@@ -244,11 +250,24 @@ void hhkb_calibration_load(void) {
         if ((current || cal->version == 1) && cal->crc16 == expected_crc) {
             if (current) {
 #ifdef HHKB_HYBRID
-                if (cal->reserved[2] >= 1 && cal->reserved[2] <= 6)
-                    s_bt_scan_rate = cal->reserved[2] - 1;
+                uint8_t stored_rate = cal->reserved[2] & 7;
+                if (stored_rate >= 1 && stored_rate <= 6)
+                    s_bt_scan_rate = stored_rate - 1;
                 if (cal->reserved[0] >= 1 && cal->reserved[0] <= 61) {
                     s_bt_sleep_minutes = cal->reserved[0] - 1;
-                    s_bt_matrix_wake = cal->reserved[1] == 1;
+                    s_bt_matrix_wake = (cal->reserved[1] & 1) != 0;
+                    // Older records used only bit 0; preserve the new defaults.
+                    if (cal->reserved[2] & 0x80) {
+                        s_bt_indicator_flags = (cal->reserved[1] >> 1) & 0x0f;
+                        s_bt_short_action = (cal->reserved[1] >> 5) & 7;
+                        s_bt_long_action = (cal->reserved[2] >> 3) & 3;
+                        s_bt_last_slot = (cal->reserved[2] >> 5) & 3;
+                    } else if (cal->reserved[1] & 0x80) {
+                        // Earlier local Hybrid layout kept its marker in byte 1.
+                        s_bt_indicator_flags = (cal->reserved[1] >> 1) & 0x0f;
+                        s_bt_short_action = (cal->reserved[1] >> 5) & 3;
+                        s_bt_long_action = (cal->reserved[2] >> 3) & 3;
+                    }
                 }
 #endif
                 for (unsigned i = 0; i < EC_CURVE_FIELDS; ++i)
@@ -730,6 +749,31 @@ uint8_t hhkb_bt_scan_rate(void) { return s_bt_scan_rate; }
 void hhkb_bt_set_scan_rate(uint8_t rate) {
     if (rate > 5 || rate == s_bt_scan_rate) return;
     s_bt_scan_rate = rate;
+    hhkb_settings_mark_dirty();
+}
+uint8_t hhkb_bt_indicator_flags(void) { return s_bt_indicator_flags; }
+void hhkb_bt_set_indicator_flag(uint8_t flag, bool enabled) {
+    if (flag >= 4) return;
+    uint8_t mask = 1U << flag;
+    uint8_t updated = enabled ? (s_bt_indicator_flags | mask) : (s_bt_indicator_flags & ~mask);
+    if (updated == s_bt_indicator_flags) return;
+    s_bt_indicator_flags = updated;
+    hhkb_settings_mark_dirty();
+}
+uint8_t hhkb_bt_button_action(bool long_press) {
+    return long_press ? s_bt_long_action : s_bt_short_action;
+}
+void hhkb_bt_set_button_action(bool long_press, uint8_t action) {
+    if (action > (long_press ? 2 : 5)) return;
+    uint8_t *target = long_press ? &s_bt_long_action : &s_bt_short_action;
+    if (*target == action) return;
+    *target = action;
+    hhkb_settings_mark_dirty();
+}
+uint8_t hhkb_bt_last_slot(void) { return s_bt_last_slot; }
+void hhkb_bt_set_last_slot(uint8_t slot) {
+    if (slot > 3 || slot == s_bt_last_slot) return;
+    s_bt_last_slot = slot;
     hhkb_settings_mark_dirty();
 }
 #endif

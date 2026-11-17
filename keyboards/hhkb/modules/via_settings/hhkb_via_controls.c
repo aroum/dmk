@@ -13,6 +13,34 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
+#ifdef HHKB_HYBRID
+    if (id == 52 || id == 53) {
+        bool long_press = id == 53;
+        if (request[0] == 0x08) response[3] = hhkb_bt_button_action(long_press);
+        else if (request[0] == 0x07 && request[3] <= 3)
+            hhkb_bt_set_button_action(long_press, request[3]);
+        else return false;
+        return true;
+    }
+    if (id >= 46 && id <= 50) {
+        if (id == 50) {
+            if (request[0] == 0x08) response[3] = hhkb_hybrid_battery_level();
+            else return false;
+            return true;
+        }
+        if (request[0] == 0x08) response[3] = (hhkb_bt_indicator_flags() >> (id - 46)) & 1;
+        else if (request[0] == 0x07 && request[3] <= 1)
+            hhkb_bt_set_indicator_flag(id - 46, request[3] != 0);
+        else return false;
+        return true;
+    }
+    if (id == 51) {
+        if (request[0] == 0x08) response[3] = 0;
+        else if (request[0] == 0x07 && request[3]) hhkb_hybrid_show_battery();
+        else return false;
+        return true;
+    }
+#endif
     if (id == 44 && request[0] == 0x08) {
 #ifdef HHKB_HYBRID
         response[3] = 1;

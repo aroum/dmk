@@ -59,6 +59,12 @@ void hhkb_bt_set_scan_rate(uint8_t rate);
 uint8_t hhkb_bt_sleep_minutes(void);
 bool hhkb_bt_matrix_wake(void);
 void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake);
+uint8_t hhkb_bt_indicator_flags(void);
+void hhkb_bt_set_indicator_flag(uint8_t flag, bool enabled);
+uint8_t hhkb_bt_button_action(bool long_press);
+void hhkb_bt_set_button_action(bool long_press, uint8_t action);
+uint8_t hhkb_bt_last_slot(void);
+void hhkb_bt_set_last_slot(uint8_t slot);
 #endif
 
 // Getters & Setters for VIA

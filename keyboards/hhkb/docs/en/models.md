@@ -57,16 +57,85 @@ The following 7 models represent the physical 60-key ANSI (US Layout) revisions 
 If you own a `PD-KB421` model, you can assist in enabling support:
 1. **EEPROM Calibration Dump:** Read factory baseline/threshold data at `0x08081000–0x080813FF` to extract factory EC calibration values for the JIS layout.
 2. **Matrix Pin Tracing:** Run a diagnostic build with HID Console logging enabled to map each physical switch press to its corresponding (Col, Row) ADC coordinate.
-3. **Layout Mapping:** Assist in drafting the 69-key `via.json` / `vial.json` matrix coordinate definition.
+3. **Layout Mapping:** Assist in drafting the 69-key `via_classic.json` / `vial_classic.json` matrix coordinate definition.
 
 Interested volunteers can open an issue or reach out via GitHub Discussions.
 
 ---
 
-## Incompatible Keyboards
+## HHKB Professional HYBRID & HYBRID Type-S (Bluetooth LE Models)
 
-The following keyboards are **not supported**:
+The HHKB HYBRID family shares the same core controller architecture as the Classic, supplemented by a Nordic Semiconductor nRF52832 Bluetooth Low Energy subsystem and dual-source battery power management.
 
-- **HHKB Professional HYBRID / HYBRID Type-S:** Dual-board design with Bluetooth LE transceiver and different pinout / power management.
+### Standard HHKB Professional HYBRID (Wired USB-C + Bluetooth 5.0)
+
+| Commercial Name | Model Number | Layout | Case Color | Keycap Color | Legends | Switch Type | Hardware Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **HHKB Pro HYBRID (White)** | `PD-KB800W` | ANSI 60-key | White | White / Gray | Dyesub Printed | Standard EC 45g | In Development |
+| **HHKB Pro HYBRID (Charcoal)** | `PD-KB800B` | ANSI 60-key | Charcoal | Charcoal | Dyesub Printed | Standard EC 45g | In Development |
+| **HHKB Pro HYBRID (White, Blank)** | `PD-KB800WN` | ANSI 60-key | White | White / Gray | Blank (無刻印) | Standard EC 45g | In Development |
+| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal | Charcoal | Blank (無刻印) | Standard EC 45g | In Development |
+| **HHKB Pro HYBRID JIS (White)** | `PD-KB820W` | JIS 69-key | White | White / Gray | Dyesub Printed | Standard EC 45g | Planned |
+| **HHKB Pro HYBRID JIS (Charcoal)** | `PD-KB820B` | JIS 69-key | Charcoal | Charcoal | Dyesub Printed | Standard EC 45g | Planned |
+
+### HHKB Professional HYBRID Type-S (Silenced EC + Bluetooth 5.0)
+
+| Commercial Name | Model Number | Layout | Case Color | Keycap Color | Legends | Switch Type | Hardware Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **HHKB Pro HYBRID Type-S (White)** | `PD-KB800WS` | ANSI 60-key | White | White / Gray | Dyesub Printed | Silent Type-S 45g | In Development |
+| **HHKB Pro HYBRID Type-S (Charcoal)** | `PD-KB800BS` | ANSI 60-key | Charcoal | Charcoal | Dyesub Printed | Silent Type-S 45g | In Development |
+| **HHKB Pro HYBRID Type-S (White, Blank)** | `PD-KB800WNS` | ANSI 60-key | White | White / Gray | Blank (無刻印) | Silent Type-S 45g | In Development |
+| **HHKB Pro HYBRID Type-S (Charcoal, Blank)** | `PD-KB800BNS` | ANSI 60-key | Charcoal | Charcoal | Blank (無刻印) | Silent Type-S 45g | In Development |
+| **HHKB Pro HYBRID Type-S (Snow)** | `PD-KB800YS` | ANSI 60-key | Snow White | Snow White | Dyesub Printed | Silent Type-S 45g | In Development |
+| **HHKB Pro HYBRID Type-S (Snow, Blank)** | `PD-KB800YNS` | ANSI 60-key | Snow White | Snow White | Blank (無刻印) | Silent Type-S 45g | In Development |
+| **HHKB Pro HYBRID Type-S JIS (White)** | `PD-KB820WS` | JIS 69-key | White | White / Gray | Dyesub Printed | Silent Type-S 45g | Planned |
+| **HHKB Pro HYBRID Type-S JIS (Charcoal)** | `PD-KB820BS` | JIS 69-key | Charcoal | Charcoal | Dyesub Printed | Silent Type-S 45g | Planned |
+| **HHKB Pro HYBRID Type-S JIS (Snow)** | `PD-KB820YS` | JIS 69-key | Snow White | Snow White | Dyesub Printed | Silent Type-S 45g | Planned |
+| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)** | `PD-KB820YNS` | JIS 69-key | Snow White | Snow White | Blank (無刻印) | Silent Type-S 45g | Planned |
+
+### HHKB Professional HYBRID Type-S 30th Anniversary Special Editions
+
+| Commercial Name | Model Number | Layout | Case Color | Keycap Color | Legends | Switch Type | Hardware Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **HHKB HYBRID Type-S 30th Anniv (Charcoal)** | `PD-KB800BSC1` | ANSI 60-key | Charcoal | Charcoal | Dyesub Printed | Silent Type-S 45g | In Development |
+| **HHKB HYBRID Type-S 30th Anniv (White)** | `PD-KB800WSC1` | ANSI 60-key | White | White / Gray | Dyesub Printed | Silent Type-S 45g | In Development |
+| **HHKB HYBRID Type-S 30th Anniv (Snow)** | `PD-KB800YSC1` | ANSI 60-key | Snow White | Snow White | Dyesub Printed | Silent Type-S 45g | In Development |
+| **HHKB HYBRID Type-S JIS 30th Anniv (Charcoal)** | `PD-KB820BSC1` | JIS 69-key | Charcoal | Charcoal | Dyesub Printed | Silent Type-S 45g | Planned |
+| **HHKB HYBRID Type-S JIS 30th Anniv (White)** | `PD-KB820WSC1` | JIS 69-key | White | White / Gray | Dyesub Printed | Silent Type-S 45g | Planned |
+| **HHKB HYBRID Type-S JIS 30th Anniv (Snow)** | `PD-KB820YSC1` | JIS 69-key | Snow White | Snow White | Dyesub Printed | Silent Type-S 45g | Planned |
+
+---
+
+## HHKB Studio (Mechanical & Gesture Architecture)
+
+The HHKB Studio represents a mechanical switch architecture featuring hot-swappable MX-compatible switches, an integrated pointing stick (TrackPoint), 3 dedicated mouse buttons, and 4 capacitive gesture pads.
+
+| Commercial Name | Model Number | Layout | Case Color | Keycap Color | Switch Type | Hardware Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **HHKB Studio (Charcoal, ANSI)** | `PD-ID100B` | ANSI 60-key + 3 Mouse | Charcoal | Charcoal | Mechanical Linear 45g (Hot-swap) | Hardware Investigation |
+| **HHKB Studio (Snow, ANSI)** | `PD-ID100Y` | ANSI 60-key + 3 Mouse | Snow White | Snow White | Mechanical Linear 45g (Hot-swap) | Hardware Investigation |
+| **HHKB Studio (Charcoal, JIS)** | `PD-ID120B` | JIS 69-key + 3 Mouse | Charcoal | Charcoal | Mechanical Linear 45g (Hot-swap) | Hardware Investigation |
+| **HHKB Studio (Snow, JIS)** | `PD-ID120Y` | JIS 69-key + 3 Mouse | Snow White | Snow White | Mechanical Linear 45g (Hot-swap) | Hardware Investigation |
+
+---
+
+## Technical Comparison Across Generations
+
+| Feature | HHKB Professional Classic | HHKB Professional HYBRID | HHKB Studio |
+| :--- | :--- | :--- | :--- |
+| **Switch Technology** | Electro-capacitive EC 45g | Electro-capacitive EC 45g | Mechanical Hot-Swap MX (Linear 45g) |
+| **Main MCU** | STM32L072CZ (ARM Cortex-M0+) | STM32L072CZ (ARM Cortex-M0+) | STM32L4 series (ARM Cortex-M4) |
+| **Wireless Transceiver** | None (Wired USB-C only) | Taiyo Yuden EYSHCNZWZ (nRF52832) | Nordic nRF52 series (BLE 5.0) |
+| **Pointing Device** | None | None | Isometric Pointing Stick + 3 Mouse Buttons |
+| **Gesture Controls** | None | None | 4× Capacitive Touch Gesture Pads |
+| **Power Source** | USB-C Bus Power (5V) | 2× AA Batteries / USB-C | 4× AA Batteries / USB-C |
+| **DMK Firmware Status** | Native Support (1000 Hz, RT) | In Development (Wired + BLE) | Exploratory Research |
+
+---
+
+## Legacy Incompatible Keyboards
+
+The following legacy keyboards are **not supported**:
+
 - **HHKB Professional 2 / Pro 2 Type-S:** Legacy models powered by Fujitsu MB90F395 / Cypress controllers with USB mini-B connectors.
-- **HHKB Studio:** Mechanical switch model with pointing stick and separate MCU architecture.
+- **HHKB Lite / Lite 2:** Membrane-based entry-level keyboards with PS/2 or USB interfaces.
