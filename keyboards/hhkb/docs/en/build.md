@@ -70,3 +70,23 @@ Each archive contains the model-specific `.hfb` and [via_classic.json](../../via
 Both builds use `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S also uses `HHKB_CLASSIC_TYPE_S`. The keyboard configuration enables [VIA](https://www.usevia.app/) v3 and Vial, custom calibration, scan rate, actuation, Rapid Trigger, LEDs, layers, and hold-tap settings. `HHKB_ADC_DMA` is not enabled in this workflow.
 
 `HHKB_ADC_OVERSAMPLING` sets the initial [VIA](https://www.usevia.app/) toggle state: ×4 applies at 50–500 Hz, while 1000 Hz forces ×1. The saved preference applies again when the rate drops to 500 Hz or less. Downloading an artifact does not flash the keyboard; see [Install](install.md).
+
+## Hybrid only: local build and factory-image patch
+
+Obtain the exact official `HHKB800_FW_A048.hfb` separately from the [HHKB download center](https://happyhackingkb.com/download/) or your saved copy. The patcher expects SHA-256 `635b995eb5a15aa50c2cedc60da7d8998fcca8285a09d41d984c07fffcaf9d43`. Keep original and generated containers in the Git-ignored `keyboards/hhkb/local/` directory.
+
+From the repository root:
+
+```bash
+mkdir -p keyboards/hhkb/local
+# Place the unmodified HHKB800_FW_A048.hfb in keyboards/hhkb/local/ first.
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+python3 tools/hhkb/patch_hybrid_hfb.py \
+  build/hhkb-script/dmk_hhkb_stm32l072.bin \
+  keyboards/hhkb/local/HHKB800_FW_A048.hfb \
+  keyboards/hhkb/local/dmk_hybrid.hfb
+```
+
+`-c` requests a clean build. `HHKB_HYBRID` selects Hybrid and its SPI transport. The other definitions enable Rapid Trigger, a 16 MHz ADC clock, and the initial ×4 oversampling preference. Omit `HHKB_RAPID_TRIGGER` for a build without it; the VIA Rapid Trigger menu will be hidden. The shared [build guide](build.md) explains the definition argument.
+
+[patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) verifies the stock hash and Bank 2 vector table, replaces only the 64 KiB STM32 application, pads it with `FF`, and recalculates both CRCs. It preserves the factory nRF image, footer, and version. The output name must be new because the script refuses to overwrite files. The [Classic flasher](../../../../tools/hhkb/hhkb_flasher.py) is not a verified Hybrid installer. Back up the keyboard before testing: installation and rollback of this patched Hybrid container have not been validated on hardware.

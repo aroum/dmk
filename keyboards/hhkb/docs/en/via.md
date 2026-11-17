@@ -204,3 +204,36 @@ In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debu
 - **Bootloader & factory calibration safety:** The reset operation affects **only** DMK runtime settings. The original PFU Topre factory calibration data (stored at `0x08081100`/`0x08081200`) and both firmware banks (Bank 1 recovery bootloader and Bank 2) remain untouched.
 - **Automatic reboot:** Once the EEPROM regions are cleared, the microcontroller automatically executes a software system reset (`platform_system_reset()`) and boots up cleanly with default parameters.
 - **DIP SW6 safety check:** DIP switch **SW6** on the rear of the keyboard must be in the **OFF** position to allow settings reset. If SW6 is ON, the reset status will show `Set SW6 to OFF` and the operation will be aborted.
+
+## Hybrid only: Bluetooth controls and keycodes
+
+Assign these after loading [via_hybrid.json](../../via_hybrid.json) in VIA:
+
+- **BT Select 1–4** (`0x7E02`–`0x7E05`): select an existing bond.
+- **BT Pair 1–4** (`0x7E06`–`0x7E09`): pair in the chosen slot.
+- **BT Battery** (`0x7E0A`): show battery level on the orange LED.
+- **BT Power** (`0x7E0B`): enter battery OFF/STOP; wake with PC5 or USB.
+- **BT Sleep** (`0x7E0C`): enter battery sleep.
+- **BT Pair Last** (`0x7E0D`): pair the last profile.
+- **BT Profile** (`0x7E0E`): show the profile number in blue.
+- **BT Next** (`0x7E0F`): select the next Bluetooth profile.
+- **BT / USB** (`0x7E10`): switch between the last Bluetooth profile and USB.
+
+**System 1** and **System 2** (`0x7E00`, `0x7E01`) are also present on Classic: they choose layer pairs, not Bluetooth profiles.
+
+### VIA settings unique to Hybrid
+
+In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design tab → Design → Load Draft Definition** and choose [via_hybrid.json](../../via_hybrid.json). The **HHKB Settings → Bluetooth** submenu appears only in a Hybrid build. Vial supports keymap editing but cannot display custom controls.
+
+- **Battery matrix scan rate:** 50, 125, 200 (default), 250, 500, or 1000 Hz, stored separately from the USB rate.
+- **Sleep timeout:** 0–60 minutes in one-minute steps; `0` disables the inactivity timer. Pairing caps longer timeouts at 10 minutes.
+- **Wake with matrix:** off by default. Off selects STOP; on scans at 1 Hz during sleep.
+- **Select paired profile / Start pairing:** choose profiles 1–4; pairing may replace a bond.
+- **Show battery level on orange LED / Show battery now:** enable and trigger battery flashes.
+- **Blink orange on low battery:** once every 30 seconds at 15%; twice every 15 seconds at 5% or 0%.
+- **Blink blue while pairing:** 2 Hz while pending, 4 Hz while advertising.
+- **Blink blue for active profile:** one to four flashes for profiles 1–4.
+- **Battery level (%):** reports 0, 5, 15, or 100. `100` only means all low-battery threshold inputs are inactive.
+- **PC5 short press / PC5 long press:** choose independent button actions; the choices and last profile are saved in EEPROM.
+
+PB9, PB8, and PB7 provide the 0%, 5%, and 15% battery thresholds. DMK samples them once per second and sends stable changes to the stock nRF for the BLE Battery Service. One to four manual orange flashes indicate 0%, 5%, 15%, or above 15%. These are threshold bands, not precise charge measurements. Status patterns temporarily take priority over configured base LED modes.

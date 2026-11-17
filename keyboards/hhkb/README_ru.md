@@ -6,7 +6,7 @@
 
 Альтернативная прошивка для HHKB Professional Classic. Она работает на штатном STM32L072: не нужны замена контроллера, пайка или разборка клавиатуры.
 
-**Документация:** [Установка](docs/ru/install.md) • [Поддерживаемые модели](docs/ru/models.md) • [Бэкап и восстановление](docs/ru/backup-restore.md) • [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [VIA](docs/ru/via.md) • [Hybrid](hybrid_ru.md)
+**Документация:** [Установка](docs/ru/install.md) • [Поддерживаемые модели](docs/ru/models.md) • [Бэкап и восстановление](docs/ru/backup-restore.md) • [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [VIA](docs/ru/via.md)
 
 Готовые прошивки для Classic и Classic Type-S публикуются на странице [GitHub Releases](https://github.com/aroum/dmk/releases).
 
@@ -19,9 +19,8 @@
 
 ## Варианты сборки
 
-Все варианты HHKB находятся в этой папке. Classic собирается командой `./build_all.sh -b hhkb -d HHKB_CLASSIC`, Classic Type-S — с флагом `-d HHKB_CLASSIC_TYPE_S`. Для сборки Hybrid используйте `-d HHKB_HYBRID` и [инструкцию по сборке и патчингу](hybrid_ru.md). Флаги `HHKB_JIS` и `HHKB_STUDIO` зарезервированы: сборка остановится до проверки железа и раскладок.
+Все варианты HHKB находятся в этой папке. Classic собирается командой `./build_all.sh -b hhkb -d HHKB_CLASSIC`, Classic Type-S — с флагом `-d HHKB_CLASSIC_TYPE_S`. Для сборки Hybrid используйте `-d HHKB_HYBRID` и [инструкцию по сборке и патчингу](docs/ru/build.md#только-hybrid-локальная-сборка-и-патчинг-заводского-образа). Флаги `HHKB_JIS` и `HHKB_STUDIO` зарезервированы: сборка остановится до проверки железа и раскладок.
 
-Заметки о платах: [Hybrid](hybrid_board_readme.md) • [Studio](studio_board_readme.md)
 
 ## Возможности
 
@@ -71,7 +70,7 @@ DMK читает все шесть DIP-переключателей. SW6 пок�
 
 ### HHKB Professional Hybrid / Hybrid JIS
 
-В [сборку Hybrid](hybrid_ru.md) добавлены SPI-обмен со штатным nRF, профили Bluetooth, контроль батареи и режим STOP. Эти функции ещё нужно проверить на самой клавиатуре Hybrid. Если можете помочь с тестированием или информацией о плате, напишите в Reddit DM.
+В [сборку Hybrid](docs/ru/build.md#только-hybrid-локальная-сборка-и-патчинг-заводского-образа) добавлены SPI-обмен со штатным nRF, профили Bluetooth, контроль батареи и режим STOP. Эти функции ещё нужно проверить на самой клавиатуре Hybrid. Если можете помочь с тестированием или информацией о плате, напишите в Reddit DM.
 
 ### HHKB Professional Classic JIS
 

@@ -70,3 +70,23 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 Обе сборки используют `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S дополнительно использует `HHKB_CLASSIC_TYPE_S`. [VIA](https://www.usevia.app/) v3 и Vial, пользовательская калибровка, настройка частоты, актуации, Rapid Trigger, LED, слоёв и hold-tap включены конфигурацией клавиатуры. `HHKB_ADC_DMA` в workflow не включён.
 
 `HHKB_ADC_OVERSAMPLING` задаёт начальное положение переключателя [VIA](https://www.usevia.app/): ×4 действует при 50–500 Гц, а при 1000 Гц АЦП принудительно использует ×1. Выбор пользователя сохраняется и снова применяется после перехода на 500 Гц или ниже. Публикация артефакта не прошивает клавиатуру; порядок установки описан в [Установке](install.md).
+
+## Только Hybrid: локальная сборка и патчинг заводского образа
+
+Нужен **именно** заводской файл `HHKB800_FW_A048.hfb`. Получите его отдельно в [официальном центре загрузки HHKB](https://happyhackingkb.com/download/) или используйте сохранённую копию. Ожидаемый SHA-256: `635b995eb5a15aa50c2cedc60da7d8998fcca8285a09d41d984c07fffcaf9d43`. Оригинал и полученные контейнеры храните в каталоге `keyboards/hhkb/local/`, исключённом из Git.
+
+Из корня репозитория:
+
+```bash
+mkdir -p keyboards/hhkb/local
+# Сначала положите исходный HHKB800_FW_A048.hfb в keyboards/hhkb/local/.
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+python3 tools/hhkb/patch_hybrid_hfb.py \
+  build/hhkb-script/dmk_hhkb_stm32l072.bin \
+  keyboards/hhkb/local/HHKB800_FW_A048.hfb \
+  keyboards/hhkb/local/dmk_hybrid.hfb
+```
+
+`-c` означает чистую сборку. `HHKB_HYBRID` включает плату Hybrid и SPI-обмен; остальные определения включают Rapid Trigger, частоту АЦП 16 МГц и начальный выбор аппаратного оверсемплинга ×4. Для сборки без Rapid Trigger уберите `HHKB_RAPID_TRIGGER`: соответствующее меню VIA скроется. Общий синтаксис флагов описан в [инструкции по сборке](build.md).
+
+[patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) проверяет хеш оригинала, размер и таблицу векторов Bank 2, заменяет только 64 КиБ приложения STM32, дополняет их `FF` и пересчитывает две CRC. Заводской образ nRF, постфикс и версия сохраняются. Скрипт не перезаписывает существующий выходной файл: для новой сборки укажите новое имя. [Прошивальщик Classic](../../../../tools/hhkb/hhkb_flasher.py) для Hybrid не проверен. Перед испытанием сохраните полный бэкап; установка и откат такого контейнера на плате Hybrid ещё не проверены.

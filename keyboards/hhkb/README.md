@@ -6,7 +6,7 @@
 
 Alternative firmware for the HHKB Professional Classic. It runs directly on the original STM32L072 controller: no controller replacement, soldering, or keyboard disassembly is required.
 
-**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md) • [Hybrid](hybrid.md)
+**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md)
 
 Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Releases page](https://github.com/aroum/dmk/releases).
 
@@ -19,9 +19,8 @@ See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, c
 
 ## Build variants
 
-All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](hybrid.md). `HHKB_JIS` and `HHKB_STUDIO` reserve the JIS and Studio variants and stop the build until their hardware and layouts are verified.
+All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch). `HHKB_JIS` and `HHKB_STUDIO` reserve the JIS and Studio variants and stop the build until their hardware and layouts are verified.
 
-Board notes: [Hybrid](hybrid_board_readme.md) • [Studio](studio_board_readme.md)
 
 ## Features
 
@@ -71,7 +70,7 @@ Possible future uses include assigning switch functions through [VIA](https://ww
 
 ### HHKB Professional Hybrid / Hybrid JIS
 
-The [Hybrid build](hybrid.md) includes the stock nRF SPI transport, Bluetooth profiles, battery controls, and STOP power mode. These paths still need validation on a Hybrid keyboard. If you can test or provide board information, please send a Reddit DM.
+The [Hybrid build](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch) includes the stock nRF SPI transport, Bluetooth profiles, battery controls, and STOP power mode. These paths still need validation on a Hybrid keyboard. If you can test or provide board information, please send a Reddit DM.
 
 ### HHKB Professional Classic JIS
 

@@ -97,3 +97,7 @@ bottom:    CLK | DIO
 ```
 
 Read [Backup & restore](backup-restore.md) before using either path.
+
+## Hybrid installation status
+
+A Hybrid firmware package can be [built and patched locally](build.md#hybrid-only-local-build-and-factory-image-patch). The resulting HFB contains proprietary PFU nRF firmware and is not published. Installation and rollback on Hybrid hardware remain unverified; make [complete backups of both chips](backup-restore.md#hybrid-only-complete-backup-before-update-experiments) before testing. The Classic flasher is not a verified Hybrid installer.

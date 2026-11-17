@@ -151,3 +151,9 @@ DFU or SWD can restore a saved Bank 2 image. Restoring all Flash, EEPROM, or Opt
 With `HHKB_SW6_REBOOT_TO_BANK1=1`, starting DMK with SW6 ON invalidates Bank 2 and erases its first 128-byte vector page, then resets into Bank 1. The erased page contains the initial stack pointer and reset vector, so Bank 1 cannot transfer execution to Bank 2 again. Bank 2 will remain unbootable across power cycles until a complete compatible firmware image is written back to Bank 2 through the PFU updater, DFU, or SWD.
 
 After this transition, Bank 1 can install the latest matching stock firmware from the [official HHKB download centre](https://happyhackingkb.com/download/) through Keymap Tool or `hhkb_flasher.py`. Select the correct Classic or Classic Type-S HFB. Keep SW6 OFF during normal use.
+
+## Hybrid only: complete backup before update experiments
+
+The local patch retains proprietary PFU nRF firmware, so the generated HFB cannot be distributed as a DMK release. The MIT-licensed reverse engineering of the STM32–Nordic SPI protocol and STOP wake sequence is credited in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol); it does not remove the proprietary code from the patched image.
+
+A possible future approach is to supply an intentionally invalid nRF update payload so the radio rejects it and keeps its original firmware, while the STM32 update proceeds. This has **not** been tested: the PC updater may reject the container first, or the radio update may behave differently. Experiments need a volunteer with complete backups of **both** chips before attempting any update. No Hybrid installation, pairing, STOP wake, or current-consumption result has yet been verified on physical hardware.
