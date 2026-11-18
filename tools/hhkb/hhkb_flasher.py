@@ -3,12 +3,12 @@
 HHKB Flasher CLI (Open-Source Firmware Updater for Happy Hacking Keyboard)
 ========================================================================
 
-Communicates directly with HHKB Classic / Classic Type-S via USB Raw HID
+Communicates directly with HHKB Classic and Hybrid via USB Raw HID
 (Vendor ID: 0x04FE, UsagePage: 0xFF00, Usage: 0x01) to read device info
 and flash firmware into STM32L072 Bank 2 (0x08010000).
 
 Supports:
-- Flashing official .hfb containers (65,570 bytes) via authentic PFU E1/E2 protocol.
+- Flashing Classic and Hybrid .hfb containers via the PFU E0–E3 protocol.
 - Flashing raw .bin firmware (64 KB) by packaging it on the fly into .hfb.
 - Bypassing official PFU version downgrade restrictions.
 - Local CRC and model compatibility checks before starting an update.
@@ -39,6 +39,10 @@ PFU_USAGE_PAGE = 0xFF00
 PFU_USAGE = 0x01
 
 REPORT_SIZE = 64
+CLASSIC_HFB_SIZE = 65570
+HYBRID_HFB_SIZE = 282672
+HYBRID_MODELS = {"AHUX01", "AHJX01"}
+STM32_END = 4 + 65536
 CHUNK_PAYLOAD_SIZE = 57  # 7-byte header plus 57 data bytes fills a 64-byte HID report
 FIRMUP_REENUMERATION_DELAY_SEC = 10
 
@@ -98,16 +102,22 @@ def device_model(type_number: str):
 
 def validate_container(data: bytes, expected_model=None, *, check_crc=True, check_model=True):
     """Validate the complete HFB before sending any update command."""
-    if len(data) != 65570:
-        raise ValueError("Firmware container must be exactly 65,570 bytes")
+    if len(data) not in (CLASSIC_HFB_SIZE, HYBRID_HFB_SIZE):
+        raise ValueError("Expected a 65,570-byte Classic or 282,672-byte Hybrid HFB")
+    model = data[-16:-10].decode("ascii", errors="replace")
+    hybrid = len(data) == HYBRID_HFB_SIZE
+    if hybrid != (model in HYBRID_MODELS) or (expected_model is not None and
+            hybrid != (expected_model in HYBRID_MODELS)):
+        raise ValueError("HFB size, container model and device family must agree")
+    if hybrid and expected_model != model:
+        raise ValueError(f"Hybrid HFB model {model!r} does not match keyboard {expected_model!r}")
     if check_crc:
         outer = int.from_bytes(data[:2], "little")
         inner = int.from_bytes(data[2:4], "little")
         if outer != compute_crc16_mcrf4xx(data[2:]):
             raise ValueError("Invalid HFB outer CRC")
-        if inner != compute_crc16_mcrf4xx(data[4:65540]):
+        if inner != compute_crc16_mcrf4xx(data[4:STM32_END]):
             raise ValueError("Invalid HFB firmware CRC")
-    model = data[65554:65560].decode("ascii", errors="replace")
     if check_model:
         if expected_model is None:
             raise ValueError("Cannot determine keyboard model; use --skip-model-check only if intentional")
@@ -243,10 +253,17 @@ class HHKBDevice:
     def flash_firmware(self, hfb_container: bytes, progress_cb=None):
         """
         Execute authentic firmware update sequence:
-        0xE0 -> 0xE1 (size=65570, crc) -> 0xE2 (send chunks) -> 0xE3
+        0xE0 -> 0xE1 (container size and CRC) -> 0xE2 (send chunks) -> 0xE3
         """
-        if len(hfb_container) != 65570:
-            raise ValueError(f"Firmware container must be exactly 65,570 bytes (got {len(hfb_container)})")
+        if len(hfb_container) not in (CLASSIC_HFB_SIZE, HYBRID_HFB_SIZE):
+            raise ValueError(f"Unsupported HFB size: {len(hfb_container)} bytes")
+        hybrid = len(hfb_container) == HYBRID_HFB_SIZE
+
+        def require_ack(response, command, stage):
+            if not response.startswith(RESP_HEADER + bytes([command])):
+                raise RuntimeError(f"{stage}: unexpected reply {response[:6].hex(' ')}")
+            if hybrid and (len(response) < 4 or response[3] != 0):
+                raise RuntimeError(f"{stage}: device rejected command ({response[:6].hex(' ')})")
 
         outer_crc_bytes = hfb_container[0:2]
 
@@ -254,8 +271,7 @@ class HHKBDevice:
         req_e0 = REQ_HEADER + bytes([CMD_FIRMUP_MODE, 0x00, 0x00, 0x00])
         self.send_report(req_e0)
         resp = self.read_report(timeout_ms=3000)
-        if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_MODE])):
-            raise RuntimeError(f"Firmup mode entry rejected: {resp[:6].hex()}")
+        require_ack(resp, CMD_FIRMUP_MODE, "E0 enter update mode")
 
         print("Waiting for the PFU update interface to reconnect...")
         self.reconnect()
@@ -269,8 +285,7 @@ class HHKBDevice:
 
         # Flash erase Bank 2 takes up to 10 seconds
         resp = self.read_report(timeout_ms=15000)
-        if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_START])):
-            raise RuntimeError(f"Firmup start failed (flash erase error): {resp[:6].hex()}")
+        require_ack(resp, CMD_FIRMUP_START, "E1 start update")
 
         time.sleep(0.2)
 
@@ -290,9 +305,17 @@ class HHKBDevice:
             packet = REQ_HEADER + bytes([CMD_FIRMUP_SEND, 0x00, length_byte]) + seq_bytes + chunk
             self.send_report(packet)
 
-            resp = self.read_report(timeout_ms=3000)
-            if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_SEND])):
-                raise RuntimeError(f"Firmup send failed at offset {offset} (seq {seq}): {resp[:6].hex()}")
+            stage = f"E2 chunk {seq} at HFB offset 0x{offset + 2:X}"
+            if hybrid:
+                if offset + 2 >= STM32_END:
+                    stage += " (Nordic)"
+                elif offset + 2 + chunk_len > STM32_END:
+                    stage += " (STM32/Nordic boundary)"
+            try:
+                resp = self.read_report(timeout_ms=3000)
+            except TimeoutError as exc:
+                raise TimeoutError(f"{stage}: timed out waiting for acknowledgement") from exc
+            require_ack(resp, CMD_FIRMUP_SEND, stage)
 
             offset += chunk_len
             seq += 1
@@ -307,8 +330,7 @@ class HHKBDevice:
         self.send_report(req_e3)
         try:
             resp = self.read_report(timeout_ms=5000)
-            if not resp.startswith(RESP_HEADER + bytes([CMD_FIRMUP_END])):
-                raise RuntimeError(f"Unexpected firmup end response: {resp[:6].hex()}")
+            require_ack(resp, CMD_FIRMUP_END, "E3 finalize update")
             return True
         except TimeoutError:
             return False
@@ -323,7 +345,7 @@ def print_progress(current, total):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Open-Source Flasher for Happy Hacking Keyboard (HHKB Classic / Type-S)"
+        description="PFU HID flasher for HHKB Classic and Hybrid (ANSI, JIS, Type-S)"
     )
     parser.add_argument("firmware", nargs="?", help="Path to .bin or .hfb firmware file to flash")
     parser.add_argument("--info", action="store_true", help="Read device information only (no flashing)")
@@ -339,7 +361,7 @@ def main():
 
     if not dev_info:
         print("Error: No compatible HHKB device found via USB HID.", file=sys.stderr)
-        print("Make sure your HHKB Classic is plugged in and recognized by the OS.", file=sys.stderr)
+        print("Check that your HHKB is connected in PFU firmware or recovery mode.", file=sys.stderr)
         sys.exit(1)
 
     print(f"Found HHKB: {dev_info.get('product_string', 'Keyboard')} (PID: 0x{dev_info['product_id']:04X})")
@@ -364,13 +386,12 @@ def main():
             data = f.read()
 
         expected_model = device_model(info['type_number'])
-        if expected_model in {"AHUX01", "AHJX01"} or len(data) == 282672:
-            raise ValueError("Hybrid requires a separate update path. This HID updater supports Classic containers only.")
-
-        if len(data) == 65570:
+        if len(data) in (CLASSIC_HFB_SIZE, HYBRID_HFB_SIZE):
             hfb_container = data
-            raw_payload = data[4:4+65536]
+            raw_payload = data[4:STM32_END]
         elif 8 <= len(data) <= 65536:
+            if expected_model in HYBRID_MODELS:
+                raise ValueError("Hybrid requires a complete model-matched HFB; use the Hybrid packer first")
             print("Wrapping raw binary into .hfb container...")
             model = args.model or expected_model
             if model is None:

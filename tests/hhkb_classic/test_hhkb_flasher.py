@@ -101,6 +101,39 @@ class FlasherValidationTest(unittest.TestCase):
         self.assertTrue(all(packet[4] == len(packet) - 5 for packet in chunks))
         self.assertEqual(packets[-1][2], flasher.CMD_FIRMUP_END)
 
+    def test_hybrid_transfer_and_nordic_error_reporting(self):
+        from patch_hybrid_hfb import make_stm32_only
+
+        image = make_stm32_only(b'\x00\x50\x00\x20\x09\x00\x01\x08' + bytes(4), layout='jis')
+        self.assertEqual(flasher.validate_container(image, 'AHJX01'), 'AHJX01')
+        for model in ('AHUX01', 'AHHS01', None):
+            with self.assertRaises(ValueError):
+                flasher.validate_container(image, model, check_model=False)
+
+        dev = flasher.HHKBDevice.__new__(flasher.HHKBDevice)
+        packets = []
+        dev.send_report = packets.append
+        dev.reconnect = lambda: None
+        dev.read_report = lambda timeout_ms: b'\x55\x55' + packets[-1][2:3] + bytes(3)
+        with patch.object(flasher.time, 'sleep'):
+            self.assertTrue(dev.flash_firmware(image))
+        self.assertEqual(packets[1][5:9], len(image).to_bytes(4, 'little'))
+        self.assertEqual(b''.join(packet[7:] for packet in packets[2:-1]), image[2:])
+
+        packets.clear()
+
+        def reject_nordic(timeout_ms):
+            packet = packets[-1]
+            status = int(packet[2] == flasher.CMD_FIRMUP_SEND
+                         and int.from_bytes(packet[5:7], 'little') == 2000)
+            return b'\x55\x55' + packet[2:3] + bytes([status, 0, 0])
+
+        dev.read_report = reject_nordic
+        with patch.object(flasher.time, 'sleep'):
+            with self.assertRaisesRegex(RuntimeError, r'E2 chunk 2000 at HFB offset 0x1BD52 \(Nordic\)'):
+                dev.flash_firmware(image)
+        self.assertEqual(packets[-1][2], flasher.CMD_FIRMUP_SEND)
+
     def test_info_uses_payload_offsets(self):
         response = bytearray(64)
         response[:6] = b'\x55\x55\x02\x00\x00\x39'

@@ -102,4 +102,8 @@ Read [Backup & restore](backup-restore.md) before using either path.
 
 The [experimental CI packages](build.md#github-actions) contain a blank nRF section designed to fail radio validation. Installation on a Hybrid keyboard and the STM32 boot decision after the radio rejects the update remain unverified.
 
-A Hybrid firmware package can be [built and patched locally](build.md#hybrid-only-local-build-and-factory-image-patch). The resulting HFB contains proprietary PFU nRF firmware and is not published. Installation and rollback on Hybrid hardware remain unverified; make [complete backups of both chips](backup-restore.md#hybrid-only-complete-backup-before-update-experiments) before testing. The Classic flasher is not a verified Hybrid installer.
+A Hybrid firmware package can be [built and patched locally](build.md#hybrid-only-local-build-and-factory-image-patch). The resulting HFB contains proprietary PFU nRF firmware and is not published. Installation and rollback on Hybrid hardware remain unverified; make [complete backups of both chips](backup-restore.md#hybrid-only-complete-backup-before-update-experiments) before testing. The DMK HID flasher accepts a complete model-matched Hybrid HFB and reports the update stage, chunk and file offset on transfer failures. Its Hybrid path still needs hardware verification.
+
+```bash
+uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py path/to/hybrid.hfb
+```
