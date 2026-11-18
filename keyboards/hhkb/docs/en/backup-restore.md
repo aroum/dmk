@@ -179,11 +179,11 @@ STM32 backup is captured standardly via J-Link or OpenOCD (128 KB Flash + 6 KB E
 Connector / test pads **CN6** on the board are likely the UART interface used during factory testing or programming of the Nordic Bluetooth chip.
 
 #### 3. Nordic nRF52832 Debug Interface (Taiyo Yuden EYSHCNZWZ)
-The Nordic debug interface on the module includes the following pads:
+According to the official [Taiyo Yuden EYSHCNZWZ Datasheet (PDF)](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) (*Pin Descriptions* and module footprint), the following pins are used for debug access and dumps (via J-Link / nrfjprog / OpenOCD):
 - **Pin 14:** `SWDIO`
-- **Pin 15:** `SWDCLK` (Pin 15 is marked on the PCB silkscreen, serving as a reference point to orient and count surrounding pins)
+- **Pin 15:** `SWDCLK` (Pin 15 is marked directly on the PCB silkscreen, serving as a reference point to locate and count surrounding pins)
 - **Pin 20:** `RESET` (nRF52 P0.21 / nRESET)
-- **Power:** VDD (Pin 11/12) and GND (Pins 42–45, 47, 48)
+- **Power:** VDD (Pin 11/12, 1.7–3.6V) and GND (Pins 42–45, 47, 48)
 
 > [!IMPORTANT]
 > To dump the full Flash (512 KB) and UICR from the nRF52832, connect a programmer (such as J-Link) to `SWDIO`, `SWDCLK`, `GND`, and `VDD`. Verify whether readback protection (APPROTECT) is active prior to attempting full dumps.
@@ -201,11 +201,11 @@ In the HHKB Hybrid architecture, **Nordic acts as the SPI Master**, while **STM3
   - **Format:** 8-bit, MSB first
   - **Nordic SPI Clock:** 125 kHz
 
-- **SPI Pin Connections:**
-  - **SCK:** STM32 `PB3` ↔ Nordic `P0.25` (Module Pin 27)
-  - **MISO:** STM32 `PB4` ↔ Nordic `P0.24` (Module Pin 26)
-  - **MOSI:** STM32 `PB5` ↔ Nordic `P0.23` (Module Pin 25)
-  - **CS / NSS:** STM32 `PA15` ↔ Nordic `P0.22` (Module Pin 24)
+- **SPI Pin Connections (mapped to [EYSHCNZWZ datasheet](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf)):**
+  - **SCK:** STM32 `PB3` ↔ Nordic `P0.25` (**Module Pin 27**)
+  - **MISO:** STM32 `PB4` ↔ Nordic `P0.24` (**Module Pin 26**)
+  - **MOSI:** STM32 `PB5` ↔ Nordic `P0.23` (**Module Pin 25**)
+  - **CS / NSS:** STM32 `PA15` ↔ Nordic `P0.22` (**Module Pin 24**)
 
 - **Control and Interrupt Signals:**
   - **STM32 `PB6` → Nordic `P0.18`:** Attention / Request line. When the STM32 has pending key reports or battery status updates, it issues a short `LOW` pulse to prompt Nordic into initiating an SPI transaction.
