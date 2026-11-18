@@ -60,6 +60,8 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 
 ## GitHub Actions
 
+В `dev` собираются Classic ANSI, Classic Type-S ANSI и Classic Type-S JIS, а также Hybrid ANSI и JIS. Для Hybrid Type-S используются те же цели Hybrid. Артефакты Hybrid с пометкой `experimental` содержат DMK для STM32 и пустую секцию nRF с намеренно несовпадающим MD5. CI создаёт их без заводских бинарников. Применит ли загрузчик обновление STM32 после отказа радиомодуля, ещё предстоит проверить на плате.
+
 [Workflow Build Firmware](../../../../.github/workflows/build_test.yml) запускается для `push` и `pull_request` в `main`/`master`; его можно запустить вручную через **Actions → Build Firmware → Run workflow**. После успешного запуска скачайте в разделе **Artifacts** нужный архив:
 
 - `dmk-hhkb-classic-classic-via.hfb` — обычная Classic, модель `AHHX01`, версия HFB A4.50.

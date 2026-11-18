@@ -62,6 +62,8 @@ The current linked STM32L072 image reserves 20,480 bytes of RAM: 288 bytes `.dat
 
 ## GitHub Actions
 
+The `dev` workflow builds Classic ANSI, Classic Type-S ANSI and Classic Type-S JIS, as well as Hybrid ANSI and JIS (the same targets cover Hybrid Type-S). Hybrid artifacts marked `experimental` contain DMK for STM32 and an erased-byte nRF section with an intentionally mismatched MD5. CI generates these without factory binaries. Whether the updater commits the STM32 update after the radio rejects its section still needs hardware verification.
+
 The [Build Firmware workflow](../../../../.github/workflows/build_test.yml) runs on pushes and pull requests targeting `main`/`master`. You can also start it through **Actions → Build Firmware → Run workflow**. After a successful run, download the appropriate archive under **Artifacts**:
 
 - `dmk-hhkb-classic-classic-via.hfb` — standard Classic, model `AHHX01`, HFB version A4.50.

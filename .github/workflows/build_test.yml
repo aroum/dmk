@@ -79,6 +79,8 @@ jobs:
             defines: HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
           - variant: type-s
             defines: HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+          - variant: type-s-jis
+            defines: HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
     steps:
       - name: Checkout Code
@@ -111,6 +113,49 @@ jobs:
         with:
           name: dmk-hhkb-classic-${{ matrix.variant }}-via.hfb
           path: build/hhkb-release/
+          retention-days: 3
+          if-no-files-found: error
+
+  build-hhkb-hybrid:
+    name: Build HHKB Hybrid ${{ matrix.layout }} (including Type-S)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - layout: ansi
+            defines: HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+          - layout: jis
+            defines: HHKB_HYBRID,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install Toolchain and Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi
+
+      - uses: astral-sh/setup-uv@v10.3.3
+
+      - name: Build and package STM32-only Hybrid HFB
+        env:
+          HHKB_DEFINES: ${{ matrix.defines }}
+          HHKB_LAYOUT: ${{ matrix.layout }}
+        run: |
+          ./build_all.sh -b hhkb -d "$HHKB_DEFINES" -c
+          mkdir -p build/hhkb-hybrid-release
+          python3 tools/hhkb/patch_hybrid_hfb.py --stm32-only --layout "$HHKB_LAYOUT" \
+            build/hhkb-script/dmk_hhkb_stm32l072.bin \
+            "build/hhkb-hybrid-release/dmk-hhkb-hybrid-${HHKB_LAYOUT}-experimental.hfb"
+          cp keyboards/hhkb/via.json build/hhkb-hybrid-release/
+
+      - name: Upload experimental Hybrid HFB
+        uses: actions/upload-artifact@v7
+        with:
+          name: dmk-hhkb-hybrid-${{ matrix.layout }}-experimental
+          path: build/hhkb-hybrid-release/
           retention-days: 3
           if-no-files-found: error
 
