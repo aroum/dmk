@@ -156,4 +156,60 @@ After this transition, Bank 1 can install the latest matching stock firmware fro
 
 The local patch retains proprietary PFU nRF firmware, so the generated HFB cannot be distributed as a DMK release. The MIT-licensed reverse engineering of the STM32–Nordic SPI protocol and STOP wake sequence is credited in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol); it does not remove the proprietary code from the patched image.
 
-A possible future approach is to supply an intentionally invalid nRF update payload so the radio rejects it and keeps its original firmware, while the STM32 update proceeds. This has **not** been tested: the PC updater may reject the container first, or the radio update may behave differently. Experiments need a volunteer with complete backups of **both** chips before attempting any update. No Hybrid installation, pairing, STOP wake, or current-consumption result has yet been verified on physical hardware.
+A possible future approach is to supply an intentionally invalid nRF update payload so the radio rejects it and keeps its original firmware, while the STM32 update proceeds. This has **not** been tested: the PC updater may reject the container first, or the radio update may behave differently. Before attempting any firmware modifications or experimental updates, **complete backups of both chips (STM32 and Nordic nRF52832) are critically required** to prevent permanently bricking the Bluetooth subsystem.
+
+### Hybrid hardware interfaces and pinout for backup and debugging
+
+The HHKB Hybrid PCB features dedicated programming and debug access points for both microcontrollers:
+
+#### 1. STM32 Debug Interface (CN3 Pads)
+The five test pads near connector CN3 arranged in two rows:
+```text
+GND   NRST  VCC
+ SWCLK SWDIO
+```
+- **SWDIO:** PA13
+- **SWCLK:** PA14
+- **NRST:** STM32 Reset pin
+- **VCC / GND:** 3.3V power and ground
+
+STM32 backup is captured standardly via J-Link or OpenOCD (128 KB Flash + 6 KB EEPROM + Option Bytes), exactly as on the Classic.
+
+#### 2. Factory Interface CN6
+Connector / test pads **CN6** on the board are likely the UART interface used during factory testing or programming of the Nordic Bluetooth chip.
+
+#### 3. Nordic nRF52832 Debug Interface (Taiyo Yuden EYSHCNZWZ)
+The Nordic debug interface on the module includes the following pads:
+- **Pin 14:** `SWDIO`
+- **Pin 15:** `SWDCLK` (Pin 15 is marked on the PCB silkscreen, serving as a reference point to orient and count surrounding pins)
+- **Pin 20:** `RESET` (nRF52 P0.21 / nRESET)
+- **Power:** VDD (Pin 11/12) and GND (Pins 42–45, 47, 48)
+
+> [!IMPORTANT]
+> To dump the full Flash (512 KB) and UICR from the nRF52832, connect a programmer (such as J-Link) to `SWDIO`, `SWDCLK`, `GND`, and `VDD`. Verify whether readback protection (APPROTECT) is active prior to attempting full dumps.
+
+---
+
+### Inter-chip SPI Connection (STM32 ↔ Nordic nRF52832)
+
+In the HHKB Hybrid architecture, **Nordic acts as the SPI Master**, while **STM32 operates as the SPI Slave**:
+
+- **SPI Configuration:**
+  - **STM32:** `SPI1` peripheral in Slave mode
+  - **Nordic:** `SPI0` peripheral in Master mode
+  - **SPI Mode:** Mode 3 (`CPOL = 1`, `CPHA = 1`)
+  - **Format:** 8-bit, MSB first
+  - **Nordic SPI Clock:** 125 kHz
+
+- **SPI Pin Connections:**
+  - **SCK:** STM32 `PB3` ↔ Nordic `P0.25` (Module Pin 27)
+  - **MISO:** STM32 `PB4` ↔ Nordic `P0.24` (Module Pin 26)
+  - **MOSI:** STM32 `PB5` ↔ Nordic `P0.23` (Module Pin 25)
+  - **CS / NSS:** STM32 `PA15` ↔ Nordic `P0.22` (Module Pin 24)
+
+- **Control and Interrupt Signals:**
+  - **STM32 `PB6` → Nordic `P0.18`:** Attention / Request line. When the STM32 has pending key reports or battery status updates, it issues a short `LOW` pulse to prompt Nordic into initiating an SPI transaction.
+  - **STM32 `PD2`:** Nordic enable control line. Driven `LOW` to enable the radio module during normal keyboard operation.
+
+> [!TIP]
+> If you have a logic analyzer or an RP2040 configured as a logic probe, capturing these signals (SCK, MISO, MOSI, CS, Attention PB6) during bootup and during official firmware updates will provide valuable insight into protocol transactions.
