@@ -6,6 +6,7 @@
 #include "settings_storage_guard.h"
 #include "usb_descriptors.h"
 #include "dip_switch.h"
+#include "layers.h"
 #include "stm32l0xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -626,17 +627,35 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
     if (s_calibration_mode) {
         uint8_t count = calibrated_key_count();
         snprintf(buf, max_len, "In progress: %u/%u keys", count, NUM_KEYS);
-    } else {
-        uint8_t custom_count = 0;
-        for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-            for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-                if (s_cal_peak[c][r] >= s_cal_baseline[c][r] + RT_MIN_RANGE) {
-                    custom_count++;
-                }
+        return;
+    }
+    if (!s_custom_calibration) {
+        snprintf(buf, max_len, "Using defaults");
+        return;
+    }
+
+    const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)USER_EEPROM_ADDR;
+    size_t size = cal->version == USER_EEPROM_VERSION ? sizeof(*cal) : offsetof(hhkb_eeprom_cal_t, curve);
+    if (cal->magic != USER_EEPROM_MAGIC ||
+        (cal->version != USER_EEPROM_VERSION && cal->version != 1) ||
+        cal->crc16 != compute_crc16((const uint8_t *)&cal->baseline,
+                                    size - offsetof(hhkb_eeprom_cal_t, baseline))) {
+        snprintf(buf, max_len, "No verified EEPROM record");
+        return;
+    }
+    unsigned custom_count = 0;
+    for (uint8_t c = 0; c < MATRIX_COLS; c++) {
+        for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
+            if (keyboard_get_flat_key_index(r, c) < 0) continue;
+            uint16_t base = cal->baseline[c][r];
+            uint16_t peak = cal->peak[c][r];
+            if (base >= 100 && base <= 2000 && peak > base + RT_MIN_RANGE && peak <= 4095 &&
+                (base != get_default_baseline(c, r) || peak != get_default_peak(c, r))) {
+                custom_count++;
             }
         }
-        snprintf(buf, max_len, "Saved (%u/%u keys)", custom_count, NUM_KEYS);
     }
+    snprintf(buf, max_len, "%u/%u saved custom ranges", custom_count, NUM_KEYS);
 }
 
 rt_cfg_t hhkb_get_scan_cfg(void) {
