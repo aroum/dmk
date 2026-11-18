@@ -320,6 +320,10 @@ If you are interested in contributing hardware data or collaborating on reverse-
 
 ### External References & Community Teardowns
 
+- **FCC ID Official Internal Photos (PDF):**  
+  [FCC ID Internal Photographs (fccid.io)](https://fccid.io/m/c43d7d2438f06f734587671a0ccda4a33eedf70136552befb534f8075f53212a.pdf)  
+  High-resolution laboratory teardown photographs of internal PCBs, wireless antennas, trackpoint daughterboards, and component layouts submitted for FCC certification.
+
 - **Qiita Teardown & Disassembly Walkthrough (Japanese):**
   [目覚めるとHHKB Studioのポッチから霊圧が消えていた #分解 (FrozenVoice / Qiita)](https://qiita.com/FrozenVoice/items/1d7dbad19d621e8d434c)
   Detailed disassembly steps showing the lower chassis screw layout (under rubber feet and battery compartment), flat ribbon cable connectors, multi-layer stacked PCB architecture, switch removal requirement, and pointing stick module mounting.
