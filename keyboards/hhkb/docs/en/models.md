@@ -61,20 +61,23 @@ The following 7 models represent the physical 60-key ANSI (US Layout) revisions 
 | **HHKB Pro Classic Type-S JIS (White)**    | `PD-KB421WSC` | White (白)    | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
 | **HHKB Pro Classic Type-S JIS (Snow)**     | `PD-KB421YSC` | Snow (雪)     | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
 
-### Technical Analysis & Hardware Auto-Detection
+### Technical Analysis & Distinct Official Firmwares
 
-- **Unified Factory Firmware Distribution:** Crucially, PFU does not provide separate firmware packages for JIS models on their official website. The official updates (`HHKB410_FW_A429.hfb` for Classic and `HHKB401_FW_A803.hfb` for Classic Type-S) are identical for both ANSI and JIS models. The stock firmware automatically detects whether it is running on an ANSI or JIS board at startup (likely via a hardware strapping resistor on an unpopulated GPIO, an EEPROM descriptor flag, or sensing line pull).
+- **Separate Official PFU Firmware Packages for JIS and ANSI:** On the official Japanese PFU portal ([HHKB Firmware Download](https://happyhackingkb.com/jp/download/#fw)), **separate firmware update packages** are distributed for Japanese models:
+  - For **Classic Type-S JIS**: `HHKB421_FW_JP_A904.hfb` (whereas ANSI Type-S uses `HHKB401_FW_A803.hfb`, and standard Classic uses `HHKB410_FW_A429.hfb`). The JIS container specifies its own model identifier `AHKS01` (distinct from `AHHS01` for ANSI Type-S).
+  - For **Hybrid / Hybrid Type-S JIS**: `HHKB820_FW_JP_A249.hfb` (whereas ANSI Hybrid uses `HHKB800_FW_A048.hfb`).
+  Contrary to previous assumptions, the official ANSI and JIS firmware builds are distinct and purpose-built by the manufacturer.
 - **Core Hardware Architecture:** The `PD-KB421` series shares the exact same core controller architecture as the ANSI models (STMicroelectronics STM32L072, identical analog sensing frontend, dual-bank bootloader, and USB flasher protocol).
 - **Matrix Routing Difference:** The Japanese layout features **69 physical keys** (incorporating arrow cluster, dedicated Kana/Henkan keys, and split spacebar row). Because of the higher key count, the analog multiplexer addressing (U1/U2) and row strobe lines differ from the standard 60-key ANSI matrix (15 columns × 4 rows).
-- **Current Status:** Not yet supported out-of-the-box in the DMK firmware target pending matrix map reverse-engineering.
+- **Current Status:** DMK includes compilation support with `HHKB_JIS`, with dedicated layout maps `via_classic_jis.json` and `via_hybrid_jis.json`. Firmwares build cleanly; physical hardware verification is in progress.
 
 ### Call for Hardware Testers & Volunteers
 
-If you own a `PD-KB421` model, you can assist in enabling support:
+If you own a `PD-KB421` model, you can assist in verification:
 
 1. **EEPROM Calibration Dump:** Read factory baseline/threshold data at `0x08081000–0x080813FF` to extract factory EC calibration values for the JIS layout.
-2. **Matrix Pin Tracing:** Run a diagnostic build with HID Console logging enabled to map each physical switch press to its corresponding (Col, Row) ADC coordinate.
-3. **Layout Mapping:** Assist in drafting the 69-key `via.json` / `vial.json` matrix coordinate definition.
+2. **Matrix Pin Tracing:** Run a diagnostic build with HID Console logging enabled to verify switch-to-coordinate mapping.
+3. **VIA Verification:** Assist in testing key assignments and layers via `via_classic_jis.json`.
 
 Interested volunteers can open an issue or reach out via GitHub Discussions.
 
