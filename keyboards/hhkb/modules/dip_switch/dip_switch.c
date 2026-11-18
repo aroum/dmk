@@ -129,12 +129,17 @@ void hhkb_early_dip_check(void) {
 
     if (sw6_on) {
         // SW6 is ON: User requests failsafe stock recovery in Bank 1!
+#ifdef HHKB_HYBRID
+        // The Hybrid loader uses a separate Bank 2 boot-enable byte.
+        write_eeprom_byte(0x08080360UL, 0x00);
+#else
         // Combine all recovery mechanisms:
         // 1. Mark status byte as broken in EEPROM (0x01)
         write_eeprom_byte(HHKB_EEPROM_BANK2_STATUS_ADDR, 0x01);
         // 2. Corrupt Bank 2 CRC tag in EEPROM
         write_eeprom_byte(HHKB_EEPROM_BANK2_CRC_ADDR, 0x00);
         write_eeprom_byte(HHKB_EEPROM_BANK2_CRC_ADDR + 1, 0x00);
+#endif
         // 3. Erase the first page of Bank 2 (vector table) and reset into Bank 1
         erase_bank2_vector_page_ram();
     }

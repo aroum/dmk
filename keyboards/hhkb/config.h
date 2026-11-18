@@ -137,9 +137,7 @@
  *   - SW6 OFF: Power Saving Enabled (no key wakeup from USB suspend).
  *   - SW6 ON:  Power Saving Disabled (immediate key wakeup).
  */
-#ifdef HHKB_HYBRID
-#define HHKB_SW6_REBOOT_TO_BANK1 0
-#else
+#ifndef HHKB_SW6_REBOOT_TO_BANK1
 #define HHKB_SW6_REBOOT_TO_BANK1 1
 #endif
 
