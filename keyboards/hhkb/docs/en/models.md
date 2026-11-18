@@ -327,6 +327,9 @@ If you are interested in contributing hardware data or collaborating on reverse-
   [FCC ID Internal Photographs (fccid.io)](https://fccid.io/m/c43d7d2438f06f734587671a0ccda4a33eedf70136552befb534f8075f53212a.pdf)  
   High-resolution laboratory teardown photographs of internal PCBs, wireless antennas, trackpoint daughterboards, and component layouts submitted for FCC certification.
 
+- **Capacitive Gesture Slider Subsystem Controllers:**  
+  Potential candidate ICs for the 4 capacitive gesture slider strips include the [Infineon PSoC 4 HVMS Lite Kits (Mouser)](https://eu.mouser.com/en/new/infineon/infineon-psoc-4-hvms-lite-kits/) family (featuring Infineon CapSense technology dedicated to high-SNR capacitive slider and touch-sensing applications).
+
 - **Qiita Teardown & Disassembly Walkthrough (Japanese):**
   [目覚めるとHHKB Studioのポッチから霊圧が消えていた #分解 (FrozenVoice / Qiita)](https://qiita.com/FrozenVoice/items/1d7dbad19d621e8d434c)
   Detailed disassembly steps showing the lower chassis screw layout (under rubber feet and battery compartment), flat ribbon cable connectors, multi-layer stacked PCB architecture, switch removal requirement, and pointing stick module mounting.
