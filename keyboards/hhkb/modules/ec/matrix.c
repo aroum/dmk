@@ -207,7 +207,12 @@ void matrix_task(void *pvParameters) {
         hhkb_hybrid_service();
 #endif
         // Check power saving condition: host disconnected (not mounted) or USB suspended
-        if (!battery && keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
+        bool usb_power_saving = !battery && keyboard_power_saving_enabled() &&
+                                (!tud_mounted() || tud_suspended());
+#ifdef HHKB_HYBRID
+        usb_power_saving = usb_power_saving && !hhkb_hybrid_output_bluetooth();
+#endif
+        if (usb_power_saving) {
             if (!sensor_power_down) {
                 // Disable power for capacitive sensor board and OpAmp
                 GPIOC->BRR = (1U << 14) | (1U << 7);

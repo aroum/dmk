@@ -124,23 +124,33 @@ void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
 static void usb_device_task(void *param) {
     (void)param;
     s_usb_task_handle = xTaskGetCurrentTaskHandle();
-#ifdef USB_NO_HOST_SUSPEND_MS
+#ifndef USB_NO_HOST_SUSPEND_MS
+#define USB_NO_HOST_SUSPEND_MS 0
+#endif
     TickType_t last_mounted = xTaskGetTickCount();
     bool no_host_suspended = false;
-#endif
     while (1) {
         tud_task_ext(0, false);
-#ifdef USB_NO_HOST_SUSPEND_MS
+#ifdef HHKB_HYBRID
+        bool allow_no_host_sleep = !hhkb_hybrid_on_battery() && !hhkb_hybrid_output_bluetooth();
+#else
+        bool allow_no_host_sleep = true;
+#endif
         if (tud_mounted()) {
             last_mounted = xTaskGetTickCount();
             no_host_suspended = false;
-        } else if (!no_host_suspended &&
-                   (TickType_t)(xTaskGetTickCount() - last_mounted) >= pdMS_TO_TICKS(USB_NO_HOST_SUSPEND_MS)) {
+        } else if (allow_no_host_sleep && !no_host_suspended &&
+                   (keyboard_power_saving_enabled() ||
+                    (USB_NO_HOST_SUSPEND_MS > 0 &&
+                     (TickType_t)(xTaskGetTickCount() - last_mounted) >= pdMS_TO_TICKS(USB_NO_HOST_SUSPEND_MS)))) {
             led_suspend();
             rgb_suspend();
             no_host_suspended = true;
+        } else if (!allow_no_host_sleep && no_host_suspended) {
+            led_resume();
+            rgb_resume();
+            no_host_suspended = false;
         }
-#endif
         usb_keyboard_flush();
 #if defined(MIDI_USB) && !defined(MCU_milandr)
         extern void tud_midi_rx_cb(uint8_t itf);

@@ -4,11 +4,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "hooks.h"
+#ifdef MCU_baikal
+#include "keyboard.h"
+extern volatile bool usb_mounted;
+#endif
 
 
 void vApplicationIdleHook(void) {
 #if defined(__ARM_ARCH) || defined(__arm__)
     __asm__ volatile("wfi");
+#elif defined(MCU_baikal) && defined(__riscv)
+    if (keyboard_power_saving_enabled() && !usb_mounted)
+        __asm__ volatile("wfi");
 #endif
 }
 

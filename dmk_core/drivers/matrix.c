@@ -14,6 +14,7 @@
 // Project includes
 #include "config.h"
 #include "led.h"
+#include "keyboard.h"
 #include "matrix.h"
 #include "split.h"
 #include "task_internal.h"
@@ -383,6 +384,13 @@ void matrix_task(void *pvParameters) {
     s_last_matrix_activity = xTaskGetTickCount();
 
     while (1) {
+#ifndef SPLIT_ENABLED
+        extern volatile bool usb_mounted;
+        if (keyboard_power_saving_enabled() && !usb_mounted) {
+            vTaskDelay(pdMS_TO_TICKS(20));
+            continue;
+        }
+#endif
         matrix_scan();
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
         encoder_scan();
