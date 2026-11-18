@@ -74,7 +74,7 @@ If you own a `PD-KB421` model, you can assist in enabling support:
 
 1. **EEPROM Calibration Dump:** Read factory baseline/threshold data at `0x08081000–0x080813FF` to extract factory EC calibration values for the JIS layout.
 2. **Matrix Pin Tracing:** Run a diagnostic build with HID Console logging enabled to map each physical switch press to its corresponding (Col, Row) ADC coordinate.
-3. **Layout Mapping:** Assist in drafting the 69-key `via_classic.json` / `vial_classic.json` matrix coordinate definition.
+3. **Layout Mapping:** Assist in drafting the 69-key `via.json` / `vial.json` matrix coordinate definition.
 
 Interested volunteers can open an issue or reach out via GitHub Discussions.
 

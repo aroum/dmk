@@ -65,7 +65,7 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 - `dmk-hhkb-classic-classic-via.hfb` — обычная Classic, модель `AHHX01`, версия HFB A4.50.
 - `dmk-hhkb-classic-type-s-via.hfb` — Classic Type-S, модель `AHHS01`, версия HFB A8.50.
 
-В каждом архиве лежат `.hfb` для выбранной модели и [via_classic.json](../../via_classic.json) для загрузки пользовательского меню через вкладку Design [веб-версии VIA](https://www.usevia.app/). Выбирайте архив по модели клавиатуры; сборка Type-S пока проверена компилятором, на плате проверялась обычная Classic.
+В каждом архиве лежат `.hfb` для выбранной модели и [via.json](../../via.json) для загрузки пользовательского меню через вкладку Design [веб-версии VIA](https://www.usevia.app/). Выбирайте архив по модели клавиатуры; сборка Type-S пока проверена компилятором, на плате проверялась обычная Classic.
 
 Обе сборки используют `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S дополнительно использует `HHKB_CLASSIC_TYPE_S`. [VIA](https://www.usevia.app/) v3 и Vial, пользовательская калибровка, настройка частоты, актуации, Rapid Trigger, LED, слоёв и hold-tap включены конфигурацией клавиатуры. `HHKB_ADC_DMA` в workflow не включён.
 

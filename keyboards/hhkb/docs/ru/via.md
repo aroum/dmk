@@ -26,25 +26,27 @@ uv run tools/ec_curve_visualizer.py
 
 1. Откройте [веб-версию VIA](https://www.usevia.app/).
 2. Перейдите в **Settings** и включите **Show Design tab**.
-3. Откройте появившуюся вкладку **Design**, нажмите **Load Draft Definition** и выберите `via_classic.json` для Classic или `via_hybrid.json` для Hybrid из каталога клавиатуры или файлов релиза.
+3. Откройте появившуюся вкладку **Design**, нажмите **Load Draft Definition** и выберите `via.json` из каталога клавиатуры или файлов релиза.
 4. Подключите клавиатуру и откройте **HHKB Settings**.
 
 > [!TIP]
 > **Если на слое 0 отображаются пустые клавиши без надписей (легенд):**
 > Это особенность асинхронной инициализации веб-клиента VIA при одновременной вычитке буфера раскладки и кастомного меню. Просто кликните на **слой 1** и вернитесь обратно на **слой 0** (`Layer 1 → Layer 0`) — все обозначения клавиш сразу появятся на своих местах.
 
+Все варианты определяются как **HHKB Professional** (`cafe:4014`). Прошивка сообщает VIA и Vial, какая физическая раскладка установлена. После обновления со старой сборки загрузите общий `via.json` и заново разрешите доступ к устройству с новым PID.
+
 ## Chromium на Linux видит HHKB, но VIA не подключается
 
-Если VIA видит **HHKB Professional Classic** с VID/PID `cafe:4010`, но сообщает, что клавиатура не отвечает, попробуйте дать Chromium доступ к её устройствам `/dev/hidraw*`. Правило ниже даёт доступ пользователю активной локальной сессии для устройств с этим VID/PID.
+Если VIA видит **HHKB Professional** с VID/PID `cafe:4014`, но сообщает, что клавиатура не отвечает, попробуйте дать Chromium доступ к её устройствам `/dev/hidraw*`. Правило ниже даёт доступ пользователю активной локальной сессии для устройств с этим VID/PID.
 
 ```bash
 sudo tee /etc/udev/rules.d/70-hhkb-via.rules >/dev/null <<'EOF'
-SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="4010", TAG+="uaccess"
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="4014", TAG+="uaccess"
 EOF
 sudo udevadm control --reload-rules
 ```
 
-Отключите и снова подключите USB-кабель клавиатуры, обновите страницу VIA и выберите HHKB через **Authorize device**. Используйте тот же `via_classic.json`.
+Отключите и снова подключите USB-кабель клавиатуры, обновите страницу VIA и выберите HHKB через **Authorize device**. Используйте тот же `via.json`.
 
 Если ошибка повторится, откройте `chrome://device-log`, снова попробуйте подключиться через VIA и проверьте записи с `HID` или `hidraw`.
 
@@ -52,11 +54,11 @@ sudo udevadm control --reload-rules
 
 [VIA](https://www.usevia.app/) поддерживает пользовательский интерфейс **HHKB Settings**: Scan Rate, Calibration, Rapid Trigger, LED, Power Saving и Debug. Эти пользовательские контролы доступны только в веб-версии VIA. Rapid Trigger появляется только в сборке с `HHKB_RAPID_TRIGGER`.
 
-Vial использует `vial_classic.json` для Classic и `vial_hybrid.json` для Hybrid и умеет изменять раскладку во время работы. Пользовательские контролы в нём недоступны, поэтому через Vial нельзя настроить точку срабатывания, калибровку, частоту сканирования, LED или Rapid Trigger. Для этих настроек используйте [VIA](https://www.usevia.app/).
+Vial использует `vial.json` и умеет изменять раскладку во время работы. Пользовательские контролы в нём недоступны, поэтому через Vial нельзя настроить точку срабатывания, калибровку, частоту сканирования, LED или Rapid Trigger. Для этих настроек используйте [VIA](https://www.usevia.app/).
 
 ## Выбор системы
 
-С обновлённой прошивкой и `via_classic.json` назначьте **System 1** или **System 2** в списке кодов VIA. Через **Any** можно ввести `0x7E00` для System 1 и `0x7E01` для System 2. System 1 использует слои 0 и 1, а System 2 — слои 2 и 3. Назначьте каждый код на клавишу, доступную из другой системы.
+С обновлённой прошивкой и `via.json` назначьте **System 1** или **System 2** в списке кодов VIA. Через **Any** можно ввести `0x7E00` для System 1 и `0x7E01` для System 2. System 1 использует слои 0 и 1, а System 2 — слои 2 и 3. Назначьте каждый код на клавишу, доступную из другой системы.
 
 ## Настройки меню HHKB Settings
 
@@ -203,7 +205,7 @@ uv run tools/ec_curve_visualizer.py
 
 ## Только Hybrid: Bluetooth-контролы и кейкоды
 
-Назначайте их в VIA после загрузки [via_hybrid.json](../../via_hybrid.json):
+Назначайте их в VIA после загрузки [via.json](../../via.json):
 
 - **BT Select 1–4** (`0x7E02`–`0x7E05`) — выбор существующей привязки.
 - **BT Pair 1–4** (`0x7E06`–`0x7E09`) — сопряжение в выбранном слоте.
@@ -219,7 +221,7 @@ uv run tools/ec_curve_visualizer.py
 
 ### Настройки VIA, которых нет у Classic
 
-В [веб-версии VIA](https://www.usevia.app/) откройте **Settings → Show Design tab → Design → Load Draft Definition** и выберите [via_hybrid.json](../../via_hybrid.json). Подменю **HHKB Settings → Bluetooth** появляется только в сборке Hybrid. Vial позволяет менять раскладку, но не показывает кастомные контролы.
+В [веб-версии VIA](https://www.usevia.app/) откройте **Settings → Show Design tab → Design → Load Draft Definition** и выберите [via.json](../../via.json). Подменю **HHKB Settings → Bluetooth** появляется только в сборке Hybrid. Vial позволяет менять раскладку, но не показывает кастомные контролы.
 
 - **Battery matrix scan rate:** 50, 125, 200 (по умолчанию), 250, 500 или 1000 Гц; отдельно от частоты USB.
 - **Sleep timeout:** 0–60 минут, шаг 1 минута; `0` отключает таймер. Во время сопряжения значения выше 10 минут ограничиваются 10 минутами.

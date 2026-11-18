@@ -56,9 +56,9 @@
 
 ## VIA и Vial
 
-В [VIA](https://www.usevia.app/) доступно единое меню **HHKB Settings** с подменю Scan Rate, Calibration, Rapid Trigger, LED, а также диагностическое меню **Debug** с отображением динамической **Firmware Version**, читаемой напрямую из памяти контроллера. Пользовательские контролы доступны только в веб-версии VIA, но не в Vial и не в других клиентах VIA. Чтобы загрузить их, откройте **Settings**, включите **Show Design tab**, затем на вкладке **Design** выберите **Load Draft Definition** и укажите `via_classic.json` для Classic или `via_hybrid.json` для Hybrid.
+В [VIA](https://www.usevia.app/) доступно единое меню **HHKB Settings** с подменю Scan Rate, Calibration, Rapid Trigger, LED, а также диагностическое меню **Debug** с отображением динамической **Firmware Version**, читаемой напрямую из памяти контроллера. Пользовательские контролы доступны только в веб-версии VIA, но не в Vial и не в других клиентах VIA. Чтобы загрузить их, откройте **Settings**, включите **Show Design tab**, затем на вкладке **Design** выберите **Load Draft Definition** и укажите `via.json`.
 
-Vial поддерживает изменение раскладки через `vial_classic.json` для Classic или `vial_hybrid.json` для Hybrid, но не поддерживает пользовательские контролы. Для калибровки, частоты, LED, Rapid Trigger и чтения версии используйте [VIA](https://www.usevia.app/).
+Vial поддерживает изменение раскладки через `vial.json`, но не поддерживает пользовательские контролы. Для калибровки, частоты, LED, Rapid Trigger и чтения версии используйте [VIA](https://www.usevia.app/).
 
 ## DIP-переключатели
 

@@ -56,9 +56,9 @@ The original firmware can be restored using the documented Bank 1/SW6 recovery p
 
 ## VIA vs Vial
 
-[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED, as well as a **Debug** menu displaying the dynamic **Firmware Version** read directly from controller memory. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via_classic.json` for Classic or `via_hybrid.json` for Hybrid.
+[VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED, as well as a **Debug** menu displaying the dynamic **Firmware Version** read directly from controller memory. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via.json`.
 
-Vial supports runtime keymap editing through `vial_classic.json` for Classic or `vial_hybrid.json` for Hybrid, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, Rapid Trigger settings, and runtime version queries.
+Vial supports runtime keymap editing through `vial.json`, but it does not provide custom UI controls. Use [VIA](https://www.usevia.app/) for calibration, scan rate, LED assignments, Rapid Trigger settings, and runtime version queries.
 
 ## DIP switches
 
@@ -90,6 +90,6 @@ Realforce R3 and newer models use a similar firmware-update container format, so
 - `modules/dip_switch/` — DIP switch input.
 - `modules/via_settings/` — VIA commands and persistent settings.
 - `modules/indicators_system/` — LEDs and the two-system layer selector.
-- `via_classic.json`, `via_hybrid.json` — model-specific VIA v3 definitions with custom controls.
-- `vial_classic.json`, `vial_hybrid.json` — model-specific Vial definitions without VIA v3 custom controls.
+- `via.json` — shared VIA definition with ANSI and JIS layouts and custom controls.
+- `vial.json` — shared Vial definition with ANSI and JIS layouts.
 - `docs/` — board documentation and research notes.

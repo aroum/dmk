@@ -1,11 +1,13 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#ifdef HHKB_HYBRID
-#define VIAL_KEYBOARD_NAME "HHKB Professional Hybrid"
-#define VIAL_PRODUCT_ID 0x4011
+#define VIAL_KEYBOARD_NAME "HHKB Professional"
+#define VIAL_PRODUCT_ID 0x4014
+#define VIA_PROTOCOL_MATRIX_ROWS 5
+#ifdef HHKB_JIS
+#define VIA_FIXED_LAYOUT_OPTIONS 1U
 #else
-#define VIAL_KEYBOARD_NAME "HHKB Professional Classic"
+#define VIA_FIXED_LAYOUT_OPTIONS 0U
 #endif
 #define VIA_V3 1
 #define VIA_FULL_SETTINGS_RESET 1
@@ -33,12 +35,6 @@
 #define CONSOLE_BUF_SIZE 128
 #ifdef HHKB_JIS
 #define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 64
-#undef VIAL_PRODUCT_ID
-#ifdef HHKB_HYBRID
-#define VIAL_PRODUCT_ID 0x4013
-#else
-#define VIAL_PRODUCT_ID 0x4012
-#endif
 #else
 #define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 224
 #endif

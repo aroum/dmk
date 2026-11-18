@@ -26,8 +26,10 @@ The active curve applies to actuation, classic hysteresis and Rapid Trigger. Req
 
 1. Open the [VIA web app](https://www.usevia.app/).
 2. Open **Settings** and enable **Show Design tab**.
-3. Open the new **Design** tab, choose **Load Draft Definition**, and select `via_classic.json` for Classic or `via_hybrid.json` for Hybrid from the keyboard directory or release assets.
+3. Open the new **Design** tab, choose **Load Draft Definition**, and select `via.json` from the keyboard directory or release assets.
 4. Connect the keyboard and open **HHKB Settings**.
+
+All variants appear as **HHKB Professional** (`cafe:4014`). The firmware reports the physical ANSI or JIS layout to VIA and Vial. After updating from an older build, load the shared `via.json` and authorize the new USB identity.
 
 > [!TIP]
 > **Blank keycaps (missing legends) on Layer 0:**
@@ -35,16 +37,16 @@ The active curve applies to actuation, classic hysteresis and Rapid Trigger. Req
 
 ## Chromium on Linux sees the HHKB, but VIA cannot connect
 
-If VIA detects **HHKB Professional Classic** with VID/PID `cafe:4010` but reports that the keyboard is not responding, try granting Chromium access to its `/dev/hidraw*` devices. This rule grants the active local session user access to devices with this VID/PID.
+If VIA detects **HHKB Professional** with VID/PID `cafe:4014` but reports that the keyboard is not responding, try granting Chromium access to its `/dev/hidraw*` devices. This rule grants the active local session user access to devices with this VID/PID.
 
 ```bash
 sudo tee /etc/udev/rules.d/70-hhkb-via.rules >/dev/null <<'EOF'
-SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="4010", TAG+="uaccess"
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="4014", TAG+="uaccess"
 EOF
 sudo udevadm control --reload-rules
 ```
 
-Unplug and reconnect the keyboard's USB cable, reload VIA, and select the HHKB through **Authorize device**. Use the same `via_classic.json`.
+Unplug and reconnect the keyboard's USB cable, reload VIA, and select the HHKB through **Authorize device**. Use the same `via.json`.
 
 If the error persists, open `chrome://device-log`, try connecting through VIA again, and check for entries containing `HID` or `hidraw`.
 
@@ -52,11 +54,11 @@ If the error persists, open `chrome://device-log`, try connecting through VIA ag
 
 [VIA](https://www.usevia.app/) supports the custom **HHKB Settings** interface: Scan Rate, Calibration, Rapid Trigger, LED, and Debug. These custom controls are available only in the VIA web app. Rapid Trigger is shown only by firmware built with `HHKB_RAPID_TRIGGER`.
 
-Vial uses `vial_classic.json` for Classic and `vial_hybrid.json` for Hybrid and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
+Vial uses `vial.json` and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
 
 ## Select a system
 
-With the updated firmware and `via_classic.json`, assign **System 1** or **System 2** in the VIA keycode picker. Through **Any**, use `0x7E00` for System 1 and `0x7E01` for System 2. System 1 uses layers 0 and 1, and System 2 uses layers 2 and 3. Place each selector where it can be reached from the other system.
+With the updated firmware and `via.json`, assign **System 1** or **System 2** in the VIA keycode picker. Through **Any**, use `0x7E00` for System 1 and `0x7E01` for System 2. System 1 uses layers 0 and 1, and System 2 uses layers 2 and 3. Place each selector where it can be reached from the other system.
 
 ## HHKB Settings Menu Reference
 
@@ -207,7 +209,7 @@ In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debu
 
 ## Hybrid only: Bluetooth controls and keycodes
 
-Assign these after loading [via_hybrid.json](../../via_hybrid.json) in VIA:
+Assign these after loading [via.json](../../via.json) in VIA:
 
 - **BT Select 1–4** (`0x7E02`–`0x7E05`): select an existing bond.
 - **BT Pair 1–4** (`0x7E06`–`0x7E09`): pair in the chosen slot.
@@ -223,7 +225,7 @@ Assign these after loading [via_hybrid.json](../../via_hybrid.json) in VIA:
 
 ### VIA settings unique to Hybrid
 
-In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design tab → Design → Load Draft Definition** and choose [via_hybrid.json](../../via_hybrid.json). The **HHKB Settings → Bluetooth** submenu appears only in a Hybrid build. Vial supports keymap editing but cannot display custom controls.
+In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design tab → Design → Load Draft Definition** and choose [via.json](../../via.json). The **HHKB Settings → Bluetooth** submenu appears only in a Hybrid build. Vial supports keymap editing but cannot display custom controls.
 
 - **Battery matrix scan rate:** 50, 125, 200 (default), 250, 500, or 1000 Hz, stored separately from the USB rate.
 - **Sleep timeout:** 0–60 minutes in one-minute steps; `0` disables the inactivity timer. Pairing caps longer timeouts at 10 minutes.

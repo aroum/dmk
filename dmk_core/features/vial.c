@@ -10,6 +10,10 @@
 #ifdef VIAL
 #include "usb.h"
 #include "vial_generated.h"
+
+#ifndef VIA_PROTOCOL_MATRIX_ROWS
+#define VIA_PROTOCOL_MATRIX_ROWS NUM_ROWS
+#endif
 #include <string.h>
 #ifdef VIA_FULL_SETTINGS_RESET
 #include "hal_gpio.h"
@@ -768,7 +772,9 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         }
         case VIA_SUB_LAYOUT_OPTIONS: {
             uint32_t options = 0;
-#ifdef VIA_LAYOUT_OPTIONS_MASK
+#ifdef VIA_FIXED_LAYOUT_OPTIONS
+            options = VIA_FIXED_LAYOUT_OPTIONS;
+#elif defined(VIA_LAYOUT_OPTIONS_MASK)
             // Older saved maps leave the appended field erased.
             if (vial_storage.data.layout_options != UINT32_MAX) {
                 options = vial_storage.data.layout_options & VIA_LAYOUT_OPTIONS_MASK;
@@ -820,12 +826,18 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         break;
     }
 
-#ifdef VIA_LAYOUT_OPTIONS_MASK
+#if defined(VIA_FIXED_LAYOUT_OPTIONS) || defined(VIA_LAYOUT_OPTIONS_MASK)
     case VIA_SET_KEYBOARD_VALUE: {
         if (request[1] != VIA_SUB_LAYOUT_OPTIONS) {
             response[0] = 0xFF;
             break;
         }
+#ifdef VIA_FIXED_LAYOUT_OPTIONS
+        response[2] = (uint8_t)(VIA_FIXED_LAYOUT_OPTIONS >> 24);
+        response[3] = (uint8_t)(VIA_FIXED_LAYOUT_OPTIONS >> 16);
+        response[4] = (uint8_t)(VIA_FIXED_LAYOUT_OPTIONS >> 8);
+        response[5] = (uint8_t)VIA_FIXED_LAYOUT_OPTIONS;
+#else
         uint32_t options = ((uint32_t)request[2] << 24) | ((uint32_t)request[3] << 16) |
                            ((uint32_t)request[4] << 8) | request[5];
         options &= VIA_LAYOUT_OPTIONS_MASK;
@@ -833,6 +845,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
             vial_storage.data.layout_options = options;
             vial_eeprom_save();
         }
+#endif
         break;
     }
 #endif
@@ -877,7 +890,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         }
         uint16_t start = offset / 2;
         uint8_t count = size / 2;
-        uint16_t matrix_size = (uint16_t)NUM_ROWS * (uint16_t)NUM_COLS;
+        uint16_t matrix_size = (uint16_t)VIA_PROTOCOL_MATRIX_ROWS * (uint16_t)NUM_COLS;
         for (uint8_t i = 0; i < count; i++) {
             uint16_t idx = start + i;
             uint8_t layer = matrix_size ? (idx / matrix_size) : 0;
@@ -903,7 +916,7 @@ void vial_process_packet(uint8_t const *request, uint8_t *response) {
         }
         uint16_t start = offset / 2;
         uint8_t count = size / 2;
-        uint16_t matrix_size = (uint16_t)NUM_ROWS * (uint16_t)NUM_COLS;
+        uint16_t matrix_size = (uint16_t)VIA_PROTOCOL_MATRIX_ROWS * (uint16_t)NUM_COLS;
         for (uint8_t i = 0; i < count; i++) {
             uint16_t idx = start + i;
             uint8_t layer = matrix_size ? (idx / matrix_size) : 0;

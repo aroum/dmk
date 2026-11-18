@@ -4,7 +4,7 @@
 
 # Build
 
-Add `HHKB_JIS` alongside `HHKB_CLASSIC_TYPE_S` or `HHKB_HYBRID` for the 69-key layout. Use the corresponding `via_*_jis.json` definition. Classic Type-S JIS generates an AHKS01 container. Hybrid JIS generates a raw STM32 image. Verify the matrix and attachment to the correct factory container on hardware before flashing.
+Add `HHKB_JIS` alongside `HHKB_CLASSIC_TYPE_S` or `HHKB_HYBRID` for the 69-key layout. Use the shared `via.json` definition. Classic Type-S JIS generates an AHKS01 container. Hybrid JIS generates a raw STM32 image. Verify the matrix and attachment to the correct factory container on hardware before flashing.
 
 Run builds from the repository root. Use the standard DMK definition argument.
 
@@ -67,7 +67,7 @@ The [Build Firmware workflow](../../../../.github/workflows/build_test.yml) runs
 - `dmk-hhkb-classic-classic-via.hfb` — standard Classic, model `AHHX01`, HFB version A4.50.
 - `dmk-hhkb-classic-type-s-via.hfb` — Classic Type-S, model `AHHS01`, HFB version A8.50.
 
-Each archive contains the model-specific `.hfb` and [via_classic.json](../../via_classic.json) for loading the custom menu through the [VIA web app](https://www.usevia.app/) Design tab. Select the archive that matches your keyboard. The Type-S build has been compiler-checked; physical board verification so far covers the standard Classic.
+Each archive contains the model-specific `.hfb` and [via.json](../../via.json) for loading the custom menu through the [VIA web app](https://www.usevia.app/) Design tab. Select the archive that matches your keyboard. The Type-S build has been compiler-checked; physical board verification so far covers the standard Classic.
 
 Both builds use `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S also uses `HHKB_CLASSIC_TYPE_S`. The keyboard configuration enables [VIA](https://www.usevia.app/) v3 and Vial, custom calibration, scan rate, actuation, Rapid Trigger, LEDs, layers, and hold-tap settings. `HHKB_ADC_DMA` is not enabled in this workflow.
 
