@@ -170,7 +170,10 @@ static void usb_device_task(void *param) {
         extern void debug_console_flush(void);
         debug_console_flush();
 #endif
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2));
+        // TinyUSB events wake this task immediately, including during enumeration.
+        // Keep the short fallback for reports and deferred work on a mounted host.
+        TickType_t wait = pdMS_TO_TICKS(tud_mounted() ? 2 : 1000);
+        ulTaskNotifyTake(pdTRUE, wait);
     }
 }
 
