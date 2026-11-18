@@ -26,6 +26,8 @@ import os
 import sys
 import time
 
+from make_hfb import CLASSIC_VERSIONS, parse_version_bytes
+
 try:
     import hid
 except ImportError:
@@ -76,21 +78,22 @@ def wrap_binary_to_hfb(raw_bin: bytes, model: str = "AHHX01", version_bytes: byt
     outer_crc = compute_crc16_mcrf4xx(body).to_bytes(2, "little")
     return outer_crc + body
 
+MODEL_NUMBERS = {
+    "AHHX01": "401W 401B 401WN 401BN",
+    "AHHS01": "401WSC 401BSC 401YSC",
+    "AHKS01": "421BSC 421WSC 421YSC",
+    "AHUX01": "800W 800B 800WN 800BN 800WS 800BS 800WNS 800BNS 800YS 800YNS 800BSC1 800WSC1 800YSC1",
+    "AHJX01": "820W 820B 820WS 820BS 820YS 820YNS 820BSC1 820WSC1 820YSC1",
+}
+
+
 def device_model(type_number: str):
     """Map recognised physical model numbers to the container model ID."""
     name = type_number.upper().strip()
-    # Type-S models (container model AHHS01):
-    # PD-KB401WSC (White), PD-KB401BSC (Charcoal), PD-KB401YSC (Snow)
-    if name in ("PD-KB401WSC", "PD-KB401BSC", "PD-KB401YSC") or "TYPE-S" in name:
-        return "AHHS01"
-    # Classic models (container model AHHX01):
-    # PD-KB401W (White Printed), PD-KB401B (Charcoal Printed),
-    # PD-KB401WN (White Blank), PD-KB401BN (Charcoal Blank)
-    if name in ("PD-KB401W", "PD-KB401B", "PD-KB401WN", "PD-KB401BN"):
-        return "AHHX01"
-    # JIS models (69-key matrix multiplexing, pending tester verification):
-    if name in ("PD-KB421BSC", "PD-KB421WSC", "PD-KB421YSC") or name.startswith("PD-KB421"):
-        return "JIS_UNSUPPORTED"
+    if name.startswith("PD-KB"):
+        for model, numbers in MODEL_NUMBERS.items():
+            if name[5:] in numbers.split():
+                return model
     return None
 
 def validate_container(data: bytes, expected_model=None, *, check_crc=True, check_model=True):
@@ -106,8 +109,6 @@ def validate_container(data: bytes, expected_model=None, *, check_crc=True, chec
             raise ValueError("Invalid HFB firmware CRC")
     model = data[65554:65560].decode("ascii", errors="replace")
     if check_model:
-        if expected_model == "JIS_UNSUPPORTED":
-            raise ValueError("JIS models (PD-KB421 series) are not yet supported: 69-key matrix routing differs from 60-key ANSI. Use --skip-model-check only for experimental testing.")
         if expected_model is None:
             raise ValueError("Cannot determine keyboard model; use --skip-model-check only if intentional")
         if model != expected_model:
@@ -329,7 +330,7 @@ def main():
     parser.add_argument("--force", action="store_true", help="Bypass Bank 2 reset-vector check")
     parser.add_argument("--skip-crc", action="store_true", help="Skip both HFB CRC checks")
     parser.add_argument("--skip-model-check", action="store_true", help="Skip HFB/device model check")
-    parser.add_argument("--model", choices=("AHHX01", "AHHS01"), help="Model ID to use when wrapping a raw .bin")
+    parser.add_argument("--model", choices=CLASSIC_VERSIONS, help="Model ID to use when wrapping a raw .bin")
     args = parser.parse_args()
 
     print("=== HHKB Open Flasher CLI ===")
@@ -363,6 +364,8 @@ def main():
             data = f.read()
 
         expected_model = device_model(info['type_number'])
+        if expected_model in {"AHUX01", "AHJX01"} or len(data) == 282672:
+            raise ValueError("Hybrid requires a separate update path. This HID updater supports Classic containers only.")
 
         if len(data) == 65570:
             hfb_container = data
@@ -372,7 +375,7 @@ def main():
             model = args.model or expected_model
             if model is None:
                 raise ValueError("Unknown keyboard model: specify --model for a raw binary")
-            version = bytes([0x0A, 0x08, 0x05, 0x00]) if model == "AHHS01" else bytes([0x0A, 0x04, 0x05, 0x00])
+            version = parse_version_bytes(CLASSIC_VERSIONS[model])
             hfb_container = wrap_binary_to_hfb(data, model=model, version_bytes=version)
             raw_payload = hfb_container[4:4+65536]
         else:

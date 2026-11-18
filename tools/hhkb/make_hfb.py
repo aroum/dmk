@@ -72,6 +72,9 @@ def parse_version_bytes(ver_str: str) -> bytes:
 
     return bytes([major, v1, v2, v3])
 
+CLASSIC_VERSIONS = {"AHHX01": "A4.50", "AHHS01": "A8.50", "AHKS01": "A9.50"}
+
+
 def make_hfb(bin_path: str, out_path: str, model: str = "AHHX01", version_str: str = None):
     with open(bin_path, "rb") as f:
         data = f.read()
@@ -85,7 +88,7 @@ def make_hfb(bin_path: str, out_path: str, model: str = "AHHX01", version_str: s
     padded_data = data + b"\xff" * (target_size - len(data))
 
     if version_str is None:
-        version_str = "A8.50" if "S01" in model else "A4.50"
+        version_str = CLASSIC_VERSIONS[model]
 
     # Inner tag is the CRC-16 of the 64KB payload (little-endian)
     inner_crc = compute_crc16_mcrf4xx(padded_data)
@@ -121,8 +124,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Wrap binary into HHKB .hfb firmware package")
     parser.add_argument("input", help="Input raw .bin or .hfb file")
     parser.add_argument("output", help="Output .hfb file")
-    parser.add_argument("--model", default="AHHX01", help="Model code (default: AHHX01, e.g. AHHS01 for Classic Type-S)")
-    parser.add_argument("--version", default=None, help="Firmware version (default: A4.50 for Classic, A8.50 for Type-S)")
+    parser.add_argument("--model", choices=CLASSIC_VERSIONS, help="Classic container model (default for raw images: AHHX01)")
+    parser.add_argument("--version", help="Firmware version (defaults to the selected model's DMK version)")
 
     args = parser.parse_args()
 
@@ -137,9 +140,11 @@ if __name__ == "__main__":
         raw_payload = hfb_raw[4:4+65536]
         # Preserve model if not explicitly given
         in_model = hfb_raw[65554:65560].decode('ascii', errors='ignore').strip('\x00')
-        if not args.model or args.model == "AHHX01":
-            if in_model in ["AHHX01", "AHHS01", "AHKS01"]:
-                args.model = in_model
+        if in_model not in CLASSIC_VERSIONS:
+            parser.error("unrecognized Classic HFB model")
+        if args.model is not None and args.model != in_model:
+            parser.error("cannot change the model of an existing HFB")
+        args.model = in_model
 
         tmp_bin = args.input + ".extracted.bin"
         with open(tmp_bin, "wb") as f_tmp:
@@ -148,4 +153,4 @@ if __name__ == "__main__":
         try: os.remove(tmp_bin)
         except OSError: pass
     else:
-        make_hfb(args.input, args.output, model=args.model, version_str=args.version)
+        make_hfb(args.input, args.output, model=args.model or "AHHX01", version_str=args.version)

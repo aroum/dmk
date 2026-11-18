@@ -8,6 +8,7 @@ from unittest.mock import patch
 import tempfile
 
 sys.modules.setdefault('hid', types.ModuleType('hid'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/hhkb'))
 spec = importlib.util.spec_from_file_location('hhkb_flasher', Path(__file__).resolve().parents[2] / 'tools/hhkb/hhkb_flasher.py')
 flasher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(flasher)
@@ -34,12 +35,14 @@ class FlasherValidationTest(unittest.TestCase):
             self.assertEqual(flasher.device_model(model), 'AHHS01')
         # JIS models (PD-KB421)
         for model in ('PD-KB421BSC', 'PD-KB421WSC', 'PD-KB421YSC'):
-            self.assertEqual(flasher.device_model(model), 'JIS_UNSUPPORTED')
+            self.assertEqual(flasher.device_model(model), 'AHKS01')
+        self.assertEqual(flasher.device_model('PD-KB800WSC1'), 'AHUX01')
+        self.assertEqual(flasher.device_model('PD-KB820YNS'), 'AHJX01')
         self.assertIsNone(flasher.device_model('unknown'))
         self.assertEqual(flasher.validate_container(self.good, 'AHHX01'), 'AHHX01')
         with self.assertRaises(ValueError): flasher.validate_container(self.good, 'AHHS01')
         with self.assertRaises(ValueError): flasher.validate_container(self.good, None)
-        with self.assertRaisesRegex(ValueError, 'JIS models'): flasher.validate_container(self.good, 'JIS_UNSUPPORTED')
+        with self.assertRaisesRegex(ValueError, 'does not match'): flasher.validate_container(self.good, 'AHKS01')
         self.assertEqual(flasher.validate_container(self.good, None, check_model=False), 'AHHX01')
 
     def test_crc_checks_independent_of_model(self):
