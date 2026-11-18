@@ -45,9 +45,9 @@
 
 | Коммерческое название | Номер модели (P/N) | Цвет | Раскладка | Статус |
 | :--- | :--- | :--- | :--- | :--- |
-| **HHKB Pro Classic Type-S JIS (Charcoal)** | `PD-KB421BSC` | Тёмно-серый (墨) | 69 клавиш JIS | Аппаратно идентична; матрица в разработке |
-| **HHKB Pro Classic Type-S JIS (White)** | `PD-KB421WSC` | Белый / Серый (白) | 69 клавиш JIS | Аппаратно идентична; матрица в разработке |
-| **HHKB Pro Classic Type-S JIS (Snow)** | `PD-KB421YSC` | Белоснежный (雪) | 69 клавиш JIS | Аппаратно идентична; матрица в разработке |
+| **HHKB Pro Classic Type-S JIS (Charcoal)** | `PD-KB421BSC` | Тёмно-серый (墨) | 69 клавиш JIS | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB Pro Classic Type-S JIS (White)** | `PD-KB421WSC` | Белый / Серый (白) | 69 клавиш JIS | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB Pro Classic Type-S JIS (Snow)** | `PD-KB421YSC` | Белоснежный (雪) | 69 клавиш JIS | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
 
 #### Технический анализ и аппаратное автоопределение:
 - **Единые официальные пакеты обновлений:** Важный факт: на официальном сайте PFU **нет раздельных файлов прошивки для JIS клавиатур**. Заводские файлы обновления (`HHKB410_FW_A429.hfb` для Classic и `HHKB401_FW_A803.hfb` для Type-S) абсолютно одинаковы для ANSI и JIS модификаций. Штатная прошивка динамически определяет тип платы (ANSI 60 кл. vs JIS 69 кл.) непосредственно при старте — вероятнее всего, через аппаратный подтягивающий резистор (hardware strapping) на свободной ножке GPIO контроллера, конфигурационный байт в заводском EEPROM или зондирование крайних линий мультиплексора.
@@ -82,8 +82,8 @@
 | **HHKB Pro HYBRID (Charcoal)** | `PD-KB800B` | ANSI 60 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Стандартные EC 45g | Локальная сборка; не проверено на плате |
 | **HHKB Pro HYBRID (White, Blank)** | `PD-KB800WN` | ANSI 60 кл. | Белый | Белый / Серый | Без символов (Blank) | Стандартные EC 45g | Локальная сборка; не проверено на плате |
 | **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60 кл. | Тёмно-серый | Тёмно-серый | Без символов (Blank) | Стандартные EC 45g | Локальная сборка; не проверено на плате |
-| **HHKB Pro HYBRID JIS (White)** | `PD-KB820W` | JIS 69 кл. | Белый | Белый / Серый | С гравировкой | Стандартные EC 45g | Запланировано |
-| **HHKB Pro HYBRID JIS (Charcoal)** | `PD-KB820B` | JIS 69 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Стандартные EC 45g | Запланировано |
+| **HHKB Pro HYBRID JIS (White)** | `PD-KB820W` | JIS 69 кл. | Белый | Белый / Серый | С гравировкой | Стандартные EC 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB Pro HYBRID JIS (Charcoal)** | `PD-KB820B` | JIS 69 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Стандартные EC 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
 
 #### HHKB Professional Hybrid Type-S (Бесшумные EC + Bluetooth 5.0)
 
@@ -95,10 +95,10 @@
 | **HHKB Pro HYBRID Type-S (Charcoal, Blank)** | `PD-KB800BNS` | ANSI 60 кл. | Тёмно-серый | Тёмно-серый | Без символов (Blank) | Silent Type-S 45g | Вариант не проверен |
 | **HHKB Pro HYBRID Type-S (Snow)** | `PD-KB800YS` | ANSI 60 кл. | Белоснежный (Snow) | Белоснежный (Snow) | С гравировкой | Silent Type-S 45g | Вариант не проверен |
 | **HHKB Pro HYBRID Type-S (Snow, Blank)** | `PD-KB800YNS` | ANSI 60 кл. | Белоснежный (Snow) | Белоснежный (Snow) | Без символов (Blank) | Silent Type-S 45g | Вариант не проверен |
-| **HHKB Pro HYBRID Type-S JIS (White)** | `PD-KB820WS` | JIS 69 кл. | Белый | Белый / Серый | С гравировкой | Silent Type-S 45g | Запланировано |
-| **HHKB Pro HYBRID Type-S JIS (Charcoal)** | `PD-KB820BS` | JIS 69 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Silent Type-S 45g | Запланировано |
-| **HHKB Pro HYBRID Type-S JIS (Snow)** | `PD-KB820YS` | JIS 69 кл. | Белоснежный (Snow) | Белоснежный (Snow) | С гравировкой | Silent Type-S 45g | Запланировано |
-| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)** | `PD-KB820YNS` | JIS 69 кл. | Белоснежный (Snow) | Белоснежный (Snow) | Без символов (Blank) | Silent Type-S 45g | Запланировано |
+| **HHKB Pro HYBRID Type-S JIS (White)** | `PD-KB820WS` | JIS 69 кл. | Белый | Белый / Серый | С гравировкой | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB Pro HYBRID Type-S JIS (Charcoal)** | `PD-KB820BS` | JIS 69 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB Pro HYBRID Type-S JIS (Snow)** | `PD-KB820YS` | JIS 69 кл. | Белоснежный (Snow) | Белоснежный (Snow) | С гравировкой | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)** | `PD-KB820YNS` | JIS 69 кл. | Белоснежный (Snow) | Белоснежный (Snow) | Без символов (Blank) | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
 
 #### HHKB Professional Hybrid Type-S 30th Anniversary
 
@@ -107,9 +107,9 @@
 | **HHKB HYBRID Type-S 30th Anniv (Charcoal)** | `PD-KB800BSC1` | ANSI 60 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Silent Type-S 45g | Вариант не проверен |
 | **HHKB HYBRID Type-S 30th Anniv (White)** | `PD-KB800WSC1` | ANSI 60 кл. | Белый | Белый / Серый | С гравировкой | Silent Type-S 45g | Вариант не проверен |
 | **HHKB HYBRID Type-S 30th Anniv (Snow)** | `PD-KB800YSC1` | ANSI 60 кл. | Белоснежный (Snow) | Белоснежный (Snow) | С гравировкой | Silent Type-S 45g | Вариант не проверен |
-| **HHKB HYBRID Type-S JIS 30th Anniv (Charcoal)** | `PD-KB820BSC1` | JIS 69 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Silent Type-S 45g | Запланировано |
-| **HHKB HYBRID Type-S JIS 30th Anniv (White)** | `PD-KB820WSC1` | JIS 69 кл. | Белый | Белый / Серый | С гравировкой | Silent Type-S 45g | Запланировано |
-| **HHKB HYBRID Type-S JIS 30th Anniv (Snow)** | `PD-KB820YSC1` | JIS 69 кл. | Белоснежный (Snow) | Белоснежный (Snow) | С гравировкой | Silent Type-S 45g | Запланировано |
+| **HHKB HYBRID Type-S JIS 30th Anniv (Charcoal)** | `PD-KB820BSC1` | JIS 69 кл. | Тёмно-серый | Тёмно-серый | С гравировкой | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB HYBRID Type-S JIS 30th Anniv (White)** | `PD-KB820WSC1` | JIS 69 кл. | Белый | Белый / Серый | С гравировкой | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
+| **HHKB HYBRID Type-S JIS 30th Anniv (Snow)** | `PD-KB820YSC1` | JIS 69 кл. | Белоснежный (Snow) | Белоснежный (Snow) | С гравировкой | Silent Type-S 45g | Прошивка собирается (`HHKB_JIS`); требуются тесты на железе |
 
 ---
 

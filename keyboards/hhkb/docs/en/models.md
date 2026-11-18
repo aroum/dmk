@@ -55,11 +55,11 @@ The following 7 models represent the physical 60-key ANSI (US Layout) revisions 
 
 ### Japanese JIS Models (PD-KB421 Series) — Pending Matrix Verification
 
-| Commercial Name                            | Model Number  | Color         | Layout     | Status                             |
-| :----------------------------------------- | :------------ | :------------ | :--------- | :--------------------------------- |
-| **HHKB Pro Classic Type-S JIS (Charcoal)** | `PD-KB421BSC` | Charcoal (墨) | 69-key JIS | Hardware identical; matrix pending |
-| **HHKB Pro Classic Type-S JIS (White)**    | `PD-KB421WSC` | White (白)    | 69-key JIS | Hardware identical; matrix pending |
-| **HHKB Pro Classic Type-S JIS (Snow)**     | `PD-KB421YSC` | Snow (雪)     | 69-key JIS | Hardware identical; matrix pending |
+| Commercial Name                            | Model Number  | Color         | Layout     | Status                                               |
+| :----------------------------------------- | :------------ | :------------ | :--------- | :--------------------------------------------------- |
+| **HHKB Pro Classic Type-S JIS (Charcoal)** | `PD-KB421BSC` | Charcoal (墨) | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
+| **HHKB Pro Classic Type-S JIS (White)**    | `PD-KB421WSC` | White (白)    | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
+| **HHKB Pro Classic Type-S JIS (Snow)**     | `PD-KB421YSC` | Snow (雪)     | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
 
 ### Technical Analysis & Hardware Auto-Detection
 
@@ -191,8 +191,8 @@ If you have the hardware and want to collaborate, please open a GitHub Issue or 
 | **HHKB Pro HYBRID (Charcoal)**        | `PD-KB800B`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Local build; unverified |
 | **HHKB Pro HYBRID (White, Blank)**    | `PD-KB800WN` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Standard EC 45g | Local build; unverified |
 | **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Standard EC 45g | Local build; unverified |
-| **HHKB Pro HYBRID JIS (White)**       | `PD-KB820W`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Standard EC 45g | Planned         |
-| **HHKB Pro HYBRID JIS (Charcoal)**    | `PD-KB820B`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Planned         |
+| **HHKB Pro HYBRID JIS (White)**           | `PD-KB820W`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID JIS (Charcoal)**        | `PD-KB820B`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
 
 #### HHKB Professional Hybrid Type-S (Silenced EC + Bluetooth 5.0)
 
@@ -204,10 +204,10 @@ If you have the hardware and want to collaborate, please open a GitHub Issue or 
 | **HHKB Pro HYBRID Type-S (Charcoal, Blank)** | `PD-KB800BNS` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Silent Type-S 45g | Variant unverified |
 | **HHKB Pro HYBRID Type-S (Snow)**            | `PD-KB800YS`  | ANSI 60-key | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Variant unverified |
 | **HHKB Pro HYBRID Type-S (Snow, Blank)**     | `PD-KB800YNS` | ANSI 60-key | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S JIS (White)**       | `PD-KB820WS`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Planned         |
-| **HHKB Pro HYBRID Type-S JIS (Charcoal)**    | `PD-KB820BS`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Planned         |
-| **HHKB Pro HYBRID Type-S JIS (Snow)**        | `PD-KB820YS`  | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Planned         |
-| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)** | `PD-KB820YNS` | JIS 69-key  | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Planned         |
+| **HHKB Pro HYBRID Type-S JIS (White)**           | `PD-KB820WS`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID Type-S JIS (Charcoal)**        | `PD-KB820BS`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID Type-S JIS (Snow)**            | `PD-KB820YS`  | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)**     | `PD-KB820YNS` | JIS 69-key  | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
 
 #### HHKB Professional Hybrid Type-S 30th Anniversary
 
@@ -216,9 +216,9 @@ If you have the hardware and want to collaborate, please open a GitHub Issue or 
 | **HHKB HYBRID Type-S 30th Anniv (Charcoal)**     | `PD-KB800BSC1` | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Variant unverified |
 | **HHKB HYBRID Type-S 30th Anniv (White)**        | `PD-KB800WSC1` | ANSI 60-key | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Variant unverified |
 | **HHKB HYBRID Type-S 30th Anniv (Snow)**         | `PD-KB800YSC1` | ANSI 60-key | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Variant unverified |
-| **HHKB HYBRID Type-S JIS 30th Anniv (Charcoal)** | `PD-KB820BSC1` | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Planned         |
-| **HHKB HYBRID Type-S JIS 30th Anniv (White)**    | `PD-KB820WSC1` | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Planned         |
-| **HHKB HYBRID Type-S JIS 30th Anniv (Snow)**     | `PD-KB820YSC1` | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Planned         |
+| **HHKB HYBRID Type-S JIS 30th Anniv (Charcoal)** | `PD-KB820BSC1` | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB HYBRID Type-S JIS 30th Anniv (White)**    | `PD-KB820WSC1` | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB HYBRID Type-S JIS 30th Anniv (Snow)**     | `PD-KB820YSC1` | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
 
 ---
 

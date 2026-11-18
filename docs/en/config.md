@@ -42,6 +42,14 @@ DMK includes core-level power saving management for USB suspend states (when the
      ```
      (For example, by reading a board-specific hardware switch).
 
+3. **Behavior Without a Connected USB Host (No-Host Power Saving)**:
+   - When a USB host is not mounted (`!usb_mounted`) and power saving is enabled (`keyboard_power_saving_enabled()`), DMK reduces energy consumption:
+     - Standard matrix scanning (`matrix_task`) slows down to 20 ms intervals instead of continuous full-speed polling.
+     - In the HHKB capacitive EC matrix (`keyboards/hhkb/modules/ec/matrix.c`), power to the analog sensor board and OpAmp (PC14/PC7) is disabled.
+     - Layer LEDs and indicators are turned off (blanked).
+     - The background USB task (`usb_device_task`) extends its wait timeout for TinyUSB events from 2 ms to 1000 ms.
+     - For ARM architectures and Baikal RISC-V, the CPU halts in wait-for-interrupt (`wfi`) in `vApplicationIdleHook`.
+
 ## Multi-Platform Support
 
 Configurations can dynamically target different microcontrollers using preprocessor checks (`#if defined(MCU_...)`). Supported MCUs include `MCU_milandr`, `MCU_rp2040`, `MCU_rp2350`, `MCU_nrf52840`, `MCU_baikal`, and `MCU_stm32l072`.
