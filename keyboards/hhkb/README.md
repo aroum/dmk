@@ -19,7 +19,7 @@ See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, c
 
 ## Build variants
 
-All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch). `HHKB_JIS` and `HHKB_STUDIO` reserve the JIS and Studio variants and stop the build until their hardware and layouts are verified.
+All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch). Add `HHKB_JIS` for the 69-key layout. JIS hardware verification is pending. `HHKB_STUDIO` remains reserved.
 
 
 ## Features

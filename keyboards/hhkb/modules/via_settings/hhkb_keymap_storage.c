@@ -10,8 +10,13 @@
 #ifndef SLOT_ADDRESS
 #define SLOT_ADDRESS 0x08080600UL
 #endif
+#ifdef HHKB_JIS
+#define SLOT_MAGIC_V1 0x314a4d44UL
+#define SLOT_MAGIC_V2 0x324a4d44UL
+#else
 #define SLOT_MAGIC_V1 0x314b4d44UL // 'DMK1' (Keymap only)
 #define SLOT_MAGIC_V2 0x324b4d44UL // 'DMK2' (Keymap + Combos + Macros)
+#endif
 #define SLOT_MAGIC    SLOT_MAGIC_V2
 #define SLOT_COMMIT   0x54494d43UL // 'CMIT'
 
@@ -25,7 +30,7 @@
 #define SLOT_WORDS    (4U + PAYLOAD_WORDS)
 
 #define FLASH_ERRORS (FLASH_SR_WRPERR | FLASH_SR_PGAERR | FLASH_SR_SIZERR | FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR)
-_Static_assert(DYNAMIC_KEYMAP_MAX_LAYERS == 4 && NUM_KEYS == 60, "HHKB EEPROM layout requires 4 x 60 keys");
+_Static_assert(DYNAMIC_KEYMAP_MAX_LAYERS == 4 && (NUM_KEYS == 60 || NUM_KEYS == 69), "HHKB EEPROM layout requires four layers and a supported matrix");
 _Static_assert(2 * SLOT_WORDS * 4 <= 0xa00, "keymap slots overlap factory sensor data");
 
 static uint32_t snapshot[PAYLOAD_WORDS];

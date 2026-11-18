@@ -12,7 +12,11 @@
 extern "C" {
 #endif
 
+#ifdef HHKB_JIS
+#define USER_EEPROM_MAGIC          0x484B4A45UL // JIS record geometry
+#else
 #define USER_EEPROM_MAGIC          0x484B4345UL // "HKCE" (versioned with CRC16)
+#endif
 #define USER_EEPROM_LEGACY_MAGIC   0x484B4344UL // "HKCD"
 #define USER_EEPROM_C_MAGIC        0x484B4343UL // "HKCC"
 #define USER_EEPROM_PREV_MAGIC     0x484B4342UL // "HKCB"
@@ -38,7 +42,7 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t debug_flags;
     uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
-_Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 264, "Preserve the v1 settings record");
+_Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 24 + 4 * MATRIX_ROWS * MATRIX_COLS, "Preserve the v1 settings record");
 
 // Calibration & Settings API
 void hhkb_settings_init(void);

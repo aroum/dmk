@@ -31,7 +31,17 @@
 #endif
 #define DEBUG_CONSOLE_ENABLE 1
 #define CONSOLE_BUF_SIZE 128
+#ifdef HHKB_JIS
+#define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 64
+#undef VIAL_PRODUCT_ID
+#ifdef HHKB_HYBRID
+#define VIAL_PRODUCT_ID 0x4013
+#else
+#define VIAL_PRODUCT_ID 0x4012
+#endif
+#else
 #define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 224
+#endif
 
 #include "pin_defs.h"
 
@@ -44,21 +54,39 @@
 // #define HHKB_SCAN_DIAGNOSTICS 1
 
 /* --- Matrix Geometry --- */
+#ifdef HHKB_JIS
+#define MATRIX_ROWS 5
+#define NUM_ROWS 5
+#define NUM_KEYS 69
+#define HHKB_ROW_MASK 0x0C07U
+#define HHKB_ROW_BITS {1U, 2U, 4U, 0x400U, 0x800U}
+#define LAYOUT { \
+    {4, 0}, {4, 3}, {4, 2}, {4, 4}, {4, 5}, {4, 6}, {4, 7}, {4, 11}, {4, 8}, {4, 9}, {4, 10}, {4, 12}, {4, 14}, {4, 13}, {2, 13}, \
+    {2, 0}, {2, 3}, {2, 2}, {2, 4}, {2, 5}, {2, 6}, {2, 7}, {2, 11}, {2, 8}, {2, 9}, {2, 10}, {2, 12}, {2, 14}, {0, 13}, \
+    {0, 0}, {0, 3}, {0, 2}, {0, 4}, {0, 5}, {0, 6}, {0, 7}, {0, 11}, {0, 8}, {0, 9}, {0, 10}, {0, 12}, {0, 14}, \
+    {3, 0}, {3, 3}, {3, 2}, {3, 4}, {3, 5}, {3, 6}, {3, 7}, {3, 11}, {3, 8}, {3, 9}, {3, 10}, {3, 12}, {3, 14}, {3, 13}, \
+    {4, 1}, {1, 1}, {1, 3}, {0, 1}, {3, 1}, {1, 6}, {1, 11}, {1, 8}, {1, 9}, {1, 10}, {1, 12}, {1, 14}, {1, 13}, \
+}
+#else
 #define MATRIX_ROWS 4
+#define NUM_ROWS 4
+#define NUM_KEYS 60
+#define HHKB_ROW_MASK 0x0407U
+#define HHKB_ROW_BITS {1U, 2U, 4U, 0x400U}
+#endif
 #define MATRIX_COLS 15
 #define MATRIX_REPORT_BATCH
 #define QUEUE_DEF_SIZE 48
 #define KEYBOARD_REPORT_QUEUE_LENGTH 16
 // Keep numeric for the VIA JSON generator, which reads these defines directly.
-#define NUM_ROWS 4
 #define NUM_COLS 15
-#define NUM_KEYS 60
 #if MATRIX_ROWS != NUM_ROWS || MATRIX_COLS != NUM_COLS
 #error "HHKB matrix dimensions must match VIA dimensions"
 #endif
 
 // {ROW, COL} coordinate mapping from physical key position to EC matrix (Duncaen / QMK)
 // clang-format off
+#ifndef HHKB_JIS
 #define LAYOUT { \
     {1, 0}, {1, 3}, {1, 1}, {1, 2}, {1, 4}, {1, 5}, {1, 6}, {1, 7}, {1, 11}, {1, 8}, {1, 9}, {1, 10}, {1, 12}, {1, 14}, {1, 13}, \
     {2, 0}, {2, 3}, {2, 1}, {2, 2}, {2, 4}, {2, 5}, {2, 7}, {2, 11}, {2, 8}, {2, 9}, {2, 10}, {2, 12}, {2, 14}, {2, 13}, \
@@ -66,6 +94,7 @@
     {0, 0}, {0, 1}, {0, 2}, {3, 4}, {3, 5}, {3, 6}, {0, 7}, {0, 11}, {0, 8}, {0, 9}, {0, 12}, {0, 14}, {3, 13}, \
             {0, 3}, {0, 4},                 {0, 6},                   {0, 10}, {0, 13} \
 }
+#endif
 #define LAYOUT_DEFAULT LAYOUT
 // clang-format on
 
@@ -76,7 +105,6 @@
 
 /* --- Row Drive Pins --- */
 // PB0, PB1, PB2, PB10
-#define HHKB_ROW_PINS { B0, B1, B2, B10 }
 
 /* --- Column Select Multiplexer Pins --- */
 // Dual 4051 Demux: U1 (cols 0-7, PC6) and U2 (cols 8-14, PB15)
@@ -145,6 +173,21 @@ enum layers {
  * Row 3 (13): LShift, Z, X, C, V, B, N, M, ,, ., /, RShift, MO(HHKB)
  * Row 4 (5):  LAlt, LGui, Space, RGui, RAlt
  */
+#ifdef HHKB_JIS
+#define HHKB_JIS_BASE(fn) { \
+    K_ESC, K_1, K_2, K_3, K_4, K_5, K_6, K_7, K_8, K_9, K_0, K_MINS, K_EQL, K_JYEN, K_BSPC, \
+    K_TAB, K_Q, K_W, K_E, K_R, K_T, K_Y, K_U, K_I, K_O, K_P, K_LBRC, K_RBRC, K_ENT, \
+    K_LCTL, K_A, K_S, K_D, K_F, K_G, K_H, K_J, K_K, K_L, K_SCLN, K_QUOT, K_NUHS, \
+    K_LSFT, K_Z, K_X, K_C, K_V, K_B, K_N, K_M, K_COMM, K_DOT, K_SLSH, K_RO, K_UP, K_RSFT, \
+    MO(fn), K_GRAV, K_LGUI, K_LALT, K_INT5, K_SPC, K_INT4, K_KANA, K_RALT, MO(fn), K_LEFT, K_DOWN, K_RGHT \
+}
+const uint32_t keymap[][NUM_KEYS] = {
+    [BASE] = HHKB_JIS_BASE(HHKB),
+    [HHKB] = {[0 ... NUM_KEYS - 1] = K_TRNS, [15] = K_CAPS},
+    [BASE_2] = HHKB_JIS_BASE(HHKB_2),
+    [HHKB_2] = {[0 ... NUM_KEYS - 1] = K_TRNS, [15] = K_CAPS},
+};
+#else
 const uint32_t keymap[][NUM_KEYS] = {
     // -------------------------------------------------------------------------
     // LAYER 0: BASE (Default HHKB Layout)
@@ -188,6 +231,7 @@ const uint32_t keymap[][NUM_KEYS] = {
 };
 // clang-format on
 
+#endif
 const size_t keymap_layers = sizeof(keymap) / sizeof(keymap[0]);
 #endif // DEFINE_KEYMAP
 

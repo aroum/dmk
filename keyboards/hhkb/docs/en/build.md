@@ -4,6 +4,8 @@
 
 # Build
 
+Add `HHKB_JIS` alongside `HHKB_CLASSIC_TYPE_S` or `HHKB_HYBRID` for the 69-key layout. Use the corresponding `via_*_jis.json` definition. Classic Type-S JIS generates an AHKS01 container. Hybrid JIS generates a raw STM32 image. Verify the matrix and attachment to the correct factory container on hardware before flashing.
+
 Run builds from the repository root. Use the standard DMK definition argument.
 
 ```bash

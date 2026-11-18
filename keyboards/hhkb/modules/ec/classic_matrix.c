@@ -51,20 +51,20 @@ void hhkb_matrix_hardware_init(void) {
 
     // Row drive pins (B0, B1, B2, B10) & Demux pins (B12, B13, B14, B15) as Push-Pull Output
     GPIOB->MODER &= ~(
-        (3U << (0 * 2)) | (3U << (1 * 2)) | (3U << (2 * 2)) | (3U << (10 * 2)) |
+        (3U << (0 * 2)) | (3U << (1 * 2)) | (3U << (2 * 2)) | (3U << (10 * 2)) | ((HHKB_ROW_MASK & 0x800U) ? (3U << 22) : 0U) |
         (3U << (12 * 2)) | (3U << (13 * 2)) | (3U << (14 * 2)) | (3U << (15 * 2))
     );
     GPIOB->MODER |= (
-        (1U << (0 * 2)) | (1U << (1 * 2)) | (1U << (2 * 2)) | (1U << (10 * 2)) |
+        (1U << (0 * 2)) | (1U << (1 * 2)) | (1U << (2 * 2)) | (1U << (10 * 2)) | ((HHKB_ROW_MASK & 0x800U) ? (1U << 22) : 0U) |
         (1U << (12 * 2)) | (1U << (13 * 2)) | (1U << (14 * 2)) | (1U << (15 * 2))
     );
     GPIOB->OSPEEDR |= (
-        (3U << (0 * 2)) | (3U << (1 * 2)) | (3U << (2 * 2)) | (3U << (10 * 2)) |
+        (3U << (0 * 2)) | (3U << (1 * 2)) | (3U << (2 * 2)) | (3U << (10 * 2)) | ((HHKB_ROW_MASK & 0x800U) ? (3U << 22) : 0U) |
         (3U << (12 * 2)) | (3U << (13 * 2)) | (3U << (14 * 2)) | (3U << (15 * 2))
     );
 
     // Row drive pins idle HIGH (unselected)
-    GPIOB->BSRR = 0x0407;
+    GPIOB->BSRR = HHKB_ROW_MASK;
 
     // Analog control: PC6, PC7, PC8 and sensor board power PC14 as Push-Pull Output
     GPIOC->MODER &= ~((3U << (6 * 2)) | (3U << (7 * 2)) | (3U << (8 * 2)) | (3U << (14 * 2)));
@@ -123,7 +123,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     }
 
     bool changed = false;
-    static const uint16_t row_pins[MATRIX_ROWS] = {0x1, 0x2, 0x4, 0x400};
+    static const uint16_t row_pins[MATRIX_ROWS] = HHKB_ROW_BITS;
     static const uint32_t col_mux_bsrr[MATRIX_COLS] = {
         0x70000000, 0x60001000, 0x50002000, 0x40003000,
         0x30004000, 0x20005000, 0x10006000, 0x7000,
@@ -131,7 +131,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
         0x30004000, 0x20005000, 0x10006000
     };
 
-    GPIOB->BSRR = 0x0407;    // Deselect all rows
+    GPIOB->BSRR = HHKB_ROW_MASK;    // Deselect all rows
     GPIOC->BSRR = (1U << 7); // Enable OpAmp
 
     GPIOC->BSRR = (1U << 6);
@@ -167,6 +167,10 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
         uint16_t settle_start = (uint16_t)TIM2->CNT;
 
         for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+#ifdef HHKB_JIS
+            static const uint8_t populated[MATRIX_COLS] = {29, 27, 29, 31, 29, 29, 31, 29, 31, 31, 31, 31, 31, 31, 31};
+            if (!(populated[col] & (1U << row))) continue;
+#endif
             matrix_row_t prev_row = current_matrix[row];
 
             scan_wait_since(settle_start, 2);
