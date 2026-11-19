@@ -18,6 +18,7 @@
 #include "matrix.h"
 #include "split.h"
 #include "task_internal.h"
+#include "tusb.h"
 
 #if defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B)
 #include "encoder.h"
@@ -386,7 +387,7 @@ void matrix_task(void *pvParameters) {
     while (1) {
 #ifndef SPLIT_ENABLED
         extern volatile bool usb_mounted;
-        if (keyboard_power_saving_enabled() && !usb_mounted) {
+        if (keyboard_power_saving_enabled() && (!usb_mounted || tud_suspended())) {
             vTaskDelay(pdMS_TO_TICKS(20));
             continue;
         }

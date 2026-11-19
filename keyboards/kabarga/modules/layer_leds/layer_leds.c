@@ -4,6 +4,7 @@
 #include "keyboard.h"
 #include "task.h"
 #include "pin_defs.h"
+#include "tusb.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -40,7 +41,7 @@ TickType_t keyboard_platform_timeout(void) {
 
 void keyboard_platform_tick(TickType_t now) {
     (void)now;
-    bool should_blank = keyboard_power_saving_enabled() && !usb_mounted;
+    bool should_blank = keyboard_power_saving_enabled() && (!usb_mounted || tud_suspended());
     if (blanked != should_blank) {
         blanked = should_blank;
         set_layer_led(selected_layer);
