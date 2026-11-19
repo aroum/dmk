@@ -140,6 +140,12 @@ uv run tools/ec_curve_visualizer.py
 - **Calibration Monitor:** Live tracking of sensor baseline values and capacitance drift.
 - **Factory reset (Arm settings reset & Erase all DMK settings):** Safe complete reset of all DMK custom settings, calibrations, and keymaps.
 
+### Small readings near the released position
+
+A reading around **5% travel when lightly resting a finger on a key or wiggling its keycap is normal** and does not, by itself, indicate a calibration problem. EC sensors detect small movements before the key reaches its actuation point; `UP` means the key is not logically pressed. The EC stream normally reports movement from about 5% travel, so the first visible value is not necessarily the resting value.
+
+Check with both hands completely removed from the keyboard. If the readings stop, as in the reported test, this behavior is expected; silence does not prove an exact 0% reading. Persistent elevated readings with untouched keys, unintended presses, or changing calibration values after a restart need separate investigation. Keep every key fully released while capturing the baseline.
+
 ### Key Calibration Process
 
 1. Toggle on **Use custom calibration** and ensure all keys are released.
