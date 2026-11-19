@@ -62,7 +62,7 @@ The current linked STM32L072 image reserves 20,480 bytes of RAM: 288 bytes `.dat
 
 ## GitHub Actions
 
-The `dev` workflow builds Classic ANSI, Classic Type-S ANSI and Classic Type-S JIS, as well as Hybrid ANSI and JIS (the same targets cover Hybrid Type-S). Hybrid artifacts marked `experimental` contain DMK for STM32 and an erased-byte nRF section with an intentionally mismatched MD5. CI generates these without factory binaries. Whether the updater commits the STM32 update after the radio rejects its section still needs hardware verification.
+The `dev` workflow builds Classic ANSI, Classic Type-S ANSI and Classic Type-S JIS, as well as Hybrid ANSI and JIS (the same targets cover Hybrid Type-S). Experimental Hybrid CI artifacts are built without proprietary vendor blobs (with an empty nRF section). Because the nRF bootloader rejects this image, and subsequently STM32 Bank 1 rejects the overall update, clean CI-built Hybrid artifacts cannot be flashed using the stock updater. For Hybrid keyboards, use the local patching script over an official vendor HFB.
 
 The [Build Firmware workflow](../../../../.github/workflows/build_test.yml) runs on pushes and pull requests targeting `main`/`master`. You can also start it through **Actions → Build Firmware → Run workflow**. After a successful run, download the appropriate archive under **Artifacts**:
 
@@ -95,4 +95,4 @@ python3 tools/hhkb/patch_hybrid_hfb.py \
 
 `-c` requests a clean build. `HHKB_HYBRID` selects Hybrid and its SPI transport. The other definitions enable Rapid Trigger, a 16 MHz ADC clock, and the initial ×4 oversampling preference. Omit `HHKB_RAPID_TRIGGER` for a build without it; the VIA Rapid Trigger menu will be hidden. The shared [build guide](build.md) explains the definition argument.
 
-[patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) verifies the stock hash and Bank 2 vector table, replaces only the 64 KiB STM32 application, pads it with `FF`, and recalculates both CRCs. It preserves the factory nRF image, footer, and version. The output name must be new because the script refuses to overwrite files. Back up the keyboard before testing: installation and rollback of this patched Hybrid container have not been validated on hardware.
+[patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) verifies the stock hash and Bank 2 vector table, replaces only the 64 KiB STM32 application, pads it with `FF`, and recalculates both CRCs. It preserves the factory nRF image, footer, and version. The output name must be new because the script refuses to overwrite files. **Firmware images generated with this patching method have been tested and verified to work on physical HHKB Hybrid hardware.**

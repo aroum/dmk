@@ -154,6 +154,38 @@ With `HHKB_SW6_REBOOT_TO_BANK1=1`, starting DMK with SW6 ON invalidates Bank 2 a
 
 After this transition, Bank 1 can install the latest matching stock firmware from the [official HHKB download centre](https://happyhackingkb.com/download/) through Keymap Tool or `hhkb_flasher.py`. Select the correct Classic or Classic Type-S HFB. Keep SW6 OFF during normal use.
 
+## Flashing Methods and Limitations
+
+Currently, there are three ways to flash DMK onto the keyboard:
+1. **Hardware programmer / debugger (SWD):** connecting directly via CN3 pads (STM32) to write Bank 2 at `0x08010000`. Requires opening the case and soldering/connecting an external SWD programmer.
+2. **Built-in ROM DFU mode:** shorting the right-hand pads of R6 and R85 while plugging in USB (pulling `BOOT0` high). Also requires disassembling the keyboard and bridging board pads.
+3. **Official PFU updater or `hhkb_flasher.py` with a patched official `.hfb`:** replacing the STM32 section (Bank 2) while keeping the original nRF Bluetooth section intact (for Hybrid).
+
+All three methods have trade-offs and significantly narrow down the target audience (they require hardware disassembly or access to proprietary official vendor files).
+
+### nRF Update Validation Mechanism and Bank 1 Behavior (Hybrid)
+
+Testing on physical hardware has revealed the following behavior:
+- When attempting to flash a "clean" DMK build generated with an empty/test nRF section (such as via `patch_hybrid_hfb.py --make-stm32-only`):
+  1. The Nordic nRF52832 bootloader inspects the staging area (header, CRC16, and MD5).
+  2. Upon detecting an invalid CRC or MD5 mismatch, the nRF rejects the update, clears the staging area, and **safely retains its current stock firmware**.
+  3. However, once the Nordic rejects the update, **STM32 Bank 1 also rejects its own update** and refuses to transfer execution to Bank 2 (it does not set the boot flag `0x08080360 = 1`). Consequently, clean standalone CI-built images cannot boot via the stock updater.
+
+In theory, one could generate a clean firmware image that the nRF would accept. That would yield a fully working USB keyboard, but the Bluetooth module would become useless until stock PFU firmware is reflashed.
+
+### Theoretical Multi-stage Workaround
+
+To distribute clean DMK firmware without proprietary PFU blobs, a multi-stage flashing procedure has been proposed:
+
+1. **Stage 1 (Temporary firmware):** Flash a temporary firmware image containing a dummy Bluetooth firmware accepted by the nRF. The running STM32 code then modifies Bank 1 to bypass the nRF update success check.
+2. **Stage 2 (Restore Bluetooth):** Flash the official PFU firmware to restore the original Bluetooth firmware on the nRF module.
+3. **Stage 3 (Install DMK):** Flash DMK with an invalid Bluetooth firmware image. The nRF rejects the update and keeps its stock firmware, while the modified Bank 1 considers DMK in Bank 2 valid and boots it.
+4. **Stage 4 (Revert & Cleanup):** When SW6 is toggled ON to return to stock firmware, DMK restores the original validation code in Bank 1.
+
+> [!CAUTION]
+> **High risk of unrecoverable bricking:**
+> This procedure carries significant risk because it involves writing to Bank 1. Bank 1 is the primary hardware recovery path through USB. If anything goes wrong during Bank 1 modification, USB recovery is permanently lost, requiring an SWD debugger to unbrick. A simpler and safer solution is preferred.
+
 ## Hybrid only: complete backup before update experiments
 
 The local patch retains proprietary PFU nRF firmware, so the generated HFB cannot be distributed as a DMK release. The MIT-licensed reverse engineering of the STM32–Nordic SPI protocol and STOP wake sequence is credited in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol); it does not remove the proprietary code from the patched image.

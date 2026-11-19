@@ -87,10 +87,17 @@ Interested volunteers can open an issue or reach out via GitHub Discussions.
 
 The HHKB HYBRID family shares the same core controller architecture as the Classic, supplemented by a Nordic Semiconductor nRF52832 Bluetooth Low Energy subsystem and dual-source battery power management.
 
-**Status:** Standard ANSI Hybrid firmware builds locally; physical Hybrid hardware remains unverified. The patched HFB retains proprietary PFU nRF firmware and cannot be published.
+**Status:** Standard ANSI Hybrid firmware is **verified on physical hardware** using the local patching script over official PFU firmware. Clean builds directly from CI cannot be accepted by the stock bootloader due to nRF validation failure in Bank 1.
 **Target Platform:** Dual-chip Architecture (STMicroelectronics STM32 + Taiyo Yuden EYSHCNZWZ / Nordic nRF52832)
 
-The [local build and patch procedure](build.md#hybrid-only-local-build-and-factory-image-patch) replaces the STM32 application in an original PFU update. That preserves proprietary nRF code, so only the build instructions and source are distributable. A proposed nRF rejection experiment could avoid shipping that code, but it requires complete backups of both chips and has not been tested.
+The [local build and patch procedure](build.md#hybrid-only-local-build-and-factory-image-patch) replaces the STM32 application in an original PFU update. That preserves proprietary nRF code, so only the build instructions and source are distributable. Flashing via Python patching script has been tested and works on real hardware.
+
+### Bluetooth Polling Rate Considerations
+
+Over USB, the keyboard supports polling rates up to 1000 Hz. Over Bluetooth, however, report frequency is bounded by BLE protocol specifications and Connection Interval negotiations:
+- In practice, BLE report rates hover around **~50 Hz** (20 ms interval) or at most 125 Hz (7.5 ms minimum BLE connection interval on certain operating systems).
+- Changing polling rate in the VIA configurator while running wirelessly over Bluetooth provides no real benefit and should be locked in firmware to prevent invalid timing assumptions during wireless transmission.
+- For instructions on capturing report intervals and PacketLogger traces, see [Debug and HID Console](debug.md#bluetooth-hid-report-intervals-on-macos-hybrid).
 
 
 ---
@@ -190,10 +197,10 @@ If you have the hardware and want to collaborate, please open a GitHub Issue or 
 
 | Commercial Name                       | Model Number | Layout      | Case Color | Keycap Color | Legends        | Switch Type     | Hardware Status |
 | :------------------------------------ | :----------- | :---------- | :--------- | :----------- | :------------- | :-------------- | :-------------- |
-| **HHKB Pro HYBRID (White)**           | `PD-KB800W`  | ANSI 60-key | White      | White / Gray | Dyesub Printed | Standard EC 45g | Local build; unverified |
-| **HHKB Pro HYBRID (Charcoal)**        | `PD-KB800B`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Local build; unverified |
-| **HHKB Pro HYBRID (White, Blank)**    | `PD-KB800WN` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Standard EC 45g | Local build; unverified |
-| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Standard EC 45g | Local build; unverified |
+| **HHKB Pro HYBRID (White)**           | `PD-KB800W`  | ANSI 60-key | White      | White / Gray | Dyesub Printed | Standard EC 45g | Hardware verified (via HFB patch) |
+| **HHKB Pro HYBRID (Charcoal)**        | `PD-KB800B`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Hardware verified (via HFB patch) |
+| **HHKB Pro HYBRID (White, Blank)**    | `PD-KB800WN` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Standard EC 45g | Hardware verified (via HFB patch) |
+| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Standard EC 45g | Hardware verified (via HFB patch) |
 | **HHKB Pro HYBRID JIS (White)**           | `PD-KB820W`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
 | **HHKB Pro HYBRID JIS (Charcoal)**        | `PD-KB820B`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
 

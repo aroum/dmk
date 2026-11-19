@@ -65,7 +65,9 @@ With the updated firmware and `via.json`, assign **System 1** or **System 2** in
 The custom settings interface consists of 6 submenus:
 
 ### 1. Scan Rate & Timing
-- **Target scan rate:** Matrix polling frequency — 50, 125, 250, 500, or 1000 Hz.
+- **Target scan rate:** Matrix polling frequency — 50, 125, 250, 500, or 1000 Hz when operating over USB.
+  > [!NOTE]
+  > **Bluetooth Polling Rate Limitation (Hybrid):** Over Bluetooth LE, HID report throughput is bounded by the negotiated Connection Interval (typically ~50 Hz / 20 ms). Adjusting Target scan rate in VIA is intended for USB operation and should be locked out in firmware while connected over Bluetooth.
 - **ADC oversampling (4x):** Hardware ADC 4x averaging toggle. Active at 50–500 Hz; automatically bypassed (1x) at 1000 Hz. Saved in EEPROM and automatically restored when the rate drops back to 500 Hz or lower.
 - **Tapping term:** Hold-Tap and Layer-Tap timeout — 50 to 500 ms in 10 ms increments (default 220 ms).
 - **Permissive hold:** Instant hold resolution when a second key is tapped and released within the tapping term.
