@@ -104,25 +104,54 @@ bottom:    CLK | DIO
 
 Read [Backup & restore](backup-restore.md) before using either path.
 
-## Hybrid installation status
+## Hybrid Installation Status: Why a Local Build Is Required
 
-A Hybrid firmware package can be [built and patched locally](build.md#hybrid-only-local-build-and-factory-image-patch). The resulting HFB contains proprietary PFU nRF firmware and is not published. Flashing via local patching of an official vendor HFB has been verified and works on physical HHKB Hybrid hardware. The DMK HID flasher accepts a complete model-matched Hybrid HFB:
+Unlike the HHKB Classic, where the update file targets only the single STM32 controller, the official HHKB Hybrid update container (`HHKB800_FW_A048.hfb`, 282,672 bytes) is a **dual-target composite container**:
+1. The first 64 KB (`0x0004–0x10003`) contains firmware for the main STM32 controller (Flash Bank 2).
+2. The trailing ~216 KB contains the proprietary update payload for the **Nordic nRF52832** Bluetooth SoC (SoftDevice + BLE application stack) with its own staging header and checksums.
+
+### Why Prebuilt Hybrid HFB Releases Cannot Be Distributed
+Because the nRF payload contains proprietary, closed-source code owned by PFU Limited, distributing a precompiled full `.hfb` image for Hybrid keyboards would violate copyright restrictions. The DMK repository is strictly open-source and cannot distribute vendor binary blobs.
+
+### Why Clean CI-Generated Builds Failed on Hardware
+An experimental attempt was made to generate fully clean standalone images in GitHub Actions:
+- The STM32 section was populated with open-source DMK firmware.
+- The nRF payload section was replaced with empty padding or dummy data carrying an intentionally invalid checksum (CRC16/MD5).
+
+**The hypothesis:** The Nordic nRF52832 bootloader would detect the corrupt payload, reject it, and safely preserve its installed factory Bluetooth firmware, while the STM32 update would succeed.
+
+**Actual hardware test results:**
+1. The Nordic nRF bootloader behaves as predicted: it verifies the staging area, detects the MD5/CRC mismatch, purges the staging buffer, and **safely preserves the existing stock Bluetooth firmware**.
+2. However, the update transaction is orchestrated by the **STM32 Bank 1 bootloader**, which polls the Nordic chip over SPI at finalization (`commandE3`).
+3. Upon receiving an error/rejection status from the Nordic SoC, **STM32 Bank 1 rejects the overall update process**: it refuses to mark Bank 2 as valid (leaving boot flag `0x08080360 = 0`) and never passes execution to DMK in Bank 2.
+
+As a result, a standalone "clean" HFB cannot be accepted by the stock bootloader without modifying Bank 1.
+
+### The Proven Working Solution: Local Vendor Image Patching
+To satisfy the Bank 1 update validator without redistributing vendor binaries, DMK provides the local patching utility `tools/hhkb/patch_hybrid_hfb.py`:
+1. The user downloads the official update file directly from [PFU's official download center](https://happyhackingkb.com/download/) (`HHKB800_FW_A048.hfb` for ANSI or `HHKB820_FW_JP_A249.hfb` for JIS).
+2. The patcher replaces **only the first 64 KB STM32 payload** with the freshly compiled DMK binary, preserves the authentic factory nRF payload untouched, and recalculates the outer container CRCs.
+3. Because the nRF section remains authentic and valid, both microcontrollers validate successfully, and Bank 1 boots DMK on the STM32 while keeping full Bluetooth functionality.
 
 ```bash
 uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py keyboards/hhkb/local/dmk_hybrid.hfb
 ```
 
-Clean standalone builds from CI (without vendor blobs) cannot be accepted by the stock updater: the Nordic nRF52832 bootloader rejects the blank radio section, after which STM32 Bank 1 aborts the entire update.
+**Flashing via this local patching workflow is verified and fully functional on physical HHKB Hybrid hardware.**
 
-### Theoretical Multi-stage Workaround
+---
 
-To distribute clean DMK firmware without proprietary PFU blobs, a multi-stage flashing procedure has been proposed:
+### Theoretical Alternative: Multi-stage Workaround Without Patching
 
-1. **Stage 1 (Temporary firmware):** Flash a temporary firmware image containing a dummy Bluetooth firmware accepted by the nRF. The running STM32 code then modifies Bank 1 to bypass the nRF update success check.
-2. **Stage 2 (Restore Bluetooth):** Flash the official PFU firmware to restore the original Bluetooth firmware on the nRF module.
-3. **Stage 3 (Install DMK):** Flash DMK with an invalid Bluetooth firmware image. The nRF rejects the update and keeps its stock firmware, while the modified Bank 1 considers DMK in Bank 2 valid and boots it.
-4. **Stage 4 (Revert & Cleanup):** When SW6 is toggled ON to return to stock firmware, DMK restores the original validation code in Bank 1.
+In theory, distributing clean DMK images without proprietary blobs could be achieved if the nRF update check in Bank 1 is bypassed. A complex 4-stage flashing sequence has been analyzed:
+
+1. **Stage 1 (Temporary Firmware):** Flash a clean image with a dummy Bluetooth payload that satisfies nRF validation. The nRF accepts it (Bluetooth is temporarily rendered inoperable, but the update succeeds). Once booted into Bank 2, the temporary STM32 firmware writes to Bank 1 Flash to bypass the nRF success status requirement.
+2. **Stage 2 (Restore Bluetooth):** Flash the official PFU update file through the vendor updater to restore genuine Bluetooth firmware on the Nordic SoC.
+3. **Stage 3 (Install Clean DMK):** Flash clean DMK with an invalid nRF image. The nRF rejects the update and keeps its genuine Bluetooth firmware (from Stage 2), while the modified Bank 1 considers Bank 2 DMK valid and boots it.
+4. **Stage 4 (Revert & Cleanup):** Toggling SW6 to return to stock restores the original validation logic in Bank 1.
 
 > [!CAUTION]
-> **High risk of unrecoverable bricking:**
-> This procedure carries significant risk because it involves writing to Bank 1. Bank 1 is the primary hardware recovery path through USB. If anything goes wrong during Bank 1 modification, USB recovery is permanently lost, requiring an SWD debugger to unbrick. A simpler and safer solution is preferred.
+> **Severe bricking risk:**
+> This procedure involves writing to Bank 1, which is the **sole hardware recovery path via USB**. Any unexpected interruption, bus error, or brownout during Bank 1 modification would render the keyboard permanently unbootable over USB, requiring a full teardown and an external SWD programmer to recover.
+>
+> Because of this unacceptable risk to users, local patching remains the vastly preferred, safe, and reliable approach.
