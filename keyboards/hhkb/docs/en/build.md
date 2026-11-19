@@ -4,30 +4,59 @@
 
 # Build
 
-Add `HHKB_JIS` alongside `HHKB_CLASSIC_TYPE_S` or `HHKB_HYBRID` for the 69-key layout. Use the shared `via.json` definition. Classic Type-S JIS generates an AHKS01 container. Hybrid JIS generates a raw STM32 image. Verify the matrix and attachment to the correct factory container on hardware before flashing.
+Run builds from the repository root using standard DMK definition flags. DMK supports building for all HHKB models: Classic, Classic Type-S, Hybrid, and Hybrid Type-S (in both 60-key ANSI and 69-key Japanese JIS layouts).
 
-Run builds from the repository root. Use the standard DMK definition argument.
+## Build Commands
+
+### 1. HHKB Classic and Classic Type-S (Wired)
 
 ```bash
-# Classic: current full feature configuration
+# Classic (ANSI 60-key):
 ./build_all.sh -b hhkb -d HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
-# Classic Type-S: the same configuration plus its model definition
+# Classic Type-S (ANSI 60-key):
 ./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+
+# Classic Type-S JIS (69-key):
+./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
+PowerShell (Windows):
 ```powershell
 .\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 .\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
-`DEFAULT_MCU` in the keyboard configuration selects STM32L072, so the build command does not need an MCU argument. `HHKB_CLASSIC_TYPE_S` is only for Classic Type-S. The output directory contains an `.hfb` PFU container and a raw Bank 2 `.bin`; building does not flash the keyboard.
+### 2. HHKB Hybrid and Hybrid Type-S (Bluetooth + USB)
 
-The generated HFB versions are A4.50 for Classic and A8.50 for Type-S. The container builder calculates both required CRC values and sets the matching PFU model identifier.
+For Hybrid keyboards, DMK builds a raw STM32 binary image with SPI communication enabled for the Nordic nRF52832 SoC:
 
-## HFB container and model variants
+```bash
+# Hybrid / Hybrid Type-S (ANSI 60-key):
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
 
-An HHKB `.hfb` is exactly 65,570 bytes:
+# Hybrid / Hybrid Type-S JIS (69-key):
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+```
+
+After building, patch the raw STM32 image into the official vendor firmware container using `tools/hhkb/patch_hybrid_hfb.py` (see [Patching Official Hybrid Firmware](#hybrid-only-local-build-and-factory-image-patch)).
+
+`DEFAULT_MCU` in the keyboard configuration selects STM32L072, so the build command does not require an MCU argument. The output directory contains an `.hfb` PFU container (for Classic models) and a raw Bank 2 `.bin`; compiling does not flash the keyboard.
+
+## Model Identifiers and HFB Container Formats
+
+| Keyboard Line | Layout | DMK Build Defines | PFU Model ID | Version Line | Resulting Container |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Classic** | ANSI (60-key) | `HHKB_CLASSIC` | `AHHX01` | `A4.xx` (A4.50) | Ready `.hfb` (65,570 bytes) |
+| **Classic Type-S** | ANSI (60-key) | `HHKB_CLASSIC_TYPE_S` | `AHHS01` | `A8.xx` (A8.50) | Ready `.hfb` (65,570 bytes) |
+| **Classic Type-S JIS** | JIS (69-key) | `HHKB_CLASSIC_TYPE_S,HHKB_JIS` | `AHKS01` | `A9.xx` (A9.50) | Ready `.hfb` (65,570 bytes) |
+| **Hybrid / Type-S** | ANSI (60-key) | `HHKB_HYBRID` | `AHUX01` | `A0.xx` (A0.48) | Patched `HHKB800_FW_A048.hfb` (282,672 bytes) |
+| **Hybrid / Type-S JIS** | JIS (69-key) | `HHKB_HYBRID,HHKB_JIS` | `AHJX01` | `A2.xx` (A2.49) | Patched `HHKB820_FW_JP_A249.hfb` (282,672 bytes) |
+
+### HFB Container Structure for Wired Models (Classic)
+
+An HHKB `.hfb` container for wired Classic models is exactly 65,570 bytes:
 
 ```text
 +---------------------------------------------------------------+
@@ -43,16 +72,7 @@ An HHKB `.hfb` is exactly 65,570 bytes:
 
 Both CRCs use reflected polynomial `0x8408`, initial value `0xFFFF`, and no final XOR. The inner CRC is payload-specific; it is not a fixed model tag. The image is linked for Bank 2 at `0x08010000`.
 
-Classic and Classic Type-S use the same STM32L072RB, 4 × 15 matrix, 4051 multiplexers, and 64 KiB Bank 2 layout for this port. The firmware-facing differences are the PFU identifiers and version series:
-
-| Parameter               | Classic      | Classic Type-S |
-| ----------------------- | ------------ | -------------- |
-| Model ID                | `AHHX01`     | `AHHS01`       |
-| Version series          | `A4.xx`      | `A8.xx`        |
-| Current DMK HFB version | A4.50        | A8.50          |
-| Container size          | 65,570 bytes | 65,570 bytes   |
-
-`tools/hhkb/make_hfb.py` builds both variants and calculates their CRCs automatically. For a manual invocation, use `--model AHHX01 --version A4.50` or `--model AHHS01 --version A8.50`.
+`tools/hhkb/make_hfb.py` builds Classic variants and recalculates CRCs automatically.
 
 ## 3. Flash and RAM usage
 

@@ -9,11 +9,17 @@
 
 > [!TIP]
 > **Recommended initial key calibration after first flashing:**
-> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all 60 keys after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the *Key Tester* (*Test Matrix*) tab are provided in the [VIA guide](via.md#key-calibration-process).
+> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all keys (60 keys for ANSI or 69 for JIS) after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the *Key Tester* (*Test Matrix*) tab are provided in the [VIA guide](via.md#key-calibration-process).
 
 ## Before flashing
 
-Build the matching firmware first. Classic uses an `AHHX01` container; Classic Type-S uses `AHHS01`. Keep a full backup before the first update.
+Build or download the matching firmware for your model first:
+- **Classic (ANSI):** `AHHX01` container (A4.50)
+- **Classic Type-S (ANSI):** `AHHS01` container (A8.50)
+- **Classic Type-S (JIS):** `AHKS01` container (A9.50)
+- **Hybrid (ANSI / JIS):** patched `AHUX01` or `AHJX01` container produced via `patch_hybrid_hfb.py`
+
+Keep a [full backup](backup-restore.md) before the first update (Flash + EEPROM for STM32, and Flash + UICR for Nordic nRF52832 on Hybrid).
 
 DMK occupies Flash Bank 2 (`0x08010000–0x0801FFFF`). The original Bank 1 updater remains in place and provides the PFU update interface.
 

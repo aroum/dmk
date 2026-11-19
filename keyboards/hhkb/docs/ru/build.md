@@ -4,28 +4,59 @@
 
 # Сборка
 
-Запускайте сборку из корня репозитория. Используйте стандартную передачу определений DMK.
+Запускайте сборку из корня репозитория. DMK поддерживает сборку для всех линеек HHKB: Classic, Classic Type-S, Hybrid и Hybrid Type-S (как ANSI 60 клавиш, так и японских JIS 69 клавиш).
+
+## Команды сборки
+
+### 1. HHKB Classic и Classic Type-S (Wired)
 
 ```bash
-# Classic: полная текущая конфигурация
+# Classic (ANSI 60 кл.):
 ./build_all.sh -b hhkb -d HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 
-# Classic Type-S: та же конфигурация и определение модели
+# Classic Type-S (ANSI 60 кл.):
 ./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+
+# Classic Type-S JIS (69 кл.):
+./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
+PowerShell (Windows):
 ```powershell
 .\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 .\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
 ```
 
-STM32L072 выбирается через `DEFAULT_MCU` в конфигурации клавиатуры, поэтому в команде сборки не нужен аргумент MCU. `HHKB_CLASSIC_TYPE_S` нужен только для Classic Type-S. В каталоге результата создаются контейнер `.hfb` для PFU и сырой `.bin` для Bank 2; сборка не прошивает клавиатуру.
+### 2. HHKB Hybrid и Hybrid Type-S (Bluetooth + USB)
 
-HFB получает версию A4.50 для Classic и A8.50 для Type-S. Упаковщик вычисляет обе контрольные суммы и задаёт соответствующий идентификатор модели PFU.
+Для Hybrid собирается сырой бинарный образ STM32 с поддержкой SPI-протокола обмена с чипом Nordic nRF52832:
 
-## Контейнер HFB и варианты моделей
+```bash
+# Hybrid / Hybrid Type-S (ANSI 60 кл.):
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
 
-Файл HHKB `.hfb` имеет ровно 65 570 байт:
+# Hybrid / Hybrid Type-S JIS (69 кл.):
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+```
+
+После сборки бинарник упаковывается в финальный контейнер поверх оригинальной прошивки PFU скриптом `tools/hhkb/patch_hybrid_hfb.py` (подробнее ниже в разделе [Патчинг заводского образа Hybrid](#только-hybrid-локальная-сборка-и-патчинг-заводского-образа)).
+
+STM32L072 выбирается через `DEFAULT_MCU` в конфигурации клавиатуры, поэтому в команде сборки не нужен аргумент MCU. В каталоге результата создаются контейнер `.hfb` для PFU и сырой `.bin` для Bank 2; сборка не прошивает клавиатуру.
+
+## Идентификаторы моделей и форматы контейнеров HFB
+
+| Линейка клавиатур | Раскладка | Флаги сборки DMK | ID модели PFU | Линейка версий | Результирующий контейнер |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Classic** | ANSI (60 кл.) | `HHKB_CLASSIC` | `AHHX01` | `A4.xx` (A4.50) | Готовый `.hfb` (65 570 байт) |
+| **Classic Type-S** | ANSI (60 кл.) | `HHKB_CLASSIC_TYPE_S` | `AHHS01` | `A8.xx` (A8.50) | Готовый `.hfb` (65 570 байт) |
+| **Classic Type-S JIS** | JIS (69 кл.) | `HHKB_CLASSIC_TYPE_S,HHKB_JIS` | `AHKS01` | `A9.xx` (A9.50) | Готовый `.hfb` (65 570 байт) |
+| **Hybrid / Type-S** | ANSI (60 кл.) | `HHKB_HYBRID` | `AHUX01` | `A0.xx` (A0.48) | Патчинг `HHKB800_FW_A048.hfb` (282 672 байта) |
+| **Hybrid / Type-S JIS** | JIS (69 кл.) | `HHKB_HYBRID,HHKB_JIS` | `AHJX01` | `A2.xx` (A2.49) | Патчинг `HHKB820_FW_JP_A249.hfb` (282 672 байта) |
+
+### Структура контейнера HFB для проводных моделей (Classic)
+
+Файл HHKB `.hfb` для проводных моделей имеет фиксированный размер ровно 65 570 байт:
 
 ```text
 +---------------------------------------------------------------+
@@ -41,16 +72,7 @@ HFB получает версию A4.50 для Classic и A8.50 для Type-S. �
 
 Обе контрольные суммы используют отражённый полином `0x8408`, начальное значение `0xFFFF` и не используют финальный XOR. Внутренний CRC зависит от полезной нагрузки, это не постоянный тег модели. Образ линкуется для Bank 2 по адресу `0x08010000`.
 
-Для этого порта Classic и Classic Type-S используют одинаковые STM32L072RB, матрицу 4 × 15, мультиплексоры 4051 и разметку Bank 2 размером 64 КиБ. Видимые прошивке различия — идентификатор PFU и линейка версии:
-
-| Параметр               | Classic     | Classic Type-S |
-| ---------------------- | ----------- | -------------- |
-| ID модели              | `AHHX01`    | `AHHS01`       |
-| Линейка версий         | `A4.xx`     | `A8.xx`        |
-| Текущая версия HFB DMK | A4.50       | A8.50          |
-| Размер контейнера      | 65 570 байт | 65 570 байт    |
-
-`tools/hhkb/make_hfb.py` собирает оба варианта и автоматически считает CRC. При ручном запуске используйте `--model AHHX01 --version A4.50` либо `--model AHHS01 --version A8.50`.
+`tools/hhkb/make_hfb.py` собирает варианты Classic и автоматически считает CRC. При ручном запуске передаются `--model` и `--version`.
 
 ## 3. Потребление памяти (Flash и RAM)
 

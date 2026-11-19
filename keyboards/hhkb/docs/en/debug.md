@@ -26,7 +26,7 @@ mdfind 'kMDItemFSName == "PacketLogger.app"'
 
 If capture is unavailable, follow [Apple's Bluetooth logging profile instructions](https://developer.apple.com/bug-reporting/profiles-and-logs/) for macOS. Start capture before reconnecting the Hybrid and then press and release a few keys. Find **LE Connection Complete** or **LE Enhanced Connection Complete** and later **LE Connection Update Complete** events for the same handle. Multiply the raw interval by 1.25 ms. If the tool already displays milliseconds, use the displayed value.
 
-DMK firmware for HHKB Classic provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking EC capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
+DMK firmware for HHKB (Classic & Hybrid, ANSI & JIS) provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking EC capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
 
 By default, all debug logging channels are **disabled** to avoid unnecessary MCU and USB bus overhead.
 
@@ -45,7 +45,7 @@ By default, all debug logging channels are **disabled** to avoid unnecessary MCU
 2. Open **HHKB Settings** → **Debug** submenu.
 3. Toggle the desired logging flags:
    - **EC Matrix Stream** — prints state transition events (press/release) with matrix coordinates `(col, row)`, raw ADC count (`raw`), normalized value (`norm` from 0 to 1000 permille), and current key status.
-   - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), completion percentage `[====>    ] X% (N/60)`, and save readiness notifications.
+   - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), completion percentage `[====>    ] X% (N/60)` for ANSI or `(N/69)` for JIS, and save readiness notifications.
      
      > [!NOTE]
      > Switching between the **Configure** tab and **HID Console** does not interrupt or reset calibration — the state remains active in MCU RAM until *Finish and save* is clicked. Console monitoring provides uninterrupted real-time visibility without having to manually refresh the status counter in the calibration menu.

@@ -157,6 +157,7 @@ After this transition, Bank 1 can install the latest matching stock firmware fro
 ## Flashing Methods and Limitations
 
 Currently, there are three ways to flash DMK onto the keyboard:
+
 1. **Hardware programmer / debugger (SWD):** connecting directly via CN3 pads (STM32) to write Bank 2 at `0x08010000`. Requires opening the case and soldering/connecting an external SWD programmer.
 2. **Built-in ROM DFU mode:** shorting the right-hand pads of R6 and R85 while plugging in USB (pulling `BOOT0` high). Also requires disassembling the keyboard and bridging board pads.
 3. **Official PFU updater or `hhkb_flasher.py` with a patched official `.hfb`:** replacing the STM32 section (Bank 2) while keeping the original nRF Bluetooth section intact (for Hybrid).
@@ -166,6 +167,7 @@ All three methods have trade-offs and significantly narrow down the target audie
 ### nRF Update Validation Mechanism and Bank 1 Behavior (Hybrid)
 
 Testing on physical hardware has revealed the following behavior:
+
 - When attempting to flash a "clean" DMK build generated with an empty/test nRF section (such as via `patch_hybrid_hfb.py --make-stm32-only`):
   1. The Nordic nRF52832 bootloader inspects the staging area (header, CRC16, and MD5).
   2. Upon detecting an invalid CRC or MD5 mismatch, the nRF rejects the update, clears the staging area, and **safely retains its current stock firmware**.
@@ -195,10 +197,12 @@ Both families employ a dual-bank Flash structure, but boot validation flags and 
 ### STM32 SWD Pinout (CN3 Pads)
 
 The STM32 debug interface is accessible via five test pads adjacent to connector CN3 in two staggered rows:
+
 ```text
 GND   NRST  VCC
  SWCLK SWDIO
 ```
+
 - **SWDIO:** Pin PA13 of STM32L072
 - **SWCLK:** Pin PA14 of STM32L072
 - **NRST:** STM32 hardware reset line
@@ -211,6 +215,7 @@ GND   NRST  VCC
 ### STM32 Backup via J-Link
 
 Create a command script `backup_stm32.jlink`:
+
 ```text
 r
 halt
@@ -228,6 +233,7 @@ q
 ```
 
 Execute the dump:
+
 ```bash
 JLinkExe -device STM32L072RB -if SWD -speed 4000 -autoconnect 1 -CommanderScript backup_stm32.jlink
 ```
@@ -235,6 +241,7 @@ JLinkExe -device STM32L072RB -if SWD -speed 4000 -autoconnect 1 -CommanderScript
 ### STM32 Restore via J-Link
 
 Create `restore_stm32.jlink`:
+
 ```text
 r
 halt
@@ -244,7 +251,9 @@ r
 g
 q
 ```
+
 Execute restore:
+
 ```bash
 JLinkExe -device STM32L072RB -if SWD -speed 4000 -autoconnect 1 -CommanderScript restore_stm32.jlink
 ```
@@ -272,6 +281,7 @@ The 512 KB Flash is structured for Nordic SoftDevice S132 and PFU's custom bootl
 ### SWD Debug Interface for Nordic nRF52832 (CN6 and Module Pins)
 
 Debug access to the Nordic chip is provided through:
+
 - **Connector / pads CN6:** Dedicated factory **SWD interface for the Nordic nRF52832**.
 - **Module Edge Contacts (Taiyo Yuden EYSHCNZWZ):**
   - **Pin 14:** `SWDIO`
@@ -285,6 +295,7 @@ Debug access to the Nordic chip is provided through:
 Ensure that readout protection (APPROTECT) is disabled before reading.
 
 Create `backup_nrf52.jlink`:
+
 ```text
 r
 halt
@@ -296,11 +307,13 @@ q
 ```
 
 Execute the dump:
+
 ```bash
 JLinkExe -device nRF52832_xxAA -if SWD -speed 4000 -autoconnect 1 -CommanderScript backup_nrf52.jlink
 ```
 
 Or using Nordic's official CLI:
+
 ```bash
 nrfjprog --family NRF52 --readcode nrf52_full_flash_512k.hex
 nrfjprog --family NRF52 --readuicr nrf52_uicr.hex
@@ -309,6 +322,7 @@ nrfjprog --family NRF52 --readuicr nrf52_uicr.hex
 ### Nordic nRF52832 Restore
 
 To restore the factory Bluetooth state:
+
 ```text
 r
 halt
@@ -318,11 +332,15 @@ r
 g
 q
 ```
+
 Execute restore:
+
 ```bash
 JLinkExe -device nRF52832_xxAA -if SWD -speed 4000 -autoconnect 1 -CommanderScript restore_nrf52.jlink
 ```
+
 Or via `nrfjprog`:
+
 ```bash
 nrfjprog --family NRF52 --program nrf52_full_flash_512k.hex --chiperase --reset
 ```

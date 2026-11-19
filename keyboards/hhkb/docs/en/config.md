@@ -4,46 +4,52 @@
 
 # Configuration
 
-## Build definitions
+## Build Definitions
 
+- `HHKB_CLASSIC` builds firmware for wired HHKB Classic (ANSI).
+- `HHKB_CLASSIC_TYPE_S` builds firmware for wired Classic Type-S (ANSI or JIS when paired with `HHKB_JIS`).
+- `HHKB_HYBRID` builds firmware for wireless Hybrid and Hybrid Type-S (enables SPI communications with Nordic nRF, battery management, profiles, and STOP mode).
+- `HHKB_JIS` enables support for the 69-key Japanese JIS matrix (sparse matrix, 15 columns, Kana/Henkan/Muhenkan keys, and arrow cluster).
 - `HHKB_RAPID_TRIGGER` enables Rapid Trigger and its [VIA](https://www.usevia.app/) menu.
-- `HHKB_CLASSIC_TYPE_S` selects the Type-S HFB model.
-- `HHKB_ADC_16MHZ` clocks ADC from HCLK/2 instead of HCLK/4.
-- `HHKB_ADC_OVERSAMPLING` sets the initial [VIA](https://www.usevia.app/) preference for ×4 hardware averaging. ×4 operates only at 50–500 Hz; 1000 Hz always uses ×1. The user's preference is saved in EEPROM.
-- `HHKB_ADC_DMA` transfers each synchronized ADC1 result through DMA1 Channel 1. The scanner still triggers one conversion after each row strobe and waits for completion. On the tested board with ×4 oversampling, this did not improve scan speed.
+- `HHKB_ADC_16MHZ` selects HCLK/2 for the ADC clock instead of HCLK/4.
+- `HHKB_ADC_OVERSAMPLING` sets the initial [VIA](https://www.usevia.app/) toggle state for ×4 hardware averaging. ×4 operates only at 50–500 Hz; 1000 Hz always forces ×1. The user's preference is saved in EEPROM.
+- `HHKB_ADC_DMA` enables synchronized DMA1 Channel 1 transfer for each ADC1 conversion result.
 - `HHKB_FACTORY_THRESHOLDS` loads each board's factory threshold and offset tables from EEPROM for classic mode.
-- `HHKB_SCAN_DIAGNOSTICS` adds diagnostic counters for SWD measurement.
+- `HHKB_SCAN_DIAGNOSTICS` adds measurement counters accessible over SWD.
 
-## Matrix scanning
+## Matrix Scanning
 
-The Classic matrix has 15 columns and 4 rows. DMK selects a multiplexer column, pulses PC8 to discharge the sampling path, drives one row LOW, waits for the analog path, performs one ADC conversion, releases the row, and repeats for all rows and columns. PC14 powers the sensor circuit, PC7 enables the amplifier, and PA1 is ADC1_IN1.
+- **ANSI (60 keys):** 15 columns × 4 rows matrix (all positions populated).
+- **JIS (69 keys):** 15 columns × 5 logical rows matrix (69 physical switches, active `populated` mask).
 
-The timer scanner is enabled by default. [VIA](https://www.usevia.app/) selects 50, 125, 250, 500, or 1000 Hz; the 1000 Hz choice uses a 950 µs target period. The scanner runs from SRAM and uses TIM2 for analog delays.
+DMK selects the multiplexer column, pulses `PC8` to discharge measurement capacitor `C57`, pulls the target row active `LOW`, waits for analog settling, performs ADC conversion, restores the row to `HIGH`, and proceeds to the next key. `PC14` powers the analog matrix circuit, `PC7` enables the op-amp, and `PA1` serves as `ADC1_IN1`.
 
-## Matrix and peripheral pinout
+The timer-driven scanner is enabled by default. [VIA](https://www.usevia.app/) selects 50, 125, 250, 500, or 1000 Hz (1000 Hz targets a 950 µs loop period). The scanner runs directly from SRAM, with TIM2 providing precision analog delays.
 
-- **Matrix:** 4 rows × 15 columns.
-- **Row drive:** `PB0`, `PB1`, `PB2`, and `PB10` (`GPIOB` masks `0x001`, `0x002`, `0x004`, `0x400`).
-- **Column select:** two 4051 analog multiplexers. `PC6` selects U1 for columns 0–7; `PB15` selects U2 for columns 8–14; `PB12`, `PB13`, and `PB14` are the channel-address lines.
-- **Analog path:** `PC14` powers the sensor circuit; `PC7` enables the op-amp; `PC8` discharges sampling capacitor C57; `PA1` is ADC1 input `ADC_IN1`.
-- **DIP switches:** `PA3`–`PA7` and `PC4`, active-low inputs.
-- **LEDs:** `PA8` and `PA9`. [VIA](https://www.usevia.app/) independently assigns Off, Debug heartbeat, Caps Lock, Fn layer, or System 2; the defaults are Caps Lock on PA8 and Fn layer on PA9.
+## Matrix and Peripheral Pinout
 
-## Factory data and calibration
+- **Matrix:** 4 rows × 15 columns (ANSI) or up to 5 rows × 15 columns (JIS).
+- **Rows:** `PB0`, `PB1`, `PB2`, `PB10` (`GPIOB` masks `0x001`, `0x002`, `0x004`, `0x400`).
+- **Columns:** Two 74HC4051 analog multiplexers. `PC6` selects U1 (columns 0–7), `PB15` selects U2 (columns 8–14); `PB12`, `PB13`, `PB14` drive channel addresses.
+- **Analog frontend:** `PC14` sensor power, `PC7` op-amp enable, `PC8` C57 capacitor discharge, `PA1` ADC input (`ADC_IN1`).
+- **DIP switches:** `PA3`–`PA7` and `PC4`, active low.
+- **LEDs:** `PA8` and `PA9` (Classic and Hybrid). [VIA](https://www.usevia.app/) assigns Off, Debug heartbeat, Caps Lock, Fn layer, or System 2 independently; by default PA8 indicates Caps Lock, PA9 indicates Fn layer.
 
-Factory classic-mode thresholds are read from the keyboard's EEPROM at startup. They therefore remain specific to each board when the same DMK HFB is installed elsewhere. User calibration records a baseline and peak per key in a separate EEPROM record. Disabling user calibration selects the default calibrated range; it does not overwrite factory tables.
+## Factory Data and Calibration
 
-## DIP switches
+Factory classic-mode thresholds are read from the keyboard's EEPROM at startup. A single DMK build preserves individual thresholds when installed across different boards. User calibration records per-key baseline and peak in an EEPROM record (`0x08081500`). Disabling user calibration selects default calibrated ranges without overwriting factory tables.
 
-SW1–SW5 are read but have no fixed DMK layout action. SW6 is assigned to Bank 1 recovery by default. Assign the System 1 and System 2 keycodes in VIA to select a base/Fn layer pair. Fn + Tab remains Caps Lock.
+## DIP Switches
 
-## Hybrid only: transport, profiles, and power
+SW1–SW5 are read by firmware but have no hardcoded actions in DMK. SW6 triggers recovery into Bank 1. To select base/Fn layer pairs, use VIA System 1 and System 2 keycodes. Fn + Tab toggles Caps Lock.
 
-PC13 reads low on USB power and high on batteries. On battery, DMK sends six-key keyboard reports to the stock nRF over SPI and uses a separate battery matrix scan rate. On USB, reports go to USB by default and use the normal VIA scan rate. **BT / USB** can route reports to the last Bluetooth profile even while USB is connected. Selecting USB without a cable takes effect when USB is connected. Bluetooth media reports are not yet implemented. Matrix scan frequency is separate from the BLE connection interval and report frequency; the latter remain unmeasured.
+## Hybrid Only: Transport, Profiles, and Power
 
-Four Bluetooth profiles are available. **BT Select 1–4** selects an existing bond; **BT Pair 1–4** pairs in a chosen slot and can replace its bond. **BT Next** cycles through the four slots. The last selected slot is saved in EEPROM and requested on battery startup. **BT Pair Last** pairs that slot. DMK queues an all-keys-released report when changing output or profile; delivery over Bluetooth still needs hardware verification.
+PC13 reads LOW on USB power and HIGH on battery. On battery, DMK sends 6-key HID reports over SPI to the stock nRF module and uses dedicated battery scan rates. On USB, reports default to USB. **BT / USB** switches to the last Bluetooth profile even with USB plugged in. Polling rate over Bluetooth is bounded by BLE intervals (~50 Hz).
 
-The stock nRF is SPI master on PA15/PB3–PB5 (mode 3, 125 kHz). PB6 requests a poll and PD2 controls the radio. The STM32 application occupies Bank 2 at `0x08010000`; the patcher retains the stock nRF firmware.
+Four Bluetooth profiles are supported. **BT Select 1–4** selects a bond; **BT Pair 1–4** starts pairing in a chosen slot. **BT Next** cycles through slots. The last selected slot is saved in EEPROM.
+
+The factory nRF is SPI master on PA15/PB3–PB5 (Mode 3, 125 kHz). PB6 requests polling (Attention), PD2 controls module enable. STM32 application lives in Bank 2 starting at `0x08010000`.
 
 The common [VIA controls](via.md) also configure USB matrix rate, calibration, actuation and hysteresis, Rapid Trigger when compiled in, ADC oversampling, hold-tap timing, and the base modes of both LEDs. Hybrid-specific battery, profile, and PC5 controls are listed below. The Classic factory calibration table must not be assumed to match Hybrid hardware.
 
