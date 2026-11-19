@@ -95,7 +95,7 @@ The [local build and patch procedure](build.md#hybrid-only-local-build-and-facto
 ### Bluetooth Polling Rate Considerations
 
 Over USB, the keyboard supports polling rates up to 1000 Hz. Over Bluetooth, however, report frequency is bounded by BLE protocol specifications and Connection Interval negotiations:
-- In practice, BLE report rates hover around **~50 Hz** (20 ms interval) or at most 125 Hz (7.5 ms minimum BLE connection interval on certain operating systems).
+- In practice, BLE report rates hover around **~50 Hz** (20 ms interval).
 - Changing polling rate in the VIA configurator while running wirelessly over Bluetooth provides no real benefit and should be locked in firmware to prevent invalid timing assumptions during wireless transmission.
 - For instructions on capturing report intervals and PacketLogger traces, see [Debug and HID Console](debug.md#bluetooth-hid-report-intervals-on-macos-hybrid).
 

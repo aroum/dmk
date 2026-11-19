@@ -12,19 +12,21 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 
 ## Supported keyboards
 
-- HHKB Professional Classic (`PD-KB401W`, `PD-KB401B`, `PD-KB401WN`, `PD-KB401BN`)
-- HHKB Professional Classic Type-S (`PD-KB401WSC`, `PD-KB401BSC`, `PD-KB401YSC`)
+- HHKB Classic (ANSI and JIS)
+- HHKB Classic Type-S (ANSI and JIS)
+- HHKB Hybrid (ANSI and JIS)
+- HHKB Hybrid Type-S (ANSI and JIS)
 
 See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, color variants, and container IDs.
 
 ## Build variants
 
-All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch). Add `HHKB_JIS` for the 69-key layout. JIS hardware verification is pending. `HHKB_STUDIO` remains reserved.
+All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch). Add `HHKB_JIS` for the 69-key layout. `HHKB_STUDIO` remains reserved.
 
 
 ## Features
 
-- [VIA](https://www.usevia.app/) and Vial support for runtime keymap changes.
+- [VIA](https://www.usevia.app/) or Vial support for runtime keymap changes.
 - Configurable matrix scan rate: 50, 125, 250, 500, or 1000 Hz. The stock firmware's matrix loop runs at about 50 Hz. At 50–500 Hz, optional ×4 hardware ADC oversampling improves measurement precision and reduces noise.
 - Factory thresholds, or per-key user calibration through [VIA](https://www.usevia.app/).
 - Adjustable actuation point and classic release hysteresis.
@@ -35,6 +37,9 @@ All HHKB variants live in this directory. Build Classic with `./build_all.sh -b 
 - Two base/Fn layer pairs, selectable with the System 1 and System 2 keycodes in VIA.
 
 ## Scan rate and power
+
+> [!NOTE]
+> Scan rate measurements and power consumption figures below are specific to the wired USB-C connection on HHKB Classic.
 
 Running the controller at a higher scan rate is within the MCU's normal operating specifications. The 32 MHz clock and the supported scan rates are standard operating modes, not overclocking; the chip remains cool.
 
@@ -54,7 +59,7 @@ The firmware is installed on the original controller without opening the keyboar
 
 The original firmware can be restored using the documented Bank 1/SW6 recovery path, or by writing a saved DFU backup. Read [Installation, backup, and recovery](docs/en/backup-restore.md) before flashing.
 
-## VIA vs Vial
+## VIA or Vial
 
 [VIA](https://www.usevia.app/) provides the full **HHKB Settings** menu: Scan Rate, Calibration, Rapid Trigger, and LED, as well as a **Debug** menu displaying the dynamic **Firmware Version** read directly from controller memory. The custom controls are available only in the VIA web app, not in Vial or other VIA clients. To load them, open **Settings**, enable **Show Design tab**, then use **Design → Load Draft Definition** to select `via.json`.
 
@@ -62,19 +67,15 @@ Vial supports runtime keymap editing through `vial.json`, but it does not provid
 
 ## DIP switches
 
-DMK reads all six DIP switches. SW6 currently provides the recovery transition to the stock Bank 1 updater. The remaining switches are intentionally not bound to fixed layout behaviour yet: a user-editable [VIA](https://www.usevia.app/)/Vial keymap makes automatic layout rewrites ambiguous.
+DMK reads all six DIP switches. SW6 currently provides the recovery transition to the stock Bank 1 updater. The remaining switches are intentionally not bound to fixed layout behaviour yet: a user-editable [VIA](https://www.usevia.app/) or Vial keymap makes automatic layout rewrites ambiguous.
 
 Possible future uses include assigning switch functions through [VIA](https://www.usevia.app/) dropdowns. Suggestions are welcome.
 
 ## Other HHKB models
 
-### HHKB Professional Hybrid / Hybrid JIS
+### HHKB Professional Hybrid
 
-The [Hybrid build](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch) includes the stock nRF SPI transport, Bluetooth profiles, battery controls, and STOP power mode. These paths still need validation on a Hybrid keyboard. If you can test or provide board information, please send a Reddit DM.
-
-### HHKB Professional Classic JIS
-
-PFU does not provide a separate public firmware file for this model, and board photos are scarce. It may share the regular Classic hardware, but this still needs confirmation.
+The [Hybrid build](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch) includes the stock nRF SPI transport, Bluetooth profiles, battery controls, and STOP power mode. Flashing via Python patching script over the official vendor firmware is verified and working on physical hardware.
 
 ### HHKB Professional 2 and other models
 
