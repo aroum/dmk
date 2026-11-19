@@ -2,9 +2,9 @@
 
 ---
 
-# HHKB Classic DMK Firmware — Uses the Original Controller, No Hardware Mods Required
+# HHKB Classic & Hybrid DMK Firmware — Uses the Original Controller, No Hardware Mods Required
 
-Alternative firmware for the HHKB Professional Classic. It runs directly on the original STM32L072 controller: no controller replacement, soldering, or keyboard disassembly is required.
+Alternative firmware for HHKB Professional Classic and Hybrid keyboards. It runs directly on the original STM32L072 controller: no controller replacement, soldering, or keyboard disassembly is required.
 
 **Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md)
 
@@ -18,11 +18,6 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 - HHKB Hybrid Type-S (ANSI and JIS)
 
 See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, color variants, and container IDs.
-
-## Build variants
-
-All HHKB variants live in this directory. Build Classic with `./build_all.sh -b hhkb -d HHKB_CLASSIC` and Classic Type-S with `-d HHKB_CLASSIC_TYPE_S`. Use `-d HHKB_HYBRID` for the Hybrid build and see the [Hybrid build and patch guide](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch). Add `HHKB_JIS` for the 69-key layout. `HHKB_STUDIO` remains reserved.
-
 
 ## Features
 
@@ -46,10 +41,11 @@ Running the controller at a higher scan rate is within the MCU's normal operatin
 Measured current consumption:
 
 - Stock firmware, 50 Hz, 16 MHz: 7.5 mA.
+- DMK, 50 Hz with ADC oversampling, 32 MHz: 7.5 mA.
 - DMK, 500 Hz with ADC oversampling, 32 MHz: 10 mA.
 - DMK, 1000 Hz without oversampling, 32 MHz: 12 mA.
 
-At 1000 Hz the increase is only 4.5 mA, which is negligible for a USB-powered keyboard. If power consumption matters, select 50 Hz in [VIA](https://www.usevia.app/) to return to the stock 7.5 mA level.
+At 1000 Hz the increase is only 4.5 mA, which is negligible for a USB-powered keyboard. At 50 Hz with 32 MHz and ADC oversampling, DMK consumes the exact same 7.5 mA as the stock firmware.
 
 PFU's 50 Hz choice may reflect the Classic's shared design lineage with the battery-powered Bluetooth Hybrid. The Classic is effectively the wired-only version, and the scan rate apparently drew little attention for years.
 
