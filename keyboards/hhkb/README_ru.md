@@ -12,7 +12,7 @@
 
 ## Поддерживаемые клавиатуры
 
-- HHKB Classic (ANSI и JIS)
+- HHKB Classic (ANSI)
 - HHKB Classic Type-S (ANSI и JIS)
 - HHKB Hybrid (ANSI и JIS)
 - HHKB Hybrid Type-S (ANSI и JIS)

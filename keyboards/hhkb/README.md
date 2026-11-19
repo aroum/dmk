@@ -12,7 +12,7 @@ Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Rel
 
 ## Supported keyboards
 
-- HHKB Classic (ANSI and JIS)
+- HHKB Classic (ANSI)
 - HHKB Classic Type-S (ANSI and JIS)
 - HHKB Hybrid (ANSI and JIS)
 - HHKB Hybrid Type-S (ANSI and JIS)
