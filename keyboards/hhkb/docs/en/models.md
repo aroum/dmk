@@ -99,6 +99,34 @@ Over USB, the keyboard supports polling rates up to 1000 Hz. Over Bluetooth, how
 - Changing polling rate in the VIA configurator while running wirelessly over Bluetooth provides no real benefit and should be locked in firmware to prevent invalid timing assumptions during wireless transmission.
 - For instructions on capturing report intervals and PacketLogger traces, see [Debug and HID Console](via-debug.md#bluetooth-hid-report-intervals-on-macos-hybrid).
 
+### Battery Sensing and Level Indication Mechanism (Hybrid)
+
+HHKB Hybrid keyboards operate from two AA batteries (1.5V Alkaline or 1.2V Ni-MH) or via the USB-C bus:
+- **Power Source Detection:** The power rail state is monitored via pin `PC13` of the STM32 (`LOW` indicates active USB power, `HIGH` indicates battery operation).
+- **Hardware Low-Battery Thresholds:** Rather than continuous voltage measurement via an analog ADC channel, the Hybrid hardware utilizes dedicated hardware voltage comparator stages with output lines tied to discrete digital GPIO inputs on Port B:
+  - `PB9`: Critical battery cutoff threshold (**0%**). When this line reads logic `0`, the battery is exhausted.
+  - `PB8`: Deep discharge threshold (**5%**). When `PB9` is `1` and `PB8` reads logic `0`, approximately 5% capacity remains.
+  - `PB7`: Low-battery warning threshold (**15%**). When `PB8` and `PB9` are `1` and `PB7` reads logic `0`, approximately 15% capacity remains.
+  - When all three lines (`PB7`, `PB8`, `PB9`) remain logic `1` (none of the low-battery comparators have tripped), capacity is considered nominal (**100%** / above 15%).
+
+When connected over USB, battery level always reads 100%.
+
+#### Battery LED Indication (Orange LED)
+Battery status is shown via the orange LED (pin `PA9` / indicator index 1) in two distinct modes:
+1. **On-Demand Battery Level Display (Show Battery):**
+   - Triggered via the **BT Battery** keycode (`0x7E0A`), short press of the PC5 power button (if configured in VIA), or the **Show battery now** control in VIA Bluetooth settings.
+   - The orange LED pulses in 400 ms cycles (200 ms ON, 200 ms OFF):
+     - **1 flash:** 0% (critical, shutdown imminent);
+     - **2 flashes:** 5% (batteries should be replaced promptly);
+     - **3 flashes:** 15% (low battery warning);
+     - **4 flashes:** 100% (healthy state, charge > 15%).
+2. **Background Low-Battery Warning Flashes:**
+   - When enabled in VIA and battery capacity drops to 15% or below:
+     - At **15% level**: One short flash (150 ms) every 30 seconds.
+     - At **5% or 0% level**: Two short flashes every 15 seconds.
+
+Battery readings are digitally debounced (requiring 3 consecutive matching samples 1 second apart) and transmitted over SPI to the Nordic nRF52832 to update the standard Bluetooth LE Battery Service (BAS).
+
 
 ---
 
