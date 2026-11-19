@@ -4,6 +4,28 @@
 
 # Debug and HID Console
 
+## Bluetooth HID report intervals on macOS (Hybrid)
+
+Unplug the HHKB USB cable, connect it over Bluetooth, and run from the repository root:
+
+```bash
+uv run --with hidapi python3 tools/hhkb/measure_bt_hid.py --list
+uv run --with hidapi python3 tools/hhkb/measure_bt_hid.py --device 0 --seconds 20
+```
+
+Replace 0 with the HHKB index. Press and release several keys during capture. If macOS blocks the input reports, grant the terminal Input Monitoring permission and restart it. The script keeps timestamps only. Typing cadence and host buffering affect the reported intervals, so use an HCI trace for the BLE connection interval.
+
+### PacketLogger
+
+Sign in to [Apple Developer Downloads](https://developer.apple.com/download/all/) and download **Additional Tools for Xcode**. Copy `PacketLogger.app` from the DMG's Hardware folder to Applications.
+
+```bash
+open -a PacketLogger
+mdfind 'kMDItemFSName == "PacketLogger.app"'
+```
+
+If capture is unavailable, follow [Apple's Bluetooth logging profile instructions](https://developer.apple.com/bug-reporting/profiles-and-logs/) for macOS. Start capture before reconnecting the Hybrid and then press and release a few keys. Find **LE Connection Complete** or **LE Enhanced Connection Complete** and later **LE Connection Update Complete** events for the same handle. Multiply the raw interval by 1.25 ms. If the tool already displays milliseconds, use the displayed value.
+
 DMK firmware for HHKB Classic provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking EC capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
 
 By default, all debug logging channels are **disabled** to avoid unnecessary MCU and USB bus overhead.

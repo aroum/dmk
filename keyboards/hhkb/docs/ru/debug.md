@@ -4,6 +4,28 @@
 
 # Отладка и HID Console
 
+## Интервалы Bluetooth HID на macOS (Hybrid)
+
+Отключите USB-кабель HHKB, подключите клавиатуру по Bluetooth и запустите из корня репозитория:
+
+```bash
+uv run --with hidapi python3 tools/hhkb/measure_bt_hid.py --list
+uv run --with hidapi python3 tools/hhkb/measure_bt_hid.py --device 0 --seconds 20
+```
+
+Замените 0 на индекс HHKB из списка. Если у терминала нет доступа к отчётам, разрешите мониторинг ввода в настройках macOS и перезапустите терминал. Во время замера нажимайте и отпускайте несколько клавиш. Скрипт сохраняет только метки времени, выводит min, медиану, p95 и max интервалов. Результат зависит от темпа нажатий и буферизации macOS. Интервал соединения BLE и частоту сканирования матрицы он не измеряет.
+
+### PacketLogger
+
+Войдите в [Apple Developer Downloads](https://developer.apple.com/download/all/) и скачайте **Additional Tools for Xcode**. Откройте DMG, найдите `PacketLogger.app` в папке Hardware и скопируйте в Applications.
+
+```bash
+open -a PacketLogger
+mdfind 'kMDItemFSName == "PacketLogger.app"'
+```
+
+Если захват недоступен, установите профиль Bluetooth для macOS по [инструкции Apple](https://developer.apple.com/bug-reporting/profiles-and-logs/). Начните захват до переподключения Hybrid, затем выполните несколько нажатий. Найдите успешное событие **LE Connection Complete** или **LE Enhanced Connection Complete** и последующие **LE Connection Update Complete** для того же handle. Значение поля в единицах HCI умножается на 1,25 мс. Если PacketLogger уже показывает миллисекунды, используйте их напрямую.
+
 Прошивка DMK для HHKB Classic поддерживает вывод диагностических логов в реальном времени через стандартный интерфейс USB HID Console. Это позволяет отслеживать работу емкостной матрицы EC, измерять реальные значения АЦП, контролировать частоту сканирования и анализировать команды конфигуратора.
 
 По умолчанию весь вывод отладки **отключен**, чтобы не нагружать микроконтроллер и USB-шину.
