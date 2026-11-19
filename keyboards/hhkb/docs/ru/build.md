@@ -1,6 +1,6 @@
 **Язык:** [Русский](build.md) | [English](../en/build.md)
 
-**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [Модели](models.md) • [VIA](via.md) • [Отладка](debug.md)
+**Документация:** [Установка](install.md) • [Бэкап и восстановление](backup-restore.md) • [Сборка](build.md) • [Конфигурация](config.md) • [Модели](models.md) • [VIA & Debug](via-debug.md)
 
 # Сборка
 
@@ -12,20 +12,20 @@
 
 ```bash
 # Classic (ANSI 60 кл.):
-./build_all.sh -b hhkb -d HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_CLASSIC
 
 # Classic Type-S (ANSI 60 кл.):
-./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S
 
 # Classic Type-S JIS (69 кл.):
-./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+./build_all.sh -b hhkb -d HHKB_CLASSIC_TYPE_S,HHKB_JIS
 ```
 
 PowerShell (Windows):
 ```powershell
-.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
-.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
-.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S
+.\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S,HHKB_JIS
 ```
 
 ### 2. HHKB Hybrid и Hybrid Type-S (Bluetooth + USB)
@@ -34,10 +34,10 @@ PowerShell (Windows):
 
 ```bash
 # Hybrid / Hybrid Type-S (ANSI 60 кл.):
-./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+./build_all.sh -b hhkb -d HHKB_HYBRID -c
 
 # Hybrid / Hybrid Type-S JIS (69 кл.):
-./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_JIS -c
 ```
 
 После сборки бинарник упаковывается в финальный контейнер поверх оригинальной прошивки PFU скриптом `tools/hhkb/patch_hybrid_hfb.py` (подробнее ниже в разделе [Патчинг заводского образа Hybrid](#только-hybrid-локальная-сборка-и-патчинг-заводского-образа)).
@@ -76,13 +76,12 @@ STM32L072 выбирается через `DEFAULT_MCU` в конфигурац�
 
 ## 3. Потребление памяти (Flash и RAM)
 
-Bank 2 предоставляет 65 536 байт Flash. Последняя локальная сборка со всеми функциями (`HHKB_RAPID_TRIGGER`, `HHKB_FACTORY_THRESHOLDS`, `HHKB_ADC_16MHZ`, `HHKB_ADC_OVERSAMPLING`) создаёт сырой образ Bank 2 размером 36 116 байт: 55,1% банка; до заполнения остаётся 29 420 байт. `.hfb` размером 65 570 байт содержит дополненный образ Bank 2 и 34 байта метаданных контейнера.
 
 Текущий слинкованный образ STM32L072 резервирует 20 480 байт RAM: `.data` — 288 байт, `.bss` — 16 888 байт, `._user_heap_stack` — 2 048 байт; всего 19 224 байта (93,9%), остаётся 1 256 байт в рамках линковочной разметки. Это распределение при сборке, а не измерение максимальной глубины стека во время работы.
 
 ## GitHub Actions
 
-В `dev` собираются Classic ANSI, Classic Type-S ANSI и Classic Type-S JIS, а также Hybrid ANSI и JIS. Для Hybrid Type-S используются те же цели Hybrid. Экспериментальные артефакты Hybrid из CI собираются без проприетарных заводских бинарников (с пустой секцией nRF). Поскольку загрузчик nRF отклоняет такую прошивку, а вслед за ним Bank 1 STM32 бракует всё обновление целиком, чистые CI-артефакты не могут быть прошиты штатным апдейтером. Для Hybrid используйте локальный патчинг оригинального HFB-файла прошивки.
+CI для Hybrid публикует STM32-бинарники ANSI и JIS. Скачайте подходящий бинарник и [HTML-патчер](../../../../tools/hhkb/hhkb.html). Откройте страницу локально, выберите официальный HFB и бинарник DMK, затем нажмите Patch and download. Заводская прошивка радио сохраняется. Шаг сборки HFB с пустым радио закомментирован.
 
 [Workflow Build Firmware](../../../../.github/workflows/build_test.yml) запускается для `push` и `pull_request` в `main`/`master`; его можно запустить вручную через **Actions → Build Firmware → Run workflow**. После успешного запуска скачайте в разделе **Artifacts** нужный архив:
 
@@ -91,9 +90,7 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 
 В каждом архиве лежат `.hfb` для выбранной модели и [via.json](../../via.json) для загрузки пользовательского меню через вкладку Design [веб-версии VIA](https://www.usevia.app/). Выбирайте архив по модели клавиатуры; сборка Type-S пока проверена компилятором, на плате проверялась обычная Classic.
 
-Обе сборки используют `HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING`; Type-S дополнительно использует `HHKB_CLASSIC_TYPE_S`. [VIA](https://www.usevia.app/) v3 и Vial, пользовательская калибровка, настройка частоты, актуации, Rapid Trigger, LED, слоёв и hold-tap включены конфигурацией клавиатуры. `HHKB_ADC_DMA` в workflow не включён.
 
-`HHKB_ADC_OVERSAMPLING` задаёт начальное положение переключателя [VIA](https://www.usevia.app/): ×4 действует при 50–500 Гц, а при 1000 Гц АЦП принудительно использует ×1. Выбор пользователя сохраняется и снова применяется после перехода на 500 Гц или ниже. Публикация артефакта не прошивает клавиатуру; порядок установки описан в [Установке](install.md).
 
 ## Только Hybrid: локальная сборка и патчинг заводского образа
 
@@ -104,15 +101,16 @@ Bank 2 предоставляет 65 536 байт Flash. Последняя ло
 ```bash
 mkdir -p keyboards/hhkb/local
 # Сначала положите исходный HHKB800_FW_A048.hfb в keyboards/hhkb/local/.
-./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING -c
+./build_all.sh -b hhkb -d HHKB_HYBRID -c
 python3 tools/hhkb/patch_hybrid_hfb.py \
   build/hhkb-script/dmk_hhkb_stm32l072.bin \
   keyboards/hhkb/local/HHKB800_FW_A048.hfb \
   keyboards/hhkb/local/dmk_hybrid.hfb
 ```
 
-`-c` означает чистую сборку. `HHKB_HYBRID` включает плату Hybrid и SPI-обмен; остальные определения включают Rapid Trigger, частоту АЦП 16 МГц и начальный выбор аппаратного оверсемплинга ×4. Для сборки без Rapid Trigger уберите `HHKB_RAPID_TRIGGER`: соответствующее меню VIA скроется. Общий синтаксис флагов описан в [инструкции по сборке](build.md).
 
 Для **Hybrid JIS** добавьте `HHKB_JIS` к флагам сборки и передайте патчеру `--layout jis` вместе с оригинальным `HHKB820_FW_JP_A249.hfb`. Патчер сохраняет модель `AHJX01` и версию `A2.49` из оригинала. Для ANSI используется `AHUX01 / A0.48`.
 
 [patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) проверяет хеш оригинала, размер и таблицу векторов Bank 2, заменяет только 64 КиБ приложения STM32, дополняет их `FF` и пересчитывает две CRC. Заводской образ nRF, постфикс и версия сохраняются. Скрипт не перезаписывает существующий выходной файл: для новой сборки укажите новое имя. **Работоспособность полученного таким образом образа проверена и подтверждена на реальном оборудовании HHKB Hybrid.**
+
+Rapid Trigger и АЦП 16 МГц доступны во всех сборках HHKB. Rapid Trigger и оверсемплинг настраиваются в VIA во время работы.

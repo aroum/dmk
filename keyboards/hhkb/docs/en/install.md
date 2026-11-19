@@ -1,6 +1,6 @@
 **Language:** [English](install.md) | [Русский](../ru/install.md)
 
-**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA](via.md) • [Debug](debug.md)
+**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA & Debug](via-debug.md)
 
 # Install
 
@@ -9,7 +9,7 @@
 
 > [!TIP]
 > **Recommended initial key calibration after first flashing:**
-> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all keys (60 keys for ANSI or 69 for JIS) after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the *Key Tester* (*Test Matrix*) tab are provided in the [VIA guide](via.md#key-calibration-process).
+> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all keys (60 keys for ANSI or 69 for JIS) after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the *Key Tester* (*Test Matrix*) tab are provided in the [VIA guide](via-debug.md#key-calibration-process).
 
 ## Before flashing
 
@@ -155,3 +155,8 @@ In theory, distributing clean DMK images without proprietary blobs could be achi
 > This procedure involves writing to Bank 1, which is the **sole hardware recovery path via USB**. Any unexpected interruption, bus error, or brownout during Bank 1 modification would render the keyboard permanently unbootable over USB, requiring a full teardown and an external SWD programmer to recover.
 >
 > Because of this unacceptable risk to users, local patching remains the vastly preferred, safe, and reliable approach.
+
+
+## Local browser patching and flashing
+
+Download [hhkb.html](../../../../tools/hhkb/hhkb.html) and open it in Chrome or Edge. Patching works offline. The Flash keyboard tab uses WebHID with an explicit device permission prompt. Some browsers require serving the page on localhost. Select the PFU interface again after the recovery reboot. Keep SW6 OFF. Transfer errors appear in the log and stop the update. Browser flashing still requires hardware validation.

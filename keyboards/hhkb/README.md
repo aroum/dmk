@@ -6,7 +6,7 @@
 
 Alternative firmware for HHKB Professional Classic and Hybrid keyboards. It runs directly on the original STM32L072 controller: no controller replacement, soldering, or keyboard disassembly is required.
 
-**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via.md)
+**Documentation:** [Install](docs/en/install.md) • [Supported Models](docs/en/models.md) • [Backup & restore](docs/en/backup-restore.md) • [Build](docs/en/build.md) • [Config](docs/en/config.md) • [VIA](docs/en/via-debug.md)
 
 Prebuilt firmware for Classic and Classic Type-S is published on the [GitHub Releases page](https://github.com/aroum/dmk/releases).
 

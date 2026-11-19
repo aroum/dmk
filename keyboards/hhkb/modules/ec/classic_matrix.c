@@ -7,16 +7,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#ifdef HHKB_FACTORY_THRESHOLDS
-#define HHKB_FACTORY_HYSTERESIS 50
-static uint16_t get_factory_threshold(uint8_t col, uint8_t row) {
-    const uint16_t *press = (const uint16_t *)0x08081100;
-    const int16_t *offset = (const int16_t *)0x08081200;
-    uint8_t idx = (col << 3) | (row & 7);
-    int32_t threshold = (int32_t)press[idx] + (int32_t)offset[idx];
-    return (threshold > HHKB_FACTORY_HYSTERESIS && threshold <= 4095) ? (uint16_t)threshold : 0;
-}
-#endif
 
 static inline void delay_us_nop(uint32_t us) {
     for (volatile uint32_t i = 0; i < us * 6; i++) {
@@ -207,14 +197,6 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             bool is_pressed;
             rt_key_t *key = &col_keys[row];
-#ifdef HHKB_FACTORY_THRESHOLDS
-            uint16_t threshold = get_factory_threshold(col, row);
-            if (!curve && !scan_cfg.rt_enabled && !hhkb_calibration_enabled() && threshold != 0) {
-                if (prev_row & (1U << col)) threshold -= HHKB_FACTORY_HYSTERESIS;
-                is_pressed = val > threshold;
-                rt_key_reset(key);
-            } else
-#endif
             {
                 if (val <= key->base) {
                     key->ext = 0;

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>HHKB Firmware</title>
+<style>
+:root{font:16px system-ui;color:#e9edf4;background:#10141c}body{max-width:760px;margin:8vh auto;padding:24px}h1{font-size:36px;letter-spacing:-1px}p{color:#a9b4c6;line-height:1.6}nav{display:flex;gap:8px;margin:32px 0}button,input{font:inherit}button{background:#8ab4fa;color:#10141c;border:0;border-radius:10px;padding:12px 22px;cursor:pointer}button:disabled{opacity:.4;cursor:wait}nav button{background:#222c3d;color:#e9edf4}section{background:#18202d;border:1px solid #303c50;border-radius:18px;padding:28px}label{display:block;margin:22px 0}input{display:block;margin-top:10px;max-width:100%}pre{white-space:pre-wrap;background:#0c111a;padding:18px;border-radius:12px;max-height:280px;overflow:auto;font-size:13px}progress{width:100%;margin-top:24px}a{color:#8ab4fa}
+</style>
+<h1>HHKB Firmware</h1><p>Patch your original update and flash over USB. Files are processed entirely in this page.</p>
+<nav><button id="patchTab">Patch firmware</button><button id="flashTab">Flash keyboard</button></nav>
+<section id="patchPane"><h2>Create an update</h2><p>Use the original HFB for your model and a matching DMK STM32 binary. Hybrid radio firmware is preserved.</p>
+<label>Original PFU update (.hfb)<input id="stock" type="file" accept=".hfb"></label>
+<label>DMK STM32 firmware (.bin)<input id="app" type="file" accept=".bin"></label>
+<button id="patchButton">Patch and download</button></section>
+<section id="flashPane" hidden><h2>Flash keyboard</h2><p>Requires Chrome or Edge with WebHID permission. Keep SW6 OFF. The keyboard must expose the PFU update interface. Back up both chips before testing Hybrid updates.</p>
+<label>Firmware update (.hfb)<input id="firmware" type="file" accept=".hfb"></label><button id="flashButton">Connect and flash</button><progress id="progress" value="0" max="1"></progress></section>
+<pre id="log" role="status" aria-live="polite">Ready.</pre>
+<script>
+"use strict";
+const models={AHHX01:65570,AHHS01:65570,AHKS01:65570,AHUX01:282672,AHJX01:282672};
+function crc(data){let value=65535;for(const byte of data){value^=byte;for(let bit=0;bit<8;bit++)value=(value&1)?(value>>>1)^0x8408:value>>>1;}return value;}
+function modelOf(data){return new TextDecoder().decode(data.slice(-16,-10));}
+function validate(data){const model=modelOf(data);if(models[model]!==data.length)throw Error("Unknown model or incorrect HFB size");const v=new DataView(data.buffer,data.byteOffset,data.byteLength);if(v.getUint16(0,true)!==crc(data.slice(2))||v.getUint16(2,true)!==crc(data.slice(4,65540)))throw Error("HFB CRC check failed");return model;}
+function patchFirmware(stock,app){validate(stock);if(app.length<8||app.length>65536)throw Error("STM32 image must fit in 64 KiB");const v=new DataView(app.buffer,app.byteOffset,app.byteLength),sp=v.getUint32(0,true),reset=v.getUint32(4,true);if(sp<=0x20000000||sp>0x20005000||sp%8||!(reset&1)||(reset&~1)<0x08010008||(reset&~1)>=0x08010000+app.length)throw Error("Invalid Bank 2 vector table");const result=stock.slice();result.fill(255,4,65540);result.set(app,4);const out=new DataView(result.buffer);out.setUint16(2,crc(result.slice(4,65540)),true);out.setUint16(0,crc(result.slice(2)),true);validate(result);return result;}
+const $=id=>document.getElementById(id),log=message=>{$("log").textContent+="\n"+message;$("log").scrollTop=$("log").scrollHeight;};
+async function readFile(id){const file=$(id).files[0];if(!file)throw Error("Select "+id+" file first");return new Uint8Array(await file.arrayBuffer());}
+function show(patch){$("patchPane").hidden=!patch;$("flashPane").hidden=patch;}
+$("patchTab").onclick=()=>show(true);$("flashTab").onclick=()=>show(false);
+$("patchButton").onclick=async()=>{try{const stock=await readFile("stock"),app=await readFile("app"),result=patchFirmware(stock,app);const link=document.createElement("a"),url=URL.createObjectURL(new Blob([result]));link.href=url;link.download="dmk-"+modelOf(result)+".hfb";link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);log("Patched "+modelOf(result)+". Both CRCs verified. Download requested.");}catch(e){log(e.message);}};
+function channel(device){for(const collection of device.collections){if(collection.usagePage===0xff00&&collection.usage===1){const input=collection.inputReports?.[0],output=collection.outputReports?.[0];if(input&&output)return{input:input.reportId,output:output.reportId};}}throw Error("PFU vendor HID interface unavailable");}
+async function selectDevice(){const devices=await navigator.hid.requestDevice({filters:[{vendorId:0x04fe,usagePage:0xff00,usage:1}]});if(!devices.length)throw Error("No device selected");const device=devices[0];await device.open();return device;}
+async function flash(data){const model=validate(data);let device=await selectDevice(),ids=channel(device),waiting=null;
+ const onInput=event=>{if(waiting&&event.reportId===ids.input){const resolve=waiting;waiting=null;resolve(new Uint8Array(event.data.buffer,event.data.byteOffset,event.data.byteLength).slice());}};
+ device.addEventListener("inputreport",onInput);
+ async function command(packet,timeout=5000){let timer;const response=new Promise((resolve,reject)=>{waiting=resolve;timer=setTimeout(()=>{waiting=null;reject(Error("Timeout waiting for 0x"+packet[2].toString(16)));},timeout);});response.catch(()=>{});try{await device.sendReport(ids.output,Uint8Array.from([...packet,...Array(64-packet.length).fill(0)]));const reply=await response;if(reply[0]!==0x55||reply[1]!==0x55||reply[2]!==packet[2])throw Error("Unexpected response "+Array.from(reply.slice(0,6)).join(" "));if(data.length===282672&&reply[3]!==0)throw Error("Device rejected 0x"+packet[2].toString(16)+" reply "+Array.from(reply.slice(0,6)).map(x=>x.toString(16).padStart(2,"0")).join(" "));return reply;}finally{clearTimeout(timer);waiting=null;}}
+ try{const info=await command([170,170,2,0,0,0]);const text=new TextDecoder().decode(info.slice(6,26));const prefix=model==="AHUX01"?"PD-KB800":model==="AHJX01"?"PD-KB820":model==="AHKS01"?"PD-KB421":"PD-KB401";if(!text.includes(prefix)||(model==="AHHS01"&&!text.includes("SC"))||(model==="AHHX01"&&text.includes("SC")))throw Error("Device model could not be verified for "+model);
+ log("Entering recovery. Re-select the keyboard after it reconnects.");await command([170,170,224,0,0,0]);device.removeEventListener("inputreport",onInput);await device.close();await new Promise(r=>setTimeout(r,10000));log("Reconnect ready. Press Connect and flash to select the recovery interface.");await new Promise(resolve=>{$("flashButton").disabled=false;$("flashButton").onclick=()=>{$("flashButton").disabled=true;resolve();};});device=await selectDevice();ids=channel(device);device.addEventListener("inputreport",onInput);
+ const size=data.length;await command([170,170,225,0,8,size&255,(size>>>8)&255,(size>>>16)&255,(size>>>24)&255,data[0],data[1],0,0],15000);
+ for(let offset=2,seq=0;offset<data.length;offset+=57,seq++){const chunk=data.slice(offset,offset+57);try{await command([170,170,226,0,chunk.length+2,seq&255,seq>>>8,...chunk]);}catch(e){throw Error("Chunk "+seq+" at HFB offset 0x"+offset.toString(16)+": "+e.message);}if(seq%100===0)log("Sent "+seq+" chunks");$("progress").value=(offset+chunk.length)/data.length;}
+ await command([170,170,227,0,0,0]);log("Final command acknowledged. Reconnect and verify the keyboard.");
+ }finally{device.removeEventListener("inputreport",onInput);if(device.opened)await device.close();}
+}
+async function startFlash(){if(!navigator.hid){log("WebHID unavailable. Use Chrome/Edge or serve this page from localhost.");return;}$("flashButton").disabled=true;try{await flash(await readFile("firmware"));}catch(e){log(e.message);}finally{$("flashButton").disabled=false;$("flashButton").onclick=startFlash;}}
+$("flashButton").onclick=startFlash;
+</script></html>

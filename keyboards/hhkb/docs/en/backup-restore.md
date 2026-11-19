@@ -1,6 +1,6 @@
 **Language:** [English](backup-restore.md) | [Русский](../ru/backup-restore.md)
 
-**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA](via.md) • [Debug](debug.md)
+**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA & Debug](via-debug.md)
 
 # Backup & restore
 

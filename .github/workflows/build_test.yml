@@ -90,11 +90,11 @@ jobs:
       matrix:
         include:
           - variant: classic
-            defines: HHKB_CLASSIC,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_CLASSIC
           - variant: type-s
-            defines: HHKB_CLASSIC_TYPE_S,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_CLASSIC_TYPE_S
           - variant: type-s-jis
-            defines: HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_CLASSIC_TYPE_S,HHKB_JIS
 
     steps:
       - name: Checkout Code
@@ -138,9 +138,9 @@ jobs:
       matrix:
         include:
           - layout: ansi
-            defines: HHKB_HYBRID,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_HYBRID
           - layout: jis
-            defines: HHKB_HYBRID,HHKB_JIS,HHKB_RAPID_TRIGGER,HHKB_ADC_16MHZ,HHKB_ADC_OVERSAMPLING
+            defines: HHKB_HYBRID,HHKB_JIS
     steps:
       - uses: actions/checkout@v7
         with:
@@ -153,22 +153,23 @@ jobs:
 
       - uses: astral-sh/setup-uv@v10.3.3
 
-      - name: Build and package STM32-only Hybrid HFB
+      - name: Build and package Hybrid STM32 binary
         env:
           HHKB_DEFINES: ${{ matrix.defines }}
           HHKB_LAYOUT: ${{ matrix.layout }}
         run: |
           ./build_all.sh -b hhkb -d "$HHKB_DEFINES" -c
           mkdir -p build/hhkb-hybrid-release
-          python3 tools/hhkb/patch_hybrid_hfb.py --stm32-only --layout "$HHKB_LAYOUT" \
-            build/hhkb-script/dmk_hhkb_stm32l072.bin \
-            "build/hhkb-hybrid-release/dmk-hhkb-hybrid-${HHKB_LAYOUT}-experimental.hfb"
+          # Blank-radio HFB generation is disabled after radio validation failures.
+          # python3 tools/hhkb/patch_hybrid_hfb.py --stm32-only --layout "$HHKB_LAYOUT" ...
+          cp build/hhkb-script/dmk_hhkb_stm32l072.bin "build/hhkb-hybrid-release/dmk-hhkb-hybrid-${HHKB_LAYOUT}.bin"
+          cp tools/hhkb/hhkb.html build/hhkb-hybrid-release/
           cp keyboards/hhkb/via.json build/hhkb-hybrid-release/
 
-      - name: Upload experimental Hybrid HFB
+      - name: Upload Hybrid STM32 binary
         uses: actions/upload-artifact@v7
         with:
-          name: dmk-hhkb-hybrid-${{ matrix.layout }}-experimental
+          name: dmk-hhkb-hybrid-${{ matrix.layout }}-stm32
           path: build/hhkb-hybrid-release/
           retention-days: 3
           if-no-files-found: error

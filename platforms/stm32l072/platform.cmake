@@ -104,20 +104,12 @@ set(PLATFORM_LIBS
 # Option to compile for Classic Type-S (AHHS01, version A8.xx)
 option(HHKB_CLASSIC_TYPE_S "Build firmware container for HHKB Classic Type-S (AHHS01)" OFF)
 
-option(HHKB_RAPID_TRIGGER "Enable HHKB Rapid Trigger" OFF)
 if(DEFINED DEFINE)
     string(REPLACE "," ";" HHKB_BUILD_DEFINES "${DEFINE}")
-    set(HHKB_RAPID_TRIGGER OFF)
     set(HHKB_CLASSIC_TYPE_S OFF)
-    if("HHKB_RAPID_TRIGGER" IN_LIST HHKB_BUILD_DEFINES)
-        set(HHKB_RAPID_TRIGGER ON)
-    endif()
     if("HHKB_CLASSIC_TYPE_S" IN_LIST HHKB_BUILD_DEFINES)
         set(HHKB_CLASSIC_TYPE_S ON)
     endif()
-endif()
-if(HHKB_RAPID_TRIGGER AND NOT DEFINED DEFINE)
-    add_compile_definitions(HHKB_RAPID_TRIGGER=1)
 endif()
 
 # Post-build packaging into .bin and HHKB .hfb container

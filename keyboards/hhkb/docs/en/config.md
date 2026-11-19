@@ -1,6 +1,6 @@
 **Language:** [English](config.md) | [Русский](../ru/config.md)
 
-**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA](via.md) • [Debug](debug.md)
+**Documentation:** [Install](install.md) • [Backup & restore](backup-restore.md) • [Build](build.md) • [Config](config.md) • [Models](models.md) • [VIA & Debug](via-debug.md)
 
 # Configuration
 
@@ -10,11 +10,6 @@
 - `HHKB_CLASSIC_TYPE_S` builds firmware for wired Classic Type-S (ANSI or JIS when paired with `HHKB_JIS`).
 - `HHKB_HYBRID` builds firmware for wireless Hybrid and Hybrid Type-S (enables SPI communications with Nordic nRF, battery management, profiles, and STOP mode).
 - `HHKB_JIS` enables support for the 69-key Japanese JIS matrix (sparse matrix, 15 columns, Kana/Henkan/Muhenkan keys, and arrow cluster).
-- `HHKB_RAPID_TRIGGER` enables Rapid Trigger and its [VIA](https://www.usevia.app/) menu.
-- `HHKB_ADC_16MHZ` selects HCLK/2 for the ADC clock instead of HCLK/4.
-- `HHKB_ADC_OVERSAMPLING` sets the initial [VIA](https://www.usevia.app/) toggle state for ×4 hardware averaging. ×4 operates only at 50–500 Hz; 1000 Hz always forces ×1. The user's preference is saved in EEPROM.
-- `HHKB_ADC_DMA` enables synchronized DMA1 Channel 1 transfer for each ADC1 conversion result.
-- `HHKB_FACTORY_THRESHOLDS` loads each board's factory threshold and offset tables from EEPROM for classic mode.
 - `HHKB_SCAN_DIAGNOSTICS` adds measurement counters accessible over SWD.
 
 ## Matrix Scanning
@@ -51,12 +46,12 @@ Four Bluetooth profiles are supported. **BT Select 1–4** selects a bond; **BT 
 
 The factory nRF is SPI master on PA15/PB3–PB5 (Mode 3, 125 kHz). PB6 requests polling (Attention), PD2 controls module enable. STM32 application lives in Bank 2 starting at `0x08010000`.
 
-The common [VIA controls](via.md) also configure USB matrix rate, calibration, actuation and hysteresis, Rapid Trigger when compiled in, ADC oversampling, hold-tap timing, and the base modes of both LEDs. Hybrid-specific battery, profile, and PC5 controls are listed below. The Classic factory calibration table must not be assumed to match Hybrid hardware.
+The common [VIA controls](via-debug.md) also configure USB matrix rate, calibration, actuation and hysteresis, Rapid Trigger when compiled in, ADC oversampling, hold-tap timing, and the base modes of both LEDs. Hybrid-specific battery, profile, and PC5 controls are listed below. The Classic factory calibration table must not be assumed to match Hybrid hardware.
 
 ### Power modes and PC5
 
 - **USB active:** USB output by default. The OFF action is battery-only, as in the reference implementation.
-- **Battery active:** Bluetooth output by default. Battery scanning defaults to 200 Hz; VIA offers 50, 125, 200, 250, 500, and 1000 Hz. At 1000 Hz ADC oversampling is bypassed.
+- **Battery active:** Bluetooth output. The configured frequency controls matrix scanning. Radio report timing is determined by the stock Nordic firmware. See the Bluetooth scan-rate section below.
 - **Sleep:** Triggered by a keycode, configured PC5 action, or inactivity. The timeout defaults to 30 minutes and is capped at 10 minutes during pairing; `0` disables automatic sleep. With **Wake with matrix** off, sleep stops the nRF and enters STM32 STOP. PC5 held one second or USB insertion wakes by resetting the controller. With matrix wake on, the MCU keeps running at reduced duty cycle and scans once a second; PC5, a key, or USB wakes it. This mode consumes more than STOP.
 - **OFF:** On batteries, the default two-second PC5 hold or **BT Power** stops the nRF, ADC, sensor circuit, and matrix timer, then enters STOP. A one-second PC5 hold or USB insertion restarts the board. LPTIM1 wakes about every 1.7 seconds to refresh an active independent watchdog. STOP current and wake behavior require measurement on Hybrid hardware.
 
@@ -69,3 +64,34 @@ The reference firmware also uses STM32 STOP for OFF and sleep, waking on PC5 or 
 The ANSI matrix and SPI protocol follow the supplied `hhkb_hybrid` research. Its `nrf_spi.c` and `power.c` have MIT headers; only protocol handling and the STOP wake sequence were adapted. See the attribution and full upstream notice in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol). Factory and patched PFU containers remain outside Git.
 
 JIS coordinates and the Hybrid factory calibration map remain unverified. A successful build does not establish that the keyboard boots, pairs, wakes from STOP, or reaches the expected battery current on real hardware.
+
+
+## Bluetooth scan rate and report delivery (Hybrid)
+
+Matrix scan frequency is configured independently of Nordic report delivery. The separate radio chip controls Bluetooth timing. A maximum near 125 reports/s has been reported, while the stock matrix scan rate is around 50 Hz. Supported radio intervals and firmware-specific limits still require HCI measurements. Increasing matrix frequency cannot force the radio to send faster.
+
+## Bluetooth HID report intervals on macOS (Hybrid)
+
+Unplug the HHKB USB cable, connect it over Bluetooth, and run from the repository root:
+
+```bash
+uv run --with hidapi python3 tools/hhkb/measure_bt_hid.py --list
+uv run --with hidapi python3 tools/hhkb/measure_bt_hid.py --device 0 --seconds 20
+```
+
+Replace 0 with the HHKB index. Press and release several keys during capture. If macOS blocks the input reports, grant the terminal Input Monitoring permission and restart it. The script keeps timestamps only. Typing cadence and host buffering affect the reported intervals, so use an HCI trace for the BLE connection interval.
+
+### PacketLogger
+
+Sign in to [Apple Developer Downloads](https://developer.apple.com/download/all/) and download **Additional Tools for Xcode**. Copy `PacketLogger.app` from the DMG's Hardware folder to Applications.
+
+```bash
+open -a PacketLogger
+mdfind 'kMDItemFSName == "PacketLogger.app"'
+```
+
+If capture is unavailable, follow [Apple's Bluetooth logging profile instructions](https://developer.apple.com/bug-reporting/profiles-and-logs/) for macOS. Start capture before reconnecting the Hybrid and then press and release a few keys. Find **LE Connection Complete** or **LE Enhanced Connection Complete** and later **LE Connection Update Complete** events for the same handle. Multiply the raw interval by 1.25 ms. If the tool already displays milliseconds, use the displayed value.
+
+DMK firmware for HHKB (Classic & Hybrid, ANSI & JIS) provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking EC capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
+
+By default, all debug logging channels are **disabled** to avoid unnecessary MCU and USB bus overhead.

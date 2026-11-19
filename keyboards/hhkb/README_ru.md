@@ -6,7 +6,7 @@
 
 Альтернативная прошивка для клавиатур HHKB Professional Classic и Hybrid. Она работает на штатном STM32L072: не нужны замена контроллера, пайка или разборка клавиатуры.
 
-**Документация:** [Установка](docs/ru/install.md) • [Поддерживаемые модели](docs/ru/models.md) • [Бэкап и восстановление](docs/ru/backup-restore.md) • [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [VIA](docs/ru/via.md)
+**Документация:** [Установка](docs/ru/install.md) • [Поддерживаемые модели](docs/ru/models.md) • [Бэкап и восстановление](docs/ru/backup-restore.md) • [Сборка](docs/ru/build.md) • [Конфигурация](docs/ru/config.md) • [VIA](docs/ru/via-debug.md)
 
 Готовые прошивки для Classic и Classic Type-S публикуются на странице [GitHub Releases](https://github.com/aroum/dmk/releases).
 

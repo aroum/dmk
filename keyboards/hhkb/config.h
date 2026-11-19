@@ -11,14 +11,10 @@
 #endif
 #define VIA_V3 1
 #define VIA_FULL_SETTINGS_RESET 1
-#if defined(HHKB_HYBRID) && defined(HHKB_RAPID_TRIGGER)
+#ifdef HHKB_HYBRID
 #define VIA_FIRMWARE_VERSION 4U
-#elif defined(HHKB_HYBRID)
-#define VIA_FIRMWARE_VERSION 3U
-#elif defined(HHKB_RAPID_TRIGGER)
-#define VIA_FIRMWARE_VERSION 2U
 #else
-#define VIA_FIRMWARE_VERSION 1U
+#define VIA_FIRMWARE_VERSION 2U
 #endif
 #define DYNAMIC_KEYMAP_MAX_LAYERS 4
 
