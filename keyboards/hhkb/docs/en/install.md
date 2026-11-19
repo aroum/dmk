@@ -100,10 +100,23 @@ Read [Backup & restore](backup-restore.md) before using either path.
 
 ## Hybrid installation status
 
-The [experimental CI packages](build.md#github-actions) contain a blank nRF section designed to fail radio validation. Installation on a Hybrid keyboard and the STM32 boot decision after the radio rejects the update remain unverified.
-
-A Hybrid firmware package can be [built and patched locally](build.md#hybrid-only-local-build-and-factory-image-patch). The resulting HFB contains proprietary PFU nRF firmware and is not published. Installation and rollback on Hybrid hardware remain unverified; make [complete backups of both chips](backup-restore.md#hybrid-only-complete-backup-before-update-experiments) before testing. The DMK HID flasher accepts a complete model-matched Hybrid HFB and reports the update stage, chunk and file offset on transfer failures. Its Hybrid path still needs hardware verification.
+A Hybrid firmware package can be [built and patched locally](build.md#hybrid-only-local-build-and-factory-image-patch). The resulting HFB contains proprietary PFU nRF firmware and is not published. Flashing via local patching of an official vendor HFB has been verified and works on physical HHKB Hybrid hardware. The DMK HID flasher accepts a complete model-matched Hybrid HFB:
 
 ```bash
-uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py path/to/hybrid.hfb
+uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py keyboards/hhkb/local/dmk_hybrid.hfb
 ```
+
+Clean standalone builds from CI (without vendor blobs) cannot be accepted by the stock updater: the Nordic nRF52832 bootloader rejects the blank radio section, after which STM32 Bank 1 aborts the entire update.
+
+### Theoretical Multi-stage Workaround
+
+To distribute clean DMK firmware without proprietary PFU blobs, a multi-stage flashing procedure has been proposed:
+
+1. **Stage 1 (Temporary firmware):** Flash a temporary firmware image containing a dummy Bluetooth firmware accepted by the nRF. The running STM32 code then modifies Bank 1 to bypass the nRF update success check.
+2. **Stage 2 (Restore Bluetooth):** Flash the official PFU firmware to restore the original Bluetooth firmware on the nRF module.
+3. **Stage 3 (Install DMK):** Flash DMK with an invalid Bluetooth firmware image. The nRF rejects the update and keeps its stock firmware, while the modified Bank 1 considers DMK in Bank 2 valid and boots it.
+4. **Stage 4 (Revert & Cleanup):** When SW6 is toggled ON to return to stock firmware, DMK restores the original validation code in Bank 1.
+
+> [!CAUTION]
+> **High risk of unrecoverable bricking:**
+> This procedure carries significant risk because it involves writing to Bank 1. Bank 1 is the primary hardware recovery path through USB. If anything goes wrong during Bank 1 modification, USB recovery is permanently lost, requiring an SWD debugger to unbrick. A simpler and safer solution is preferred.

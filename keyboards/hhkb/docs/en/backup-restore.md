@@ -171,56 +171,161 @@ Testing on physical hardware has revealed the following behavior:
   2. Upon detecting an invalid CRC or MD5 mismatch, the nRF rejects the update, clears the staging area, and **safely retains its current stock firmware**.
   3. However, once the Nordic rejects the update, **STM32 Bank 1 also rejects its own update** and refuses to transfer execution to Bank 2 (it does not set the boot flag `0x08080360 = 1`). Consequently, clean standalone CI-built images cannot boot via the stock updater.
 
-In theory, one could generate a clean firmware image that the nRF would accept. That would yield a fully working USB keyboard, but the Bluetooth module would become useless until stock PFU firmware is reflashed.
+In theory, one could generate a clean firmware image that the nRF would accept. That would yield a fully working USB keyboard, but the Bluetooth module would become useless until stock PFU firmware is reflashed. A potential multi-stage bypass concept is documented in the [Installation Guide](install.md#theoretical-multi-stage-workaround).
 
-### Theoretical Multi-stage Workaround
+## Backup & Restore: STM32L072CZY6 (Classic & Hybrid)
 
-To distribute clean DMK firmware without proprietary PFU blobs, a multi-stage flashing procedure has been proposed:
+The primary host microcontroller across HHKB Classic and Hybrid is the **STMicroelectronics STM32L072CZY6** (ARM Cortex-M0+, 192 KB Flash, 20 KB SRAM, 6 KB embedded EEPROM).
 
-1. **Stage 1 (Temporary firmware):** Flash a temporary firmware image containing a dummy Bluetooth firmware accepted by the nRF. The running STM32 code then modifies Bank 1 to bypass the nRF update success check.
-2. **Stage 2 (Restore Bluetooth):** Flash the official PFU firmware to restore the original Bluetooth firmware on the nRF module.
-3. **Stage 3 (Install DMK):** Flash DMK with an invalid Bluetooth firmware image. The nRF rejects the update and keeps its stock firmware, while the modified Bank 1 considers DMK in Bank 2 valid and boots it.
-4. **Stage 4 (Revert & Cleanup):** When SW6 is toggled ON to return to stock firmware, DMK restores the original validation code in Bank 1.
+### STM32 Memory Map: Differences Between Classic and Hybrid
 
-> [!CAUTION]
-> **High risk of unrecoverable bricking:**
-> This procedure carries significant risk because it involves writing to Bank 1. Bank 1 is the primary hardware recovery path through USB. If anything goes wrong during Bank 1 modification, USB recovery is permanently lost, requiring an SWD debugger to unbrick. A simpler and safer solution is preferred.
+Both families employ a dual-bank Flash structure, but boot validation flags and EEPROM layout differ:
 
-## Hybrid only: complete backup before update experiments
+| Region | Address Range | Classic Purpose | Hybrid Purpose |
+| :--- | :--- | :--- | :--- |
+| **Bank 1** | `0x08000000–0x0800FFFF` (64 KB) | Factory PFU recovery bootloader | Factory PFU recovery bootloader (coordinates both STM32 & nRF via SPI) |
+| **Bank 2** | `0x08010000–0x0801FFFF` (64 KB) | Application firmware (stock A4.xx / A8.xx or DMK) | Application firmware (stock A0.xx / A2.xx or DMK) |
+| **Bank 3 / Reserved** | `0x08020000–0x0802FFFF` (64 KB) | Unused by PFU scheme | Unused by PFU scheme |
+| **Embedded EEPROM** | `0x08080000–0x080817FF` (6 KB) | Factory calibrations, Bank 2 boot flags | Factory calibrations, Bank 2 & Bluetooth boot flags |
+| ↳ *Bank 2 status flags* | `0x08080348` and `0x08080370` | Status (`0x01` = broken) and 2-byte CRC tag | Hybrid uses byte `0x08080360` (`0x01` = Bank 2 valid/boot-enabled) |
+| ↳ *EC Matrix calibration* | `0x08081000–0x080813FF` | Factory baselines and thresholds | Factory thresholds (structure differs) |
+| ↳ *User DMK Data* | `0x08081500–...` | DMK calibration profile, VIA/Vial dynamic layers | DMK calibration profile, VIA layers, BT profile slots |
+| **Option Bytes** | `0x1FF80000–0x1FF8001F` (32 bytes) | Readout protection (RDP Level 0/1) & boot flags | Readout protection (RDP Level 0/1) & boot flags |
 
-The local patch retains proprietary PFU nRF firmware, so the generated HFB cannot be distributed as a DMK release. The MIT-licensed reverse engineering of the STM32–Nordic SPI protocol and STOP wake sequence is credited in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol); it does not remove the proprietary code from the patched image.
+### STM32 SWD Pinout (CN3 Pads)
 
-A possible future approach is to supply an intentionally invalid nRF update payload so the radio rejects it and keeps its original firmware, while the STM32 update proceeds. This has **not** been tested: the PC updater may reject the container first, or the radio update may behave differently. Before attempting any firmware modifications or experimental updates, **complete backups of both chips (STM32 and Nordic nRF52832) are critically required** to prevent permanently bricking the Bluetooth subsystem.
-
-### Hybrid hardware interfaces and pinout for backup and debugging
-
-The HHKB Hybrid PCB features dedicated programming and debug access points for both microcontrollers:
-
-#### 1. STM32 Debug Interface (CN3 Pads)
-The five test pads near connector CN3 arranged in two rows:
+The STM32 debug interface is accessible via five test pads adjacent to connector CN3 in two staggered rows:
 ```text
 GND   NRST  VCC
  SWCLK SWDIO
 ```
-- **SWDIO:** PA13
-- **SWCLK:** PA14
-- **NRST:** STM32 Reset pin
-- **VCC / GND:** 3.3V power and ground
+- **SWDIO:** Pin PA13 of STM32L072
+- **SWCLK:** Pin PA14 of STM32L072
+- **NRST:** STM32 hardware reset line
+- **VCC:** 3.3V power (or VTref reference input for programmer)
+- **GND:** Ground (0V)
 
-STM32 backup is captured standardly via J-Link or OpenOCD (128 KB Flash + 6 KB EEPROM + Option Bytes), exactly as on the Classic.
+> [!TIP]
+> The keyboard can remain powered via USB-C. In this configuration, connect VCC to the programmer's VTref pin solely for voltage sensing (do not power the board simultaneously from both USB and debugger).
 
-#### 2. Factory Interface CN6
-Connector / test pads **CN6** on the board are likely the UART interface used during factory testing or programming of the Nordic Bluetooth chip.
+### STM32 Backup via J-Link
 
-#### 3. Nordic nRF52832 Debug Interface (Taiyo Yuden EYSHCNZWZ)
-According to the official [Taiyo Yuden EYSHCNZWZ Datasheet (PDF)](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) (*Pin Descriptions* and module footprint), the following pins are used for debug access and dumps (via J-Link / nrfjprog / OpenOCD):
-- **Pin 14:** `SWDIO`
-- **Pin 15:** `SWDCLK` (Pin 15 is marked directly on the PCB silkscreen, serving as a reference point to locate and count surrounding pins)
-- **Pin 20:** `RESET` (nRF52 P0.21 / nRESET)
-- **Power:** VDD (Pin 11/12, 1.7–3.6V) and GND (Pins 42–45, 47, 48)
+Create a command script `backup_stm32.jlink`:
+```text
+r
+halt
+// 1. Full Flash dump: 128 KB = Bank 1 + Bank 2
+savebin stm32_full_flash_128k.bin 0x08000000 0x00020000
+// 2. Factory Bank 1 (PFU Bootloader): 64 KB
+savebin stm32_bank1_bootloader_64k.bin 0x08000000 0x00010000
+// 3. Current Bank 2: 64 KB
+savebin stm32_bank2_app_64k.bin 0x08010000 0x00010000
+// 4. Embedded EEPROM: 6 KB (calibration tables, serial, boot flags)
+savebin stm32_eeprom_6k.bin 0x08080000 0x00001800
+// 5. Option Bytes: 32 bytes
+savebin stm32_option_bytes.bin 0x1FF80000 0x00000020
+q
+```
 
-> [!IMPORTANT]
-> To dump the full Flash (512 KB) and UICR from the nRF52832, connect a programmer (such as J-Link) to `SWDIO`, `SWDCLK`, `GND`, and `VDD`. Verify whether readback protection (APPROTECT) is active prior to attempting full dumps.
+Execute the dump:
+```bash
+JLinkExe -device STM32L072RB -if SWD -speed 4000 -autoconnect 1 -CommanderScript backup_stm32.jlink
+```
+
+### STM32 Restore via J-Link
+
+Create `restore_stm32.jlink`:
+```text
+r
+halt
+loadbin stm32_full_flash_128k.bin 0x08000000
+loadbin stm32_eeprom_6k.bin 0x08080000
+r
+g
+q
+```
+Execute restore:
+```bash
+JLinkExe -device STM32L072RB -if SWD -speed 4000 -autoconnect 1 -CommanderScript restore_stm32.jlink
+```
+
+---
+
+## Backup & Restore: Nordic nRF52832 (Hybrid Only)
+
+On HHKB Hybrid, the Bluetooth subsystem is integrated on a **Taiyo Yuden EYSHCNZWZ** module based on the **Nordic Semiconductor nRF52832** SoC ([Module Datasheet](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf)) (32-bit ARM Cortex-M4F @ 64 MHz, 512 KB Flash, 64 KB RAM).
+
+### Nordic nRF52832 Memory Map
+
+The 512 KB Flash is structured for Nordic SoftDevice S132 and PFU's custom bootloader:
+
+| Region | Address Range | Purpose |
+| :--- | :--- | :--- |
+| **MBR** | `0x00000000–0x00000FFF` (4 KB) | Master Boot Record |
+| **SoftDevice S132** | `0x00001000–0x00025FFF` (148 KB) | Nordic BLE protocol stack v6.0.0 |
+| **Application** | `0x00026000–0x00031FFF` (48 KB) | Stock HHKB Hybrid Bluetooth firmware |
+| **Staging Area** | `0x00036000–...` | SPI firmware update buffer received from STM32 (header at `0x36000`, binary at `0x37000`) |
+| **FDS Storage** | `0x00075000–0x00077FFF` (12 KB) | Pairing & bonding data (Flash Data Storage, magic `0xDEADC0DE`) |
+| **Bootloader** | `0x00078000–0x0007FFFF` (32 KB) | Vendor update bootloader `FwUpdate_*` (`UICR.BOOTLOADERADDR = 0x78000`) |
+| **UICR** | `0x10001000–0x100013FF` (1 KB) | User Information Configuration Registers |
+
+### SWD Debug Interface for Nordic nRF52832 (CN6 and Module Pins)
+
+Debug access to the Nordic chip is provided through:
+- **Connector / pads CN6:** Dedicated factory **SWD interface for the Nordic nRF52832**.
+- **Module Edge Contacts (Taiyo Yuden EYSHCNZWZ):**
+  - **Pin 14:** `SWDIO`
+  - **Pin 15:** `SWDCLK` (Pin 15 is marked directly on PCB silkscreen as a primary reference)
+  - **Pin 20:** `RESET` (nRF52 P0.21 / nRESET)
+  - **VDD:** Pins 11/12 (1.7–3.6V)
+  - **GND:** Pins 42–45, 47, 48
+
+### Nordic nRF52832 Backup via J-Link / nrfjprog
+
+Ensure that readout protection (APPROTECT) is disabled before reading.
+
+Create `backup_nrf52.jlink`:
+```text
+r
+halt
+// 1. Full Flash dump: 512 KB (MBR + SoftDevice + App + FDS + Bootloader)
+savebin nrf52_full_flash_512k.bin 0x00000000 0x00080000
+// 2. UICR: 1 KB configuration registers
+savebin nrf52_uicr_1k.bin 0x10001000 0x00000400
+q
+```
+
+Execute the dump:
+```bash
+JLinkExe -device nRF52832_xxAA -if SWD -speed 4000 -autoconnect 1 -CommanderScript backup_nrf52.jlink
+```
+
+Or using Nordic's official CLI:
+```bash
+nrfjprog --family NRF52 --readcode nrf52_full_flash_512k.hex
+nrfjprog --family NRF52 --readuicr nrf52_uicr.hex
+```
+
+### Nordic nRF52832 Restore
+
+To restore the factory Bluetooth state:
+```text
+r
+halt
+loadbin nrf52_full_flash_512k.bin 0x00000000
+loadbin nrf52_uicr_1k.bin 0x10001000
+r
+g
+q
+```
+Execute restore:
+```bash
+JLinkExe -device nRF52832_xxAA -if SWD -speed 4000 -autoconnect 1 -CommanderScript restore_nrf52.jlink
+```
+Or via `nrfjprog`:
+```bash
+nrfjprog --family NRF52 --program nrf52_full_flash_512k.hex --chiperase --reset
+```
 
 ---
 
