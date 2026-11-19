@@ -18,7 +18,7 @@
 
 ## HHKB Classic
 
-DMK firmware runs natively on the factory STM32L072CZ microcontroller of the wired USB-C Happy Hacking Keyboard (HHKB Professional Classic series). No hardware modifications, soldering, or disassembly are required.
+DMK firmware runs natively on the factory STM32L072CZ microcontroller of the wired USB-C HHKB Professional Classic series. No hardware modifications, soldering, or disassembly are required.
 
 ### Supported ANSI Models (60-key US Layout)
 
@@ -104,7 +104,7 @@ Over USB, the keyboard supports polling rates up to 1000 Hz. Over Bluetooth, how
 
 ### Overview
 
-The **HHKB Professional HYBRID** and **HYBRID Type-S** represent the dual-mode (USB-C & Bluetooth Low Energy) generation of the Happy Hacking Keyboard family.
+The **HHKB Professional HYBRID** and **HYBRID Type-S** represent the dual-mode (USB-C & Bluetooth Low Energy) generation of the HHKB family.
 
 The primary goal of this subproject is to port the open-source **DMK** firmware to run natively on the keyboard's internal STM32 microcontroller. This brings Vial / VIA runtime configuration, high-speed EC scanning, customizable actuation points, and Rapid Trigger capabilities to the HYBRID series, while preserving the factory Bluetooth transceiver functionality.
 
