@@ -63,10 +63,14 @@ The reference firmware also uses STM32 STOP for OFF and sleep, waking on PC5 or 
 
 User measurements supplied on 20 November 2026 were taken over Bluetooth with a 3.0 V supply. These results describe the tested Hybrid and firmware, not guaranteed figures for every board. Values below are in mA; peaks are noted separately.
 
-- **DMK, 1000 Hz:** boot 12.5–14; idle 10.33–10.7; typing 11–13 (one peak at 14); OFF 4–4.5; sleep 4; sleep with matrix wake 7.4.
-- **DMK, 50 Hz:** boot 12.5–15; idle 10.5–12; typing 13; OFF 4; sleep 4; sleep with matrix wake 7.5.
-- **DMK, 50 Hz with 4x ADC oversampling:** boot 13; idle 10.9–11.7; typing 13–13.5 (peaks at 15); OFF 4.2; sleep 4; sleep with matrix wake 7.3.
-- **Stock:** boot 3.3; idle 3.28; typing 3.53–3.58; OFF 0.21. Stock sleep was not observed.
+| Mode | DMK, 1000 Hz | DMK, 50 Hz | DMK, 50 Hz + 4x oversampling | Stock |
+| --- | --- | --- | --- | --- |
+| Boot | 12.5–14 | 12.5–15 | 13 | 3.3 |
+| Idle | 10.33–10.7 | 10.5–12 | 10.9–11.7 | 3.28 |
+| Typing | 11–13; one peak at 14 | 13 | 13–13.5; peaks at 15 | 3.53–3.58 |
+| OFF | 4–4.5 | 4 | 4.2 | 0.21 |
+| Sleep | 4 | 4 | 4 | Not observed |
+| Sleep with matrix wake | 7.4 | 7.5 | 7.3 | Not measured |
 
 DMK currently draws substantially more than stock on battery, including roughly 19–21 times the stock OFF current. Lowering matrix rate alone did not reduce idle consumption in these measurements. OFF/sleep power saving is not yet validated: the tester also reproduced failure to wake using PC5, requiring battery removal. The documented wake sequence above describes intended behavior. A pre-STOP SWD capture confirmed the PC5 input and EXTI routing and a counting LPTIM, but debug access was lost after continuing into STOP; no valid post-STOP snapshot is available.
 
