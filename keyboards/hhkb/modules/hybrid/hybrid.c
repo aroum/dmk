@@ -99,6 +99,15 @@ void SPI1_IRQHandler(void) {
                 start_reply(payload, 1);
                 break;
             case 0x02:
+                if (control_command == 0x04) {
+                    // Stock shutdown poll on MISO: 00 AA 40 00. The first
+                    // byte is the idle byte already loaded in SPI_DR;
+                    // start_reply supplies AA then exactly 40 00.
+                    // Prioritize shutdown over battery/queued keyboard data.
+                    static const uint8_t shutdown_poll[] = {0x40, 0x00};
+                    start_reply(shutdown_poll, sizeof(shutdown_poll));
+                    break;
+                }
                 if (battery_pending) {
                     payload[0] = 0x80;
                     battery_polled = true;
@@ -127,7 +136,7 @@ void SPI1_IRQHandler(void) {
                     payload[1] = control_slot;
                     control_command = 0;
                 } else if (control_command == 0x04) {
-                    payload[0] = 0x10; // Disconnect and idle the stock nRF.
+                    payload[0] = 0x10; // Follow-up idle reply: 00 AA 10 00 on MISO.
                     control_command = 0;
                 }
                 start_reply(payload, 2);

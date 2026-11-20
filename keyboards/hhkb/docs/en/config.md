@@ -149,3 +149,7 @@ If capture is unavailable, follow [Apple's Bluetooth logging profile instruction
 DMK firmware for HHKB (Classic & Hybrid, ANSI & JIS) provides real-time diagnostic logging via standard USB HID Console interface. This enables tracking EC capacitive matrix state, measuring raw ADC values, monitoring matrix scan rates, and inspecting VIA configurator communication.
 
 By default, all debug logging channels are **disabled** to avoid unnecessary MCU and USB bus overhead.
+
+### Stock shutdown SPI poll
+
+On an OFF request, STM32 now prioritizes the short shutdown poll response to Nordic command `0x02`: `00 AA 40 00` on MISO (idle byte, synchronization byte, `40 00` payload). It no longer uses the normal eight-byte report payload for this response. The subsequent Nordic `0x03` query receives `00 AA 10 00` for the existing idle request. Nordic remains SPI master; these bytes are clocked out in response to its queries, not transmitted unsolicited. DMK waits up to approximately 3 seconds for the idle exchange, disconnection and SPI completion before asserting PD2 and entering STOP. A host test clocks the actual production ISR through both four-byte replies with battery and keyboard reports pending. Electrical timing, Nordic acceptance and OFF current still need hardware verification.
