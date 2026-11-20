@@ -53,6 +53,20 @@ static uint8_t s_scan_rate = 4; // 1000 Hz
 #ifdef HHKB_HYBRID
 static bool s_bt_oversampling;
 static uint8_t s_bt_sleep_minutes = 30;
+static const uint8_t deep_choices[] = {0,1,3,5,10,20,30,40,50,60};
+static uint8_t s_bt_deep_index = 2; // 3 minutes; separate from inactivity timeout.
+static uint8_t bt_power_encode(uint8_t deep_index, uint8_t long_action) {
+    return deep_index * 3 + long_action;
+}
+static bool bt_power_decode(uint8_t value, bool packed, uint8_t *deep_index, uint8_t *long_action) {
+    uint8_t bits = value & 31;
+    uint8_t index = packed ? bits / 3 : 2;
+    uint8_t action = packed ? bits % 3 : (value >> 3) & 3;
+    if (index >= 10 || action >= 3) return false;
+    *deep_index = index;
+    *long_action = action;
+    return true;
+}
 static bool s_bt_matrix_wake;
 static uint8_t s_bt_indicator_flags = 0x0f;
 static uint8_t s_bt_short_action = 1; // Stock: show the connected profile.
@@ -196,8 +210,11 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.reserved[0] = 0x80 | (s_bt_oversampling ? 0x40 : 0) | (s_bt_sleep_minutes + 1);
     cal.reserved[1] = (s_bt_matrix_wake ? 1 : 0) |
                       (s_bt_indicator_flags << 1) | (s_bt_short_action << 5);
-    cal.reserved[2] = 0x80 | 7U |
-                      (s_bt_long_action << 3) | (s_bt_last_slot << 5);
+    // New packed layout: 10 deep choices x 3 long actions fits in 5 bits.
+    // debug_flags bit 7 marks it; record size and CRC coverage are unchanged.
+    cal.debug_flags |= 0x80;
+    cal.reserved[2] = 0x80 | bt_power_encode(s_bt_deep_index, s_bt_long_action) |
+                      (s_bt_last_slot << 5);
 #endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
     cal.classic_release_pm = s_classic_release_pm;
@@ -267,7 +284,8 @@ void hhkb_calibration_load(void) {
                     if (cal->reserved[2] & 0x80) {
                         s_bt_indicator_flags = (cal->reserved[1] >> 1) & 0x0f;
                         s_bt_short_action = (cal->reserved[1] >> 5) & 7;
-                        s_bt_long_action = (cal->reserved[2] >> 3) & 3;
+                        bt_power_decode(cal->reserved[2], (cal->debug_flags & 0x80) != 0,
+                                        &s_bt_deep_index, &s_bt_long_action);
                         s_bt_last_slot = (cal->reserved[2] >> 5) & 3;
                     } else if (cal->reserved[1] & 0x80) {
                         // Earlier local Hybrid layout kept its marker in byte 1.
@@ -299,7 +317,7 @@ void hhkb_calibration_load(void) {
             if (current) {
                 for (unsigned i = 0; i < 2; ++i)
                     if (cal->led_mode[i] <= 4) s_led_mode[i] = cal->led_mode[i];
-                s_debug_flags = cal->debug_flags;
+                s_debug_flags = cal->debug_flags & 0x0f;
             }
 
             if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= (current ? 1125 : 1000)) s_rt_cfg.act_pm = cal->rt.act_pm;
@@ -733,6 +751,15 @@ void hhkb_cal_decrement_samples(void) {
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row) { return &s_rt_keys[col][row]; }
 
 #ifdef HHKB_HYBRID
+uint8_t hhkb_bt_deep_minutes(void) { return deep_choices[s_bt_deep_index]; }
+bool hhkb_bt_set_deep_minutes(uint8_t minutes) {
+    for (uint8_t i = 0; i < sizeof(deep_choices); ++i) {
+        if (deep_choices[i] != minutes) continue;
+        if (s_bt_deep_index != i) { s_bt_deep_index = i; hhkb_settings_mark_dirty(); }
+        return true;
+    }
+    return false;
+}
 uint8_t hhkb_bt_sleep_minutes(void) { return s_bt_sleep_minutes; }
 bool hhkb_bt_matrix_wake(void) { return s_bt_matrix_wake; }
 

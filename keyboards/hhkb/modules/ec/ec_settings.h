@@ -39,7 +39,7 @@ typedef struct __attribute__((aligned(4))) {
     uint16_t classic_release_pm;
     uint8_t curve[EC_CURVE_FIELDS];
     uint8_t led_mode[2];
-    uint8_t debug_flags;
+    uint8_t debug_flags; // bits 0..3: debug; bit 7: packed Hybrid deep-timer format
     uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
 _Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 24 + 4 * MATRIX_ROWS * MATRIX_COLS, "Preserve the v1 settings record");
@@ -135,3 +135,6 @@ rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row);
 
 bool hhkb_bt_oversampling(void);
 void hhkb_bt_set_oversampling(bool enabled);
+
+uint8_t hhkb_bt_deep_minutes(void);
+bool hhkb_bt_set_deep_minutes(uint8_t minutes);

@@ -88,6 +88,25 @@ static void prepare_wake_sources(void) {
     NVIC_EnableIRQ(LPTIM1_IRQn);
 }
 
+// LSI/128 is nominally 289 ticks/s. Wake only after release; a stuck
+// button at >=10 seconds cancels the attempt, as in the analyzed stock path.
+static unsigned off_press_action(uint32_t ticks, bool released) {
+    if (ticks >= 2890U) return 2;
+    return released && ticks >= 289U ? 1 : 0;
+}
+
+static void lptim_wait_ticks(uint32_t ticks) {
+    uint16_t prev = stable_lptim_count();
+    uint32_t elapsed = 0;
+    while (elapsed < ticks) {
+        uint16_t now = stable_lptim_count();
+        elapsed += now >= prev ? now - prev : LPTIM_ARR + 1U - prev + now;
+        prev = now;
+        IWDG->KR = 0xAAAA;
+        if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+    }
+}
+
 static void stop_once(uint32_t stage) {
     EXTI->PR = WAKE_EXTI_MASK;
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
@@ -176,11 +195,26 @@ void hhkb_hybrid_enter_stop(void) {
                 held_ticks += now >= prev ? now - prev : LPTIM_ARR + 1U - prev + now;
                 prev = now;
                 IWDG->KR = 0xAAAA;
-                if (held_ticks >= 289U) {
-                    hhkb_stop_stage = 6;
-                    NVIC_SystemReset();
+                if (held_ticks >= 289U) GPIOA->BSRR = 1UL << 8;
+                if (off_press_action(held_ticks, false) == 2) {
+                    GPIOA->BRR = 1UL << 8;
+                    GPIOA->BSRR = 1UL << 9;
+                    lptim_wait_ticks(867U); // Approximately 3 s orange warning.
+                    GPIOA->BRR = 1UL << 9;
+                    while (!(GPIOC->IDR & (1UL << 5))) {
+                        IWDG->KR = 0xAAAA;
+                        if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+                        stop_once(2);
+                    }
+                    held_ticks = 0;
+                    break;
                 }
                 if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+            }
+            GPIOA->BRR = 1UL << 8;
+            if (off_press_action(held_ticks, true) == 1) {
+                hhkb_stop_stage = 6;
+                NVIC_SystemReset();
             }
         }
     }

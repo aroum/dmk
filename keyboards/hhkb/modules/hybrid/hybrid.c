@@ -38,8 +38,9 @@ static volatile uint8_t attention_retries;
 static volatile bool powered = true;
 static volatile bool poweroff_pending;
 static volatile bool matrix_sleeping;
+static bool button_sleep_wake;
 
-void hhkb_hybrid_set_sleeping(bool sleeping) { matrix_sleeping = sleeping; }
+void hhkb_hybrid_set_sleeping(bool sleeping) { matrix_sleeping = sleeping; button_sleep_wake = false; }
 static bool off_from_battery;
 static volatile bool manual_bt_output;
 static volatile bool sleep_requested;
@@ -49,7 +50,6 @@ static bool source_seen;
 static volatile uint32_t power_off_flash_until;
 static bool button_was_down;
 static bool button_handled;
-static bool button_wake_press;
 static uint32_t button_down_since;
 static volatile uint8_t *const spi_data = (volatile uint8_t *)&SPI1->DR;
 
@@ -197,7 +197,7 @@ bool hhkb_hybrid_output_bluetooth(void) {
 }
 bool hhkb_hybrid_sleep_requested(void) { return sleep_requested; }
 void hhkb_hybrid_clear_sleep_request(void) { sleep_requested = false; }
-void hhkb_hybrid_request_sleep(void) { sleep_requested = true; }
+void hhkb_hybrid_request_sleep(void) { if (hhkb_hybrid_on_battery()) sleep_requested = true; }
 
 static void release_current_output(void) {
     const USB_HID_KeyboardReport_TypeDef released = {.ReportID = 1};
@@ -277,7 +277,16 @@ void hhkb_hybrid_toggle_power(void) {
     power_off_flash_until = xTaskGetTickCount();
     GPIOD->BSRR = 1U << 2;
 }
-void hhkb_hybrid_button_woke(void) { button_wake_press = true; }
+bool hhkb_hybrid_take_button_wake(void) {
+    bool wake = button_sleep_wake;
+    button_sleep_wake = false;
+    return wake;
+}
+uint32_t hhkb_hybrid_button_wait_ms(uint32_t now_ms) {
+    if (!button_was_down || button_handled) return UINT32_MAX;
+    uint32_t held = now_ms - button_down_since;
+    return held >= 2000 ? 1 : 2000 - held;
+}
 
 static void button_short_action(void) {
     switch (hhkb_bt_button_action(false)) {
@@ -316,10 +325,14 @@ void hhkb_hybrid_button_poll(uint32_t now_ms) {
             button_handled = true;
         }
     }
-    if (!down && button_was_down && !button_handled && !button_wake_press && powered &&
-        now_ms - button_down_since <= 500)
-        button_short_action();
-    if (!down) { button_handled = false; button_wake_press = false; }
+    if (!down && button_was_down && !button_handled && powered) {
+        uint32_t held = now_ms - button_down_since;
+        if (held >= 2000) button_long_action();
+        else if (matrix_sleeping) {
+            if (held >= 100) button_sleep_wake = true;
+        } else if (held <= 500) button_short_action();
+    }
+    if (!down) button_handled = false;
     button_was_down = down;
 }
 uint8_t hhkb_hybrid_battery_level(void) {

@@ -184,7 +184,7 @@ void matrix_task(void *pvParameters) {
     TickType_t last_wake_scan = last_activity;
     bool sleeping = false;
     bool manual_sleep = false;
-    bool sleep_button_armed = true;
+    TickType_t sleep_started = last_activity;
 #endif
     for (;;) {
         bool battery = false;
@@ -206,22 +206,17 @@ void matrix_task(void *pvParameters) {
         if (hhkb_hybrid_pairing() && minutes > 10) minutes = 10;
         if (hhkb_hybrid_sleep_requested()) {
             hhkb_hybrid_clear_sleep_request();
-            if (battery) manual_sleep = true;
+            if (battery) { manual_sleep = true; if (sleeping) sleep_started = now; }
         }
         if (!battery || button || minutes == 0 || hhkb_is_calibrating()) {
             last_activity = now;
         }
-        // The reference's inactivity timeout enters OFF, not connected sleep.
-        if (!sleeping && battery && !manual_sleep && minutes != 0 &&
-            now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)) {
-            hhkb_hybrid_toggle_power();
-            continue;
-        }
-        if (!sleeping && battery && manual_sleep) {
+        if (!sleeping && battery && (manual_sleep || (minutes != 0 &&
+            now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
             sleeping = true;
+            sleep_started = now;
             hhkb_hybrid_set_sleeping(true);
             TIM2->CR1 &= ~TIM_CR1_CEN;
-            sleep_button_armed = !button;
             TIM2->DIER = 0;
             ulTaskNotifyTake(pdTRUE, 0);
             hhkb_hybrid_sleep_exti(true);
@@ -236,15 +231,20 @@ void matrix_task(void *pvParameters) {
             }
         }
         if (sleeping) {
-            if (!button) sleep_button_armed = true;
-            bool wake = !battery || (sleep_button_armed && button) ||
-                        (!manual_sleep && minutes == 0);
+            bool button_wake = hhkb_hybrid_take_button_wake();
+            bool wake = !battery || button_wake;
+            uint8_t deep_minutes = hhkb_bt_deep_minutes();
+            bool deep_due = deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
             hhkb_hybrid_service();
             bool scan = hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
+            if (!wake && !button && deep_due && !scan) { hhkb_hybrid_toggle_power(); continue; }
             if (!wake && !scan) {
                 TickType_t elapsed = now - last_wake_scan;
                 TickType_t remaining = !hhkb_bt_matrix_wake() ? pdMS_TO_TICKS(1000) :
                     (elapsed < pdMS_TO_TICKS(1000) ? pdMS_TO_TICKS(1000) - elapsed : 1);
+                uint32_t button_wait = hhkb_hybrid_button_wait_ms(now);
+                if (button_wait != UINT32_MAX && pdMS_TO_TICKS(button_wait) < remaining)
+                    remaining = pdMS_TO_TICKS(button_wait);
                 ulTaskNotifyTake(pdTRUE, remaining);
                 continue;
             }
@@ -264,6 +264,7 @@ void matrix_task(void *pvParameters) {
                 }
             }
             if (!wake) {
+                if (!button && deep_due) { hhkb_hybrid_toggle_power(); continue; }
                 TIM2->CR1 &= ~TIM_CR1_CEN;
                 ADC1->CR |= ADC_CR_ADDIS;
                 GPIOC->BRR = (1U << 14) | (1U << 7);
@@ -273,7 +274,6 @@ void matrix_task(void *pvParameters) {
             hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
             manual_sleep = false;
-            if (button) hhkb_hybrid_button_woke();
             last_activity = xTaskGetTickCount();
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);

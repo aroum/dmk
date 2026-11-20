@@ -2562,7 +2562,7 @@
               "content": ["id_hhkb_bt_oversampling", 0, 54]
             },
             {
-              "label": "Auto power-off timeout (min, 0 disables)",
+              "label": "Sleep after inactivity (min, 0 disables)",
               "type": "range",
               "options": [
                 0,
@@ -2573,6 +2573,12 @@
                 0,
                 40
               ]
+            },
+            {
+              "label": "Deep sleep after sleep (minutes)",
+              "type": "dropdown",
+              "options": [["Never",0],["1",1],["3",3],["5",5],["10",10],["20",20],["30",30],["40",40],["50",50],["60",60]],
+              "content": ["id_hhkb_bt_deep_minutes",0,55]
             },
             {
               "label": "Wake with matrix (1 Hz while asleep)",
