@@ -234,7 +234,7 @@ Assign these after loading [via.json](../../via.json) in VIA:
 
 In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design tab → Design → Load Draft Definition** and choose [via.json](../../via.json). The **HHKB Settings → Bluetooth** submenu appears only in a Hybrid build. Vial supports keymap editing but cannot display custom controls.
 
-- **Battery matrix scan rate:** 50, 125, 200 (default), 250, 500, or 1000 Hz, stored separately from the USB rate.
+- **Battery matrix scan rate:** 50, 125, 200 (default), or 250 Hz, stored separately from the USB rate.
 - **Sleep timeout:** 0–60 minutes in one-minute steps; `0` disables the inactivity timer. Pairing caps longer timeouts at 10 minutes.
 - **Wake with matrix:** off by default. Off selects STOP; on scans at 1 Hz during sleep.
 - **Select paired profile / Start pairing:** choose profiles 1–4; pairing may replace a bond.

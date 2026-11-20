@@ -73,8 +73,7 @@ bool matrix_is_pressed(unsigned char row, unsigned char col) {
 // Called between scans, with the ADC idle. Keep TIM2 at 4 MHz and ADC
 // at 16 MHz while reducing the CPU/bus clock on low-rate battery scans.
 static void update_battery_clock(bool battery) {
-    uint8_t rate = hhkb_get_effective_scan_rate();
-    bool low = battery && (rate <= 2 || rate == 5);
+    bool low = battery;
     uint32_t hz = low ? 16000000U : 32000000U;
     if (SystemCoreClock == hz) return;
     taskENTER_CRITICAL();

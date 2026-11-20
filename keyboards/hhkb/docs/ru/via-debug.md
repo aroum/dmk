@@ -230,7 +230,7 @@ uv run tools/ec_curve_visualizer.py
 
 В [веб-версии VIA](https://www.usevia.app/) откройте **Settings → Show Design tab → Design → Load Draft Definition** и выберите [via.json](../../via.json). Подменю **HHKB Settings → Bluetooth** появляется только в сборке Hybrid. Vial позволяет менять раскладку, но не показывает кастомные контролы.
 
-- **Battery matrix scan rate:** 50, 125, 200 (по умолчанию), 250, 500 или 1000 Гц; отдельно от частоты USB.
+- **Battery matrix scan rate:** 50, 125, 200 (по умолчанию) или 250 Гц; отдельно от частоты USB.
 - **Sleep timeout:** 0–60 минут, шаг 1 минута; `0` отключает таймер. Во время сопряжения значения выше 10 минут ограничиваются 10 минутами.
 - **Wake with matrix:** по умолчанию выключено. Выкл. — STOP; вкл. — опрос матрицы 1 Гц во сне.
 - **Select paired profile / Start pairing:** выбор профиля 1–4 и сопряжение с возможной заменой привязки.

@@ -260,7 +260,7 @@ void hhkb_calibration_load(void) {
 #ifdef HHKB_HYBRID
                 uint8_t stored_rate = cal->reserved[2] & 7;
                 if (stored_rate >= 1 && stored_rate <= 6)
-                    s_bt_scan_rate = stored_rate - 1;
+                    s_bt_scan_rate = (stored_rate == 4 || stored_rate == 5) ? 5 : stored_rate - 1;
                 if (cal->reserved[0] >= 1 && cal->reserved[0] <= 61) {
                     s_bt_sleep_minutes = cal->reserved[0] - 1;
                     s_bt_matrix_wake = (cal->reserved[1] & 1) != 0;
@@ -755,7 +755,7 @@ uint8_t hhkb_get_effective_scan_rate(void) {
 uint8_t hhkb_bt_scan_rate(void) { return s_bt_scan_rate; }
 
 void hhkb_bt_set_scan_rate(uint8_t rate) {
-    if (rate > 5 || rate == s_bt_scan_rate) return;
+    if (rate > 5 || rate == 3 || rate == 4 || rate == s_bt_scan_rate) return;
     s_bt_scan_rate = rate;
     hhkb_settings_mark_dirty();
 }
