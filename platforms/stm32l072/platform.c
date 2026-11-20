@@ -63,6 +63,10 @@ void platform_init(void) {
     while (RCC->CR & RCC_CR_HSIDIVF);
     RCC->CFGR &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);
 
+    // Restore the HSI48 reference explicitly: the wake boot path may arrive
+    // with this reference disabled and otherwise deadlock waiting for RDY.
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+    SYSCFG->CFGR3 |= SYSCFG_CFGR3_ENREF_HSI48;
     // Enable HSI48 for crystal-less USB 2.0 Full Speed
     RCC->CRRCR |= RCC_CRRCR_HSI48ON;
     while (!(RCC->CRRCR & RCC_CRRCR_HSI48RDY));
