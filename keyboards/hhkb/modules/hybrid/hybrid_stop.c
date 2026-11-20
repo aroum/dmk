@@ -88,7 +88,29 @@ static void prepare_wake_sources(void) {
     NVIC_EnableIRQ(LPTIM1_IRQn);
 }
 
-void hhkb_hybrid_enter_stop(void) {
+// 0: keep sleeping/waiting, 1: wake, 2: change sleep to OFF.
+static unsigned stop_button_decision(bool from_sleep, uint32_t held_ticks, bool released) {
+    if (from_sleep && held_ticks >= 578U) return 2;
+    if (held_ticks >= 289U && (!from_sleep || released)) return 1;
+    return 0;
+}
+
+static void stop_once(uint32_t stage) {
+    EXTI->PR = WAKE_EXTI_MASK;
+    LPTIM1->ICR = LPTIM_ICR_ARRMCF;
+    NVIC->ICPR[0] = 0xFFFFFFFFUL;
+    PWR->CR |= PWR_CR_CWUF;
+    PWR->CR = (PWR->CR & ~PWR_CR_PDDS) | PWR_CR_LPSDSR;
+    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+    hhkb_stop_stage = stage;
+    __DSB();
+    __WFI();
+    if (stage == 3) hhkb_stop_stage = 4;
+    ++hhkb_stop_wake_count;
+    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+}
+
+void hhkb_hybrid_enter_stop(bool from_sleep) {
     // This terminal path never returns to TinyUSB or the scheduler.
     hhkb_stop_stage = 1;
     hhkb_stop_wake_count = 0;
@@ -114,6 +136,11 @@ void hhkb_hybrid_enter_stop(void) {
     // must not keep this PRIMASK-protected terminal WFI loop awake.
     SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk | SCB_ICSR_PENDSVCLR_Msk;
     prepare_wake_sources();
+    // Preserve an attached debug session, but do not inherit low-power debug
+    // clock retention when no debugger is attached.
+    // CMSIS M0+ omits CoreDebug; DHCSR.C_DEBUGEN is architectural bit 0.
+    if (!(*(volatile const uint32_t *)0xE000EDF0UL & 1U))
+        DBGMCU->CR &= ~(DBGMCU_CR_DBG_SLEEP | DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY);
     // USB is unavailable on this battery-only terminal path. Shut down the
     // transceiver before its clock; merely disabling its IRQ is insufficient.
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
@@ -137,23 +164,13 @@ void hhkb_hybrid_enter_stop(void) {
     while (!(GPIOC->IDR & (1UL << 5))) {
         IWDG->KR = 0xAAAA;
         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+        stop_once(2);
     }
 
     for (;;) {
         IWDG->KR = 0xAAAA;
         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
-        EXTI->PR = WAKE_EXTI_MASK;
-        LPTIM1->ICR = LPTIM_ICR_ARRMCF;
-        NVIC->ICPR[0] = 0xFFFFFFFFUL;
-        PWR->CR |= PWR_CR_CWUF;
-        PWR->CR = (PWR->CR & ~PWR_CR_PDDS) | PWR_CR_LPSDSR;
-        SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-        hhkb_stop_stage = 3;
-        __DSB();
-        __WFI();
-        hhkb_stop_stage = 4;
-        ++hhkb_stop_wake_count;
-        SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+        stop_once(3);
 
         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
         if (!(GPIOC->IDR & (1UL << 5))) {
@@ -166,11 +183,26 @@ void hhkb_hybrid_enter_stop(void) {
                 held_ticks += now >= prev ? now - prev : LPTIM_ARR + 1U - prev + now;
                 prev = now;
                 IWDG->KR = 0xAAAA;
-                if (held_ticks >= 289U) {
+                if (stop_button_decision(from_sleep, held_ticks, false) == 2) {
+                    // A continuous long press goes straight from sleep to OFF.
+                    from_sleep = false;
+                    while (!(GPIOC->IDR & (1UL << 5))) {
+                        IWDG->KR = 0xAAAA;
+                        if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+                        stop_once(2);
+                    }
+                    held_ticks = 0;
+                    break;
+                }
+                if (stop_button_decision(from_sleep, held_ticks, false) == 1) {
                     hhkb_stop_stage = 6;
                     NVIC_SystemReset();
-                } // About one second.
+                }
                 if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+            }
+            if (from_sleep && stop_button_decision(true, held_ticks, true) == 1) {
+                hhkb_stop_stage = 6;
+                NVIC_SystemReset(); // Wake after a 1–2 second sleep press is released.
             }
         }
     }

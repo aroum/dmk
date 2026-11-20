@@ -25,8 +25,8 @@ void hhkb_hybrid_cycle_profile(void);
 void hhkb_hybrid_show_profile(void);
 void hhkb_hybrid_pair_last_profile(void);
 void hhkb_hybrid_toggle_power(void);
-void hhkb_hybrid_suppress_button_release(void);
-void hhkb_hybrid_enter_stop(void) __attribute__((noreturn));
+void hhkb_hybrid_button_woke(void);
+void hhkb_hybrid_enter_stop(bool from_sleep) __attribute__((noreturn));
 
 void hhkb_hybrid_set_sleeping(bool sleeping);
 

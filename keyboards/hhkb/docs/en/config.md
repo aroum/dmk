@@ -86,6 +86,23 @@ OFF disables the ADC regulator and TIM2. The terminal STOP path clears pending S
 
 **Acceptance measurements:** use the same Hybrid at 3.0 V, Bluetooth-connected to the same host, USB disconnected, debug channels and decorative/heartbeat LEDs off. Close OpenOCD and power-cycle before measurement; low-power debug settings change STOP consumption. Record boot, idle, typing, OFF, and sleep with/without matrix wake, then repeat with battery oversampling off/on at the fixed 11 ms scan period. Targets from the stock measurement are 3.28 mA idle, 3.53–3.58 mA typing, and 0.21 mA OFF; these are goals, not achieved DMK results. Verify ten OFF/PC5 wake cycles and USB insertion/removal, key releases, calibration and ADC ranges after each clock transition. If idle remains high, measure the STM32, Nordic and analog supply contributions separately before further clock reductions.
 
+### Updated tester measurements, 20 November 2026
+
+The tester reported these values for an updated build; its exact commit was not supplied. Debugger wires were connected, but OpenOCD was not attached. Supply voltage was not restated for this update (the earlier measurements used 3.0 V). Treat this separately from measurements after a full power removal with no debugger. Values are in mA.
+
+| Mode | Updated DMK build | Stock reference |
+| --- | --- | --- |
+| Boot peak | 8.5 | 3.3 |
+| Idle | 2.89 | 3.28 |
+| Typing | 3.5; peak 3.7 | 3.53–3.58 |
+| OFF | 2.51 | 0.21 |
+| Sleep without matrix wake | 2.51 | Not observed |
+| Sleep with matrix wake | 1.75 | Not measured |
+
+The tester confirmed the two sleep readings were not swapped. Idle/typing have reached the stock reference level in this report; terminal OFF/STOP consumption remains unresolved. A separate SWD observation found startup blocked waiting for HSI48 with its reference disabled; enabling the reference allowed boot to continue. Startup now explicitly enables that reference before waiting for HSI48 ready.
+
+A matrix-wake press now suppresses only its short release action, so the same continuous hold can still execute the configured long action. In sleep without matrix wake, release PC5 after approximately 1–2 seconds to wake by reset; holding approximately 2 seconds switches directly to OFF without booting. Release the button before the next OFF wake press. Ordinary OFF still wakes after about a one-second hold. Waiting for release in the terminal path now uses STOP instead of a busy loop. Low-power debug retention bits are cleared only when no debugger is logically attached. The new changes require hardware validation and are not claimed to have fixed the reported 2.51 mA.
+
 The battery display uses discrete hardware thresholds, not a continuous voltage-to-percentage conversion. During the reported supply-voltage sweep:
 
 - **Above-low-battery band (displayed 100%, four orange flashes):** observed from 3.00 down to 2.25 V.

@@ -47,6 +47,7 @@ static bool source_seen;
 static volatile uint32_t power_off_flash_until;
 static bool button_was_down;
 static bool button_handled;
+static bool button_wake_press;
 static uint32_t button_down_since;
 static volatile uint8_t *const spi_data = (volatile uint8_t *)&SPI1->DR;
 
@@ -246,7 +247,7 @@ void hhkb_hybrid_toggle_power(void) {
     power_off_flash_until = xTaskGetTickCount() + pdMS_TO_TICKS(300);
     GPIOD->BSRR = 1U << 2;
 }
-void hhkb_hybrid_suppress_button_release(void) { button_handled = true; }
+void hhkb_hybrid_button_woke(void) { button_wake_press = true; }
 
 static void button_short_action(void) {
     switch (hhkb_bt_button_action(false)) {
@@ -285,10 +286,10 @@ void hhkb_hybrid_button_poll(uint32_t now_ms) {
             button_handled = true;
         }
     }
-    if (!down && button_was_down && !button_handled && powered &&
+    if (!down && button_was_down && !button_handled && !button_wake_press && powered &&
         now_ms - button_down_since <= 500)
         button_short_action();
-    if (!down) button_handled = false;
+    if (!down) { button_handled = false; button_wake_press = false; }
     button_was_down = down;
 }
 uint8_t hhkb_hybrid_battery_level(void) {

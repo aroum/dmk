@@ -197,7 +197,7 @@ void matrix_task(void *pvParameters) {
             ADC1->CR |= ADC_CR_ADDIS;
             GPIOC->BRR = (1U << 14) | (1U << 7);
             vTaskDelay(pdMS_TO_TICKS(300)); // Keep the orange power-off cue visible.
-            hhkb_hybrid_enter_stop();
+            hhkb_hybrid_enter_stop(false);
         }
         battery = hhkb_hybrid_on_battery();
         update_battery_clock(battery);
@@ -230,7 +230,7 @@ void matrix_task(void *pvParameters) {
                     hhkb_hybrid_service();
                     vTaskDelay(pdMS_TO_TICKS(1));
                 }
-                hhkb_hybrid_enter_stop();
+                hhkb_hybrid_enter_stop(true);
             }
         }
         if (sleeping) {
@@ -268,7 +268,7 @@ void matrix_task(void *pvParameters) {
             hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
             manual_sleep = false;
-            if (button) hhkb_hybrid_suppress_button_release();
+            if (button) hhkb_hybrid_button_woke();
             last_activity = xTaskGetTickCount();
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
