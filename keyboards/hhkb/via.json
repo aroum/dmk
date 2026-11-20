@@ -2557,6 +2557,11 @@
               "showIf": "{id_hhkb_hybrid} == 2"
             },
             {
+              "label": "Battery ADC oversampling 4x",
+              "type": "toggle",
+              "content": ["id_hhkb_bt_oversampling", 0, 54]
+            },
+            {
               "label": "Battery matrix scan rate",
               "type": "dropdown",
               "options": [

@@ -234,6 +234,7 @@ Assign these after loading [via.json](../../via.json) in VIA:
 
 In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design tab → Design → Load Draft Definition** and choose [via.json](../../via.json). The **HHKB Settings → Bluetooth** submenu appears only in a Hybrid build. Vial supports keymap editing but cannot display custom controls.
 
+- **Battery ADC oversampling 4x:** independent battery-mode toggle, off by default and saved in EEPROM. USB-powered operation uses the separate ADC oversampling setting, even when sending reports over Bluetooth. Older EEPROM records default this new setting to off.
 - **Battery matrix scan rate:** 50, 125, 200 (default), or 250 Hz, stored separately from the USB rate.
 - **Sleep timeout:** 0–60 minutes in one-minute steps; `0` disables the inactivity timer. Pairing caps longer timeouts at 10 minutes.
 - **Wake with matrix:** off by default. Off selects STOP; on scans at 1 Hz during sleep.

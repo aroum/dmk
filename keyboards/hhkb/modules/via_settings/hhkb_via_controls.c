@@ -14,6 +14,13 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
 #ifdef HHKB_HYBRID
+    if (id == 54) {
+        if (request[0] == 0x08) response[3] = hhkb_bt_oversampling();
+        else if (request[0] == 0x07 && request[3] <= 1)
+            hhkb_bt_set_oversampling(request[3] != 0);
+        else return false;
+        return true;
+    }
     if (id == 52 || id == 53) {
         bool long_press = id == 53;
         if (request[0] == 0x08) response[3] = hhkb_bt_button_action(long_press);

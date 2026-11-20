@@ -51,6 +51,7 @@ static uint8_t s_actuation_offset_pct = 75;
 
 static uint8_t s_scan_rate = 4; // 1000 Hz
 #ifdef HHKB_HYBRID
+static bool s_bt_oversampling;
 static volatile uint8_t s_bt_scan_rate = 5; // 200 Hz
 static uint8_t s_bt_sleep_minutes = 30;
 static bool s_bt_matrix_wake;
@@ -193,7 +194,7 @@ void hhkb_calibration_save_to_eeprom(void) {
     memcpy(cal.curve, ec_curve_settings, sizeof(cal.curve));
     cal.debug_flags = s_debug_flags;
 #ifdef HHKB_HYBRID
-    cal.reserved[0] = s_bt_sleep_minutes + 1;
+    cal.reserved[0] = 0x80 | (s_bt_oversampling ? 0x40 : 0) | (s_bt_sleep_minutes + 1);
     cal.reserved[1] = (s_bt_matrix_wake ? 1 : 0) |
                       (s_bt_indicator_flags << 1) | (s_bt_short_action << 5);
     cal.reserved[2] = 0x80 | (s_bt_scan_rate + 1) |
@@ -261,8 +262,10 @@ void hhkb_calibration_load(void) {
                 uint8_t stored_rate = cal->reserved[2] & 7;
                 if (stored_rate >= 1 && stored_rate <= 6)
                     s_bt_scan_rate = (stored_rate == 4 || stored_rate == 5) ? 5 : stored_rate - 1;
-                if (cal->reserved[0] >= 1 && cal->reserved[0] <= 61) {
-                    s_bt_sleep_minutes = cal->reserved[0] - 1;
+                uint8_t sleep_encoded = cal->reserved[0] & 0x3f;
+                s_bt_oversampling = (cal->reserved[0] & 0xc0) == 0xc0;
+                if (sleep_encoded >= 1 && sleep_encoded <= 61) {
+                    s_bt_sleep_minutes = sleep_encoded - 1;
                     s_bt_matrix_wake = (cal->reserved[1] & 1) != 0;
                     // Older records used only bit 0; preserve the new defaults.
                     if (cal->reserved[2] & 0x80) {
@@ -752,6 +755,12 @@ uint8_t hhkb_get_effective_scan_rate(void) {
 }
 
 #ifdef HHKB_HYBRID
+bool hhkb_bt_oversampling(void) { return s_bt_oversampling; }
+void hhkb_bt_set_oversampling(bool enabled) {
+    if (s_bt_oversampling == enabled) return;
+    s_bt_oversampling = enabled;
+    hhkb_settings_mark_dirty();
+}
 uint8_t hhkb_bt_scan_rate(void) { return s_bt_scan_rate; }
 
 void hhkb_bt_set_scan_rate(uint8_t rate) {

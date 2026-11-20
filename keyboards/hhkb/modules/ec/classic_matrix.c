@@ -2,6 +2,9 @@
 #include "ec_settings.h"
 #include "ec_curve.h"
 #include "rapid_trigger.h"
+#ifdef HHKB_HYBRID
+#include "hybrid.h"
+#endif
 #include "stm32l0xx.h"
 #include "stm32l0xx_ll_adc.h"
 #include "FreeRTOS.h"
@@ -97,7 +100,11 @@ void hhkb_matrix_hardware_init(void) {
 __attribute__((section(".RamFunc"), optimize("O2")))
 bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     hhkb_record_matrix_scan();
-    bool oversampling = hhkb_get_oversampling() && hhkb_get_effective_scan_rate() != 4;
+    bool requested = hhkb_get_oversampling();
+#ifdef HHKB_HYBRID
+    if (hhkb_hybrid_on_battery()) requested = hhkb_bt_oversampling();
+#endif
+    bool oversampling = requested && hhkb_get_effective_scan_rate() != 4;
     if (oversampling != s_oversampling_applied) {
         while (ADC1->CR & ADC_CR_ADSTART);
         ADC1->CR |= ADC_CR_ADDIS;

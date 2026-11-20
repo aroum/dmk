@@ -134,3 +134,6 @@ rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row);
 #endif
 
 #endif // EC_SETTINGS_H
+
+bool hhkb_bt_oversampling(void);
+void hhkb_bt_set_oversampling(bool enabled);
