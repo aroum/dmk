@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Protocol constants and SPI transaction shape adapted from l3tnun's
-// hhkb_hybrid nrf_spi.c. See LICENSE.protocol for the upstream notice.
+// hhkb_hybrid nrf_spi.c and power.c. See LICENSE.protocol for the upstream notice.
 #include "hybrid.h"
 #include "FreeRTOS.h"
 #include "hal_gpio.h"
@@ -18,6 +18,7 @@ static uint8_t queue_write;
 static volatile uint8_t queue_count;
 static volatile bool hello_seen;
 static volatile uint8_t control_command;
+static volatile bool control_polled;
 static uint8_t control_slot;
 static uint8_t reply[9];
 static volatile uint8_t reply_length;
@@ -99,16 +100,11 @@ void SPI1_IRQHandler(void) {
                 start_reply(payload, 1);
                 break;
             case 0x02:
-                if (control_command == 0x04) {
-                    // Stock shutdown poll on MISO: 00 AA 40 00. The first
-                    // byte is the idle byte already loaded in SPI_DR;
-                    // start_reply supplies AA then exactly 40 00.
-                    // Prioritize shutdown over battery/queued keyboard data.
-                    static const uint8_t shutdown_poll[] = {0x40, 0x00};
-                    start_reply(shutdown_poll, sizeof(shutdown_poll));
-                    break;
-                }
-                if (battery_pending) {
+                if (control_command) {
+                    payload[0] = (control_command == 0x03 || control_command == 0x04) ? 0x40 :
+                                 control_command == 0x06 ? 0x10 : 0x01;
+                    control_polled = true;
+                } else if (battery_pending) {
                     payload[0] = 0x80;
                     battery_polled = true;
                     battery_pending = 0;
@@ -117,11 +113,8 @@ void SPI1_IRQHandler(void) {
                     queue_read = (queue_read + 1) % 8;
                     --queue_count;
                     memcpy(payload, report, sizeof(report));
-                } else if (!control_command) {
-                    memcpy(payload, report, sizeof(report));
                 } else {
-                    payload[0] = (control_command == 0x03 || control_command == 0x04) ? 0x40 :
-                                 control_command == 0x06 ? 0x10 : 0x01;
+                    memcpy(payload, report, sizeof(report));
                 }
                 start_reply(payload, sizeof(payload));
                 break;
@@ -131,6 +124,8 @@ void SPI1_IRQHandler(void) {
                 start_reply(payload, 1);
                 break;
             case 0x03:
+                if (!control_polled || (control_command != 0x03 && control_command != 0x04)) break;
+                control_polled = false;
                 if (control_command == command) {
                     payload[0] = 1; // Start pairing on the selected slot.
                     payload[1] = control_slot;
@@ -142,6 +137,8 @@ void SPI1_IRQHandler(void) {
                 start_reply(payload, 2);
                 break;
             case 0x06:
+                if (!control_polled || control_command != 0x06) break;
+                control_polled = false;
                 if (control_command == command) {
                     payload[0] = control_slot;
                     control_command = 0;
@@ -220,7 +217,7 @@ void hhkb_hybrid_toggle_output(void) {
             hhkb_hybrid_service();
             vTaskDelay(pdMS_TO_TICKS(1));
         }
-        if (!control_command) control_command = 0x04;
+        if (!control_command) { control_polled = false; control_command = 0x04; }
         manual_bt_output = false;
     } else if (!hhkb_hybrid_on_battery()) {
         if (!hello_seen) return;
@@ -246,6 +243,7 @@ void hhkb_hybrid_toggle_power(void) {
     if (!powered || poweroff_pending) return; // OFF is woken only by PC5 or connecting USB.
     if (!hhkb_hybrid_on_battery()) return; // Stock button does not power off on USB.
     poweroff_pending = true;
+    hhkb_hybrid_refresh_indicators(); // LED owner displays orange now.
     release_current_output();
     if (hhkb_hybrid_output_bluetooth()) {
         for (uint8_t i = 0; i < 40 && queue_count; ++i) {
@@ -255,21 +253,28 @@ void hhkb_hybrid_toggle_power(void) {
     }
     // Ask Nordic to disconnect through the already implemented idle handshake.
     // Keep SPI alive for its follow-up request/confirmation, bounded to 3 s.
+    // Do not replace a control request whose follow-up is already in flight.
+    for (uint8_t i = 0; i < 100 && control_polled; ++i) {
+        hhkb_hybrid_service();
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
     NVIC_DisableIRQ(SPI1_IRQn);
+    control_polled = false;
     control_command = 0x04;
     attention_retries = 0;
     NVIC_EnableIRQ(SPI1_IRQn);
     for (uint16_t i = 0; i < 3000; ++i) {
         if (!hhkb_hybrid_on_battery()) { poweroff_pending = false; return; }
         hhkb_hybrid_service();
-        if (!control_command && active_slot == 0xff && !reply_length &&
+        if ((i & 0x1ffU) == 0) IWDG->KR = 0xAAAA;
+        if (i >= 1500 && !control_command && !control_polled && active_slot == 0xff && !reply_length &&
             !(SPI1->SR & SPI_SR_BSY)) break;
         vTaskDelay(pdMS_TO_TICKS(1));
     }
     off_from_battery = hhkb_hybrid_on_battery();
     powered = false;
     poweroff_pending = false;
-    power_off_flash_until = xTaskGetTickCount() + pdMS_TO_TICKS(300);
+    power_off_flash_until = xTaskGetTickCount();
     GPIOD->BSRR = 1U << 2;
 }
 void hhkb_hybrid_button_woke(void) { button_wake_press = true; }
@@ -348,6 +353,10 @@ bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
         *on = index == 1 && (int32_t)(power_off_flash_until - now_ms) > 0;
         return true;
     }
+    if (poweroff_pending) {
+        *on = index == 1;
+        return true;
+    }
     if (matrix_sleeping) {
         *on = false;
         return true;
@@ -413,6 +422,7 @@ bool hhkb_hybrid_request_slot(uint8_t slot, bool pair) {
         queue_count = 1;
         attention_retries = 0;
         control_slot = slot;
+        control_polled = false;
         control_command = pair ? 0x03 : 0x06;
         pairing = pair;
         pairing_active = false;
@@ -440,7 +450,7 @@ void hhkb_hybrid_service(void) {
         } else if (!manual_bt_output) {
             static const uint8_t released[6] = {0};
             hhkb_hybrid_report(0, released);
-            if (!control_command) control_command = 0x04;
+            if (!control_command) { control_polled = false; control_command = 0x04; }
         }
     }
     if (battery && auto_select_needed && hello_seen && !control_command)

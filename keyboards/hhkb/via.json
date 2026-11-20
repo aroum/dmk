@@ -2562,7 +2562,7 @@
               "content": ["id_hhkb_bt_oversampling", 0, 54]
             },
             {
-              "label": "Sleep timeout (minutes, 0 disables)",
+              "label": "Auto power-off timeout (min, 0 disables)",
               "type": "range",
               "options": [
                 0,

@@ -77,6 +77,10 @@ void keyboard_platform_tick(TickType_t now) {
     }
 }
 
+#ifdef HHKB_HYBRID
+void hhkb_hybrid_refresh_indicators(void) { keyboard_platform_tick(xTaskGetTickCount()); }
+#endif
+
 static bool hhkb_process_key(uint32_t key, bool pressed) {
     if (key != HHKB_SYSTEM_1 && key != HHKB_SYSTEM_2) return false;
     if (pressed) {

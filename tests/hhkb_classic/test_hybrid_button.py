@@ -65,7 +65,9 @@ int main(void) {
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
-static bool powered=true,poweroff_pending,battery=true,off_from_battery;
+static bool powered=true,poweroff_pending,battery=true,off_from_battery,control_polled;
+static struct {uint32_t KR;} iwdg;
+#define IWDG (&iwdg)
 static unsigned mode,calls,delays,releases;
 static uint8_t queue_count,control_command,attention_retries,active_slot,reply_length;
 static struct {uint32_t SR;} spi;
@@ -78,6 +80,7 @@ static struct {uint32_t BSRR;} gpio;
 #define pdMS_TO_TICKS(x) (x)
 static bool hhkb_hybrid_on_battery(void){return battery;}
 static bool hhkb_hybrid_output_bluetooth(void){return true;}
+static void hhkb_hybrid_refresh_indicators(void){assert(poweroff_pending);}
 static void release_current_output(void){++releases;}
 static void NVIC_DisableIRQ(int x){(void)x;}
 static void NVIC_EnableIRQ(int x){(void)x;}
@@ -89,19 +92,19 @@ static void hhkb_hybrid_service(void){
  if(mode==1 && calls==2){control_command=0;active_slot=255;}
  if(mode==2 && calls==2)battery=false;
  if(mode==3)hhkb_hybrid_toggle_power();
- if(mode==4){if(calls==2){control_command=0;active_slot=255;spi.SR=0x80;}if(calls==4)spi.SR=0;}
+ if(mode==4){if(calls==2){control_command=0;active_slot=255;spi.SR=0x80;}if(calls==1600)spi.SR=0;}
 }
 '''
         harness += function(source, 'void hhkb_hybrid_toggle_power(')
         harness += r'''
 static void setup(unsigned m){mode=m;powered=true;poweroff_pending=false;battery=true;calls=delays=releases=0;gpio.BSRR=0;spi.SR=0;active_slot=0;control_command=0;}
 int main(void){
- setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==4 && calls==2 && releases==1);
+ setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==4 && calls==1501 && releases==1);
  hhkb_hybrid_toggle_power();assert(releases==1);
  setup(0);hhkb_hybrid_toggle_power();assert(!powered && delays==3000 && gpio.BSRR==4);
  setup(2);hhkb_hybrid_toggle_power();assert(powered && !poweroff_pending && gpio.BSRR==0);
  setup(3);hhkb_hybrid_toggle_power();assert(!powered && releases==1 && calls==3000);
- setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==4);
+ setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==1600);
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:

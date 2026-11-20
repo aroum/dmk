@@ -182,7 +182,6 @@ void matrix_task(void *pvParameters) {
     hhkb_hybrid_set_wake_task(xTaskGetCurrentTaskHandle());
     TickType_t last_activity = xTaskGetTickCount();
     TickType_t last_wake_scan = last_activity;
-    TickType_t sleep_started = last_activity;
     bool sleeping = false;
     bool manual_sleep = false;
     bool sleep_button_armed = true;
@@ -197,7 +196,6 @@ void matrix_task(void *pvParameters) {
             publish_released_matrix(published_state);
             ADC1->CR |= ADC_CR_ADDIS;
             GPIOC->BRR = (1U << 14) | (1U << 7);
-            vTaskDelay(pdMS_TO_TICKS(300)); // Keep the orange power-off cue visible.
             hhkb_hybrid_enter_stop();
         }
         battery = hhkb_hybrid_on_battery();
@@ -213,10 +211,14 @@ void matrix_task(void *pvParameters) {
         if (!battery || button || minutes == 0 || hhkb_is_calibrating()) {
             last_activity = now;
         }
-        if (!sleeping && battery && (manual_sleep || (minutes != 0 &&
-            now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
+        // The reference's inactivity timeout enters OFF, not connected sleep.
+        if (!sleeping && battery && !manual_sleep && minutes != 0 &&
+            now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)) {
+            hhkb_hybrid_toggle_power();
+            continue;
+        }
+        if (!sleeping && battery && manual_sleep) {
             sleeping = true;
-            sleep_started = now;
             hhkb_hybrid_set_sleeping(true);
             TIM2->CR1 &= ~TIM_CR1_CEN;
             sleep_button_armed = !button;
@@ -237,13 +239,8 @@ void matrix_task(void *pvParameters) {
             if (!button) sleep_button_armed = true;
             bool wake = !battery || (sleep_button_armed && button) ||
                         (!manual_sleep && minutes == 0);
-            bool expired = now - sleep_started >= pdMS_TO_TICKS(180000);
             hhkb_hybrid_service();
             bool scan = hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
-            if (!wake && expired && !scan) {
-                hhkb_hybrid_toggle_power();
-                continue;
-            }
             if (!wake && !scan) {
                 TickType_t elapsed = now - last_wake_scan;
                 TickType_t remaining = !hhkb_bt_matrix_wake() ? pdMS_TO_TICKS(1000) :
@@ -267,7 +264,6 @@ void matrix_task(void *pvParameters) {
                 }
             }
             if (!wake) {
-                if (expired) { hhkb_hybrid_toggle_power(); continue; }
                 TIM2->CR1 &= ~TIM_CR1_CEN;
                 ADC1->CR |= ADC_CR_ADDIS;
                 GPIOC->BRR = (1U << 14) | (1U << 7);

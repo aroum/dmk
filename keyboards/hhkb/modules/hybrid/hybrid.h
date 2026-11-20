@@ -33,3 +33,5 @@ void hhkb_hybrid_set_sleeping(bool sleeping);
 void hhkb_hybrid_set_wake_task(void *task);
 void hhkb_hybrid_sleep_exti(bool enabled);
 uint32_t hhkb_hybrid_indicator_wait_ms(uint32_t now_ms);
+
+void hhkb_hybrid_refresh_indicators(void);

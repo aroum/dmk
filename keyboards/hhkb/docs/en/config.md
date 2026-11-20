@@ -52,12 +52,12 @@ The common [VIA controls](via-debug.md) also configure USB matrix rate, calibrat
 
 - **USB active:** USB output by default. The OFF action is battery-only, as in the reference implementation.
 - **Battery active:** Bluetooth output. Matrix scanning targets a fixed 11 ms period. Radio report timing is determined by the stock Nordic firmware. See the Bluetooth scan-rate section below.
-- **Sleep:** Triggered by a keycode, configured PC5 action, or inactivity. The timeout defaults to 30 minutes and is capped at 10 minutes during pairing; `0` disables automatic sleep. Sleep keeps the STM32 scheduler and Nordic connection alive. **Wake with matrix** only enables 1 Hz key probes; when off, no matrix probes occur. PC5 or USB wakes immediately in either case. Continuing the same PC5 hold triggers the configured long action at 2 seconds (OFF by default). After 3 minutes asleep, DMK enters OFF. PC5 remains enabled for OFF wake.
+- **Sleep:** Explicit connected sleep is triggered by BT Sleep or a configured PC5 action. The inactivity timeout instead enters OFF directly, as in the MIT reference (30 minutes by default, capped at 10 minutes during pairing; `0` disables it). Sleep keeps the STM32 scheduler and Nordic connection alive. **Wake with matrix** only enables 1 Hz key probes; when off, no matrix probes occur. PC5 or USB wakes immediately in either case. Continuing the same PC5 hold triggers the configured long action at 2 seconds (OFF by default). The earlier three-minute sleep escalation has been removed; explicit connected sleep remains a DMK extension.
 - **OFF:** On batteries, the default two-second PC5 hold or **BT Power** stops the nRF, ADC, sensor circuit, and matrix timer, then enters STOP. A one-second PC5 hold or USB insertion restarts the board. LPTIM1 wakes about every 1.7 seconds to refresh an active independent watchdog. See the measured current and known wake failure below.
 
 Short PC5 presses last 0–0.5 seconds and show the connected profile by default. VIA can assign no action, battery display, sleep, next profile, or last Bluetooth profile/USB toggle. Long presses fire after two seconds and default to OFF; VIA can assign sleep or pairing of the last profile. The one-second OFF wake action is fixed, so the keyboard remains recoverable.
 
-The supplied static stock analysis distinguishes connected sleep from deep STOP/OFF. DMK uses STOP only for OFF, including automatic escalation after 3 minutes asleep. DMK's [STOP implementation](../../modules/hybrid/hybrid_stop.c) adapts only this MIT-licensed wake sequence. Matrix wake at 1 Hz uses a running MCU instead.
+The supplied static stock analysis distinguishes connected sleep from deep STOP/OFF. DMK uses STOP only for OFF, including direct OFF on the inactivity timeout, as in the MIT reference. DMK's [STOP implementation](../../modules/hybrid/hybrid_stop.c) adapts only this MIT-licensed wake sequence. Matrix wake at 1 Hz uses a running MCU instead.
 
 ### Measured battery consumption and thresholds (Hybrid)
 
@@ -150,6 +150,10 @@ DMK firmware for HHKB (Classic & Hybrid, ANSI & JIS) provides real-time diagnost
 
 By default, all debug logging channels are **disabled** to avoid unnecessary MCU and USB bus overhead.
 
-### Stock shutdown SPI poll
+### MIT reference shutdown exchange
 
-On an OFF request, STM32 now prioritizes the short shutdown poll response to Nordic command `0x02`: `00 AA 40 00` on MISO (idle byte, synchronization byte, `40 00` payload). It no longer uses the normal eight-byte report payload for this response. The subsequent Nordic `0x03` query receives `00 AA 10 00` for the existing idle request. Nordic remains SPI master; these bytes are clocked out in response to its queries, not transmitted unsolicited. DMK waits up to approximately 3 seconds for the idle exchange, disconnection and SPI completion before asserting PD2 and entering STOP. A host test clocks the actual production ISR through both four-byte replies with battery and keyboard reports pending. Electrical timing, Nordic acceptance and OFF current still need hardware verification.
+The MIT example has no separate connected sleep: both its inactivity timeout and long power-button hold call `enter_off()`. DMK follows that behavior for automatic inactivity power-off, while retaining explicit BT Sleep as an extension. SW6 retains DMK recovery behavior rather than the reference's autosleep toggle.
+
+SPI poll `0x02` receives the full nine-byte reply `AA 40 00 00 00 00 00 00 00` (plus the idle byte already on MISO). Control replies have priority over battery/keyboard reports. After that poll, only the corresponding follow-up is accepted: Nordic `0x03` receives `AA 10 00` for idle. The earlier short poll variant has been removed. Before replacing a control request, shutdown waits up to 100 ms for an in-flight follow-up. It keeps the orange indication on for at least 1.5 seconds, services the watchdog and SPI, and waits up to roughly 3 seconds for request consumption, link disconnection and SPI completion. It then raises PD2 and enters STOP. PC5 held about one second or USB insertion wakes OFF by reset. The reference also uses STOP for this path; it does not establish that DMK has reached the stock OFF current.
+
+The actual production ISR is host-tested for the full response, priority and rejection of unsolicited follow-ups. Electrical timing, Nordic acceptance and power consumption still need hardware verification.
