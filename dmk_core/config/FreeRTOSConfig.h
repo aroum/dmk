@@ -43,7 +43,11 @@
 /* Scheduler Related */
 #define configUSE_PREEMPTION 1
 #define configENABLE_MPU 0
+#if defined(MCU_stm32l072) && defined(HHKB_HYBRID)
+#define configUSE_TICKLESS_IDLE 1
+#else
 #define configUSE_TICKLESS_IDLE 0
+#endif
 #define configUSE_IDLE_HOOK 1
 #define configUSE_TICK_HOOK 0
 #define configTICK_RATE_HZ ((TickType_t)1000)

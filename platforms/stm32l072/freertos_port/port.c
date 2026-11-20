@@ -387,6 +387,22 @@ void xPortSysTickHandler( void )
 }
 /*-----------------------------------------------------------*/
 
+#if ( configUSE_TICKLESS_IDLE == 1 )
+/* Caller holds a critical section and uses the CPU clock as SysTick source.
+ * Update tick suppression limits as well as LOAD after a runtime HCLK change. */
+void vPortUpdateSysTickClock( uint32_t clock_hz )
+{
+    ulTimerCountsForOneTick = clock_hz / configTICK_RATE_HZ;
+    xMaximumPossibleSuppressedTicks = portMAX_24_BIT_NUMBER / ulTimerCountsForOneTick;
+    ulStoppedTimerCompensation = portMISSED_COUNTS_FACTOR;
+    portNVIC_SYSTICK_CTRL_REG = 0;
+    portNVIC_SYSTICK_LOAD_REG = ulTimerCountsForOneTick - 1UL;
+    portNVIC_SYSTICK_CURRENT_VALUE_REG = 0;
+    portNVIC_SYSTICK_CTRL_REG = portNVIC_SYSTICK_CLK_BIT_CONFIG |
+                              portNVIC_SYSTICK_INT_BIT | portNVIC_SYSTICK_ENABLE_BIT;
+}
+#endif
+
 /*
  * Setup the systick timer to generate the tick interrupts at the required
  * frequency.

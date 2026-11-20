@@ -97,9 +97,8 @@ void hhkb_matrix_hardware_init(void) {
     hhkb_calibration_load();
 }
 
-__attribute__((section(".RamFunc"), optimize("O2")))
-bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
-    hhkb_record_matrix_scan();
+// Keep peripheral power sequencing out of the scarce scanner SRAM section.
+__attribute__((noinline)) static void scan_adc_prepare(void) {
     bool requested = hhkb_get_oversampling();
 #ifdef HHKB_HYBRID
     if (hhkb_hybrid_on_battery()) requested = hhkb_bt_oversampling();
@@ -118,6 +117,29 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
         while (!(ADC1->ISR & ADC_ISR_ADRDY));
         s_oversampling_applied = oversampling;
     }
+
+    if (!(ADC1->CR & ADC_CR_ADEN)) {
+        while (ADC1->CR & ADC_CR_ADDIS) {}
+        ADC1->ISR = ADC_ISR_ADRDY;
+        ADC1->CR |= ADC_CR_ADEN;
+        while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
+    }
+}
+
+__attribute__((noinline)) static void scan_adc_idle(void) {
+#ifdef HHKB_HYBRID
+    if (hhkb_hybrid_on_battery()) {
+        while (ADC1->CR & ADC_CR_ADSTART) {}
+        ADC1->CR |= ADC_CR_ADDIS;
+        while (ADC1->CR & ADC_CR_ADEN) {}
+    }
+#endif
+}
+
+__attribute__((section(".RamFunc"), optimize("O2")))
+bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
+    hhkb_record_matrix_scan();
+    scan_adc_prepare();
 
     bool changed = false;
     static const uint16_t row_pins[MATRIX_ROWS] = HHKB_ROW_BITS;
@@ -236,5 +258,6 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
     // Disable OpAmp
     GPIOC->BRR = (1U << 7);
+    scan_adc_idle();
     return changed;
 }

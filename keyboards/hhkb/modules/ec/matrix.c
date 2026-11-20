@@ -110,8 +110,7 @@ static void update_battery_clock(bool battery) {
     ADC1->ISR = ADC_ISR_ADRDY;
     ADC1->CR |= ADC_CR_ADEN;
     while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
-    SysTick->LOAD = hz / configTICK_RATE_HZ - 1U;
-    SysTick->VAL = 0;
+    vPortUpdateSysTickClock(hz);
     taskEXIT_CRITICAL();
 }
 
@@ -165,6 +164,7 @@ void matrix_task(void *pvParameters) {
     bool sensor_power_down = false;
 #ifdef HHKB_HYBRID
     hhkb_hybrid_init();
+    hhkb_hybrid_set_wake_task(xTaskGetCurrentTaskHandle());
     TickType_t last_activity = xTaskGetTickCount();
     TickType_t last_wake_scan = last_activity;
     bool sleeping = false;
@@ -205,6 +205,7 @@ void matrix_task(void *pvParameters) {
             sleep_button_armed = !button;
             TIM2->DIER = 0;
             ulTaskNotifyTake(pdTRUE, 0);
+            hhkb_hybrid_sleep_exti(true);
             ADC1->CR |= ADC_CR_ADDIS;
             GPIOC->BRR = (1U << 14) | (1U << 7);
             last_wake_scan = now;
@@ -223,7 +224,8 @@ void matrix_task(void *pvParameters) {
                         (!manual_sleep && minutes == 0);
             bool scan = hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
             if (!wake && !scan) {
-                vTaskDelay(pdMS_TO_TICKS(20));
+                TickType_t remaining = pdMS_TO_TICKS(1000) - (now - last_wake_scan);
+                ulTaskNotifyTake(pdTRUE, remaining);
                 continue;
             }
             last_wake_scan = now;
@@ -246,6 +248,7 @@ void matrix_task(void *pvParameters) {
                 continue;
             }
             sleeping = false;
+            hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
             manual_sleep = false;
             if (button) hhkb_hybrid_suppress_button_release();

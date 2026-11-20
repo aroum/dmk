@@ -31,7 +31,7 @@ static void update_system_layer(void) {
 void keyboard_platform_init(void) { update_system_layer(); }
 TickType_t keyboard_platform_timeout(void) {
 #ifdef HHKB_HYBRID
-    return pdMS_TO_TICKS(50);
+    return pdMS_TO_TICKS(hhkb_hybrid_indicator_wait_ms(xTaskGetTickCount()));
 #else
     return pdMS_TO_TICKS(250);
 #endif

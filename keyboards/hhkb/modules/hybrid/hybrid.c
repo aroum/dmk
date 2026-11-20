@@ -305,6 +305,18 @@ void hhkb_hybrid_show_battery(void) {
     if (hhkb_bt_indicator_flags() & 1)
         battery_display_until = xTaskGetTickCount() + pdMS_TO_TICKS(4000);
 }
+uint32_t hhkb_hybrid_indicator_wait_ms(uint32_t now_ms) {
+    if (matrix_sleeping) return 1000;
+    if (!powered) return 50;
+    uint8_t flags = hhkb_bt_indicator_flags();
+    if (((flags & 1) && (int32_t)(battery_display_until - now_ms) > 0) ||
+        ((flags & 8) && (int32_t)(profile_display_until - now_ms) > 0) ||
+        ((flags & 4) && pairing) ||
+        ((flags & 2) && hhkb_hybrid_battery_level() <= 15)) return 50;
+    // Poll unsolicited radio/host status at 4 Hz; key events wake the core sooner.
+    return 250;
+}
+
 bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
     if (matrix_sleeping) {
         *on = false;

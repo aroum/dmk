@@ -104,6 +104,9 @@
 /*-----------------------------------------------------------*/
 
 /* Tickless idle/low power functionality. */
+    #if ( configUSE_TICKLESS_IDLE == 1 )
+        void vPortUpdateSysTickClock( uint32_t clock_hz );
+    #endif
     #ifndef portSUPPRESS_TICKS_AND_SLEEP
         extern void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime );
         #define portSUPPRESS_TICKS_AND_SLEEP( xExpectedIdleTime )    vPortSuppressTicksAndSleep( xExpectedIdleTime )

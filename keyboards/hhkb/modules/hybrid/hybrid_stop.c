@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Adapted from l3tnun's MIT-licensed hhkb_hybrid/power.c STOP wake sequence.
 // The upstream copyright and license are in LICENSE.protocol.
+#include "FreeRTOS.h"
+#include "task.h"
 #include "hybrid.h"
 #include "stm32l072xx.h"
 
@@ -12,7 +14,37 @@ volatile uint32_t hhkb_stop_wake_count;
 
 #define LPTIM_ARR 500U // LSI / 128: about 1.7 seconds between watchdog refreshes.
 
-void EXTI4_15_IRQHandler(void) { EXTI->PR = EXTI->PR & ((1UL << 5) | (1UL << 13)); }
+static TaskHandle_t sleep_wake_task;
+static volatile bool sleep_exti_enabled;
+void hhkb_hybrid_set_wake_task(void *task) { sleep_wake_task = task; }
+
+void hhkb_hybrid_sleep_exti(bool enabled) {
+    const uint32_t lines = (1UL << 5) | (1UL << 13);
+    sleep_exti_enabled = false;
+    EXTI->IMR &= ~lines;
+    if (!enabled) return;
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+    SYSCFG->EXTICR[1] = (SYSCFG->EXTICR[1] & ~SYSCFG_EXTICR2_EXTI5) | SYSCFG_EXTICR2_EXTI5_PC;
+    SYSCFG->EXTICR[3] = (SYSCFG->EXTICR[3] & ~SYSCFG_EXTICR4_EXTI13) | SYSCFG_EXTICR4_EXTI13_PC;
+    EXTI->FTSR |= lines;
+    EXTI->RTSR |= lines;
+    EXTI->PR = lines;
+    NVIC_SetPriority(EXTI4_15_IRQn, (1U << __NVIC_PRIO_BITS) - 1U);
+    NVIC_ClearPendingIRQ(EXTI4_15_IRQn);
+    sleep_exti_enabled = true;
+    EXTI->IMR |= lines;
+    NVIC_EnableIRQ(EXTI4_15_IRQn);
+}
+
+void EXTI4_15_IRQHandler(void) {
+    uint32_t pending = EXTI->PR & ((1UL << 5) | (1UL << 13));
+    EXTI->PR = pending;
+    if (pending && sleep_exti_enabled && sleep_wake_task) {
+        BaseType_t woken = pdFALSE;
+        vTaskNotifyGiveFromISR(sleep_wake_task, &woken);
+        portYIELD_FROM_ISR(woken);
+    }
+}
 void LPTIM1_IRQHandler(void) { LPTIM1->ICR = LPTIM_ICR_ARRMCF; }
 
 static uint16_t stable_lptim_count(void) {
