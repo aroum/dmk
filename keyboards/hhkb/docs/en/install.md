@@ -160,3 +160,10 @@ In theory, distributing clean DMK images without proprietary blobs could be achi
 ## Local browser patching and flashing
 
 Download [hhkb.html](../../../../tools/hhkb/hhkb.html) and open it in Chrome or Edge. Patching works offline. The Flash keyboard tab uses WebHID with an explicit device permission prompt. Some browsers require serving the page on localhost. Select the PFU interface again after the recovery reboot. Keep SW6 OFF. Transfer errors appear in the log and stop the update. Browser flashing still requires hardware validation.
+
+
+The **Hybrid patching** tab accepts only the official Hybrid ANSI A0.48 or JIS A2.49 HFB (both CRCs, version and SHA-256 checked). Select a current DMK `.bin` with embedded model/version metadata. Each file is labeled with its model and version, and incompatible models/layouts disable patching. Older DMK binaries without metadata must be rebuilt. Hybrid and Hybrid Type-S share a model-specific image; ANSI and JIS do not.
+
+Classic does not require patching. Use its ready-made `.hfb` in **Flash keyboard**. The flasher checks the container model, version family and CRCs, and matches the exact PFU device model number before recovery and again before writing. Classic, Classic Type-S ANSI and Classic Type-S JIS have separate model IDs. When DMK identity metadata is present in an HFB, it must also match the container. File names are not used to establish compatibility.
+
+For browser flashing, an HFB without embedded DMK identity is accepted only when its SHA-256 matches a supported official image: Classic A4.29, Classic Type-S ANSI A8.03 / JIS A9.04, Hybrid ANSI A0.48 / JIS A2.49. Legacy DMK HFB files without identity metadata must be rebuilt.

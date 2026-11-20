@@ -6,11 +6,30 @@
 #include "tusb.h"
 #include <string.h>
 
+// Kept in the image so local tools can verify model/layout without filenames.
+#if defined(HHKB_HYBRID)
+# if defined(HHKB_JIS)
+#  define HHKB_IMAGE_MODEL "AHJX01"
+# else
+#  define HHKB_IMAGE_MODEL "AHUX01"
+# endif
+#elif defined(HHKB_CLASSIC_TYPE_S)
+# if defined(HHKB_JIS)
+#  define HHKB_IMAGE_MODEL "AHKS01"
+# else
+#  define HHKB_IMAGE_MODEL "AHHS01"
+# endif
+#else
+# define HHKB_IMAGE_MODEL "AHHX01"
+#endif
+static const char hhkb_image_identity[] = "DMKHHKB1|" HHKB_IMAGE_MODEL "|" DMK_FW_VERSION "|END";
+
 void USB_IRQHandler(void) {
     tud_int_handler(0);
 }
 
 void platform_init(void) {
+    __asm__ volatile("" : : "r"(hhkb_image_identity) : "memory");
     // 0. Early check: If SW6 is ON, branch immediately to Bank 1 (stock factory firmware)
     hhkb_early_dip_check();
 
