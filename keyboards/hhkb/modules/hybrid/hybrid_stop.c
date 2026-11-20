@@ -8,7 +8,7 @@
 
 #define WAKE_EXTI_MASK ((1UL << 5) | (1UL << 13) | (1UL << 29))
 // Volatile RAM markers for SWD; these are not persisted across reset.
-// 1: preparing, 2: waiting for release, 3: before WFI, 4: woke, 5: held, 6: reset.
+// 1: preparing, 2: waiting for release, 3: before WFI, 4: woke, 5: held, 6: reset/resume.
 volatile uint32_t hhkb_stop_stage;
 volatile uint32_t hhkb_stop_wake_count;
 
@@ -123,11 +123,25 @@ static void stop_once(uint32_t stage) {
 }
 
 void hhkb_hybrid_enter_stop(void) {
-    // This terminal path never returns to TinyUSB or the scheduler.
+#ifdef HHKB_STOCK_POWER_OFF
+    // OFF resumes this task; deep sleep and USB wake still reset the MCU.
+    const uint32_t saved_cfgr = RCC->CFGR;
+    const uint32_t saved_core_clock = SystemCoreClock;
+    const uint32_t saved_nvic = NVIC->ISER[0];
+    const uint32_t saved_imr = EXTI->IMR, saved_emr = EXTI->EMR;
+    const uint32_t saved_rtsr = EXTI->RTSR, saved_ftsr = EXTI->FTSR;
+    const uint32_t saved_exti5 = SYSCFG->EXTICR[1], saved_exti13 = SYSCFG->EXTICR[3];
+    const uint32_t saved_mux = GPIOB->ODR & 0xFC07UL;
+    const uint32_t saved_spi = SPI1->CR1;
+    const uint32_t saved_pwr = PWR->CR;
+    const uint32_t saved_primask = __get_PRIMASK();
+#endif
     hhkb_stop_stage = 1;
     hhkb_stop_wake_count = 0;
     // Called only on battery after all pressed keys have been released.
-    GPIOD->BSRR = 1UL << 2; // Stop the stock nRF before SPI clocks stop.
+#ifndef HHKB_STOCK_POWER_OFF
+    GPIOD->BSRR = 1UL << 2; // MIT: hold Nordic stopped during OFF.
+#endif
     TIM2->DIER = 0;
     TIM2->CR1 &= ~TIM_CR1_CEN;
     SPI1->CR1 &= ~SPI_CR1_SPE;
@@ -214,6 +228,42 @@ void hhkb_hybrid_enter_stop(void) {
             GPIOA->BRR = 1UL << 8;
             if (off_press_action(held_ticks, true) == 1) {
                 hhkb_stop_stage = 6;
+#ifdef HHKB_STOCK_POWER_OFF
+                if (!hhkb_hybrid_off_is_deep()) {
+                    // Keep Nordic running. Restore clocks while interrupts and
+                    // the scheduler remain masked; RTOS OFF time stays frozen.
+                    RCC->CR |= RCC_CR_HSION;
+                    while (!(RCC->CR & RCC_CR_HSIRDY)) {}
+                    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
+                    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {}
+                    RCC->CR |= RCC_CR_PLLON;
+                    while (!(RCC->CR & RCC_CR_PLLRDY)) {}
+                    RCC->CFGR = saved_cfgr;
+                    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
+                    SystemCoreClock = saved_core_clock;
+                    PWR->CR = saved_pwr;
+                    LPTIM1->IER = 0;
+                    EXTI->IMR = saved_imr; EXTI->EMR = saved_emr;
+                    EXTI->RTSR = saved_rtsr; EXTI->FTSR = saved_ftsr;
+                    SYSCFG->EXTICR[1] = saved_exti5; SYSCFG->EXTICR[3] = saved_exti13;
+                    GPIOB->BSRR = saved_mux | ((0xFC07UL & ~saved_mux) << 16);
+                    GPIOC->BSRR = 1UL << 14;
+                    ADC1->CR |= ADC_CR_ADVREGEN;
+                    // LPTIM keeps running until the analog regulator settles.
+                    lptim_wait_ticks(3);
+                    LPTIM1->CR = 0;
+                    (void)*(volatile uint8_t *)&SPI1->DR;
+                    (void)SPI1->SR;
+                    hhkb_hybrid_resume_after_stop();
+                    SPI1->CR1 = saved_spi;
+                    NVIC->ICER[0] = 0xFFFFFFFFUL;
+                    NVIC->ICPR[0] = 0xFFFFFFFFUL;
+                    vPortUpdateSysTickClock(saved_core_clock);
+                    NVIC->ISER[0] = saved_nvic;
+                    __set_PRIMASK(saved_primask);
+                    return;
+                }
+#endif
                 NVIC_SystemReset();
             }
         }

@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#if defined(HHKB_STOCK_POWER_OFF) && !defined(HHKB_HYBRID)
+#error "HHKB_STOCK_POWER_OFF requires HHKB_HYBRID"
+#endif
+
 #define VIAL_KEYBOARD_NAME "HHKB Professional"
 #define VIAL_PRODUCT_ID 0x4014
 #define VIA_PROTOCOL_MATRIX_ROWS 5

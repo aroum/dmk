@@ -42,6 +42,7 @@ static bool button_sleep_wake;
 
 void hhkb_hybrid_set_sleeping(bool sleeping) { matrix_sleeping = sleeping; button_sleep_wake = false; }
 static bool off_from_battery;
+static bool off_is_deep;
 static volatile bool manual_bt_output;
 static volatile bool sleep_requested;
 static bool auto_select_needed = true;
@@ -239,7 +240,7 @@ void hhkb_hybrid_pair_last_profile(void) {
     hhkb_hybrid_request_slot(active_slot < 4 ? active_slot : hhkb_bt_last_slot(), true);
 }
 
-void hhkb_hybrid_toggle_power(void) {
+static void request_power_off(bool deep) {
     if (!powered || poweroff_pending) return; // OFF is woken only by PC5 or connecting USB.
     if (!hhkb_hybrid_on_battery()) return; // Stock button does not power off on USB.
     poweroff_pending = true;
@@ -272,11 +273,41 @@ void hhkb_hybrid_toggle_power(void) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
     off_from_battery = hhkb_hybrid_on_battery();
+    off_is_deep = deep;
     powered = false;
     poweroff_pending = false;
     power_off_flash_until = xTaskGetTickCount();
+#ifndef HHKB_STOCK_POWER_OFF
     GPIOD->BSRR = 1U << 2;
+#endif
 }
+void hhkb_hybrid_toggle_power(void) { request_power_off(false); }
+void hhkb_hybrid_enter_deep_sleep(void) { request_power_off(true); }
+bool hhkb_hybrid_off_is_deep(void) { return off_is_deep; }
+#ifdef HHKB_STOCK_POWER_OFF
+void hhkb_hybrid_resume_after_stop(void) {
+    powered = true;
+    poweroff_pending = false;
+    matrix_sleeping = false;
+    sleep_requested = false;
+    button_sleep_wake = false;
+    button_was_down = false;
+    button_handled = false;
+    control_command = 0;
+    control_polled = false;
+    queue_count = queue_read = queue_write = 0;
+    reply_length = reply_position = 0;
+    notification_value = false;
+    auto_select_needed = true;
+    attention_retries = 0;
+    active_slot = 0xff;
+    pairing = pairing_active = false;
+    memset(report, 0, sizeof(report));
+    SPI1->CR2 &= ~SPI_CR2_TXEIE;
+    *spi_data = 0;
+}
+#endif
+
 bool hhkb_hybrid_take_button_wake(void) {
     bool wake = button_sleep_wake;
     button_sleep_wake = false;

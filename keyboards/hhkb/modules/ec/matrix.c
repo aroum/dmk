@@ -197,6 +197,19 @@ void matrix_task(void *pvParameters) {
             ADC1->CR |= ADC_CR_ADDIS;
             GPIOC->BRR = (1U << 14) | (1U << 7);
             hhkb_hybrid_enter_stop();
+#ifdef HHKB_STOCK_POWER_OFF
+            hhkb_hybrid_sleep_exti(false);
+            hhkb_hybrid_set_sleeping(false);
+            sleeping = manual_sleep = false;
+            last_activity = xTaskGetTickCount();
+            update_scan_period();
+            TIM2->CR1 |= TIM_CR1_CEN;
+            TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
+            TIM2->SR = 0;
+            TIM2->DIER = TIM_DIER_CC1IE;
+            hhkb_hybrid_refresh_indicators();
+            continue;
+#endif
         }
         battery = hhkb_hybrid_on_battery();
         update_battery_clock(battery);
@@ -237,7 +250,7 @@ void matrix_task(void *pvParameters) {
             bool deep_due = deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
             hhkb_hybrid_service();
             bool scan = hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
-            if (!wake && !button && deep_due && !scan) { hhkb_hybrid_toggle_power(); continue; }
+            if (!wake && !button && deep_due && !scan) { hhkb_hybrid_enter_deep_sleep(); continue; }
             if (!wake && !scan) {
                 TickType_t elapsed = now - last_wake_scan;
                 TickType_t remaining = !hhkb_bt_matrix_wake() ? pdMS_TO_TICKS(1000) :
@@ -264,7 +277,7 @@ void matrix_task(void *pvParameters) {
                 }
             }
             if (!wake) {
-                if (!button && deep_due) { hhkb_hybrid_toggle_power(); continue; }
+                if (!button && deep_due) { hhkb_hybrid_enter_deep_sleep(); continue; }
                 TIM2->CR1 &= ~TIM_CR1_CEN;
                 ADC1->CR |= ADC_CR_ADDIS;
                 GPIOC->BRR = (1U << 14) | (1U << 7);

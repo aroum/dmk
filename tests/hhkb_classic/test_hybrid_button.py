@@ -77,7 +77,7 @@ int main(void) {
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
-static bool powered=true,poweroff_pending,battery=true,off_from_battery,control_polled;
+static bool powered=true,poweroff_pending,battery=true,off_from_battery,control_polled,off_is_deep;
 static struct {uint32_t KR;} iwdg;
 #define IWDG (&iwdg)
 static unsigned mode,calls,delays,releases;
@@ -107,21 +107,68 @@ static void hhkb_hybrid_service(void){
  if(mode==4){if(calls==2){control_command=0;active_slot=255;spi.SR=0x80;}if(calls==1600)spi.SR=0;}
 }
 '''
+        harness += function(source, 'static void request_power_off(')
         harness += function(source, 'void hhkb_hybrid_toggle_power(')
+        harness += function(source, 'void hhkb_hybrid_enter_deep_sleep(')
+        harness += function(source, 'bool hhkb_hybrid_off_is_deep(')
         harness += r'''
 static void setup(unsigned m){mode=m;powered=true;poweroff_pending=false;battery=true;calls=delays=releases=0;gpio.BSRR=0;spi.SR=0;active_slot=0;control_command=0;}
 int main(void){
- setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==4 && calls==1501 && releases==1);
+ setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==EXPECTED_PD2 && calls==1501 && releases==1);
  hhkb_hybrid_toggle_power();assert(releases==1);
- setup(0);hhkb_hybrid_toggle_power();assert(!powered && delays==3000 && gpio.BSRR==4);
+ setup(0);hhkb_hybrid_toggle_power();assert(!powered && delays==3000 && gpio.BSRR==EXPECTED_PD2);
  setup(2);hhkb_hybrid_toggle_power();assert(powered && !poweroff_pending && gpio.BSRR==0);
  setup(3);hhkb_hybrid_toggle_power();assert(!powered && releases==1 && calls==3000);
  setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==1600);
+ assert(!hhkb_hybrid_off_is_deep());
+ setup(1);hhkb_hybrid_enter_deep_sleep();assert(!powered && hhkb_hybrid_off_is_deep());
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:
             c = Path(tmp) / 'shutdown.c'
             binary = Path(tmp) / 'shutdown'
+            c.write_text(harness)
+            for defines in (['-DEXPECTED_PD2=4'], ['-DEXPECTED_PD2=0', '-DHHKB_STOCK_POWER_OFF']):
+                subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror', *defines, str(c),'-o',str(binary)],check=True)
+                subprocess.run([str(binary)],check=True)
+
+    def test_stock_resume_clears_stale_output_and_reselects_profile(self):
+        source = (ROOT / 'keyboards/hhkb/modules/hybrid/hybrid.c').read_text()
+        harness = r'''
+#include <stdint.h>
+#include <stdbool.h>
+#include <assert.h>
+static bool powered,poweroff_pending=true,matrix_sleeping=true,sleep_requested=true;
+static bool button_sleep_wake=true,button_was_down=true,button_handled=true;
+static bool control_polled=true,notification_value=true,auto_select_needed;
+static uint8_t control_command=4,queue_count=3,queue_read=1,queue_write=4;
+static uint8_t reply_length=3,reply_position=1,spi_register=0xaa;
+static uint8_t attention_retries=5,active_slot=2,report[8]={1,2,3,4,5,6,7,8};
+static bool pairing=true,pairing_active=true;
+static struct {uint32_t CR2;} spi={.CR2=0x80};
+#define SPI1 (&spi)
+#define SPI_CR2_TXEIE 0x80
+static volatile uint8_t *spi_data=&spi_register;
+'''
+        harness = "#include <string.h>\n" + harness
+        harness += function(source, 'void hhkb_hybrid_resume_after_stop(')
+        harness += r'''
+int main(void) {
+ hhkb_hybrid_resume_after_stop();
+ assert(powered && auto_select_needed);
+ assert(!poweroff_pending && !matrix_sleeping && !sleep_requested);
+ assert(!button_sleep_wake && !button_was_down && !button_handled);
+ assert(!control_polled && !notification_value && !control_command);
+ assert(!queue_count && !queue_read && !queue_write);
+ assert(!reply_length && !reply_position && !spi_register);
+ assert(!attention_retries && active_slot==255 && !pairing && !pairing_active);
+ assert(!(spi.CR2 & SPI_CR2_TXEIE));
+ for(unsigned i=0;i<sizeof(report);++i)assert(report[i]==0);
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            c = Path(tmp) / 'resume.c'
+            binary = Path(tmp) / 'resume'
             c.write_text(harness)
             subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(c),'-o',str(binary)],check=True)
             subprocess.run([str(binary)],check=True)

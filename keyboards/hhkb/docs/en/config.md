@@ -113,6 +113,8 @@ The battery display uses discrete hardware thresholds, not a continuous voltage-
 
 Thus the observed threshold transitions fall between 2.25–2.24 V, 2.14–2.13 V, and 2.03–2.02 V. These are sample measurements; tolerance and hysteresis were not characterized. Displayed 100% means none of the low-battery thresholds is active, not a fully charged battery. USB power does not charge the batteries.
 
+For an alternative OFF path without holding Nordic in reset and with STM32 resume after ordinary OFF, see [comparing OFF implementations](build.md#hybrid-comparing-off-implementations). Select it with `HHKB_STOCK_POWER_OFF`; the descriptions above refer to the default MIT-derived path.
+
 ### Hardware and license notes
 
 The ANSI matrix and SPI protocol follow the supplied `hhkb_hybrid` research. Its `nrf_spi.c` and `power.c` have MIT headers; only protocol handling and the STOP wake sequence were adapted. See the attribution and full upstream notice in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol). Factory and patched PFU containers remain outside Git.
