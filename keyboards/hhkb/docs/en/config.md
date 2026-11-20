@@ -40,7 +40,7 @@ SW1–SW5 are read by firmware but have no hardcoded actions in DMK. SW6 trigger
 
 ## Hybrid Only: Transport, Profiles, and Power
 
-PC13 reads LOW on USB power and HIGH on battery. On battery, DMK sends 6-key HID reports over SPI to the stock nRF module and uses dedicated battery scan rates. On USB, reports default to USB. **BT / USB** switches to the last Bluetooth profile even with USB plugged in. Polling rate over Bluetooth is bounded by BLE intervals (~50 Hz).
+PC13 reads LOW on USB power and HIGH on battery. On battery, DMK sends 6-key HID reports over SPI to the stock nRF module and uses dedicated battery scan rates. On USB, reports default to USB. **BT / USB** switches to the last Bluetooth profile even with USB plugged in. Bluetooth report timing is controlled by the Nordic chip and is independent of matrix scanning.
 
 Four Bluetooth profiles are supported. **BT Select 1–4** selects a bond; **BT Pair 1–4** starts pairing in a chosen slot. **BT Next** cycles through slots. The last selected slot is saved in EEPROM.
 
@@ -53,11 +53,32 @@ The common [VIA controls](via-debug.md) also configure USB matrix rate, calibrat
 - **USB active:** USB output by default. The OFF action is battery-only, as in the reference implementation.
 - **Battery active:** Bluetooth output. The configured frequency controls matrix scanning. Radio report timing is determined by the stock Nordic firmware. See the Bluetooth scan-rate section below.
 - **Sleep:** Triggered by a keycode, configured PC5 action, or inactivity. The timeout defaults to 30 minutes and is capped at 10 minutes during pairing; `0` disables automatic sleep. With **Wake with matrix** off, sleep stops the nRF and enters STM32 STOP. PC5 held one second or USB insertion wakes by resetting the controller. With matrix wake on, the MCU keeps running at reduced duty cycle and scans once a second; PC5, a key, or USB wakes it. This mode consumes more than STOP.
-- **OFF:** On batteries, the default two-second PC5 hold or **BT Power** stops the nRF, ADC, sensor circuit, and matrix timer, then enters STOP. A one-second PC5 hold or USB insertion restarts the board. LPTIM1 wakes about every 1.7 seconds to refresh an active independent watchdog. STOP current and wake behavior require measurement on Hybrid hardware.
+- **OFF:** On batteries, the default two-second PC5 hold or **BT Power** stops the nRF, ADC, sensor circuit, and matrix timer, then enters STOP. A one-second PC5 hold or USB insertion restarts the board. LPTIM1 wakes about every 1.7 seconds to refresh an active independent watchdog. See the measured current and known wake failure below.
 
 Short PC5 presses last 0–0.5 seconds and show the connected profile by default. VIA can assign no action, battery display, sleep, next profile, or last Bluetooth profile/USB toggle. Long presses fire after two seconds and default to OFF; VIA can assign sleep or pairing of the last profile. The one-second OFF wake action is fixed, so the keyboard remains recoverable.
 
 The reference firmware also uses STM32 STOP for OFF and sleep, waking on PC5 or USB with a reset. DMK's [STOP implementation](../../modules/hybrid/hybrid_stop.c) adapts only this MIT-licensed wake sequence. Matrix wake at 1 Hz uses a running MCU instead.
+
+### Measured battery consumption and thresholds (Hybrid)
+
+User measurements supplied on 20 November 2026 were taken over Bluetooth with a 3.0 V supply. These results describe the tested Hybrid and firmware, not guaranteed figures for every board. Values below are in mA; peaks are noted separately.
+
+- **DMK, 1000 Hz:** boot 12.5–14; idle 10.33–10.7; typing 11–13 (one peak at 14); OFF 4–4.5; sleep 4; sleep with matrix wake 7.4.
+- **DMK, 50 Hz:** boot 12.5–15; idle 10.5–12; typing 13; OFF 4; sleep 4; sleep with matrix wake 7.5.
+- **DMK, 50 Hz with 4x ADC oversampling:** boot 13; idle 10.9–11.7; typing 13–13.5 (peaks at 15); OFF 4.2; sleep 4; sleep with matrix wake 7.3.
+- **Stock:** boot 3.3; idle 3.28; typing 3.53–3.58; OFF 0.21. Stock sleep was not observed.
+
+DMK currently draws substantially more than stock on battery, including roughly 19–21 times the stock OFF current. Lowering matrix rate alone did not reduce idle consumption in these measurements. OFF/sleep power saving is not yet validated: the tester also reproduced failure to wake using PC5, requiring battery removal. The documented wake sequence above describes intended behavior. A pre-STOP SWD capture confirmed the PC5 input and EXTI routing and a counting LPTIM, but debug access was lost after continuing into STOP; no valid post-STOP snapshot is available.
+
+The battery display uses discrete hardware thresholds, not a continuous voltage-to-percentage conversion. During the reported supply-voltage sweep:
+
+- **Above-low-battery band (displayed 100%, four orange flashes):** observed from 3.00 down to 2.25 V.
+- **15%, three flashes:** observed from 2.24 down to 2.14 V.
+- **5%, two flashes:** observed from 2.13 down to 2.03 V.
+- **0%, one flash:** observed at 2.02 V; this does not mean immediate power loss.
+- The keyboard was no longer operating at 1.71 V. The exact shutdown voltage was not established.
+
+Thus the observed threshold transitions fall between 2.25–2.24 V, 2.14–2.13 V, and 2.03–2.02 V. These are sample measurements; tolerance and hysteresis were not characterized. Displayed 100% means none of the low-battery thresholds is active, not a fully charged battery. USB power does not charge the batteries.
 
 ### Hardware and license notes
 
