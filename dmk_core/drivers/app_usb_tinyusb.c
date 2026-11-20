@@ -11,6 +11,8 @@
 #include "tusb.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
+#include "stm32l072xx.h"
+#include "device/dcd.h"
 #endif
 
 #if defined(MCU_rp2350)
@@ -129,7 +131,34 @@ static void usb_device_task(void *param) {
 #endif
     TickType_t last_mounted = xTaskGetTickCount();
     bool no_host_suspended = false;
+#ifdef HHKB_HYBRID
+    bool battery_usb_off = false;
+#endif
     while (1) {
+#ifdef HHKB_HYBRID
+        // Only the USB owner task may tear down/recreate the TinyUSB stack.
+        if (hhkb_hybrid_on_battery() && !battery_usb_off) {
+            // VBUS detection is external on this board. Publish detach before
+            // deinit so mounted/ready state and callbacks cannot remain stale.
+            dcd_int_disable(0);
+            dcd_event_bus_signal(0, DCD_EVENT_UNPLUGGED, false);
+            tud_task_ext(0, false);
+            tud_deinit(0);
+            USB->CNTR = USB_CNTR_FRES | USB_CNTR_PDWN;
+            RCC->APB1ENR &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
+            RCC->CRRCR &= ~RCC_CRRCR_HSI48ON;
+            battery_usb_off = true;
+            led_resume();
+            rgb_resume();
+        } else if (!hhkb_hybrid_on_battery() && battery_usb_off) {
+            RCC->CRRCR |= RCC_CRRCR_HSI48ON;
+            while (!(RCC->CRRCR & RCC_CRRCR_HSI48RDY)) {}
+            RCC->APB1ENR |= RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN;
+            tud_init(0);
+            battery_usb_off = false;
+        }
+        if (!battery_usb_off)
+#endif
         tud_task_ext(0, false);
 #ifdef HHKB_HYBRID
         bool allow_no_host_sleep = !hhkb_hybrid_on_battery() && !hhkb_hybrid_output_bluetooth();
@@ -173,6 +202,9 @@ static void usb_device_task(void *param) {
         // TinyUSB events wake this task immediately, including during enumeration.
         // Keep the short fallback for reports and deferred work on a mounted host.
         TickType_t wait = pdMS_TO_TICKS(tud_mounted() ? 2 : 1000);
+#ifdef HHKB_HYBRID
+        if (battery_usb_off) wait = pdMS_TO_TICKS(100);
+#endif
         ulTaskNotifyTake(pdTRUE, wait);
     }
 }

@@ -34,6 +34,9 @@ static volatile uint32_t battery_display_until;
 static volatile uint32_t profile_display_until;
 static volatile uint8_t display_slot;
 static volatile bool powered = true;
+static volatile bool matrix_sleeping;
+
+void hhkb_hybrid_set_sleeping(bool sleeping) { matrix_sleeping = sleeping; }
 static bool off_from_battery;
 static volatile bool manual_bt_output;
 static volatile bool sleep_requested;
@@ -301,6 +304,10 @@ void hhkb_hybrid_show_battery(void) {
         battery_display_until = xTaskGetTickCount() + pdMS_TO_TICKS(4000);
 }
 bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
+    if (matrix_sleeping) {
+        *on = false;
+        return true;
+    }
     if (!powered) {
         *on = index == 1 && (int32_t)(power_off_flash_until - now_ms) > 0;
         return true;

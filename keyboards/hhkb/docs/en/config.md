@@ -76,6 +76,8 @@ DMK currently draws substantially more than stock on battery, including roughly 
 
 The updated OFF path explicitly powers down the USB transceiver and HSI48, stops TIM2, clears row/multiplexer outputs, and waits for the OFF button to be released before entering STOP. These changes are compiled but have not yet been measured on hardware; the figures above remain the earlier measurements. For SWD diagnosis, `hhkb_stop_stage` records 1 = preparation, 2 = waiting for button release, 3 = before WFI, 4 = returned from WFI, 5 = timing a held button, 6 = requesting reset. `hhkb_stop_wake_count` counts WFI returns. Both variables are volatile RAM diagnostics and are cleared on reset.
 
+On battery, the USB owner task now detaches/deinitializes TinyUSB and powers down the USB transceiver, CRS and HSI48; it polls power at 100 ms intervals and reinitializes USB after cable insertion. At matrix rates of 50, 125, 200 or 250 Hz, the CPU/AHB runs at 16 MHz; 500/1000 Hz and USB power use 32 MHz. The PLL remains enabled. TIM2 is retimed to preserve its 4 MHz counter, SysTick is retimed for the RTOS tick, and the ADC divider changes to preserve 16 MHz ADC operation. Sleep with matrix wake blanks both LEDs. These changes require hardware validation: compare current, matrix timing, held-key behavior, USB insertion/removal, and OFF/wake cycles. No new current figures are claimed.
+
 The battery display uses discrete hardware thresholds, not a continuous voltage-to-percentage conversion. During the reported supply-voltage sweep:
 
 - **Above-low-battery band (displayed 100%, four orange flashes):** observed from 3.00 down to 2.25 V.

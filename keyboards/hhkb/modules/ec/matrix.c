@@ -70,6 +70,38 @@ bool matrix_is_pressed(unsigned char row, unsigned char col) {
 }
 
 #ifdef HHKB_HYBRID
+// Called between scans, with the ADC idle. Keep TIM2 at 4 MHz and ADC
+// at 16 MHz while reducing the CPU/bus clock on low-rate battery scans.
+static void update_battery_clock(bool battery) {
+    uint8_t rate = hhkb_get_effective_scan_rate();
+    bool low = battery && (rate <= 2 || rate == 5);
+    uint32_t hz = low ? 16000000U : 32000000U;
+    if (SystemCoreClock == hz) return;
+    taskENTER_CRITICAL();
+    uint16_t count = (uint16_t)TIM2->CNT;
+    uint32_t timer_control = TIM2->CR1;
+    TIM2->CR1 &= ~TIM_CR1_CEN;
+    // ADC clock selection may only change while disabled.
+    ADC1->CR |= ADC_CR_ADDIS;
+    while (ADC1->CR & ADC_CR_ADEN) {}
+    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_HPRE) |
+                (low ? RCC_CFGR_HPRE_DIV2 : RCC_CFGR_HPRE_DIV1);
+    SystemCoreClock = hz;
+    TIM2->PSC = hz / (1000000U * HHKB_SCAN_TIMER_TICKS_PER_US) - 1U;
+    TIM2->EGR = TIM_EGR_UG;
+    TIM2->CNT = count;
+    TIM2->SR &= ~TIM_SR_UIF;
+    TIM2->CR1 = timer_control;
+    ADC1->CFGR2 = (ADC1->CFGR2 & ~ADC_CFGR2_CKMODE) |
+                 (low ? ADC_CFGR2_CKMODE : ADC_CFGR2_CKMODE_0);
+    ADC1->ISR = ADC_ISR_ADRDY;
+    ADC1->CR |= ADC_CR_ADEN;
+    while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
+    SysTick->LOAD = hz / configTICK_RATE_HZ - 1U;
+    SysTick->VAL = 0;
+    taskEXIT_CRITICAL();
+}
+
 static void publish_released_matrix(matrix_row_t published_state[MATRIX_ROWS]) {
     xQueueReset(matrix_queue);
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
@@ -140,6 +172,7 @@ void matrix_task(void *pvParameters) {
             hhkb_hybrid_enter_stop();
         }
         battery = hhkb_hybrid_on_battery();
+        update_battery_clock(battery);
         bool button = hhkb_hybrid_button();
         TickType_t now = xTaskGetTickCount();
         uint8_t minutes = hhkb_bt_sleep_minutes();
@@ -154,6 +187,7 @@ void matrix_task(void *pvParameters) {
         if (!sleeping && battery && (manual_sleep || (minutes != 0 &&
             now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
             sleeping = true;
+            hhkb_hybrid_set_sleeping(true);
             sleep_button_armed = !button;
             TIM2->DIER = 0;
             ulTaskNotifyTake(pdTRUE, 0);
@@ -196,6 +230,7 @@ void matrix_task(void *pvParameters) {
                 continue;
             }
             sleeping = false;
+            hhkb_hybrid_set_sleeping(false);
             manual_sleep = false;
             if (button) hhkb_hybrid_suppress_button_release();
             last_activity = xTaskGetTickCount();

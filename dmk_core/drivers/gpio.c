@@ -413,8 +413,13 @@ void hal_gpio_pull_up(pin_t pin) {
 }
 
 void hal_sleep_us(uint32_t us) {
-    // 32-48 MHz Cortex-M0/M0+ loop (~6-8 iterations per microsecond)
-    for (volatile uint32_t i = 0; i < (us * 8); i++) {
+    // Approximate loop delay; account for the HHKB battery HCLK divider.
+#if defined(MCU_stm32l072)
+    uint32_t iterations_per_us = SystemCoreClock / 4000000U;
+#else
+    uint32_t iterations_per_us = 8;
+#endif
+    for (volatile uint32_t i = 0; i < (us * iterations_per_us); i++) {
         __NOP();
     }
 }
