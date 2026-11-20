@@ -30,9 +30,11 @@ static void prepare_wake_sources(void) {
                          SYSCFG_EXTICR2_EXTI5_PC;
     SYSCFG->EXTICR[3] = (SYSCFG->EXTICR[3] & ~SYSCFG_EXTICR4_EXTI13) |
                          SYSCFG_EXTICR4_EXTI13_PC;
-    EXTI->FTSR |= (1UL << 5) | (1UL << 13);
-    EXTI->IMR |= WAKE_EXTI_MASK;
-    EXTI->RTSR |= (1UL << 5) | (1UL << 29); // Arm PC5 after release.
+    // Terminal path owns EXTI: do not inherit unrelated bootloader sources.
+    EXTI->FTSR = (1UL << 5) | (1UL << 13);
+    EXTI->IMR = WAKE_EXTI_MASK;
+    EXTI->EMR = 0;
+    EXTI->RTSR = (1UL << 5) | (1UL << 29); // Arm PC5 after release.
 
     RCC->CSR |= RCC_CSR_LSION;
     while (!(RCC->CSR & RCC_CSR_LSIRDY)) {}
@@ -63,7 +65,11 @@ void hhkb_hybrid_enter_stop(void) {
     TIM2->DIER = 0;
     TIM2->CR1 &= ~TIM_CR1_CEN;
     SPI1->CR1 &= ~SPI_CR1_SPE;
-    if (ADC1->CR & ADC_CR_ADEN) ADC1->CR |= ADC_CR_ADDIS;
+    if (ADC1->CR & ADC_CR_ADEN) {
+        ADC1->CR |= ADC_CR_ADDIS;
+        while (ADC1->CR & ADC_CR_ADEN) {}
+    }
+    ADC1->CR &= ~ADC_CR_ADVREGEN;
     GPIOC->BRR = (1UL << 14) | (1UL << 7) | (1UL << 8);
     GPIOA->BRR = (1UL << 8) | (1UL << 9);
     // Remove drive from all rows (including JIS PB11) and mux address lines.
@@ -72,6 +78,9 @@ void hhkb_hybrid_enter_stop(void) {
 
     __disable_irq();
     SysTick->CTRL = 0;
+    // ICER/ICPR below cover external IRQs only. A pending RTOS exception
+    // must not keep this PRIMASK-protected terminal WFI loop awake.
+    SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk | SCB_ICSR_PENDSVCLR_Msk;
     prepare_wake_sources();
     // USB is unavailable on this battery-only terminal path. Shut down the
     // transceiver before its clock; merely disabling its IRQ is insufficient.
@@ -80,6 +89,15 @@ void hhkb_hybrid_enter_stop(void) {
     USB->CNTR = USB_CNTR_FRES | USB_CNTR_PDWN;
     RCC->APB1ENR &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
     RCC->CRRCR &= ~RCC_CRRCR_HSI48ON;
+    SYSCFG->CFGR3 &= ~(SYSCFG_CFGR3_ENREF_HSI48 |
+                          SYSCFG_CFGR3_ENBUF_VREFINT_ADC |
+                          SYSCFG_CFGR3_ENBUF_SENSOR_ADC);
+    // No code after this point needs the PLL or the 32 MHz system clock.
+    RCC->CR |= RCC_CR_HSION;
+    while (!(RCC->CR & RCC_CR_HSIRDY)) {}
+    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {}
+    RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_MSION);
 
     // Finish the OFF press before sleeping. Otherwise its release can be
     // cleared just before WFI, leaving the next press unarmed.

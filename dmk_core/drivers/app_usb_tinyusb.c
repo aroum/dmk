@@ -147,10 +147,15 @@ static void usb_device_task(void *param) {
             USB->CNTR = USB_CNTR_FRES | USB_CNTR_PDWN;
             RCC->APB1ENR &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
             RCC->CRRCR &= ~RCC_CRRCR_HSI48ON;
+            RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+            SYSCFG->CFGR3 &= ~(SYSCFG_CFGR3_ENREF_HSI48 |
+                                  SYSCFG_CFGR3_ENBUF_VREFINT_ADC |
+                                  SYSCFG_CFGR3_ENBUF_SENSOR_ADC);
             battery_usb_off = true;
             led_resume();
             rgb_resume();
         } else if (!hhkb_hybrid_on_battery() && battery_usb_off) {
+            SYSCFG->CFGR3 |= SYSCFG_CFGR3_ENREF_HSI48;
             RCC->CRRCR |= RCC_CRRCR_HSI48ON;
             while (!(RCC->CRRCR & RCC_CRRCR_HSI48RDY)) {}
             RCC->APB1ENR |= RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN;

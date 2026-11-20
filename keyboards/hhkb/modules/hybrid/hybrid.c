@@ -33,6 +33,7 @@ static volatile uint8_t battery_reported = 0xff;
 static volatile uint32_t battery_display_until;
 static volatile uint32_t profile_display_until;
 static volatile uint8_t display_slot;
+static volatile uint8_t attention_retries;
 static volatile bool powered = true;
 static volatile bool matrix_sleeping;
 
@@ -64,6 +65,7 @@ void SPI1_IRQHandler(void) {
         (void)SPI1->SR;
     } else if (status & SPI_SR_RXNE) {
         uint8_t command = *spi_data;
+        attention_retries = 0; // A responsive radio gets fast requests.
         uint8_t payload[8] = {0};
         if (notification_value) {
             notification_value = false;
@@ -355,6 +357,7 @@ void hhkb_hybrid_report(uint8_t modifiers, const uint8_t keys[6]) {
         memcpy(keyboard_queue[queue_write] + 1, keys, 6);
         queue_write = (queue_write + 1) % 8;
         ++queue_count;
+        attention_retries = 0;
     }
     NVIC_EnableIRQ(SPI1_IRQn);
 }
@@ -370,6 +373,7 @@ bool hhkb_hybrid_request_slot(uint8_t slot, bool pair) {
         queue_read = 0;
         queue_write = 1;
         queue_count = 1;
+        attention_retries = 0;
         control_slot = slot;
         control_command = pair ? 0x03 : 0x06;
         pairing = pair;
@@ -420,8 +424,9 @@ void hhkb_hybrid_service(void) {
         }
     }
     if (!hello_seen || (!queue_count && !control_command && !battery_pending) ||
-        now - last_request < pdMS_TO_TICKS(5)) return;
+        now - last_request < pdMS_TO_TICKS(attention_retries < 5 ? 5 : 100)) return;
     last_request = now;
+    if (attention_retries < 5) ++attention_retries;
     GPIOB->BRR = 1U << 6;
     hal_sleep_us(500);
     GPIOB->BSRR = 1U << 6;

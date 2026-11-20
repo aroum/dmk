@@ -83,8 +83,22 @@ static void update_battery_clock(bool battery) {
     // ADC clock selection may only change while disabled.
     ADC1->CR |= ADC_CR_ADDIS;
     while (ADC1->CR & ADC_CR_ADEN) {}
-    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_HPRE) |
-                (low ? RCC_CFGR_HPRE_DIV2 : RCC_CFGR_HPRE_DIV1);
+    // Switch directly to HSI16: dividing a running PLL leaves its power
+    // consumption unchanged. Keep the previously configured PLL for USB.
+    RCC->CR |= RCC_CR_HSION;
+    while (!(RCC->CR & RCC_CR_HSIRDY)) {}
+    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {}
+    RCC->CFGR &= ~RCC_CFGR_HPRE;
+    if (low) {
+        RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_MSION);
+        while (RCC->CR & RCC_CR_PLLRDY) {}
+    } else {
+        RCC->CR |= RCC_CR_PLLON;
+        while (!(RCC->CR & RCC_CR_PLLRDY)) {}
+        RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_PLL;
+        while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
+    }
     SystemCoreClock = hz;
     TIM2->PSC = hz / (1000000U * HHKB_SCAN_TIMER_TICKS_PER_US) - 1U;
     TIM2->EGR = TIM_EGR_UG;
@@ -187,6 +201,7 @@ void matrix_task(void *pvParameters) {
             now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
             sleeping = true;
             hhkb_hybrid_set_sleeping(true);
+            TIM2->CR1 &= ~TIM_CR1_CEN;
             sleep_button_armed = !button;
             TIM2->DIER = 0;
             ulTaskNotifyTake(pdTRUE, 0);
@@ -212,6 +227,7 @@ void matrix_task(void *pvParameters) {
                 continue;
             }
             last_wake_scan = now;
+            TIM2->CR1 |= TIM_CR1_CEN;
             GPIOC->BSRR = 1U << 14;
             ADC1->ISR = ADC_ISR_ADRDY;
             ADC1->CR |= ADC_CR_ADEN;
@@ -224,6 +240,7 @@ void matrix_task(void *pvParameters) {
                 }
             }
             if (!wake) {
+                TIM2->CR1 &= ~TIM_CR1_CEN;
                 ADC1->CR |= ADC_CR_ADDIS;
                 GPIOC->BRR = (1U << 14) | (1U << 7);
                 continue;
