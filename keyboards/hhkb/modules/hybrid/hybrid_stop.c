@@ -5,6 +5,11 @@
 #include "stm32l072xx.h"
 
 #define WAKE_EXTI_MASK ((1UL << 5) | (1UL << 13) | (1UL << 29))
+// Volatile RAM markers for SWD; these are not persisted across reset.
+// 1: preparing, 2: waiting for release, 3: before WFI, 4: woke, 5: held, 6: reset.
+volatile uint32_t hhkb_stop_stage;
+volatile uint32_t hhkb_stop_wake_count;
+
 #define LPTIM_ARR 500U // LSI / 128: about 1.7 seconds between watchdog refreshes.
 
 void EXTI4_15_IRQHandler(void) { EXTI->PR = EXTI->PR & ((1UL << 5) | (1UL << 13)); }
@@ -50,18 +55,39 @@ static void prepare_wake_sources(void) {
 }
 
 void hhkb_hybrid_enter_stop(void) {
+    // This terminal path never returns to TinyUSB or the scheduler.
+    hhkb_stop_stage = 1;
+    hhkb_stop_wake_count = 0;
     // Called only on battery after all pressed keys have been released.
     GPIOD->BSRR = 1UL << 2; // Stop the stock nRF before SPI clocks stop.
     TIM2->DIER = 0;
+    TIM2->CR1 &= ~TIM_CR1_CEN;
     SPI1->CR1 &= ~SPI_CR1_SPE;
     if (ADC1->CR & ADC_CR_ADEN) ADC1->CR |= ADC_CR_ADDIS;
     GPIOC->BRR = (1UL << 14) | (1UL << 7) | (1UL << 8);
     GPIOA->BRR = (1UL << 8) | (1UL << 9);
+    // Remove drive from all rows (including JIS PB11) and mux address lines.
+    GPIOB->BRR = 0xFC07UL;
+    GPIOC->BRR = 1UL << 6;
 
     __disable_irq();
     SysTick->CTRL = 0;
     prepare_wake_sources();
-    bool button_armed = (GPIOC->IDR & (1UL << 5)) != 0;
+    // USB is unavailable on this battery-only terminal path. Shut down the
+    // transceiver before its clock; merely disabling its IRQ is insufficient.
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+    USB->BCDR &= ~USB_BCDR_DPPU;
+    USB->CNTR = USB_CNTR_FRES | USB_CNTR_PDWN;
+    RCC->APB1ENR &= ~(RCC_APB1ENR_USBEN | RCC_APB1ENR_CRSEN);
+    RCC->CRRCR &= ~RCC_CRRCR_HSI48ON;
+
+    // Finish the OFF press before sleeping. Otherwise its release can be
+    // cleared just before WFI, leaving the next press unarmed.
+    hhkb_stop_stage = 2;
+    while (!(GPIOC->IDR & (1UL << 5))) {
+        IWDG->KR = 0xAAAA;
+        if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
+    }
 
     for (;;) {
         IWDG->KR = 0xAAAA;
@@ -72,14 +98,16 @@ void hhkb_hybrid_enter_stop(void) {
         PWR->CR |= PWR_CR_CWUF;
         PWR->CR = (PWR->CR & ~PWR_CR_PDDS) | PWR_CR_LPSDSR;
         SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+        hhkb_stop_stage = 3;
         __DSB();
         __WFI();
+        hhkb_stop_stage = 4;
+        ++hhkb_stop_wake_count;
         SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 
         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
-        if (GPIOC->IDR & (1UL << 5)) {
-            button_armed = true;
-        } else if (button_armed) {
+        if (!(GPIOC->IDR & (1UL << 5))) {
+            hhkb_stop_stage = 5;
             // LPTIM continues through STOP; accumulate across its ARR wrap.
             uint16_t prev = stable_lptim_count();
             uint32_t held_ticks = 0;
@@ -88,7 +116,10 @@ void hhkb_hybrid_enter_stop(void) {
                 held_ticks += now >= prev ? now - prev : LPTIM_ARR + 1U - prev + now;
                 prev = now;
                 IWDG->KR = 0xAAAA;
-                if (held_ticks >= 289U) NVIC_SystemReset(); // About one second.
+                if (held_ticks >= 289U) {
+                    hhkb_stop_stage = 6;
+                    NVIC_SystemReset();
+                } // About one second.
                 if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
             }
         }

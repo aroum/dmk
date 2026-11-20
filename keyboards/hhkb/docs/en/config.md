@@ -74,6 +74,8 @@ User measurements supplied on 20 November 2026 were taken over Bluetooth with a 
 
 DMK currently draws substantially more than stock on battery, including roughly 19–21 times the stock OFF current. Lowering matrix rate alone did not reduce idle consumption in these measurements. OFF/sleep power saving is not yet validated: the tester also reproduced failure to wake using PC5, requiring battery removal. The documented wake sequence above describes intended behavior. A pre-STOP SWD capture confirmed the PC5 input and EXTI routing and a counting LPTIM, but debug access was lost after continuing into STOP; no valid post-STOP snapshot is available.
 
+The updated OFF path explicitly powers down the USB transceiver and HSI48, stops TIM2, clears row/multiplexer outputs, and waits for the OFF button to be released before entering STOP. These changes are compiled but have not yet been measured on hardware; the figures above remain the earlier measurements. For SWD diagnosis, `hhkb_stop_stage` records 1 = preparation, 2 = waiting for button release, 3 = before WFI, 4 = returned from WFI, 5 = timing a held button, 6 = requesting reset. `hhkb_stop_wake_count` counts WFI returns. Both variables are volatile RAM diagnostics and are cleared on reset.
+
 The battery display uses discrete hardware thresholds, not a continuous voltage-to-percentage conversion. During the reported supply-voltage sweep:
 
 - **Above-low-battery band (displayed 100%, four orange flashes):** observed from 3.00 down to 2.25 V.
