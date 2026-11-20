@@ -5,6 +5,9 @@
 #include "matrix.h"
 #include "split.h"
 
+volatile bool usb_mounted = true;
+bool keyboard_power_saving_enabled(void) { return false; }
+
 TickType_t g_mock_ticks;
 QueueHandle_t matrix_queue = (void *)1;
 static uint32_t gpio_levels = UINT32_MAX;
