@@ -22,7 +22,7 @@ static uint8_t s_scan_phase;
 static uint8_t s_scan_rate_applied;
 
 static void update_scan_period(void) {
-    static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000, 5000};
+    static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000, 5000, 11000};
     uint8_t rate = hhkb_get_effective_scan_rate();
     if (rate >= sizeof(period_us) / sizeof(period_us[0])) rate = 4;
     s_scan_rate_applied = rate;
@@ -70,11 +70,11 @@ bool matrix_is_pressed(unsigned char row, unsigned char col) {
 }
 
 #ifdef HHKB_HYBRID
-// Called between scans, with the ADC idle. Keep TIM2 at 4 MHz and ADC
-// at 16 MHz while reducing the CPU/bus clock on low-rate battery scans.
+// Called between scans. Battery uses stock-style 4 MHz CPU / 1 MHz ADC;
+// TIM2 retains its 4 MHz counter for analog delays and scan scheduling.
 static void update_battery_clock(bool battery) {
     bool low = battery;
-    uint32_t hz = low ? 16000000U : 32000000U;
+    uint32_t hz = low ? 4000000U : 32000000U;
     if (SystemCoreClock == hz) return;
     taskENTER_CRITICAL();
     uint16_t count = (uint16_t)TIM2->CNT;
@@ -83,22 +83,33 @@ static void update_battery_clock(bool battery) {
     // ADC clock selection may only change while disabled.
     ADC1->CR |= ADC_CR_ADDIS;
     while (ADC1->CR & ADC_CR_ADEN) {}
-    // Switch directly to HSI16: dividing a running PLL leaves its power
-    // consumption unchanged. Keep the previously configured PLL for USB.
+    // Change PLL configuration only while running from HSI and PLL is off.
+    // Battery matches the analyzed stock tree: HSI16/4 *4 /4 = 4 MHz.
+    // USB restores the original DMK HSI16 *4 /2 = 32 MHz tree.
+    FLASH->ACR |= FLASH_ACR_LATENCY;
+    while (!(FLASH->ACR & FLASH_ACR_LATENCY)) {}
     RCC->CR |= RCC_CR_HSION;
     while (!(RCC->CR & RCC_CR_HSIRDY)) {}
     RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
     while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {}
-    RCC->CFGR &= ~RCC_CFGR_HPRE;
+    RCC->CR &= ~RCC_CR_PLLON;
+    while (RCC->CR & RCC_CR_PLLRDY) {}
     if (low) {
-        RCC->CR &= ~(RCC_CR_PLLON | RCC_CR_MSION);
-        while (RCC->CR & RCC_CR_PLLRDY) {}
+        RCC->CR |= RCC_CR_HSIDIVEN;
+        while (!(RCC->CR & RCC_CR_HSIDIVF)) {}
     } else {
-        RCC->CR |= RCC_CR_PLLON;
-        while (!(RCC->CR & RCC_CR_PLLRDY)) {}
-        RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_PLL;
-        while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
+        RCC->CR &= ~RCC_CR_HSIDIVEN;
+        while (RCC->CR & RCC_CR_HSIDIVF) {}
     }
+    RCC->CFGR = (RCC->CFGR & ~(RCC_CFGR_HPRE | RCC_CFGR_PLLSRC |
+                               RCC_CFGR_PLLMUL | RCC_CFGR_PLLDIV)) |
+                RCC_CFGR_PLLMUL4 | (low ? RCC_CFGR_PLLDIV4 : RCC_CFGR_PLLDIV2);
+    RCC->CR |= RCC_CR_PLLON;
+    while (!(RCC->CR & RCC_CR_PLLRDY)) {}
+    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_PLL;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
+    RCC->CR &= ~RCC_CR_MSION;
+    if (low) FLASH->ACR &= ~FLASH_ACR_LATENCY;
     SystemCoreClock = hz;
     TIM2->PSC = hz / (1000000U * HHKB_SCAN_TIMER_TICKS_PER_US) - 1U;
     TIM2->EGR = TIM_EGR_UG;
@@ -106,10 +117,14 @@ static void update_battery_clock(bool battery) {
     TIM2->SR &= ~TIM_SR_UIF;
     TIM2->CR1 = timer_control;
     ADC1->CFGR2 = (ADC1->CFGR2 & ~ADC_CFGR2_CKMODE) |
-                 (low ? ADC_CFGR2_CKMODE : ADC_CFGR2_CKMODE_0);
-    ADC1->ISR = ADC_ISR_ADRDY;
-    ADC1->CR |= ADC_CR_ADEN;
-    while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
+                 (low ? ADC_CFGR2_CKMODE_1 : ADC_CFGR2_CKMODE_0);
+    if (low) ADC1->CFGR1 |= ADC_CFGR1_AUTOFF;
+    else ADC1->CFGR1 &= ~ADC_CFGR1_AUTOFF;
+    if (!low) {
+        ADC1->ISR = ADC_ISR_ADRDY;
+        ADC1->CR |= ADC_CR_ADEN;
+        while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
+    }
     vPortUpdateSysTickClock(hz);
     taskEXIT_CRITICAL();
 }
@@ -231,8 +246,10 @@ void matrix_task(void *pvParameters) {
             last_wake_scan = now;
             TIM2->CR1 |= TIM_CR1_CEN;
             GPIOC->BSRR = 1U << 14;
-            ADC1->ISR = ADC_ISR_ADRDY;
-            ADC1->CR |= ADC_CR_ADEN;
+            if (!(ADC1->CFGR1 & ADC_CFGR1_AUTOFF)) {
+                ADC1->ISR = ADC_ISR_ADRDY;
+                ADC1->CR |= ADC_CR_ADEN;
+            }
             vTaskDelay(pdMS_TO_TICKS(10));
             if (!wake) {
                 matrix_row_t probe[MATRIX_ROWS] = {0};

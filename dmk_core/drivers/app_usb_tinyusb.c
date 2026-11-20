@@ -155,6 +155,12 @@ static void usb_device_task(void *param) {
             led_resume();
             rgb_resume();
         } else if (!hhkb_hybrid_on_battery() && battery_usb_off) {
+            // USB needs a fast APB clock. Let the matrix owner restore the
+            // complete 32 MHz tree before initializing it from battery 4 MHz.
+            if (SystemCoreClock != 32000000U) {
+                ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1));
+                continue;
+            }
             SYSCFG->CFGR3 |= SYSCFG_CFGR3_ENREF_HSI48;
             RCC->CRRCR |= RCC_CRRCR_HSI48ON;
             while (!(RCC->CRRCR & RCC_CRRCR_HSI48RDY)) {}

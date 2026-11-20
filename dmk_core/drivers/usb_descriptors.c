@@ -434,7 +434,7 @@ void vial_diag_task(void) {
         }
 
         if (hhkb_get_debug_flag(1U << 2)) { // DEBUG_FLAG_RATE
-            static const uint16_t s_target_rates[] = {50, 125, 250, 500, 1000, 200};
+            static const uint16_t s_target_rates[] = {50, 125, 250, 500, 1000, 200, 91};
             uint8_t r_idx = hhkb_get_effective_scan_rate();
             uint16_t target_hz = (r_idx < sizeof(s_target_rates) / sizeof(s_target_rates[0])) ? s_target_rates[r_idx] : 1000;
 #ifdef HHKB_SCAN_DIAGNOSTICS

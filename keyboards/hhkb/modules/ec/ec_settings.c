@@ -52,7 +52,6 @@ static uint8_t s_actuation_offset_pct = 75;
 static uint8_t s_scan_rate = 4; // 1000 Hz
 #ifdef HHKB_HYBRID
 static bool s_bt_oversampling;
-static volatile uint8_t s_bt_scan_rate = 5; // 200 Hz
 static uint8_t s_bt_sleep_minutes = 30;
 static bool s_bt_matrix_wake;
 static uint8_t s_bt_indicator_flags = 0x0f;
@@ -197,7 +196,7 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.reserved[0] = 0x80 | (s_bt_oversampling ? 0x40 : 0) | (s_bt_sleep_minutes + 1);
     cal.reserved[1] = (s_bt_matrix_wake ? 1 : 0) |
                       (s_bt_indicator_flags << 1) | (s_bt_short_action << 5);
-    cal.reserved[2] = 0x80 | (s_bt_scan_rate + 1) |
+    cal.reserved[2] = 0x80 | 7U |
                       (s_bt_long_action << 3) | (s_bt_last_slot << 5);
 #endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
@@ -259,9 +258,6 @@ void hhkb_calibration_load(void) {
         if ((current || cal->version == 1) && cal->crc16 == expected_crc) {
             if (current) {
 #ifdef HHKB_HYBRID
-                uint8_t stored_rate = cal->reserved[2] & 7;
-                if (stored_rate >= 1 && stored_rate <= 6)
-                    s_bt_scan_rate = (stored_rate == 4 || stored_rate == 5) ? 5 : stored_rate - 1;
                 uint8_t sleep_encoded = cal->reserved[0] & 0x3f;
                 s_bt_oversampling = (cal->reserved[0] & 0xc0) == 0xc0;
                 if (sleep_encoded >= 1 && sleep_encoded <= 61) {
@@ -749,7 +745,7 @@ void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake) {
 
 uint8_t hhkb_get_effective_scan_rate(void) {
 #ifdef HHKB_HYBRID
-    if (hhkb_hybrid_on_battery()) return hhkb_bt_scan_rate();
+    if (hhkb_hybrid_on_battery()) return 6; // Fixed 11 ms battery scan, independent of legacy EEPROM rate.
 #endif
     return hhkb_get_scan_rate();
 }
@@ -759,13 +755,6 @@ bool hhkb_bt_oversampling(void) { return s_bt_oversampling; }
 void hhkb_bt_set_oversampling(bool enabled) {
     if (s_bt_oversampling == enabled) return;
     s_bt_oversampling = enabled;
-    hhkb_settings_mark_dirty();
-}
-uint8_t hhkb_bt_scan_rate(void) { return s_bt_scan_rate; }
-
-void hhkb_bt_set_scan_rate(uint8_t rate) {
-    if (rate > 5 || rate == 3 || rate == 4 || rate == s_bt_scan_rate) return;
-    s_bt_scan_rate = rate;
     hhkb_settings_mark_dirty();
 }
 uint8_t hhkb_bt_indicator_flags(void) { return s_bt_indicator_flags; }

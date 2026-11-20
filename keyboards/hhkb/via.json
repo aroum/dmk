@@ -2562,33 +2562,6 @@
               "content": ["id_hhkb_bt_oversampling", 0, 54]
             },
             {
-              "label": "Battery matrix scan rate",
-              "type": "dropdown",
-              "options": [
-                [
-                  "50 Hz",
-                  0
-                ],
-                [
-                  "125 Hz",
-                  1
-                ],
-                [
-                  "200 Hz",
-                  5
-                ],
-                [
-                  "250 Hz",
-                  2
-                ]
-              ],
-              "content": [
-                "id_hhkb_bt_scan_rate",
-                0,
-                45
-              ]
-            },
-            {
               "label": "Sleep timeout (minutes, 0 disables)",
               "type": "range",
               "options": [

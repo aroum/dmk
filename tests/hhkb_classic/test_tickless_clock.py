@@ -35,9 +35,9 @@ static volatile uint32_t portNVIC_SYSTICK_CURRENT_VALUE_REG;
         harness += source[start:end]
         harness += r'''
 int main(void) {
-    const uint32_t clocks[] = {32000000, 16000000, 32000000};
-    const uint32_t reloads[] = {31999, 15999, 31999};
-    const uint32_t limits[] = {524, 1048, 524};
+    const uint32_t clocks[] = {32000000, 4000000, 32000000};
+    const uint32_t reloads[] = {31999, 3999, 31999};
+    const uint32_t limits[] = {524, 4194, 524};
     for (unsigned i = 0; i < 3; ++i) {
         portNVIC_SYSTICK_CURRENT_VALUE_REG = 123;
         vPortUpdateSysTickClock(clocks[i]);

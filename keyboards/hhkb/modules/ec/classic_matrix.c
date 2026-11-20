@@ -29,10 +29,13 @@ static inline void scan_wait_since(uint16_t start, uint16_t us) {
 
 static bool s_oversampling_applied = false;
 
-static inline uint16_t adc_read_sample(void) {
+static inline uint16_t adc_read_sample(uint32_t saved_primask) {
     uint32_t timeout = 5000;
     while ((ADC1->CR & ADC_CR_ADSTP) && --timeout);
     ADC1->CR |= ADC_CR_ADSTART;
+    // At the 1 MHz battery ADC clock, a 4x conversion outlasts a Nordic
+    // SPI byte. Once triggered, acquisition is hardware-timed: let SPI run.
+    if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
     timeout = 5000;
     while (!(ADC1->ISR & ADC_ISR_EOC) && --timeout);
     return (uint16_t)(ADC1->DR & 0x0FFF);
@@ -112,13 +115,15 @@ __attribute__((noinline)) static void scan_adc_prepare(void) {
             ADC1->CFGR2 |= ADC_CFGR2_OVSE | LL_ADC_OVS_RATIO_4 | LL_ADC_OVS_SHIFT_RIGHT_2;
         else
             ADC1->CFGR2 &= ~ADC_CFGR2_OVSE;
-        ADC1->ISR = ADC_ISR_ADRDY;
-        ADC1->CR |= ADC_CR_ADEN;
-        while (!(ADC1->ISR & ADC_ISR_ADRDY));
+        if (!(ADC1->CFGR1 & ADC_CFGR1_AUTOFF)) {
+            ADC1->ISR = ADC_ISR_ADRDY;
+            ADC1->CR |= ADC_CR_ADEN;
+            while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
+        }
         s_oversampling_applied = oversampling;
     }
 
-    if (!(ADC1->CR & ADC_CR_ADEN)) {
+    if (!(ADC1->CFGR1 & ADC_CFGR1_AUTOFF) && !(ADC1->CR & ADC_CR_ADEN)) {
         while (ADC1->CR & ADC_CR_ADDIS) {}
         ADC1->ISR = ADC_ISR_ADRDY;
         ADC1->CR |= ADC_CR_ADEN;
@@ -142,6 +147,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     scan_adc_prepare();
 
     bool changed = false;
+    uint16_t row_settle_us = (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) ? 25 : 3;
     static const uint16_t row_pins[MATRIX_ROWS] = HHKB_ROW_BITS;
     static const uint32_t col_mux_bsrr[MATRIX_COLS] = {
         0x70000000, 0x60001000, 0x50002000, 0x40003000,
@@ -204,9 +210,9 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             // Drive row strobe active (LOW)
             GPIOB->BRR = row_pins[row];
-            scan_delay_us(3);
+            scan_delay_us(row_settle_us);
 
-            uint16_t val = adc_read_sample();
+            uint16_t val = adc_read_sample(saved_primask);
             GPIOB->BSRR = row_pins[row];
 
             __set_PRIMASK(saved_primask);
