@@ -20,7 +20,7 @@ static volatile bool hello_seen;
 static volatile uint8_t control_command;
 static uint8_t control_slot;
 static uint8_t reply[9];
-static uint8_t reply_length;
+static volatile uint8_t reply_length;
 static uint8_t reply_position;
 static bool notification_value;
 static uint8_t notification_type;
@@ -35,6 +35,7 @@ static volatile uint32_t profile_display_until;
 static volatile uint8_t display_slot;
 static volatile uint8_t attention_retries;
 static volatile bool powered = true;
+static volatile bool poweroff_pending;
 static volatile bool matrix_sleeping;
 
 void hhkb_hybrid_set_sleeping(bool sleeping) { matrix_sleeping = sleeping; }
@@ -233,8 +234,9 @@ void hhkb_hybrid_pair_last_profile(void) {
 }
 
 void hhkb_hybrid_toggle_power(void) {
-    if (!powered) return; // OFF is woken only by PC5 or connecting USB.
+    if (!powered || poweroff_pending) return; // OFF is woken only by PC5 or connecting USB.
     if (!hhkb_hybrid_on_battery()) return; // Stock button does not power off on USB.
+    poweroff_pending = true;
     release_current_output();
     if (hhkb_hybrid_output_bluetooth()) {
         for (uint8_t i = 0; i < 40 && queue_count; ++i) {
@@ -242,8 +244,22 @@ void hhkb_hybrid_toggle_power(void) {
             vTaskDelay(pdMS_TO_TICKS(1));
         }
     }
+    // Ask Nordic to disconnect through the already implemented idle handshake.
+    // Keep SPI alive for its follow-up request/confirmation, bounded to 3 s.
+    NVIC_DisableIRQ(SPI1_IRQn);
+    control_command = 0x04;
+    attention_retries = 0;
+    NVIC_EnableIRQ(SPI1_IRQn);
+    for (uint16_t i = 0; i < 3000; ++i) {
+        if (!hhkb_hybrid_on_battery()) { poweroff_pending = false; return; }
+        hhkb_hybrid_service();
+        if (!control_command && active_slot == 0xff && !reply_length &&
+            !(SPI1->SR & SPI_SR_BSY)) break;
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
     off_from_battery = hhkb_hybrid_on_battery();
     powered = false;
+    poweroff_pending = false;
     power_off_flash_until = xTaskGetTickCount() + pdMS_TO_TICKS(300);
     GPIOD->BSRR = 1U << 2;
 }
@@ -319,12 +335,12 @@ uint32_t hhkb_hybrid_indicator_wait_ms(uint32_t now_ms) {
 }
 
 bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
-    if (matrix_sleeping) {
-        *on = false;
-        return true;
-    }
     if (!powered) {
         *on = index == 1 && (int32_t)(power_off_flash_until - now_ms) > 0;
+        return true;
+    }
+    if (matrix_sleeping) {
+        *on = false;
         return true;
     }
     uint8_t flags = hhkb_bt_indicator_flags();

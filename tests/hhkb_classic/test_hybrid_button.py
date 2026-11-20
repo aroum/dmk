@@ -59,27 +59,58 @@ int main(void) {
             subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(c),'-o',str(binary)],check=True)
             subprocess.run([str(binary)],check=True)
 
-    def test_stop_sleep_and_off_hold_boundaries(self):
-        source = (ROOT / 'keyboards/hhkb/modules/hybrid/hybrid_stop.c').read_text()
-        harness = '#include <stdbool.h>\n#include <stdint.h>\n#include <assert.h>\n'
-        harness += function(source, 'static unsigned stop_button_decision(')
+    def test_shutdown_handshake_timeout_ack_and_usb_abort(self):
+        source = (ROOT / 'keyboards/hhkb/modules/hybrid/hybrid.c').read_text()
+        harness = r'''
+#include <stdbool.h>
+#include <stdint.h>
+#include <assert.h>
+static bool powered=true,poweroff_pending,battery=true,off_from_battery;
+static unsigned mode,calls,delays,releases;
+static uint8_t queue_count,control_command,attention_retries,active_slot,reply_length;
+static struct {uint32_t SR;} spi;
+#define SPI1 (&spi)
+#define SPI_SR_BSY 0x80
+static uint32_t power_off_flash_until;
+static struct {uint32_t BSRR;} gpio;
+#define GPIOD (&gpio)
+#define SPI1_IRQn 0
+#define pdMS_TO_TICKS(x) (x)
+static bool hhkb_hybrid_on_battery(void){return battery;}
+static bool hhkb_hybrid_output_bluetooth(void){return true;}
+static void release_current_output(void){++releases;}
+static void NVIC_DisableIRQ(int x){(void)x;}
+static void NVIC_EnableIRQ(int x){(void)x;}
+static uint32_t xTaskGetTickCount(void){return 100;}
+static void vTaskDelay(unsigned x){delays+=x;}
+void hhkb_hybrid_toggle_power(void);
+static void hhkb_hybrid_service(void){
+ ++calls;
+ if(mode==1 && calls==2){control_command=0;active_slot=255;}
+ if(mode==2 && calls==2)battery=false;
+ if(mode==3)hhkb_hybrid_toggle_power();
+ if(mode==4){if(calls==2){control_command=0;active_slot=255;spi.SR=0x80;}if(calls==4)spi.SR=0;}
+}
+'''
+        harness += function(source, 'void hhkb_hybrid_toggle_power(')
         harness += r'''
-int main(void) {
- assert(stop_button_decision(true, 288, true)==0);
- assert(stop_button_decision(true, 289, false)==0);
- assert(stop_button_decision(true, 289, true)==1);
- assert(stop_button_decision(true, 577, true)==1);
- assert(stop_button_decision(true, 578, false)==2);
- assert(stop_button_decision(false, 288, false)==0);
- assert(stop_button_decision(false, 289, false)==1);
+static void setup(unsigned m){mode=m;powered=true;poweroff_pending=false;battery=true;calls=delays=releases=0;gpio.BSRR=0;spi.SR=0;active_slot=0;control_command=0;}
+int main(void){
+ setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==4 && calls==2 && releases==1);
+ hhkb_hybrid_toggle_power();assert(releases==1);
+ setup(0);hhkb_hybrid_toggle_power();assert(!powered && delays==3000 && gpio.BSRR==4);
+ setup(2);hhkb_hybrid_toggle_power();assert(powered && !poweroff_pending && gpio.BSRR==0);
+ setup(3);hhkb_hybrid_toggle_power();assert(!powered && releases==1 && calls==3000);
+ setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==4);
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:
-            c = Path(tmp) / 'stop.c'
-            binary = Path(tmp) / 'stop'
+            c = Path(tmp) / 'shutdown.c'
+            binary = Path(tmp) / 'shutdown'
             c.write_text(harness)
             subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(c),'-o',str(binary)],check=True)
             subprocess.run([str(binary)],check=True)
+
 
 
 if __name__ == '__main__':

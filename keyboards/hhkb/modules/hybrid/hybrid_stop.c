@@ -88,13 +88,6 @@ static void prepare_wake_sources(void) {
     NVIC_EnableIRQ(LPTIM1_IRQn);
 }
 
-// 0: keep sleeping/waiting, 1: wake, 2: change sleep to OFF.
-static unsigned stop_button_decision(bool from_sleep, uint32_t held_ticks, bool released) {
-    if (from_sleep && held_ticks >= 578U) return 2;
-    if (held_ticks >= 289U && (!from_sleep || released)) return 1;
-    return 0;
-}
-
 static void stop_once(uint32_t stage) {
     EXTI->PR = WAKE_EXTI_MASK;
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
@@ -110,7 +103,7 @@ static void stop_once(uint32_t stage) {
     SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
 }
 
-void hhkb_hybrid_enter_stop(bool from_sleep) {
+void hhkb_hybrid_enter_stop(void) {
     // This terminal path never returns to TinyUSB or the scheduler.
     hhkb_stop_stage = 1;
     hhkb_stop_wake_count = 0;
@@ -183,26 +176,11 @@ void hhkb_hybrid_enter_stop(bool from_sleep) {
                 held_ticks += now >= prev ? now - prev : LPTIM_ARR + 1U - prev + now;
                 prev = now;
                 IWDG->KR = 0xAAAA;
-                if (stop_button_decision(from_sleep, held_ticks, false) == 2) {
-                    // A continuous long press goes straight from sleep to OFF.
-                    from_sleep = false;
-                    while (!(GPIOC->IDR & (1UL << 5))) {
-                        IWDG->KR = 0xAAAA;
-                        if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
-                        stop_once(2);
-                    }
-                    held_ticks = 0;
-                    break;
-                }
-                if (stop_button_decision(from_sleep, held_ticks, false) == 1) {
+                if (held_ticks >= 289U) {
                     hhkb_stop_stage = 6;
                     NVIC_SystemReset();
                 }
                 if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
-            }
-            if (from_sleep && stop_button_decision(true, held_ticks, true) == 1) {
-                hhkb_stop_stage = 6;
-                NVIC_SystemReset(); // Wake after a 1–2 second sleep press is released.
             }
         }
     }
