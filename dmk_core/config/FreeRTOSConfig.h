@@ -78,13 +78,13 @@
 #define configUSE_NEWLIB_REENTRANT 1
 #elif defined(MCU_stm32l072)
 #define configCPU_CLOCK_HZ (32000000UL)
-#define vPortSVCHandler     SVC_Handler
-#define xPortPendSVHandler  PendSV_Handler
+#define vPortSVCHandler SVC_Handler
+#define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 #elif defined(MCU_stm32f072)
 #define configCPU_CLOCK_HZ (48000000UL)
-#define vPortSVCHandler     SVC_Handler
-#define xPortPendSVHandler  PendSV_Handler
+#define vPortSVCHandler SVC_Handler
+#define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 #endif
 
@@ -120,11 +120,9 @@
 #elif defined(MCU_stm32f072)
 // STM32F072 has 16 KiB SRAM; static task & queue allocation used across all core modules
 #define configTOTAL_HEAP_SIZE (1536)
-#elif defined(MCU_stm32l072) && (defined(HHKB_JIS) || defined(HHKB_HYBRID))
-#define configTOTAL_HEAP_SIZE (2 * 1024)
 #elif defined(MCU_stm32l072)
-// STM32L072 has 20 KiB SRAM
-#define configTOTAL_HEAP_SIZE (3 * 1024)
+// STM32L072 has 20 KiB SRAM; static allocation covers all core tasks & queues
+#define configTOTAL_HEAP_SIZE (2 * 1024)
 #else
 #define configTOTAL_HEAP_SIZE (8 * 1024)
 #endif

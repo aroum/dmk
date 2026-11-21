@@ -1,5 +1,6 @@
 """Round-trip the production EEPROM save/load paths for ANSI and JIS."""
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -12,7 +13,7 @@ class HybridSleepSettingsTest(unittest.TestCase):
         header = (ROOT / 'keyboards/hhkb/modules/ec/ec_settings.h').read_text()
         record = header[header.index('typedef struct'):header.index('_Static_assert')]
         constants = header[header.index('#ifdef HHKB_JIS'):header.index('typedef struct')]
-        constants = constants.replace('#define USER_EEPROM_ADDR           0x08081500UL', '#define USER_EEPROM_ADDR ((uintptr_t)storage)')
+        constants = re.sub(r'#define\s+USER_EEPROM_ADDR\s+\S+', '#define USER_EEPROM_ADDR ((uintptr_t)storage)', constants)
         decl = source[source.index('static rt_cfg_t s_rt_cfg'):source.index('static volatile bool s_settings_dirty')]
         code = r'''
 #include <assert.h>

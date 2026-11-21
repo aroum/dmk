@@ -137,15 +137,15 @@ The STM32L072KB microcontroller has 128 KiB Flash (arranged into two 64 KiB bank
 
 ### HHKB Classic (ANSI / Type-S)
 
-- **Flash (Bank 2):** ~51.0 KiB used (50,992 bytes out of 65,536 bytes; ~77.8% of available 64 KiB bank).
-- **RAM (Link-time allocation):** 1,600 bytes `.data`, 16,552 bytes `.bss`, 2,048 bytes `._user_heap_stack`, totalling 20,200 bytes (98.6%) and leaving 280 bytes free.
+- **Flash (Bank 2):** ~51.1 KiB used (51,116 bytes out of 65,536 bytes; ~78.0% of available 64 KiB bank).
+- **RAM (Link-time allocation):** 1,656 bytes `.data`, 15,532 bytes `.bss`, 2,052 bytes `._user_heap_stack`, totalling 19,240 bytes (93.9%) and leaving 1,240 bytes free (FreeRTOS heap configured to 2 KiB).
 
 ### HHKB Hybrid (ANSI / Type-S / JIS)
 
 Includes SPI protocol engine for Nordic nRF52832 Bluetooth SoC, battery telemetry, and STOP power-saving state machine:
 
 - **Flash (Bank 2):** ~62.2 KiB used (62,196 bytes out of 65,536 bytes; ~94.9% of available 64 KiB bank).
-- **RAM (Link-time allocation):** 1,704 bytes `.data`, 15,716 bytes `.bss`, 2,052 bytes `._user_heap_stack`, totalling 19,472 bytes (95.1%) and leaving 1,008 bytes free (Hybrid configures FreeRTOS heap to 2 KiB, matching JIS).
+- **RAM (Link-time allocation):** 1,704 bytes `.data`, 15,716 bytes `.bss`, 2,052 bytes `._user_heap_stack`, totalling 19,472 bytes (95.1%) and leaving 1,008 bytes free (FreeRTOS heap configured to 2 KiB).
 
 _Note:_ Values reflect build-time layout (`arm-none-eabi-size`), not runtime stack depth.
 
