@@ -33,21 +33,35 @@ See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, c
 
 ## Scan rate and power
 
-> [!NOTE]
-> Scan rate measurements and power consumption figures below are specific to the wired USB-C connection on HHKB Classic.
+### Classic — USB power
 
-Running the controller at a higher scan rate is within the MCU's normal operating specifications. The 32 MHz clock and the supported scan rates are standard operating modes, not overclocking; the chip remains cool.
+The 32 MHz CPU clock and supported scan rates are within the MCU's normal operating specifications, not overclocking. The chip remains cool.
 
-Measured current consumption:
+| Firmware | Matrix scan rate | CPU | ADC oversampling | Current |
+| --- | --- | --- | --- | --- |
+| Stock | 50 Hz | 16 MHz | — | 7.5 mA |
+| DMK | 50 Hz | 32 MHz | On | 7.5 mA |
+| DMK | 500 Hz | 32 MHz | On | 10 mA |
+| DMK | 1000 Hz | 32 MHz | Off | 12 mA |
 
-- Stock firmware, 50 Hz, 16 MHz: 7.5 mA.
-- DMK, 50 Hz with ADC oversampling, 32 MHz: 7.5 mA.
-- DMK, 500 Hz with ADC oversampling, 32 MHz: 10 mA.
-- DMK, 1000 Hz without oversampling, 32 MHz: 12 mA.
+At 1000 Hz the increase over stock is 4.5 mA. At 50 Hz DMK matches the measured stock consumption.
 
-At 1000 Hz the increase is only 4.5 mA, which is negligible for a USB-powered keyboard. At 50 Hz with 32 MHz and ADC oversampling, DMK consumes the exact same 7.5 mA as the stock firmware.
+### Hybrid — battery power
 
-PFU's 50 Hz choice may reflect the Classic's shared design lineage with the battery-powered Bluetooth Hybrid. The Classic is effectively the wired-only version, and the scan rate apparently drew little attention for years.
+Bluetooth, 3.0 V; current in mA, measured on one keyboard. DMK aims to match stock battery consumption. The stock firmware powers off rather than providing DMK's optional matrix-wake sleep.
+
+| Mode | Stock | DMK |
+| --- | --- | --- |
+| OFF | 0.21 | 0.21 |
+| Sleep with matrix wake at 1 Hz | — | 1.44 |
+| Idle | 3.28 | 3.0 |
+| Typing | 3.55 | 3.8 |
+| Typing on Fn layer, LED off | 3.4 | 3.5 |
+| Typing on Fn layer, LED on | — | 5.8 |
+
+Stock has no Fn-layer LED indication: its 3.4 mA measurement belongs in the LED-off row. The extra DMK Fn-layer current with the LED on was confirmed to come from that indicator. Higher sleep scan rates have not yet been measured.
+
+With **Wake with matrix** off, inactivity or a sleep action enters OFF directly. With it on, sleep powers down sensors and LEDs between matrix probes at a configurable **1–10 Hz** (default 1 Hz). A detected key wakes the keyboard; holding a key briefly helps at low probe rates. **Power off after sleep** sets the battery sleep-to-OFF timeout (default 3 min; 0 never). Both controls are hidden when matrix wake is off. The tester confirmed that the timer reduces current to 0.21 mA after OFF. See [Hybrid power settings](docs/en/via-debug.md#via-settings-unique-to-hybrid).
 
 ## Installation and recovery
 
@@ -69,13 +83,13 @@ Possible future uses include assigning switch functions through [VIA](https://ww
 
 ## Other HHKB models
 
-### HHKB Professional Hybrid
-
-The [Hybrid build](docs/en/build.md#hybrid-only-local-build-and-factory-image-patch) includes the stock nRF SPI transport, Bluetooth profiles, battery controls, and STOP power mode. Flashing via Python patching script over the official vendor firmware is verified and working on physical hardware.
-
 ### HHKB Professional 2 and other models
 
 Firmware development is possible, but installation is different. Pro2 has no built-in USB firmware update path, so it must be opened and flashed through SWD with a programmer.
+
+### HHKB Studio
+
+Studio uses a different controller and architecture, with mechanical switches, a pointing stick and gesture pads. It needs a separate port rather than the Classic/Hybrid firmware. More information about the controller pinout, peripheral protocols and update format is needed. See the [Studio hardware and support notes](docs/en/models.md#hhkb-studio).
 
 ### Realforce R3 and newer
 
@@ -90,3 +104,8 @@ Realforce R3 and newer models use a similar firmware-update container format, so
 - `via.json` — shared VIA definition with ANSI and JIS layouts and custom controls.
 - `vial.json` — shared Vial definition with ANSI and JIS layouts.
 - `docs/` — board documentation and research notes.
+
+## Acknowledgements
+
+- [SuperEnduro](https://www.reddit.com/user/SuperEnduro/) — for testing and helping reverse-engineer the Hybrid.
+- [guyguilty](https://www.reddit.com/user/guyguilty/) — for testing the Classic.
