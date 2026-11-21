@@ -36,7 +36,9 @@ def patch(stock: bytes, application: bytes, *, layout: str = "ansi") -> bytes:
     filename, sha256 = STOCK_TEMPLATES[layout]
     if hashlib.sha256(stock).hexdigest() != sha256:
         raise ValueError(f"expected the official {filename} template for {layout.upper()}")
-    return assemble(bank_payload(application), stock[4 + BANK_SIZE:])
+    tail = bytearray(stock[4 + BANK_SIZE:])
+    tail[-10:-6] = parse_version_bytes(HYBRID_MODELS[layout][1])
+    return assemble(bank_payload(application), bytes(tail))
 
 
 def make_stm32_only(application: bytes, *, layout: str) -> bytes:

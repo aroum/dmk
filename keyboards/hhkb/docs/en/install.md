@@ -5,19 +5,34 @@
 # Install
 
 > [!WARNING]
-> You flash the keyboard and use DFU/SWD at your own risk. The author accepts no responsibility for keyboard damage, data loss, or consequences of selecting an incorrect firmware image, model, or recovery method.
+> Any firmware flashing by any method is performed entirely at your own risk. The author accepts no responsibility whatsoever for any keyboard damage, bricked devices, data loss, or other consequences.
+
+> [!WARNING]
+> Prebuilt Hybrid HFB images cannot be distributed directly because they contain proprietary Nordic Bluetooth firmware. Download the official PFU update and patch it locally with the open STM32 binary using the [HTML patcher](build.md#hybrid-local-patching) or Python patcher. See [Why Firmware Patching Is Required for Hybrid](build.md#why-hybrid-patching-is-required).
 
 > [!TIP]
 > **Recommended initial key calibration after first flashing:**
-> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all keys (60 keys for ANSI or 69 for JIS) after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the *Key Tester* (*Test Matrix*) tab are provided in the [VIA guide](via-debug.md#key-calibration-process).
+> While the firmware includes robust default capacitive baseline thresholds, it is strongly recommended to calibrate all keys (60 keys for ANSI or 69 for JIS) after initial flashing to match your specific PCB and conical spring tolerances. Step-by-step instructions and visual verification via the _Key Tester_ (_Test Matrix_) tab are provided in the [VIA guide](via-debug.md#key-calibration-process).
 
 ## Before flashing
 
-Build or download the matching firmware for your model first:
-- **Classic (ANSI):** `AHHX01` container (A4.50)
-- **Classic Type-S (ANSI):** `AHHS01` container (A8.50)
-- **Classic Type-S (JIS):** `AHKS01` container (A9.50)
-- **Hybrid (ANSI / JIS):** patched `AHUX01` or `AHJX01` container produced via `patch_hybrid_hfb.py`
+Download the prebuilt files from [GitHub Releases](https://github.com/aroum/dmk/releases) or build the firmware for your model:
+
+- **Classic (ANSI):** ready `.hfb` container `AHHX01` (A4.50)
+- **Classic Type-S (ANSI):** ready `.hfb` container `AHHS01` (A8.50)
+- **Classic Type-S (JIS):** ready `.hfb` container `AHKS01` (A9.50)
+- **Hybrid (ANSI / JIS):** locally patched container `AHUX01` (A0.50) or `AHJX01` (A2.50), generated via the [HTML patcher](../../../../tools/hhkb/hhkb.html) or `patch_hybrid_hfb.py` from the STM32 binary and the official PFU update.
+
+### Required: Download `via.json`
+
+Be sure to download [via.json](../../via.json) alongside your firmware. It is required to configure keymaps, Rapid Trigger thresholds, capacitive calibration, and debugging options through the [VIA web app](https://www.usevia.app/) (under the _Settings_ $\to$ _Design_ tab).
+
+The installation and flashing procedure itself is identical for both Classic and Hybrid models: you flash the prepared `.hfb` container using any of the supported methods:
+
+1. **[HHKB Keymap Tool](#install-through-hhkb-keymap-tool)** (Official PFU updater)
+2. **[DMK Flasher (`hhkb_flasher.py`)](#install-with-the-dmk-flasher)** (Cross-platform Python CLI)
+3. **[Browser Flashing (HTML / WebHID)](#install-via-browser-webhid)** (Directly in Chrome/Edge using `hhkb.html`)
+4. **[DFU and SWD](#dfu-and-swd)** (Hardware recovery / programming)
 
 Keep a [full backup](backup-restore.md) before the first update (Flash + EEPROM for STM32, and Flash + UICR for Nordic nRF52832 on Hybrid).
 
@@ -32,7 +47,9 @@ If the keyboard is currently running the original PFU firmware, its PFU update i
 > [!WARNING]
 > Make sure SW6 is OFF before flashing.
 
-## Install through the PFU updater
+## Install through HHKB Keymap Tool
+
+Download [HHKB Keymap Tool from the official website](https://happyhackingkb.com/download/).
 
 Open the matching `.hfb` in HHKB Keymap Tool and complete the normal update.
 
@@ -51,16 +68,18 @@ uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py --info
 uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py build/hhkb-script/<firmware>.hfb
 ```
 
-Confirm with `--info` that the PFU updater sees the expected keyboard model.
+Confirm with `--info` that the [HHKB Keymap Tool](https://happyhackingkb.com/download/) sees the expected keyboard model.
 
 ### Image Checks
 
 The local flasher validates the container strictly before transmission by default:
+
 - **Two CRC-16 checksums:** validates both the outer container CRC-16/MCRF4XX (first 2 bytes) and the inner payload CRC-16 over the 64 KB binary.
 - **Keyboard model:** validates that the hardware model (e.g. `AHHX01` for Classic, `AHHS01` for Type-S) matches the model string in the container header/trailer.
 - **Reset vector address:** validates that the reset vector points into the Flash Bank 2 range (`0x08010000 <= (reset_vector & ~1) < 0x08020000`) with the Thumb bit set.
 
 Optional CLI flags:
+
 - `--skip-crc`: disables local CRC-16 validation.
 - `--skip-model-check`: disables local model compatibility checks.
   > [!IMPORTANT]
@@ -72,6 +91,7 @@ Bank 1 validates Bank 2 before transfer of control. Because exact internal PFU m
 ### Verified PFU HID Exchange
 
 The PFU firmware update sequence over USB Raw HID has been fully analyzed and verified on physical hardware:
+
 - **`0xE0` (Firmup Mode):** switches the controller into firmware update mode and waits for the new HID interface to re-enumerate (~10 seconds).
 - **`0xE1` (Firmup Start):** transmits total container size (65,570 bytes: `0x00010022` in little-endian) and outer CRC-16, triggering an erase of Bank 2.
 - **`0xE2` (Firmup Send):** transmits 65,568 container bytes (the entire container excluding the first two CRC bytes) in 57-byte payload chunks inside 64-byte HID reports with a 7-byte header `[0xAA, 0xAA, 0xE2, 0x00, len, seq_lo, seq_hi]`.
@@ -80,22 +100,19 @@ The PFU firmware update sequence over USB Raw HID has been fully analyzed and ve
 > [!NOTE]
 > On 11 November 2026, the tool wrote the original Classic A4.29 container (`AHHX01`) to hardware. A SWD readback of Bank 2 matched the container payload byte-for-byte, confirming the exactness of the transfer protocol.
 
-### Image Layout and Versioning
+## Install via Browser (WebHID)
 
-The `.hfb` container is exactly **65,570 bytes**:
-- `0x0000–0x0001`: outer CRC-16 (MCRF4XX) of the remaining container bytes.
-- `0x0002–0x0003`: offset / header.
-- `0x0004–0x10003`: 64 KB firmware payload (Flash Bank 2).
-- `0x10004–0x10005`: inner CRC-16 (MCRF4XX) of the 64 KB payload.
-- `0x10006–0x1000B`: ASCII model identifier (`AHHX01` for Classic, `AHHS01` for Classic Type-S).
-- `0x1000C–0x1000F`: 4-byte BCD firmware version. The current build scripts (`make_hfb.py`) emit **A4.50** for `AHHX01` and **A8.50** for `AHHS01`.
-- `0x10010–0x10021`: 18 bytes of 0xFF padding.
+You can flash prepared `.hfb` containers (both Classic and Hybrid) directly from your browser without installing any tools or Python drivers.
 
-For full layout breakdown and manual packaging commands, see [Build](build.md#hfb-container-format-for-hhkb-classic).
+1. Download or open [hhkb.html](../../../../tools/hhkb/hhkb.html) in Chrome or Edge (WebHID is required).
+2. Connect your keyboard over USB. If DMK is already installed, first [return to Bank 1 using SW6](backup-restore.md#sw6-recovery). Ensure SW6 is returned to OFF before writing.
+3. Open the **Flash keyboard** tab and select your `.hfb` container (prebuilt Classic `.hfb` or locally patched Hybrid `.hfb`).
+4. Click **Connect and flash** and grant permission to access the PFU USB interface in the browser prompt.
+5. The page switches the device into recovery mode, pauses ~10s for re-enumeration, prompts to confirm the recovery interface, and writes the image. Keep the cable securely connected until complete.
 
 ## DFU and SWD
 
-ROM DFU and SWD are development and recovery paths. DFU can write a raw Bank 2 `.bin`, but it does not update PFU Bank 1 metadata. Use the PFU updater for normal installation. The five SWD pads beside connector CN3 are arranged in two rows:
+ROM DFU and SWD are development and recovery paths. DFU can write a raw Bank 2 `.bin`, but it does not update PFU Bank 1 metadata. Use the [HHKB Keymap Tool](https://happyhackingkb.com/download/), DMK flasher, or browser flasher for normal installation. The five SWD pads beside connector CN3 are arranged in two rows:
 
 ```text
 top:     GND | RST | VCC
@@ -103,67 +120,3 @@ bottom:    CLK | DIO
 ```
 
 Read [Backup & restore](backup-restore.md) before using either path.
-
-## Hybrid Installation Status: Why a Local Build Is Required
-
-Unlike the HHKB Classic, where the update file targets only the single STM32 controller, the official HHKB Hybrid update container (`HHKB800_FW_A048.hfb`, 282,672 bytes) is a **dual-target composite container**:
-1. The first 64 KB (`0x0004–0x10003`) contains firmware for the main STM32 controller (Flash Bank 2).
-2. The trailing ~216 KB contains the proprietary update payload for the **Nordic nRF52832** Bluetooth SoC (SoftDevice + BLE application stack) with its own staging header and checksums.
-
-### Why Prebuilt Hybrid HFB Releases Cannot Be Distributed
-Because the nRF payload contains proprietary, closed-source code owned by PFU Limited, distributing a precompiled full `.hfb` image for Hybrid keyboards would violate copyright restrictions. The DMK repository is strictly open-source and cannot distribute vendor binary blobs.
-
-### Why Clean CI-Generated Builds Failed on Hardware
-An experimental attempt was made to generate fully clean standalone images in GitHub Actions:
-- The STM32 section was populated with open-source DMK firmware.
-- The nRF payload section was replaced with empty padding or dummy data carrying an intentionally invalid checksum (CRC16/MD5).
-
-**The hypothesis:** The Nordic nRF52832 bootloader would detect the corrupt payload, reject it, and safely preserve its installed factory Bluetooth firmware, while the STM32 update would succeed.
-
-**Actual hardware test results:**
-1. The Nordic nRF bootloader behaves as predicted: it verifies the staging area, detects the MD5/CRC mismatch, purges the staging buffer, and **safely preserves the existing stock Bluetooth firmware**.
-2. However, the update transaction is orchestrated by the **STM32 Bank 1 bootloader**, which polls the Nordic chip over SPI at finalization (`commandE3`).
-3. Upon receiving an error/rejection status from the Nordic SoC, **STM32 Bank 1 rejects the overall update process**: it refuses to mark Bank 2 as valid (leaving boot flag `0x08080360 = 0`) and never passes execution to DMK in Bank 2.
-
-As a result, a standalone "clean" HFB cannot be accepted by the stock bootloader without modifying Bank 1.
-
-### The Proven Working Solution: Local Vendor Image Patching
-To satisfy the Bank 1 update validator without redistributing vendor binaries, DMK provides the local patching utility `tools/hhkb/patch_hybrid_hfb.py`:
-1. The user downloads the official update file directly from [PFU's official download center](https://happyhackingkb.com/download/) (`HHKB800_FW_A048.hfb` for ANSI or `HHKB820_FW_JP_A249.hfb` for JIS).
-2. The patcher replaces **only the first 64 KB STM32 payload** with the freshly compiled DMK binary, preserves the authentic factory nRF payload untouched, and recalculates the outer container CRCs.
-3. Because the nRF section remains authentic and valid, both microcontrollers validate successfully, and Bank 1 boots DMK on the STM32 while keeping full Bluetooth functionality.
-
-```bash
-uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py keyboards/hhkb/local/dmk_hybrid.hfb
-```
-
-**Flashing via this local patching workflow is verified and fully functional on physical HHKB Hybrid hardware.**
-
----
-
-### Theoretical Alternative: Multi-stage Workaround Without Patching
-
-In theory, distributing clean DMK images without proprietary blobs could be achieved if the nRF update check in Bank 1 is bypassed. A complex 4-stage flashing sequence has been analyzed:
-
-1. **Stage 1 (Temporary Firmware):** Flash a clean image with a dummy Bluetooth payload that satisfies nRF validation. The nRF accepts it (Bluetooth is temporarily rendered inoperable, but the update succeeds). Once booted into Bank 2, the temporary STM32 firmware writes to Bank 1 Flash to bypass the nRF success status requirement.
-2. **Stage 2 (Restore Bluetooth):** Flash the official PFU update file through the vendor updater to restore genuine Bluetooth firmware on the Nordic SoC.
-3. **Stage 3 (Install Clean DMK):** Flash clean DMK with an invalid nRF image. The nRF rejects the update and keeps its genuine Bluetooth firmware (from Stage 2), while the modified Bank 1 considers Bank 2 DMK valid and boots it.
-4. **Stage 4 (Revert & Cleanup):** Toggling SW6 to return to stock restores the original validation logic in Bank 1.
-
-> [!CAUTION]
-> **Severe bricking risk:**
-> This procedure involves writing to Bank 1, which is the **sole hardware recovery path via USB**. Any unexpected interruption, bus error, or brownout during Bank 1 modification would render the keyboard permanently unbootable over USB, requiring a full teardown and an external SWD programmer to recover.
->
-> Because of this unacceptable risk to users, local patching remains the vastly preferred, safe, and reliable approach.
-
-
-## Local browser patching and flashing
-
-Download [hhkb.html](../../../../tools/hhkb/hhkb.html) and open it in Chrome or Edge. Patching works offline. The Flash keyboard tab uses WebHID with an explicit device permission prompt. Some browsers require serving the page on localhost. Select the PFU interface again after the recovery reboot. Keep SW6 OFF. Transfer errors appear in the log and stop the update. Browser flashing still requires hardware validation.
-
-
-The **Hybrid patching** tab accepts only the official Hybrid ANSI A0.48 or JIS A2.49 HFB (both CRCs, version and SHA-256 checked). Select a current DMK `.bin` with embedded model/version metadata. Each file is labeled with its model and version, and incompatible models/layouts disable patching. Older DMK binaries without metadata must be rebuilt. Hybrid and Hybrid Type-S share a model-specific image; ANSI and JIS do not.
-
-Classic does not require patching. Use its ready-made `.hfb` in **Flash keyboard**. The flasher checks the container model, version family and CRCs, and matches the exact PFU device model number before recovery and again before writing. Classic, Classic Type-S ANSI and Classic Type-S JIS have separate model IDs. When DMK identity metadata is present in an HFB, it must also match the container. File names are not used to establish compatibility.
-
-For browser flashing, an HFB without embedded DMK identity is accepted only when its SHA-256 matches a supported official image: Classic A4.29, Classic Type-S ANSI A8.03 / JIS A9.04, Hybrid ANSI A0.48 / JIS A2.49. Legacy DMK HFB files without identity metadata must be rebuilt.

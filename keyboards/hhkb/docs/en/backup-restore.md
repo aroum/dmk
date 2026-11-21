@@ -183,16 +183,16 @@ The primary host microcontroller across HHKB Classic and Hybrid is the **STMicro
 
 Both families employ a dual-bank Flash structure, but boot validation flags and EEPROM layout differ:
 
-| Region | Address Range | Classic Purpose | Hybrid Purpose |
-| :--- | :--- | :--- | :--- |
-| **Bank 1** | `0x08000000–0x0800FFFF` (64 KB) | Factory PFU recovery bootloader | Factory PFU recovery bootloader (coordinates both STM32 & nRF via SPI) |
-| **Bank 2** | `0x08010000–0x0801FFFF` (64 KB) | Application firmware (stock A4.xx / A8.xx or DMK) | Application firmware (stock A0.xx / A2.xx or DMK) |
-| **Bank 3 / Reserved** | `0x08020000–0x0802FFFF` (64 KB) | Unused by PFU scheme | Unused by PFU scheme |
-| **Embedded EEPROM** | `0x08080000–0x080817FF` (6 KB) | Factory calibrations, Bank 2 boot flags | Factory calibrations, Bank 2 & Bluetooth boot flags |
-| ↳ *Bank 2 status flags* | `0x08080348` and `0x08080370` | Status (`0x01` = broken) and 2-byte CRC tag | Hybrid uses byte `0x08080360` (`0x01` = Bank 2 valid/boot-enabled) |
-| ↳ *EC Matrix calibration* | `0x08081000–0x080813FF` | Factory baselines and thresholds | Factory thresholds (structure differs) |
-| ↳ *User DMK Data* | `0x08081500–...` | DMK calibration profile, VIA/Vial dynamic layers | DMK calibration profile, VIA layers, BT profile slots |
-| **Option Bytes** | `0x1FF80000–0x1FF8001F` (32 bytes) | Readout protection (RDP Level 0/1) & boot flags | Readout protection (RDP Level 0/1) & boot flags |
+| Region                    | Address Range                      | Classic Purpose                                   | Hybrid Purpose                                                         |
+| :------------------------ | :--------------------------------- | :------------------------------------------------ | :--------------------------------------------------------------------- |
+| **Bank 1**                | `0x08000000–0x0800FFFF` (64 KB)    | Factory PFU recovery bootloader                   | Factory PFU recovery bootloader (coordinates both STM32 & nRF via SPI) |
+| **Bank 2**                | `0x08010000–0x0801FFFF` (64 KB)    | Application firmware (stock A4.xx / A8.xx or DMK) | Application firmware (stock A0.xx / A2.xx or DMK)                      |
+| **Bank 3 / Reserved**     | `0x08020000–0x0802FFFF` (64 KB)    | Unused by PFU scheme                              | Unused by PFU scheme                                                   |
+| **Embedded EEPROM**       | `0x08080000–0x080817FF` (6 KB)     | Factory calibrations, Bank 2 boot flags           | Factory calibrations, Bank 2 & Bluetooth boot flags                    |
+| ↳ _Bank 2 status flags_   | `0x08080348` and `0x08080370`      | Status (`0x01` = broken) and 2-byte CRC tag       | Hybrid uses byte `0x08080360` (`0x01` = Bank 2 valid/boot-enabled)     |
+| ↳ _EC Matrix calibration_ | `0x08081000–0x080813FF`            | Factory baselines and thresholds                  | Factory thresholds (structure differs)                                 |
+| ↳ _User DMK Data_         | `0x08081500–...`                   | DMK calibration profile, VIA/Vial dynamic layers  | DMK calibration profile, VIA layers, BT profile slots                  |
+| **Option Bytes**          | `0x1FF80000–0x1FF8001F` (32 bytes) | Readout protection (RDP Level 0/1) & boot flags   | Readout protection (RDP Level 0/1) & boot flags                        |
 
 ### STM32 SWD Pinout (CN3 Pads)
 
@@ -268,15 +268,15 @@ On HHKB Hybrid, the Bluetooth subsystem is integrated on a **Taiyo Yuden EYSHCNZ
 
 The 512 KB Flash is structured for Nordic SoftDevice S132 and PFU's custom bootloader:
 
-| Region | Address Range | Purpose |
-| :--- | :--- | :--- |
-| **MBR** | `0x00000000–0x00000FFF` (4 KB) | Master Boot Record |
-| **SoftDevice S132** | `0x00001000–0x00025FFF` (148 KB) | Nordic BLE protocol stack v6.0.0 |
-| **Application** | `0x00026000–0x00031FFF` (48 KB) | Stock HHKB Hybrid Bluetooth firmware |
-| **Staging Area** | `0x00036000–...` | SPI firmware update buffer received from STM32 (header at `0x36000`, binary at `0x37000`) |
-| **FDS Storage** | `0x00075000–0x00077FFF` (12 KB) | Pairing & bonding data (Flash Data Storage, magic `0xDEADC0DE`) |
-| **Bootloader** | `0x00078000–0x0007FFFF` (32 KB) | Vendor update bootloader `FwUpdate_*` (`UICR.BOOTLOADERADDR = 0x78000`) |
-| **UICR** | `0x10001000–0x100013FF` (1 KB) | User Information Configuration Registers |
+| Region              | Address Range                    | Purpose                                                                                   |
+| :------------------ | :------------------------------- | :---------------------------------------------------------------------------------------- |
+| **MBR**             | `0x00000000–0x00000FFF` (4 KB)   | Master Boot Record                                                                        |
+| **SoftDevice S132** | `0x00001000–0x00025FFF` (148 KB) | Nordic BLE protocol stack v6.0.0                                                          |
+| **Application**     | `0x00026000–0x00031FFF` (48 KB)  | Stock HHKB Hybrid Bluetooth firmware                                                      |
+| **Staging Area**    | `0x00036000–...`                 | SPI firmware update buffer received from STM32 (header at `0x36000`, binary at `0x37000`) |
+| **FDS Storage**     | `0x00075000–0x00077FFF` (12 KB)  | Pairing & bonding data (Flash Data Storage, magic `0xDEADC0DE`)                           |
+| **Bootloader**      | `0x00078000–0x0007FFFF` (32 KB)  | Vendor update bootloader `FwUpdate_*` (`UICR.BOOTLOADERADDR = 0x78000`)                   |
+| **UICR**            | `0x10001000–0x100013FF` (1 KB)   | User Information Configuration Registers                                                  |
 
 ### SWD Debug Interface for Nordic nRF52832 (CN6 and Module Pins)
 

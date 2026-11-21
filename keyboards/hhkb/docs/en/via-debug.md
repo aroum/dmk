@@ -52,7 +52,6 @@ If the error persists, open `chrome://device-log`, try connecting through VIA ag
 
 ## VIA vs Vial
 
-
 Vial uses `vial.json` and supports runtime keymap editing. It does not support custom UI controls, so it cannot configure the actuation point, calibration, scan rate, LEDs, or Rapid Trigger. Use [VIA](https://www.usevia.app/) for these settings.
 
 ## Select a system
@@ -64,6 +63,7 @@ With the updated firmware and `via.json`, assign **System 1** or **System 2** in
 The custom settings interface consists of 6 submenus:
 
 ### 1. Scan Rate & Timing
+
 - **Target scan rate:** Matrix polling frequency — 50, 125, 250, 500, or 1000 Hz when operating over USB.
   > [!NOTE]
   > **Bluetooth Polling Rate Limitation (Hybrid):** Over Bluetooth LE, HID report throughput is bounded by the negotiated Connection Interval (typically ~50 Hz / 20 ms). Adjusting Target scan rate in VIA is intended for USB operation and should be locked out in firmware while connected over Bluetooth.
@@ -74,7 +74,9 @@ The custom settings interface consists of 6 submenus:
 - **Quick tap:** Quick double-tap hold interval (0–500 ms in 10 ms steps; 0 disables, default 150 ms).
 
 ### 2. Calibration and 5-Point PCHIP Travel Curve
+
 Topre electro-capacitive switches exhibit a non-linear capacitance response curve: capacitance grows slowly during initial elastomer dome compression, then rises steeply once the dome collapses (tactile bump) around 2 mm. To accurately convert raw ADC values into linear physical travel distances, DMK implements a **5-point monotonic piecewise cubic Hermite interpolating polynomial (PCHIP)** with adjustable smoothing:
+
 - **5 Anchor Points:**
   1. $0.0\text{ mm}$ $\rightarrow$ $0\%$ ADC signal (released key at rest, baseline).
   2. $1.0\text{ mm}$ $\rightarrow$ **ADC at 1 mm (%)** point (range 2–94%).
@@ -93,11 +95,13 @@ Topre electro-capacitive switches exhibit a non-linear capacitance response curv
     This guarantees that key actuation can never be configured beyond the physically possible travel depth of the switch.
 
 To preview and interactively tune the 5-point curve from the repository root, run the visualizer via `uv`:
+
 ```bash
 uv run tools/ec_curve_visualizer.py
 ```
 
 **Calibration Submenu Controls:**
+
 - **Use travel curve:** Enables the non-linear 5-point PCHIP curve.
 - **ADC at 1 mm (%), ADC at 2 mm (%), ADC at 3 mm (%):** Normalized intermediate anchor points. Points must have at least 2% spacing.
 - **Maximum travel:** Physical switch bottom-out depth (3.1–4.5 mm in 0.1 mm increments).
@@ -113,12 +117,14 @@ uv run tools/ec_curve_visualizer.py
 - **Settings EEPROM:** Availability of EEPROM storage (`Writable` / `Occupied`).
 
 ### 3. Rapid Trigger
+
 - **Rapid Trigger:** Toggles continuous dynamic keystroke tracking without requiring keys to return to the top.
 - **RT press sensitivity:** Travel distance downward to re-actuate after release (0.1–4.0 mm in 0.1 mm steps).
 - **RT release sensitivity:** Travel distance upward from lowest point to de-actuate (0.1–4.0 mm in 0.1 mm steps).
 - **Top dead zone:** Upper dead zone (0.0–0.6 mm in 0.1 mm steps) where returning resets keystroke and disarms RT.
 
 ### 4. LED Indicators
+
 - **Blue LED (PA8):** Sets behavior for the blue LED:
   - `0`: Off
   - `1`: Debug heartbeat (1 Hz blink)
@@ -128,11 +134,13 @@ uv run tools/ec_curve_visualizer.py
 - **Orange LED (PA9):** Identical 5 modes for the orange LED.
 
 ### 5. Power Saving
+
 - **Power Saving Mode:** Deep power-saving toggle when no USB host is present (charger-only, unmounted, or suspended):
   - When disconnected from USB host, turns off all LEDs and completely cuts power to the Topre capacitive sensor board (`PC14` and `PC7` pulled LOW) while suspending matrix scanning.
   - When a USB host connects, sensor power is restored and normal scanning resumes automatically.
 
 ### 6. Debug
+
 - **Firmware Version:** Displays the compiled DMK firmware version.
 - **EC Matrix Stream:** Streams real-time `[EC]` capacitance readings to the HID Console.
 - **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
@@ -155,7 +163,7 @@ Check with both hands completely removed from the keyboard. If the readings stop
 
 > [!TIP]
 > **Visual Tracking via Key Tester (Test Matrix):**
-> Switching between VIA tabs **does not reset** active calibration — the state remains held in MCU RAM until *Finish and save* is clicked.
+> Switching between VIA tabs **does not reset** active calibration — the state remains held in MCU RAM until _Finish and save_ is clicked.
 > After clicking **Start calibration**, you can navigate directly to the **Key Tester** tab in VIA's top navigation bar and toggle on **Test Matrix**. In this mode, the visual layout lights up every physically actuated switch, giving you an immediate visual confirmation of which keys have already been bottomed out and which ones remain.
 > Once all keys are pressed, return to **Configure** → **HHKB Settings** → **Calibration** and click **Finish and save**.
 
@@ -163,18 +171,20 @@ Check with both hands completely removed from the keyboard. If the readings stop
 > **Status Label Updates in VIA (Curve status, Calibration status, Settings EEPROM):**
 > Dynamic status labels (such as `Curve status`, `Calibration status`, `Settings EEPROM`, and similar fields) do not continuously poll or update live in the VIA web interface. Due to the architecture of WebHID and the VIA web app, updated values for these labels are retrieved from the controller only when switching between submenus or reloading the page in the browser (F5 / Ctrl+R / Cmd+R). If you adjust curve parameters or perform key calibration, reload the VIA page or switch menus to read the updated status.
 >
-> For continuous live tracking of calibration progress and sensor activity, toggle on **Calibration Monitor** under *HHKB Settings* → *Debug* and open the **HID Console** tab (enabled in VIA settings via *Show HID Console tab*) to observe the textual progress bar and per-key travel peak updates.
+> For continuous live tracking of calibration progress and sensor activity, toggle on **Calibration Monitor** under _HHKB Settings_ → _Debug_ and open the **HID Console** tab (enabled in VIA settings via _Show HID Console tab_) to observe the textual progress bar and per-key travel peak updates.
 
 ## Debugging and HID Console
 
 The **HHKB Settings** → **Debug** submenu provides granular toggles for diagnostic logging channels. By default, all diagnostic output is disabled to prevent unnecessary MCU and USB bus traffic.
 
 ### 1. Enabling the HID Console Tab in VIA
+
 1. Open VIA settings by clicking the top gear icon (**Settings**).
 2. Enable **Show HID Console tab**.
 3. A new **HID Console** tab will appear in the top navigation bar.
 
 ### 2. Logging Channels and Output Formats
+
 - **EC Matrix Stream:** Real-time stream of capacitive sensor samples `[EC]`.
   - **Message Format:**
     ```text
@@ -194,6 +204,7 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
 - **Polling Rate Monitor:** Periodic telemetry logging actual matrix scan and USB loop frequencies (e.g. `[RATE] matrix=1000 Hz (target: 1000 Hz), usb_loop=500 Hz`).
   > [!NOTE]
   > **Matrix Scan Rate (`matrix`) vs USB Task Loop (`usb_loop`):**
+  >
   > - `matrix`: The actual physical hardware scan frequency of the capacitive matrix. At 1000 Hz, scanning executes strictly every 1 ms under FreeRTOS timing.
   > - `usb_loop`: The iteration frequency of the background USB service task. The task sleeps on `ulTaskNotifyTake(..., pdMS_TO_TICKS(2))` with a **2 ms timeout**. When there is no active typing or streaming debug traffic, it wakes up on the 2 ms timeout (~500 Hz) to conserve CPU cycles and power. As soon as keystrokes or data packets arrive, it wakes up instantly on task notification without latency at full 1000 Hz USB polling (`bInterval=1`). Seeing `usb_loop=500 Hz` during idle periods is expected and indicates healthy power-efficient scheduling.
 
@@ -202,12 +213,14 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
 ### Reset all DMK settings (Factory reset)
 
 In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debug**:
+
 1. Enable the safety switch **Arm settings reset**.
 2. Click the button **Erase all DMK settings** that appears.
 3. Observe the operational state in **Reset status** (`Ready` → `Armed` → `Resetting...`).
 
 **How reset works and what it erases:**
-- **Accidental trigger protection:** The erase button is hidden and disarmed until the *Arm settings reset* toggle is engaged.
+
+- **Accidental trigger protection:** The erase button is hidden and disarmed until the _Arm settings reset_ toggle is engaged.
 - **EEPROM configuration & calibration erase:** Firmware clears the user EEPROM region (starting at `0x08081500`), wiping custom capacitance baseline/peak calibrations, travel curve lookup tables, actuation point, Rapid Trigger sensitivities, scan rate, debug flags, and indicator modes.
 - **Dynamic VIA/Vial keymap reset:** All dynamic keymap layers, macros, combos, and key overrides stored in EEPROM are erased, reverting the keyboard to its default compiled-in ROM keymap.
 - **Bootloader & factory calibration safety:** The reset operation affects **only** DMK runtime settings. The original PFU Topre factory calibration data (stored at `0x08081100`/`0x08081200`) and both firmware banks (Bank 1 recovery bootloader and Bank 2) remain untouched.
@@ -251,16 +264,17 @@ In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design t
 
 PB9, PB8, and PB7 provide the 0%, 5%, and 15% battery thresholds. DMK samples them once per second and sends stable changes to the stock nRF for the BLE Battery Service. One to four manual orange flashes indicate 0%, 5%, 15%, or above 15%. These are threshold bands, not precise charge measurements. Status patterns temporarily take priority over configured base LED modes.
 
-
 ## Enabling Debug Logging
 
 ### 1. Enable HID Console in the VIA Web App
+
 1. Open the [VIA web application](https://www.usevia.app/).
 2. Click the **Settings** gear icon in the top navigation bar.
 3. Toggle on **Show HID Console tab**.
 4. A new **HID Console** tab will appear in the top menu bar.
 
 ### 2. Enable Logging Channels in Keyboard Settings
+
 1. Navigate to the **Configure** tab.
 2. Open **HHKB Settings** → **Debug** submenu.
 3. Toggle the desired logging flags:
@@ -268,7 +282,7 @@ PB9, PB8, and PB7 provide the 0%, 5%, and 15% battery thresholds. DMK samples th
    - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), completion percentage `[====>    ] X% (N/60)` for ANSI or `(N/69)` for JIS, and save readiness notifications.
 
      > [!NOTE]
-     > Switching between the **Configure** tab and **HID Console** does not interrupt or reset calibration — the state remains active in MCU RAM until *Finish and save* is clicked. Console monitoring provides uninterrupted real-time visibility without having to manually refresh the status counter in the calibration menu.
+     > Switching between the **Configure** tab and **HID Console** does not interrupt or reset calibration — the state remains active in MCU RAM until _Finish and save_ is clicked. Console monitoring provides uninterrupted real-time visibility without having to manually refresh the status counter in the calibration menu.
    - **Polling Rate Monitor** — outputs periodic reports of the actual matrix scan rate and USB task frequency (e.g. `[RATE] Matrix: 1000 Hz, USB: 500 Hz`).
    - **VIA Telemetry Diag** — prints incoming VIA/Vial requests, commands, and parameter modifications.
 
@@ -281,15 +295,16 @@ PB9, PB8, and PB7 provide the 0%, 5%, and 15% battery thresholds. DMK samples th
 
 The EC capacitive switch relies on a conical spring compressing against PCB sensing pads. The resulting capacitance change follows a distinctly non-linear response relative to physical key travel:
 
-| Physical Key Travel | Sensor Value (% / ‰) | Mechanism Behavior & Physics |
-|---|---|---|
-| **0 mm** | **0%** (0 ‰) | Key at rest (baseline level); conical spring fully retracted. |
-| **1 mm** | **15%** (150 ‰) | Initial rubber dome compression; slow initial capacitance growth. |
-| **2 mm** | **50%** (500 ‰) | Peak tactile resistance (tactile bump). |
-| **3 mm** | **80%** (800 ‰) | Tactile drop-off; spring rapidly compresses toward the PCB pads. |
-| **4 mm** | **99%** (990–1000 ‰) | Bottom-out; maximum measurable capacitance (peak). |
+| Physical Key Travel | Sensor Value (% / ‰) | Mechanism Behavior & Physics                                      |
+| ------------------- | -------------------- | ----------------------------------------------------------------- |
+| **0 mm**            | **0%** (0 ‰)         | Key at rest (baseline level); conical spring fully retracted.     |
+| **1 mm**            | **15%** (150 ‰)      | Initial rubber dome compression; slow initial capacitance growth. |
+| **2 mm**            | **50%** (500 ‰)      | Peak tactile resistance (tactile bump).                           |
+| **3 mm**            | **80%** (800 ‰)      | Tactile drop-off; spring rapidly compresses toward the PCB pads.  |
+| **4 mm**            | **99%** (990–1000 ‰) | Bottom-out; maximum measurable capacitance (peak).                |
 
 ### DMK Defaults:
+
 - **Default Actuation Point:** **75% of travel** (750 ‰, approximately 2.8 mm). The key triggers reliably right after collapsing the tactile dome, avoiding accidental triggers on light key rests.
 - **Release Hysteresis:** **0.4 mm** (100 ‰). Provides a solid deadband preventing chatter or repeated triggers near the actuation boundary.
 - **Rapid Trigger:** Disabled by default. Can be enabled on demand under **HHKB Settings → Rapid Trigger**.

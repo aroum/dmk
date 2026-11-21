@@ -6,7 +6,8 @@
 </style>
 <h1>HHKB Firmware</h1><p>Patch Hybrid firmware or flash a ready-made Classic / Hybrid update over USB. Files are processed entirely in this page.</p>
 <nav role="tablist" aria-label="Firmware tools"><button id="patchTab" role="tab" aria-controls="patchPane" aria-selected="true">Hybrid patching</button><button id="flashTab" role="tab" aria-controls="flashPane" aria-selected="false">Flash keyboard</button></nav>
-<section id="patchPane" role="tabpanel" aria-labelledby="patchTab"><h2>Patch Hybrid firmware</h2><p>Hybrid only: use official ANSI A0.48 or JIS A2.49 and a matching DMK STM32 binary from a current build. Hybrid and Hybrid Type-S share the same image. Original Nordic firmware is preserved. Classic does not need patching: use its ready-made HFB in the Flash keyboard tab.</p>
+<section id="patchPane" role="tabpanel" aria-labelledby="patchTab"><h2>Patch Hybrid firmware</h2><p>Hybrid only: use official ANSI A0.48 or JIS A2.49 and a matching DMK STM32 binary from a current build. Hybrid and Hybrid Type-S share the same image. Original Nordic firmware is preserved. The patched HFB version is A0.50 (ANSI) or A2.50 (JIS). Classic does not need patching: use its ready-made HFB in the Flash keyboard tab.</p>
+<p>Original firmware: <a href="https://happyhackingkb.com/download/" target="_blank" rel="noopener noreferrer">PFU downloads (ANSI A0.48)</a> · <a href="https://happyhackingkb.com/jp/download/" target="_blank" rel="noopener noreferrer">PFU downloads (JIS A2.49)</a>. Open the matching page and download the HFB for your layout.</p>
 <label>Original PFU update (.hfb)<input id="stock" type="file" accept=".hfb"><small id="stockInfo">No original firmware selected.</small></label>
 <label>DMK STM32 firmware (.bin)<input id="app" type="file" accept=".bin"><small id="appInfo">No DMK firmware selected.</small></label>
 <p id="patchStatus">Select two compatible Hybrid files.</p><button id="patchButton" disabled>Patch and download</button></section>
@@ -83,6 +84,7 @@ async function patchFirmware(stock,app) {
  const model=await verifyStock(stock),meta=applicationInfo(app);
  if(meta.model!==model)throw Error("Incompatible files: "+modelNames[model]+" and "+modelNames[meta.model]);
  const result=stock.slice(); result.fill(255,4,65540); result.set(app,4);
+ result.set(model==="AHUX01"?[10,0,5,0]:[10,2,5,0],result.length-10);
  const out=new DataView(result.buffer);out.setUint16(2,crc(result.slice(4,65540)),true);out.setUint16(0,crc(result.slice(2)),true);
  validate(result);return result;
 }

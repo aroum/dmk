@@ -6,15 +6,15 @@
 
 ## Comparison
 
-| Feature                  | HHKB Professional Classic    | HHKB Professional HYBRID         | HHKB Studio                                |
-| :----------------------- | :--------------------------- | :------------------------------- | :----------------------------------------- |
-| **Switch Technology**    | Electro-capacitive EC 45g    | Electro-capacitive EC 45g        | Mechanical Hot-Swap MX (Linear 45g)        |
-| **Main MCU**             | STM32L072CZ (ARM Cortex-M0+) | STM32L072CZ (ARM Cortex-M0+)     | STM32L4 series (ARM Cortex-M4)             |
+| Feature                  | HHKB Professional Classic    | HHKB Professional HYBRID                                                                 | HHKB Studio                                |
+| :----------------------- | :--------------------------- | :--------------------------------------------------------------------------------------- | :----------------------------------------- |
+| **Switch Technology**    | Electro-capacitive EC 45g    | Electro-capacitive EC 45g                                                                | Mechanical Hot-Swap MX (Linear 45g)        |
+| **Main MCU**             | STM32L072CZ (ARM Cortex-M0+) | STM32L072CZ (ARM Cortex-M0+)                                                             | STM32L4 series (ARM Cortex-M4)             |
 | **Wireless Transceiver** | None (Wired USB-C only)      | [Taiyo Yuden EYSHCNZWZ](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) (nRF52832) | Nordic nRF52 series (BLE 5.0)              |
-| **Pointing Device**      | None                         | None                             | Isometric Pointing Stick + 3 Mouse Buttons |
-| **Gesture Controls**     | None                         | None                             | 4× Capacitive Touch Gesture Pads           |
-| **Power Source**         | USB-C Bus Power (5V)         | 2× AA Batteries / USB-C          | 4× AA Batteries / USB-C                    |
-| **DMK Firmware Status**  | Native Support (1000 Hz, RT) | Standard ANSI build locally; hardware unverified     | Exploratory Research                       |
+| **Pointing Device**      | None                         | None                                                                                     | Isometric Pointing Stick + 3 Mouse Buttons |
+| **Gesture Controls**     | None                         | None                                                                                     | 4× Capacitive Touch Gesture Pads           |
+| **Power Source**         | USB-C Bus Power (5V)         | 2× AA Batteries / USB-C                                                                  | 4× AA Batteries / USB-C                    |
+| **DMK Firmware Status**  | Native Support (1000 Hz, RT) | Standard ANSI build locally; hardware unverified                                         | Exploratory Research                       |
 
 ## HHKB Classic
 
@@ -55,18 +55,18 @@ The following 7 models represent the physical 60-key ANSI (US Layout) revisions 
 
 ### Japanese JIS Models (PD-KB421 Series) — Pending Matrix Verification
 
-| Commercial Name                            | Model Number  | Color         | Layout     | Status                                               |
-| :----------------------------------------- | :------------ | :------------ | :--------- | :--------------------------------------------------- |
-| **HHKB Pro Classic Type-S JIS (Charcoal)** | `PD-KB421BSC` | Charcoal (墨) | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
-| **HHKB Pro Classic Type-S JIS (White)**    | `PD-KB421WSC` | White (白)    | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
-| **HHKB Pro Classic Type-S JIS (Snow)**     | `PD-KB421YSC` | Snow (雪)     | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required    |
+| Commercial Name                            | Model Number  | Color         | Layout     | Status                                            |
+| :----------------------------------------- | :------------ | :------------ | :--------- | :------------------------------------------------ |
+| **HHKB Pro Classic Type-S JIS (Charcoal)** | `PD-KB421BSC` | Charcoal (墨) | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro Classic Type-S JIS (White)**    | `PD-KB421WSC` | White (白)    | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro Classic Type-S JIS (Snow)**     | `PD-KB421YSC` | Snow (雪)     | 69-key JIS | Builds with `HHKB_JIS`; hardware testing required |
 
 ### Technical Analysis & Distinct Official Firmwares
 
 - **Separate Official PFU Firmware Packages for JIS and ANSI:** On the official Japanese PFU portal ([HHKB Firmware Download](https://happyhackingkb.com/jp/download/#fw)), **separate firmware update packages** are distributed for Japanese models:
   - For **Classic Type-S JIS**: `HHKB421_FW_JP_A904.hfb` (whereas ANSI Type-S uses `HHKB401_FW_A803.hfb`, and standard Classic uses `HHKB410_FW_A429.hfb`). The JIS container specifies its own model identifier `AHKS01` (distinct from `AHHS01` for ANSI Type-S).
   - For **Hybrid / Hybrid Type-S JIS**: `HHKB820_FW_JP_A249.hfb` (whereas ANSI Hybrid uses `HHKB800_FW_A048.hfb`).
-  Contrary to previous assumptions, the official ANSI and JIS firmware builds are distinct and purpose-built by the manufacturer.
+    Contrary to previous assumptions, the official ANSI and JIS firmware builds are distinct and purpose-built by the manufacturer.
 - **Core Hardware Architecture:** The `PD-KB421` series shares the exact same core controller architecture as the ANSI models (STMicroelectronics STM32L072, identical analog sensing frontend, dual-bank bootloader, and USB flasher protocol).
 - **Matrix Routing Difference:** The Japanese layout features **69 physical keys** (incorporating arrow cluster, dedicated Kana/Henkan keys, and split spacebar row). Because of the higher key count, the analog multiplexer addressing (U1/U2) and row strobe lines differ from the standard 60-key ANSI matrix (15 columns × 4 rows).
 - **Current Status:** DMK includes compilation support with `HHKB_JIS`, with dedicated layout maps `via_classic_jis.json` and `via_hybrid_jis.json`. Firmwares build cleanly; physical hardware verification is in progress.
@@ -95,6 +95,7 @@ The [local build and patch procedure](build.md#hybrid-only-local-build-and-facto
 ### Bluetooth Polling Rate Considerations
 
 Over USB, the keyboard supports polling rates up to 1000 Hz. Over Bluetooth, however, report frequency is bounded by BLE protocol specifications and Connection Interval negotiations:
+
 - In practice, BLE report rates hover around **~50 Hz** (20 ms interval).
 - Changing polling rate in the VIA configurator while running wirelessly over Bluetooth provides no real benefit and should be locked in firmware to prevent invalid timing assumptions during wireless transmission.
 - For instructions on capturing report intervals and PacketLogger traces, see [Debug and HID Console](via-debug.md#bluetooth-hid-report-intervals-on-macos-hybrid).
@@ -102,6 +103,7 @@ Over USB, the keyboard supports polling rates up to 1000 Hz. Over Bluetooth, how
 ### Battery Sensing and Level Indication Mechanism (Hybrid)
 
 HHKB Hybrid keyboards operate from two AA batteries (1.5V Alkaline or 1.2V Ni-MH) or via the USB-C bus:
+
 - **Power Source Detection:** The power rail state is monitored via pin `PC13` of the STM32 (`LOW` indicates active USB power, `HIGH` indicates battery operation).
 - **Hardware Low-Battery Thresholds:** Rather than continuous voltage measurement via an analog ADC channel, the Hybrid hardware utilizes dedicated hardware voltage comparator stages with output lines tied to discrete digital GPIO inputs on Port B:
   - `PB9`: Critical battery cutoff threshold (**0%**). When this line reads logic `0`, the battery is exhausted.
@@ -112,7 +114,9 @@ HHKB Hybrid keyboards operate from two AA batteries (1.5V Alkaline or 1.2V Ni-MH
 When connected over USB, battery level always reads 100%.
 
 #### Battery LED Indication (Orange LED)
+
 Battery status is shown via the orange LED (pin `PA9` / indicator index 1) in two distinct modes:
+
 1. **On-Demand Battery Level Display (Show Battery):**
    - Triggered via the **BT Battery** keycode (`0x7E0A`), short press of the PC5 power button (if configured in VIA), or the **Show battery now** control in VIA Bluetooth settings.
    - The orange LED pulses in 400 ms cycles (200 ms ON, 200 ms OFF):
@@ -126,7 +130,6 @@ Battery status is shown via the orange LED (pin `PA9` / indicator index 1) in tw
      - At **5% or 0% level**: Two short flashes every 15 seconds.
 
 Battery readings are digitally debounced (requiring 3 consecutive matching samples 1 second apart) and transmitted over SPI to the Nordic nRF52832 to update the standard Bluetooth LE Battery Service (BAS).
-
 
 ---
 
@@ -223,37 +226,37 @@ If you have the hardware and want to collaborate, please open a GitHub Issue or 
 
 #### Standard HHKB Professional Hybrid (Wired USB-C + Bluetooth 5.0)
 
-| Commercial Name                       | Model Number | Layout      | Case Color | Keycap Color | Legends        | Switch Type     | Hardware Status |
-| :------------------------------------ | :----------- | :---------- | :--------- | :----------- | :------------- | :-------------- | :-------------- |
-| **HHKB Pro HYBRID (White)**           | `PD-KB800W`  | ANSI 60-key | White      | White / Gray | Dyesub Printed | Standard EC 45g | Hardware verified (via HFB patch) |
-| **HHKB Pro HYBRID (Charcoal)**        | `PD-KB800B`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Hardware verified (via HFB patch) |
-| **HHKB Pro HYBRID (White, Blank)**    | `PD-KB800WN` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Standard EC 45g | Hardware verified (via HFB patch) |
-| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Standard EC 45g | Hardware verified (via HFB patch) |
-| **HHKB Pro HYBRID JIS (White)**           | `PD-KB820W`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
-| **HHKB Pro HYBRID JIS (Charcoal)**        | `PD-KB820B`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
+| Commercial Name                       | Model Number | Layout      | Case Color | Keycap Color | Legends        | Switch Type     | Hardware Status                                   |
+| :------------------------------------ | :----------- | :---------- | :--------- | :----------- | :------------- | :-------------- | :------------------------------------------------ |
+| **HHKB Pro HYBRID (White)**           | `PD-KB800W`  | ANSI 60-key | White      | White / Gray | Dyesub Printed | Standard EC 45g | Hardware verified (via HFB patch)                 |
+| **HHKB Pro HYBRID (Charcoal)**        | `PD-KB800B`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Hardware verified (via HFB patch)                 |
+| **HHKB Pro HYBRID (White, Blank)**    | `PD-KB800WN` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Standard EC 45g | Hardware verified (via HFB patch)                 |
+| **HHKB Pro HYBRID (Charcoal, Blank)** | `PD-KB800BN` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Standard EC 45g | Hardware verified (via HFB patch)                 |
+| **HHKB Pro HYBRID JIS (White)**       | `PD-KB820W`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID JIS (Charcoal)**    | `PD-KB820B`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Standard EC 45g | Builds with `HHKB_JIS`; hardware testing required |
 
 #### HHKB Professional Hybrid Type-S (Silenced EC + Bluetooth 5.0)
 
-| Commercial Name                              | Model Number  | Layout      | Case Color | Keycap Color | Legends        | Switch Type       | Hardware Status |
-| :------------------------------------------- | :------------ | :---------- | :--------- | :----------- | :------------- | :---------------- | :-------------- |
-| **HHKB Pro HYBRID Type-S (White)**           | `PD-KB800WS`  | ANSI 60-key | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S (Charcoal)**        | `PD-KB800BS`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S (White, Blank)**    | `PD-KB800WNS` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S (Charcoal, Blank)** | `PD-KB800BNS` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S (Snow)**            | `PD-KB800YS`  | ANSI 60-key | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S (Snow, Blank)**     | `PD-KB800YNS` | ANSI 60-key | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Variant unverified |
-| **HHKB Pro HYBRID Type-S JIS (White)**           | `PD-KB820WS`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
-| **HHKB Pro HYBRID Type-S JIS (Charcoal)**        | `PD-KB820BS`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
-| **HHKB Pro HYBRID Type-S JIS (Snow)**            | `PD-KB820YS`  | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
-| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)**     | `PD-KB820YNS` | JIS 69-key  | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| Commercial Name                              | Model Number  | Layout      | Case Color | Keycap Color | Legends        | Switch Type       | Hardware Status                                   |
+| :------------------------------------------- | :------------ | :---------- | :--------- | :----------- | :------------- | :---------------- | :------------------------------------------------ |
+| **HHKB Pro HYBRID Type-S (White)**           | `PD-KB800WS`  | ANSI 60-key | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Variant unverified                                |
+| **HHKB Pro HYBRID Type-S (Charcoal)**        | `PD-KB800BS`  | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Variant unverified                                |
+| **HHKB Pro HYBRID Type-S (White, Blank)**    | `PD-KB800WNS` | ANSI 60-key | White      | White / Gray | Blank (無刻印) | Silent Type-S 45g | Variant unverified                                |
+| **HHKB Pro HYBRID Type-S (Charcoal, Blank)** | `PD-KB800BNS` | ANSI 60-key | Charcoal   | Charcoal     | Blank (無刻印) | Silent Type-S 45g | Variant unverified                                |
+| **HHKB Pro HYBRID Type-S (Snow)**            | `PD-KB800YS`  | ANSI 60-key | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Variant unverified                                |
+| **HHKB Pro HYBRID Type-S (Snow, Blank)**     | `PD-KB800YNS` | ANSI 60-key | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Variant unverified                                |
+| **HHKB Pro HYBRID Type-S JIS (White)**       | `PD-KB820WS`  | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID Type-S JIS (Charcoal)**    | `PD-KB820BS`  | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID Type-S JIS (Snow)**        | `PD-KB820YS`  | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
+| **HHKB Pro HYBRID Type-S JIS (Snow, Blank)** | `PD-KB820YNS` | JIS 69-key  | Snow White | Snow White   | Blank (無刻印) | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
 
 #### HHKB Professional Hybrid Type-S 30th Anniversary
 
-| Commercial Name                                  | Model Number   | Layout      | Case Color | Keycap Color | Legends        | Switch Type       | Hardware Status |
-| :----------------------------------------------- | :------------- | :---------- | :--------- | :----------- | :------------- | :---------------- | :-------------- |
-| **HHKB HYBRID Type-S 30th Anniv (Charcoal)**     | `PD-KB800BSC1` | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Variant unverified |
-| **HHKB HYBRID Type-S 30th Anniv (White)**        | `PD-KB800WSC1` | ANSI 60-key | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Variant unverified |
-| **HHKB HYBRID Type-S 30th Anniv (Snow)**         | `PD-KB800YSC1` | ANSI 60-key | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Variant unverified |
+| Commercial Name                                  | Model Number   | Layout      | Case Color | Keycap Color | Legends        | Switch Type       | Hardware Status                                   |
+| :----------------------------------------------- | :------------- | :---------- | :--------- | :----------- | :------------- | :---------------- | :------------------------------------------------ |
+| **HHKB HYBRID Type-S 30th Anniv (Charcoal)**     | `PD-KB800BSC1` | ANSI 60-key | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Variant unverified                                |
+| **HHKB HYBRID Type-S 30th Anniv (White)**        | `PD-KB800WSC1` | ANSI 60-key | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Variant unverified                                |
+| **HHKB HYBRID Type-S 30th Anniv (Snow)**         | `PD-KB800YSC1` | ANSI 60-key | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Variant unverified                                |
 | **HHKB HYBRID Type-S JIS 30th Anniv (Charcoal)** | `PD-KB820BSC1` | JIS 69-key  | Charcoal   | Charcoal     | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
 | **HHKB HYBRID Type-S JIS 30th Anniv (White)**    | `PD-KB820WSC1` | JIS 69-key  | White      | White / Gray | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
 | **HHKB HYBRID Type-S JIS 30th Anniv (Snow)**     | `PD-KB820YSC1` | JIS 69-key  | Snow White | Snow White   | Dyesub Printed | Silent Type-S 45g | Builds with `HHKB_JIS`; hardware testing required |
@@ -358,11 +361,11 @@ If you are interested in contributing hardware data or collaborating on reverse-
 
 ### External References & Community Teardowns
 
-- **FCC ID Official Internal Photos (PDF):**  
-  [FCC ID Internal Photographs (fccid.io)](https://fccid.io/m/c43d7d2438f06f734587671a0ccda4a33eedf70136552befb534f8075f53212a.pdf)  
+- **FCC ID Official Internal Photos (PDF):**\
+  [FCC ID Internal Photographs (fccid.io)](https://fccid.io/m/c43d7d2438f06f734587671a0ccda4a33eedf70136552befb534f8075f53212a.pdf)\
   High-resolution laboratory teardown photographs of internal PCBs, wireless antennas, trackpoint daughterboards, and component layouts submitted for FCC certification.
 
-- **Capacitive Gesture Slider Subsystem Controllers:**  
+- **Capacitive Gesture Slider Subsystem Controllers:**\
   Potential candidate ICs for the 4 capacitive gesture slider strips include the [Infineon PSoC 4 HVMS Lite Kits (Mouser)](https://eu.mouser.com/en/new/infineon/infineon-psoc-4-hvms-lite-kits/) family (featuring Infineon CapSense technology dedicated to high-SNR capacitive slider and touch-sensing applications).
 
 - **Qiita Teardown & Disassembly Walkthrough (Japanese):**

@@ -6,10 +6,11 @@ import struct
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch as mock_patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools/hhkb"))
-from patch_hybrid_hfb import assemble, bank_payload
+from patch_hybrid_hfb import assemble, bank_payload, patch, STOCK_TEMPLATES
 
 VERSIONS = {"AHHX01": [10,4,2,9], "AHHS01": [10,8,0,3],
             "AHKS01": [10,9,0,4], "AHUX01": [10,0,4,8], "AHJX01": [10,2,4,9]}
@@ -52,13 +53,21 @@ vm.runInContext('(async()=>{'+BODY+'})()',context).then(()=>console.log('OK')).c
         for model in ('AHUX01', 'AHJX01'):
             stock = container(model)
             app = application(model) + b'new application'
-            expected = assemble(bank_payload(app), stock[65540:])
+            tail = bytearray(stock[65540:])
+            tail[-10:-6] = bytes([10, 0 if model == 'AHUX01' else 2, 5, 0])
+            expected = assemble(bank_payload(app), bytes(tail))
+            layout = 'ansi' if model == 'AHUX01' else 'jis'
+            with mock_patch.dict(STOCK_TEMPLATES, {layout: ('test.hfb', hashlib.sha256(stock).hexdigest())}):
+                self.assertEqual(patch(stock, app, layout=layout), expected)
             result = self.run_js('''
 stockHashes[model]=hash;
 const output=await patchFirmware(Uint8Array.from(stock),Uint8Array.from(app));
 console.log(BufferNotAvailable=Array.from(output,x=>x.toString(16).padStart(2,'0')).join(''));
 '''.replace('BufferNotAvailable=', ''), model=model, hash=hashlib.sha256(stock).hexdigest(), stock=list(stock), app=list(app))
-            self.assertEqual(bytes.fromhex(result.splitlines()[0]), expected)
+            actual = bytes.fromhex(result.splitlines()[0])
+            self.assertEqual(actual, expected)
+            self.assertEqual(actual[65540:-10], stock[65540:-10])
+            self.assertEqual(actual[-10:-6], bytes([10, 0 if model == 'AHUX01' else 2, 5, 0]))
 
     def test_patch_rejects_unsafe_inputs(self):
         stock = container('AHUX01')

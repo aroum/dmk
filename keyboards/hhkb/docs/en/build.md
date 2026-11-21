@@ -22,6 +22,7 @@ Run builds from the repository root using standard DMK definition flags. DMK sup
 ```
 
 PowerShell (Windows):
+
 ```powershell
 .\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC
 .\build_all.ps1 -Keyboard hhkb -Define HHKB_CLASSIC_TYPE_S
@@ -44,42 +45,116 @@ After building, patch the raw STM32 image into the official vendor firmware cont
 
 `DEFAULT_MCU` in the keyboard configuration selects STM32L072, so the build command does not require an MCU argument. The output directory contains an `.hfb` PFU container (for Classic models) and a raw Bank 2 `.bin`; compiling does not flash the keyboard.
 
+### Hybrid build output and next step
+
+The commands above compile only the open STM32 image: `build/hhkb-script/dmk_hhkb_stm32l072.bin`. Use `HHKB_HYBRID` for ANSI/Type-S, or `HHKB_HYBRID,HHKB_JIS` for JIS/Type-S JIS. Hybrid Type-S needs no separate flag. Build variants sequentially because they share an output directory.
+
+Compiling yourself is optional: [GitHub Actions](#github-actions) publishes `dmk-hhkb-hybrid-ansi-stm32` and `dmk-hhkb-hybrid-jis-stm32` with matching `.bin` files, the HTML patcher and `via.json`. Patched Hybrid HFB images are not distributed because they contain proprietary Nordic code.
+
+After obtaining the BIN, download the matching original PFU firmware yourself and create an HFB using the [HTML patcher and installation instructions](install.md#hybrid-local-patching). Local packaging is required even for a CI binary. See below for the Python alternative. Building or packaging alone does not flash the keyboard.
+
 ## Model Identifiers and HFB Container Formats
 
-| Keyboard Line | Layout | DMK Build Defines | PFU Model ID | Version Line | Resulting Container |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Classic** | ANSI (60-key) | `HHKB_CLASSIC` | `AHHX01` | `A4.xx` (A4.50) | Ready `.hfb` (65,570 bytes) |
-| **Classic Type-S** | ANSI (60-key) | `HHKB_CLASSIC_TYPE_S` | `AHHS01` | `A8.xx` (A8.50) | Ready `.hfb` (65,570 bytes) |
-| **Classic Type-S JIS** | JIS (69-key) | `HHKB_CLASSIC_TYPE_S,HHKB_JIS` | `AHKS01` | `A9.xx` (A9.50) | Ready `.hfb` (65,570 bytes) |
-| **Hybrid / Type-S** | ANSI (60-key) | `HHKB_HYBRID` | `AHUX01` | `A0.xx` (A0.48) | Patched `HHKB800_FW_A048.hfb` (282,672 bytes) |
-| **Hybrid / Type-S JIS** | JIS (69-key) | `HHKB_HYBRID,HHKB_JIS` | `AHJX01` | `A2.xx` (A2.49) | Patched `HHKB820_FW_JP_A249.hfb` (282,672 bytes) |
+The table lists the PFU-compatible version written to the final DMK HFB, not the DMK CalVer/git version shown in VIA. All final HFB versions end in `.50`: A4.50, A8.50, A9.50, A0.50 and A2.50. Hybrid input templates remain the original A0.48 (ANSI) and A2.49 (JIS); their SHA-256 checks are unchanged. The Python and HTML patchers update the output version and CRC while preserving the Nordic payload.
 
-### HFB Container Structure for Wired Models (Classic)
+| Keyboard Line           | Layout        | DMK Build Defines              | PFU Model ID | DMK HFB Version | Resulting Container                              |
+| :---------------------- | :------------ | :----------------------------- | :----------- | :-------------- | :----------------------------------------------- |
+| **Classic**             | ANSI (60-key) | `HHKB_CLASSIC`                 | `AHHX01`     | `A4.50`         | Ready `.hfb` (65,570 bytes)                      |
+| **Classic Type-S**      | ANSI (60-key) | `HHKB_CLASSIC_TYPE_S`          | `AHHS01`     | `A8.50`         | Ready `.hfb` (65,570 bytes)                      |
+| **Classic Type-S JIS**  | JIS (69-key)  | `HHKB_CLASSIC_TYPE_S,HHKB_JIS` | `AHKS01`     | `A9.50`         | Ready `.hfb` (65,570 bytes)                      |
+| **Hybrid / Type-S**     | ANSI (60-key) | `HHKB_HYBRID`                  | `AHUX01`     | `A0.50`         | Patched `HHKB800_FW_A048.hfb` (282,672 bytes)    |
+| **Hybrid / Type-S JIS** | JIS (69-key)  | `HHKB_HYBRID,HHKB_JIS`         | `AHJX01`     | `A2.50`         | Patched `HHKB820_FW_JP_A249.hfb` (282,672 bytes) |
 
-An HHKB `.hfb` container for wired Classic models is exactly 65,570 bytes:
+### HFB Container Structure, Layout, and Versioning
+
+Official and DMK PFU firmware update files use the proprietary `.hfb` container format.
+
+#### Classic / Classic Type-S (ANSI/JIS)
+
+**Container size:** 65,570 bytes.
+
+**Structure:**
 
 ```text
-+---------------------------------------------------------------+
-| Outer CRC-16/MCRF4XX, little-endian (2 bytes)                 |
-+---------------------------------------------------------------+
-| Inner CRC-16/MCRF4XX of the Bank 2 payload (2 bytes)          |
-+---------------------------------------------------------------+
-| Bank 2 firmware, padded with 0xFF (65,536 bytes)              |
-+---------------------------------------------------------------+
-| Trailer: 14 × 0xFF, model ID (6), BCD version (4), 6 × 0xFF   |
-+---------------------------------------------------------------+
+Outer CRC-16/MCRF4XX (2 bytes)
+Inner STM32 CRC-16/MCRF4XX (2 bytes)
+STM32 Bank 2, padded with 0xFF (65,536 bytes)
+Trailer: 14 x 0xFF, model (6), version (4), 6 x 0xFF
 ```
 
-Both CRCs use reflected polynomial `0x8408`, initial value `0xFFFF`, and no final XOR. The inner CRC is payload-specific; it is not a fixed model tag. The image is linked for Bank 2 at `0x08010000`.
+**Byte layout:**
 
-`tools/hhkb/make_hfb.py` builds Classic variants and recalculates CRCs automatically.
+- `0x0000–0x0001`: outer CRC over `[0x0002:]`.
+- `0x0002–0x0003`: inner CRC over STM32 `[0x0004:0x10004]`.
+- `0x0004–0x10003`: 64 KiB STM32 image, linked at `0x08010000`, padded with `0xFF`.
+- `0x10004–0x10011`: 14 bytes of `0xFF` padding.
+- `0x10012–0x10017`: ASCII model ID: `AHHX01`, `AHHS01` or `AHKS01`.
+- `0x10018–0x1001B`: version bytes.
+- `0x1001C–0x10021`: six trailing `0xFF` bytes.
+
+**Checksums:** both CRCs use reflected polynomial `0x8408`, initial value `0xFFFF`, and no final XOR. The inner CRC depends on the STM32 payload; it is not a fixed model tag.
+
+**Versioning:** DMK outputs `A4.50` (`AHHX01`), `A8.50` (`AHHS01`) or `A9.50` (`AHKS01`). For example, `A4.50` is encoded as `0A 04 05 00`.
+
+**Packaging:** `make_hfb.py` creates the complete container directly from the DMK STM32 binary and calculates both CRCs. No original firmware or patching is needed.
+
+#### Hybrid / Hybrid Type-S (ANSI/JIS)
+
+**Container size:** 282,672 bytes.
+
+**Structure:**
+
+```text
+Outer CRC-16/MCRF4XX (2 bytes)
+Inner STM32 CRC-16/MCRF4XX (2 bytes)
+STM32 Bank 2, padded with 0xFF (65,536 bytes)
+Nordic update data and firmware (preserved)
+Model ID (6), version (4), trailing 0xFF (6)
+```
+
+**Byte layout:**
+
+- `0x0000–0x0001`: outer CRC over `[0x0002:]`.
+- `0x0002–0x0003`: inner CRC over STM32 `[0x0004:0x10004]`.
+- `0x0004–0x10003`: 64 KiB STM32 image, linked at `0x08010000`, padded with `0xFF`.
+- `0x10004–0x4501F`: Nordic update data and firmware, preserved unchanged.
+- `0x45020–0x45025`: ASCII model ID: `AHUX01` (ANSI) or `AHJX01` (JIS); `[-16:-10]`.
+- `0x45026–0x45029`: version bytes; `[-10:-6]`.
+- `0x4502A–0x4502F`: six trailing `0xFF` bytes.
+
+**Checksums:** both CRCs use reflected polynomial `0x8408`, initial value `0xFFFF`, and no final XOR. The inner CRC depends on the STM32 payload; it is not a fixed model tag.
+
+**Versioning:** DMK outputs `A0.50` (ANSI: `0A 00 05 00`) or `A2.50` (JIS: `0A 02 05 00`). The original input templates remain A0.48 and A2.49.
+
+**Packaging:** `hhkb.html` and `patch_hybrid_hfb.py` replace the STM32 image locally, update the version and both CRCs, and preserve all Nordic update data. Patched containers are not distributed because they retain proprietary firmware.
+
+> [!NOTE]
+> The PFU-compatible version in the HFB container (A4.50, A8.50, A9.50, A0.50, A2.50) is used exclusively by the PFU bootloader to validate the update file. The DMK CalVer/git version embedded in the STM32 application and displayed in VIA is independent of the container's version field.
 
 ## 3. Flash and RAM usage
 
+The STM32L072KB microcontroller has 128 KiB Flash (arranged into two 64 KiB banks; DMK runs exclusively in Bank 2 at `0x08010000–0x0801FFFF`) and 20 KiB (20,480 bytes) SRAM.
 
-The current linked STM32L072 image reserves 20,480 bytes of RAM: 288 bytes `.data`, 16,888 bytes `.bss`, and 2,048 bytes for `._user_heap_stack`, totalling 19,224 bytes (93.9%) and leaving 1,256 bytes in the link-time allocation. This is a build-time layout, not a measurement of worst-case runtime stack depth.
+### HHKB Classic (ANSI / Type-S)
 
-## GitHub Actions
+- **Flash (Bank 2):** ~51.0 KiB used (50,992 bytes out of 65,536 bytes; ~77.8% of available 64 KiB bank).
+- **RAM (Link-time allocation):** 1,600 bytes `.data`, 16,552 bytes `.bss`, 2,048 bytes `._user_heap_stack`, totalling 20,200 bytes (98.6%) and leaving 280 bytes free.
+
+### HHKB Hybrid (ANSI / Type-S / JIS)
+
+Includes SPI protocol engine for Nordic nRF52832 Bluetooth SoC, battery telemetry, and STOP power-saving state machine:
+
+- **Flash (Bank 2):** ~61.9 KiB used (61,912 bytes out of 65,536 bytes; ~94.5% of available 64 KiB bank).
+- **RAM (Link-time allocation):** 1,656 bytes `.data`, 16,736 bytes `.bss`, 2,048 bytes `._user_heap_stack`, totalling 20,440 bytes (99.8%) and leaving 40 bytes free.
+
+_Note:_ Values reflect build-time layout (`arm-none-eabi-size`), not runtime stack depth.
+
+## GitHub Actions and Prebuilt Releases
+
+Ready-to-flash containers and binaries are available in [GitHub Releases](https://github.com/aroum/dmk/releases) and CI build artifacts:
+
+- **Classic models:** ready-made `.hfb` containers (`AHHX01`, `AHHS01`, `AHKS01`) that can be flashed directly.
+- **Hybrid models:** open-source STM32 binaries (`dmk_hhkb_stm32l072.bin` for ANSI and JIS) alongside the [HTML patcher](../../../../tools/hhkb/hhkb.html) and `via.json`.
 
 Hybrid CI publishes STM32 binaries for ANSI and JIS. Download the matching binary and the standalone [HTML patcher](../../../../tools/hhkb/hhkb.html). Open the page locally, choose your official HFB and DMK binary, then click Patch and download. The result retains the factory radio firmware. The former empty-radio HFB step is commented out.
 
@@ -90,13 +165,79 @@ The [Build Firmware workflow](../../../../.github/workflows/build_test.yml) runs
 
 Each archive contains the model-specific `.hfb` and [via.json](../../via.json) for loading the custom menu through the [VIA web app](https://www.usevia.app/) Design tab. Select the archive that matches your keyboard. The Type-S build has been compiler-checked; physical board verification so far covers the standard Classic.
 
+<a id="why-hybrid-patching-is-required"></a>
+<a id="hybrid-local-build"></a>
 
+## Why Firmware Patching Is Required for Hybrid
 
-## Hybrid only: local build and factory-image patch
+Unlike the HHKB Classic, where the update file targets only the single STM32 controller, the official HHKB Hybrid update container (`HHKB800_FW_A048.hfb`, 282,672 bytes) is a **dual-target composite container**:
+
+1. The first 64 KB (`0x0004–0x10003`) contains firmware for the main STM32 controller (Flash Bank 2).
+2. The trailing ~216 KB contains the proprietary update payload for the **Nordic nRF52832** Bluetooth SoC (SoftDevice + BLE application stack) with its own staging header and checksums.
+
+### Why Prebuilt Hybrid HFB Releases Cannot Be Distributed
+
+Because the nRF payload contains proprietary, closed-source code owned by PFU Limited, distributing a precompiled full `.hfb` image for Hybrid keyboards would violate copyright restrictions. The DMK repository is strictly open-source and cannot distribute vendor binary blobs.
+
+### Why Clean CI-Generated Builds Failed on Hardware
+
+An experimental attempt was made to generate fully clean standalone images in GitHub Actions:
+
+- The STM32 section was populated with open-source DMK firmware.
+- The nRF payload section was replaced with empty padding or dummy data carrying an intentionally invalid checksum (CRC16/MD5).
+
+**The hypothesis:** The Nordic nRF52832 bootloader would detect the corrupt payload, reject it, and safely preserve its installed factory Bluetooth firmware, while the STM32 update would succeed.
+
+**Actual hardware test results:**
+
+1. The Nordic nRF bootloader behaves as predicted: it verifies the staging area, detects the MD5/CRC mismatch, purges the staging buffer, and **safely preserves the existing stock Bluetooth firmware**.
+2. However, the update transaction is orchestrated by the **STM32 Bank 1 bootloader**, which polls the Nordic chip over SPI at finalization (`commandE3`).
+3. Upon receiving an error/rejection status from the Nordic SoC, **STM32 Bank 1 rejects the overall update process**: it refuses to mark Bank 2 as valid (leaving boot flag `0x08080360 = 0`) and never passes execution to DMK in Bank 2.
+
+As a result, a standalone "clean" HFB cannot be accepted by the stock bootloader without modifying Bank 1.
+
+### The Proven Working Solution: Local Vendor Image Patching
+
+To satisfy the Bank 1 update validator without redistributing vendor binaries, DMK provides the local patching utilities (the standalone [HTML patcher](../../../../tools/hhkb/hhkb.html) or `tools/hhkb/patch_hybrid_hfb.py`):
+
+1. The user downloads the official update file directly from [PFU's official download center](https://happyhackingkb.com/download/) (`HHKB800_FW_A048.hfb` for ANSI or `HHKB820_FW_JP_A249.hfb` for JIS).
+2. The patcher replaces **only the first 64 KB STM32 payload** with the freshly compiled or downloaded DMK binary, preserves the authentic factory nRF payload untouched, and recalculates the outer container CRCs.
+3. Because the nRF section remains authentic and valid, both microcontrollers validate successfully, and Bank 1 boots DMK on the STM32 while keeping full Bluetooth functionality.
+
+<a id="hybrid-local-patching"></a>
+
+### Hybrid: local HTML patching and browser flashing
+
+Download [hhkb.html](../../../../tools/hhkb/hhkb.html) and open it in Chrome or Edge. Patching works offline. The Flash keyboard tab uses WebHID with an explicit device permission prompt. Some browsers require serving the page on localhost. Select the PFU interface again after the recovery reboot. Keep SW6 OFF. Transfer errors appear in the log and stop the update. Browser flashing still requires hardware validation.
+
+For **Hybrid and Hybrid Type-S**, this single HTML file lets you prepare the update without installing Python:
+
+1. Open **Hybrid patching**. Follow the links to [PFU downloads for ANSI](https://happyhackingkb.com/download/) or [PFU downloads for JIS](https://happyhackingkb.com/jp/download/) and manually download `HHKB800_FW_A048.hfb` (ANSI) or `HHKB820_FW_JP_A249.hfb` (JIS).
+2. Select that file in **Original PFU update (.hfb)** and the matching DMK `.bin` from the build / release in **DMK STM32 firmware (.bin)**. Check the model and version shown for both files, then click **Patch and download**. The page replaces only the STM32 image, preserves the original Nordic firmware and downloads the resulting `.hfb`. Processing is local; the page does not upload the firmware files.
+3. To flash the result, open **Flash keyboard**, select the downloaded `.hfb` and click **Connect and flash**, or use the [HHKB Keymap Tool](https://happyhackingkb.com/download/) / DMK flasher described in [Install](install.md). The browser tab shows update status, progress and a log. Follow the Bank 1 recovery and SW6 instructions when DMK is already installed.
+
+The **Hybrid patching** tab accepts only the official Hybrid ANSI A0.48 or JIS A2.49 HFB (both CRCs, version and SHA-256 checked). Select a current DMK `.bin` with embedded model/version metadata. Each file is labeled with its model and version, and incompatible models/layouts disable patching. Older DMK binaries without metadata must be rebuilt. Hybrid and Hybrid Type-S share a model-specific image; ANSI and JIS do not.
+
+### Theoretical Alternative: Multi-stage Workaround Without Patching
+
+In theory, distributing clean DMK images without proprietary blobs could be achieved if the nRF update check in Bank 1 is bypassed. A complex 4-stage flashing sequence has been analyzed:
+
+1. **Stage 1 (Temporary Firmware):** Flash a clean image with a dummy Bluetooth payload that satisfies nRF validation. The nRF accepts it (Bluetooth is temporarily rendered inoperable, but the update succeeds). Once booted into Bank 2, the temporary STM32 firmware writes to Bank 1 Flash to bypass the nRF success status requirement.
+2. **Stage 2 (Restore Bluetooth):** Flash the official PFU update file through the vendor updater to restore genuine Bluetooth firmware on the Nordic SoC.
+3. **Stage 3 (Install Clean DMK):** Flash clean DMK with an invalid nRF image. The nRF rejects the update and keeps its genuine Bluetooth firmware (from Stage 2), while the modified Bank 1 considers Bank 2 DMK valid and boots it.
+4. **Stage 4 (Revert & Cleanup):** Toggling SW6 to return to stock restores the original validation logic in Bank 1.
+
+> [!CAUTION]
+> **Severe bricking risk:**
+> This procedure involves writing to Bank 1, which is the **sole hardware recovery path via USB**. Any unexpected interruption, bus error, or brownout during Bank 1 modification would render the keyboard permanently unbootable over USB, requiring a full teardown and an external SWD programmer to recover.
+>
+> Because of this unacceptable risk to users, local patching remains the vastly preferred, safe, and reliable approach.
+
+## Patch Hybrid Firmware (Python CLI)
 
 Obtain the exact official `HHKB800_FW_A048.hfb` separately from the [HHKB download center](https://happyhackingkb.com/download/) or your saved copy. The patcher expects SHA-256 `635b995eb5a15aa50c2cedc60da7d8998fcca8285a09d41d984c07fffcaf9d43`. Keep original and generated containers in the Git-ignored `keyboards/hhkb/local/` directory.
 
-For **Hybrid JIS**, add `HHKB_JIS` to the build definitions and pass `--layout jis` to the patcher with the original `HHKB820_FW_JP_A249.hfb`. The patcher preserves `AHJX01 / A2.49`. The ANSI template uses `AHUX01 / A0.48`.
+For **Hybrid JIS**, add `HHKB_JIS` to the build definitions and pass `--layout jis` to the patcher with the original `HHKB820_FW_JP_A249.hfb`. The patcher keeps model `AHJX01` and emits `A2.50`. ANSI output uses `AHUX01 / A0.50`.
 
 From the repository root:
 
@@ -110,11 +251,6 @@ python3 tools/hhkb/patch_hybrid_hfb.py \
   keyboards/hhkb/local/dmk_hybrid.hfb
 ```
 
-
-[patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) verifies the stock hash and Bank 2 vector table, replaces only the 64 KiB STM32 application, pads it with `FF`, and recalculates both CRCs. It preserves the factory nRF image, footer, and version. The output name must be new because the script refuses to overwrite files. **Firmware images generated with this patching method have been tested and verified to work on physical HHKB Hybrid hardware.**
+[patch_hybrid_hfb.py](../../../../tools/hhkb/patch_hybrid_hfb.py) verifies the stock hash and Bank 2 vector table, replaces only the 64 KiB STM32 application, pads it with `FF`, and recalculates both CRCs. It preserves the factory nRF image and model; the output HFB version is A0.50 (ANSI) or A2.50 (JIS). The output name must be new because the script refuses to overwrite files. **Firmware images generated with this patching method have been tested and verified to work on physical HHKB Hybrid hardware.**
 
 Rapid Trigger and 16 MHz ADC are included in every HHKB build. VIA controls Rapid Trigger and ADC oversampling at runtime.
-
-## Hybrid power-off behaviour
-
-All Hybrid builds now use the stock-style OFF implementation validated in build #204: Nordic idle over SPI, STM32 STOP without holding PD2 high, and resume without STM32 reset after ordinary OFF. No additional build flag is required. The earlier MIT/stock comparison builds have been removed from CI. Hybrid ANSI and JIS artifacts include the same implementation, including Type-S. See [power modes and measurements](config.md#power-modes-and-pc5).

@@ -48,6 +48,10 @@ The factory nRF is SPI master on PA15/PB3–PB5 (Mode 3, 125 kHz). PB6 requests 
 
 The common [VIA controls](via-debug.md) also configure USB matrix rate, calibration, actuation and hysteresis, Rapid Trigger when compiled in, ADC oversampling, hold-tap timing, and the base modes of both LEDs. Hybrid-specific battery, profile, and PC5 controls are listed below. The Classic factory calibration table must not be assumed to match Hybrid hardware.
 
+### Hybrid power-off behaviour
+
+All Hybrid builds use the stock-style OFF implementation: Nordic idle over SPI, STM32 STOP without holding PD2 high, and resume without STM32 reset after ordinary OFF. No additional build flag is required. The earlier MIT/stock comparison builds have been removed from CI. Hybrid ANSI and JIS artifacts include the same implementation, including Type-S.
+
 ### Power modes and PC5
 
 - **USB active:** USB output by default. Configured inactivity or BT Sleep can enter sleep. PC5/BT Power can enter USB soft-OFF: the USB device remains enumerated, while matrix scanning, sensor power and normal LEDs are disabled. STM32 keeps the scheduler, USB and SPI alive; the idle request is repeated about every 3 seconds without blocking PC5 polling. Unplugging USB while OFF enters battery STOP. Inserting USB into battery OFF still resets into the USB path.
@@ -57,22 +61,21 @@ The common [VIA controls](via-debug.md) also configure USB matrix rate, calibrat
 
 Short PC5 presses last 0–0.5 seconds and show the connected profile by default. VIA can assign no action, battery display, sleep, next profile, or last Bluetooth profile/USB toggle. Long presses fire after two seconds and default to OFF; VIA can assign sleep or pairing of the last profile. The guarded OFF wake gesture is fixed.
 
-The SPI protocol and original STOP implementation retain their MIT attribution. The selected ordinary OFF path follows the supplied stock analysis; repeated power-button cycles, Bluetooth reconnection and direct sleep-to-OFF were confirmed by the tester in build #204. Wake with matrix affects key probing only, not PC5 behaviour.
+The SPI protocol and original STOP implementation retain their MIT attribution. The selected ordinary OFF path follows the supplied stock analysis; repeated power-button cycles, Bluetooth reconnection and direct sleep-to-OFF were confirmed by the tester. Wake with matrix affects key probing only, not PC5 behaviour.
 
 ### Differences from stock sleep and OFF
 
-The following stock behaviour comes from the supplied static analysis of one Bank 2 image, not an independent hardware verification. Configuration defaults are unknown, USB behaviour is only partly traced, and the key-to-wake path was not followed.
+On battery power, DMK aims to reproduce the stock Hybrid's power-management behaviour as closely as possible, including clocks, ADC operation, Nordic idle signalling, button handling and STM32 STOP. The goal is stock-level battery consumption. Ordinary OFF has reached the stock reference of 0.21 mA on the tested keyboard; identical consumption in every mode has not yet been confirmed.
 
-- **Stock state 5:** according to the supplied disassembly it blanks LEDs, keeps STM32, matrix scanning and SPI running, and does not enter STOP. There are two traced entry paths: about 599 seconds of inactivity enters state 5 on USB or when configuration byte 5 = 1 (otherwise OFF); a no-connection notification followed by 60 seconds invokes Nordic disconnect/idle with bounded retries before entering state 5. Thus Nordic may already be disconnected/idle; retaining the Bluetooth connection is not guaranteed. PC5 release after 0.1–2 seconds returns to state 4; holding at least 2 seconds enters OFF directly. Without USB and with byte 5 = 0, the minutes stored at `0x20000079` lead to ordinary OFF without reset. A slot-connected notification appears to select state 3. Configuration defaults, the exact names of states 1–4, and key-to-wake transitions remain unverified.
-- **DMK configurable sleep:** uses Nordic idle, as in the traced stock disconnect-to-state-5 path, and requests the last profile on wake. VIA determines inactivity timing (default 30 min) and whether to probe keys at 1 Hz; stock state 5 scans continuously. DMK also idles Nordic when entering sleep from a connected state, instead of retaining the BT connection. The fixed 60-second disconnected standby is used only when automatic sleep is enabled. The VIA timer after sleep (default 3 min) enters ordinary OFF without reset on PC5 wake, only on battery. Neither default is claimed as a verified stock default.
-- **Stock ordinary OFF:** the described Nordic idle exchange waits up to 3 seconds for a disconnected notification, then stops matrix/analog activity and enters low-power STOP without changing PD2. PC5 hold of at least 1 second arms wake; release resumes without reset. DMK follows this approach, and the tester confirmed repeated wake/reconnection and 0.21 mA OFF current.
-- **Ten-second guard:** after the orange warning and button release, DMK now repeats the Nordic idle exchange before remaining OFF. Battery STOP restores the foreground SPI/clock context for this exchange without powering the matrix or selecting a profile, then returns to STOP. USB soft-OFF repeats the exchange without stopping USB.
-- **USB:** the supplied stock disassembly shows state-5 sleep after inactivity and soft-OFF that retains STM32/USB but disables matrix/sensors and repeats idle/wait handling. DMK now provides this soft-OFF and allows VIA-configured sleep on USB; PC5 wake is release-based and does not reset STM32. USB sleep has no automatic OFF. Stock flags `0xac`/`0xaf` and states `0x3c`/`0x3d` remain partly understood; exact internal equivalence is not claimed.
-- **Critical battery:** the stock path at `0x08011380` reportedly handles PB9 LOW with USB absent: orange indication, deep STOP after 180 seconds or a 2-second hold, then reset on wake. DMK now implements a dedicated critical-battery path: PB9 LOW on battery starts a 180-second warning with a steady orange LED, pauses matrix scanning and releases keys while servicing Nordic. PC5 held for at least 2 seconds enters deep STOP immediately, regardless of the configured long action; short presses cannot dismiss it. At timeout it uses the Nordic idle handshake, clears matrix/analog pins and enters deep STOP with PC5/EXTI5 masked; only USB/PC13 wakes and resets STM32. The timeout is checked at least once per second while waiting, followed by the bounded shutdown handshake. USB insertion or PB9 returning HIGH cancels the warning and resumes operation. In critical STOP, LPTIM watchdog servicing still wakes the CPU periodically, but PC5 is ignored even when held during these wakes. This safety path overrides VIA sleep timers, matrix wake and LED toggles; the 5%/15% warnings remain configurable. Host tests and ANSI/JIS builds verify the software paths; electrical timing, wake and current require a new hardware check.
+Ordinary OFF follows the stock sequence: request Nordic idle, stop the matrix and analog circuitry, and enter STOP without holding PD2 HIGH. Holding PC5 for about one second and releasing resumes operation without resetting STM32. A hold of ten seconds cancels startup, shows the orange warning and repeats the idle exchange before returning to OFF. The separate critical-battery path uses the 180-second warning and USB-only wake with reset.
+
+The remaining intentional differences are primarily the extra [VIA settings](via-debug.md): inactivity and sleep-to-OFF timers, optional 1 Hz matrix wake, configurable short/long PC5 actions, battery ADC oversampling and indicator options. Matrix wake changes only key probing; PC5 behaviour is independent of that checkbox. Sleep always requests Nordic idle and stops regular matrix scans, whereas the analyzed stock state 5 continues scanning and its Nordic handling depends on the entry path. DMK also uses tickless idle/WFI between active scans. These differences mean that sleep is not claimed to be internally identical to stock.
+
+Stock behaviour is based on the supplied static analysis, supplemented by the tester's OFF/wake checks. Some stock configuration defaults and transitions remain unverified. The latest sleep implementation still needs fresh current measurements.
 
 ### Measured battery consumption and thresholds (Hybrid)
 
-The latest comparison, received on 21 November 2026, is shown below. Earlier builds drew 4 mA in OFF (19 November) and 2.51 mA (build #196); build #204 with the selected stock-style OFF path reached 0.21 mA. These are measurements of one keyboard, not guaranteed values for every board.
+The table below compares stock firmware with the selected DMK implementation. These measurements were received on 21 November 2026 and apply to one keyboard; they are not guaranteed values for every board. The sleep measurements predate the latest sleep changes and must be repeated.
 
 On battery, Hybrid now uses the stock-style clock tree described by static firmware analysis: HSI16 /4 → PLL ×4 /4 → 4 MHz CPU/AHB/APB, voltage Range 1, and zero Flash wait states. ADC1_IN1 uses synchronous PCLK/4 = 1 MHz, 12-bit single software-triggered conversions, minimum 1.5-cycle sampling time, and **LowPowerAutoPowerOff** (automatic power-down after each conversion). The pre-conversion row settling delay is approximately 25 µs. Oversampling is off by default; the independent battery 4x toggle remains an optional departure from the stock settings.
 
@@ -82,24 +85,24 @@ USB/TinyUSB, CRS, HSI48 and unused analog reference buffers are disabled on batt
 
 Battery OFF disables the ADC regulator, TIM2, USB and HSI48, clears matrix/multiplexer outputs and enters STOP. USB soft-OFF keeps USB/CPU/SPI alive while TIM2 scanning and analog sensor outputs are disabled. SWD markers: `hhkb_stop_stage` 1 = preparation, 2 = waiting for button release, 3 = before WFI, 4 = returned from WFI, 5 = timing the button, 6 = resume. `hhkb_stop_wake_count` counts WFI returns. Both are volatile RAM diagnostics.
 
-### Tester comparison, build #204
+### Measured consumption
 
 Bluetooth, 3.0 V; current in mA. The tester labelled the table “50 Hz scan rate”; the comparison firmware fixes battery matrix timing at 11 ms, independently of VIA. No measured matrix timing accompanied this report, so the table label does not establish an actual 50 Hz scan.
 
-| Mode | Stock firmware | DMK #204 MIT | DMK #204 stock-style (selected) |
-| --- | --- | --- | --- |
-| Idle | 3.28 | 2.9 | 3.0 |
-| Typing | 3.53–3.58 | 3.9 | 3.8 |
-| Typing on Fn layer | 3.4 | 6.0 | 5.8 |
-| OFF | 0.21 | 2.6 | 0.21 |
-| Sleep | Unconfirmed | 1.81 | 1.8 |
-| Sleep with matrix wake | Not available | 1.8 | 1.83 |
+| Mode                   | Stock firmware | DMK  |
+| ---------------------- | -------------- | ---- |
+| Idle                   | 3.28           | 3.0  |
+| Typing                 | 3.53–3.58      | 3.8  |
+| Typing on Fn layer     | 3.4            | 5.8  |
+| OFF                    | 0.21           | 0.21 |
+| Sleep                  | Unconfirmed    | 1.8  |
+| Sleep with matrix wake | Not available  | 1.83 |
 
 The source reports conflict on stock sleep: the earlier table says “Not observed”, while the later comparison lists 0.21 mA. That value is confirmed for stock OFF, but is not treated here as a verified measurement of stock state 5.
 
 The tester confirmed repeated PC5 OFF/on cycles with Bluetooth reconnection, direct sleep-to-OFF, and automatic power-off in the stock-style build. OFF reached the stock reference; connected sleep still draws about 1.8 mA. Fn-layer current may include the configured layer LED; repeat with both LEDs disabled to separate that contribution. This cause has not been measured.
 
-Current DMK inactivity sleep defaults to 30 minutes (0 disables automatic inactivity and disconnected-standby sleep). Manual sleep remains available. The separate power-off-after-sleep timer defaults to 3 minutes (0 never) and runs only on battery, entering ordinary OFF without reset on PC5 wake. Both settings retain their existing EEPROM representation. Sleep now idles Nordic; build #204 measurements above predate this change. A new power/wake test is required. If an already-started Nordic idle follow-up fails to complete within 100 ms during wake, DMK resets as a bounded recovery path rather than leaving reconnection blocked.
+Current DMK inactivity sleep defaults to 30 minutes (0 disables automatic inactivity and disconnected-standby sleep). Manual sleep remains available. The separate power-off-after-sleep timer defaults to 3 minutes (0 never) and runs only on battery, entering ordinary OFF without reset on PC5 wake. Both settings retain their existing EEPROM representation. Sleep now idles Nordic; the sleep measurements above predate this change. A new power/wake test is required. If an already-started Nordic idle follow-up fails to complete within 100 ms during wake, DMK resets as a bounded recovery path rather than leaving reconnection blocked.
 
 The battery display uses discrete hardware thresholds, not a continuous voltage-to-percentage conversion. During the reported supply-voltage sweep:
 
@@ -116,7 +119,6 @@ Thus the observed threshold transitions fall between 2.25–2.24 V, 2.14–2.13 
 The ANSI matrix and SPI protocol follow the supplied `hhkb_hybrid` research. Its `nrf_spi.c` and `power.c` have MIT headers; only protocol handling and the STOP wake sequence were adapted. See the attribution and full upstream notice in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol). Factory and patched PFU containers remain outside Git.
 
 JIS coordinates and the Hybrid factory calibration map remain unverified. A successful build does not establish that the keyboard boots, pairs, wakes from STOP, or reaches the expected battery current on real hardware.
-
 
 ## Bluetooth scan rate and report delivery (Hybrid)
 
