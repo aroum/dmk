@@ -28,7 +28,12 @@ void hhkb_hybrid_toggle_power(void);
 bool hhkb_hybrid_take_button_wake(void);
 uint32_t hhkb_hybrid_button_wait_ms(uint32_t now_ms);
 void hhkb_hybrid_enter_stop(void);
-void hhkb_hybrid_resume_after_stop(void);
+void hhkb_hybrid_resume_after_stop(bool wake);
+void hhkb_hybrid_off_service(uint32_t now_ms);
+void hhkb_hybrid_sleep_radio_idle(void);
+void hhkb_hybrid_wake_radio(void);
+bool hhkb_hybrid_take_link_wake(void);
+bool hhkb_hybrid_disconnected_sleep_due(uint32_t now_ms);
 // Critical-battery STOP: PC5 is masked; USB wake resets STM32.
 void hhkb_hybrid_enter_deep_sleep(void);
 bool hhkb_hybrid_off_is_deep(void);
@@ -39,6 +44,7 @@ void hhkb_hybrid_set_sleeping(bool sleeping);
 
 void hhkb_hybrid_set_wake_task(void *task);
 void hhkb_hybrid_sleep_exti(bool enabled);
+void hhkb_hybrid_notify_wake_from_isr(void);
 uint32_t hhkb_hybrid_indicator_wait_ms(uint32_t now_ms);
 
 void hhkb_hybrid_refresh_indicators(void);

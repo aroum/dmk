@@ -85,7 +85,7 @@ int main(void){
 #include <assert.h>
 static bool powered=true,poweroff_pending,critical_battery,battery=true;
 static bool off_from_battery,button_was_down,button_handled,button_sleep_wake;
-static bool matrix_sleeping,down,pairing,pairing_active;
+static bool matrix_sleeping,down,pairing,pairing_active,off_wake_ready;
 static uint32_t critical_battery_since,button_down_since,power_off_flash_until;
 static uint32_t battery_display_until,profile_display_until;
 static uint8_t display_slot,level=100;
@@ -112,6 +112,12 @@ static void setup(void){
  matrix_sleeping=down=false;level=0;deep=shorts=longs=refreshes=resets=0;
 }
 int main(void){
+ setup();powered=false;
+ hhkb_hybrid_critical_battery_poll(0);hhkb_hybrid_critical_battery_poll(180000);
+ assert(!critical_battery && !deep);
+ powered=true;hhkb_hybrid_critical_battery_poll(200000);
+ hhkb_hybrid_critical_battery_poll(379999);assert(!deep);
+ hhkb_hybrid_critical_battery_poll(380000);assert(deep==1);
  setup();battery=false;
  hhkb_hybrid_critical_battery_poll(0);hhkb_hybrid_critical_battery_poll(180000);
  assert(!hhkb_hybrid_critical_battery() && !deep);

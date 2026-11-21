@@ -4,7 +4,7 @@
 
 In the **Bluetooth** menu, enable the orange battery display, then click **Show battery now** or assign **BT Battery** to a key. One, two, three, or four flashes indicate 0%, 5%, 15%, or above 15%, respectively. The 100% value means all three factory low-battery thresholds are inactive; it is not a precise charge measurement. Separate toggles enable an orange low-battery warning (one flash every 30 seconds at 15%; two every 15 seconds at 5% or 0%), blue blinking while pairing (2 Hz pending, 4 Hz advertising), and 1–4 blue flashes when a profile is selected or connected. These settings are saved in EEPROM and need validation on Hybrid hardware.
 
-**PC5 short press** (0–0.5 seconds) can show the connected profile (default), show battery level, sleep, select the next Bluetooth profile, or switch the last Bluetooth profile/USB. **PC5 long press** (2 seconds) can turn power off (default), sleep, or pair the last profile. Connected sleep retains Nordic and optionally probes the matrix at 1 Hz; PC5 release after 0.1–2 seconds wakes, or a 2-second hold performs the configured long action directly. The Power off after sleep timer enters ordinary OFF: Nordic idle handshake, then STM32 STOP without holding PD2 high. PC5 hold of at least about 1 second followed by release resumes without STM32 reset; a 10-second hold cancels wake. USB insertion wakes ordinary OFF by reset. Only critical-battery STOP masks PC5 and requires USB to wake by reset. These two STOP paths must not be confused. When USB is absent, selecting USB is deferred until cable connection.
+**PC5 short press** (0–0.5 seconds) can show the connected profile (default), show battery level, sleep, select the next Bluetooth profile, or switch the last Bluetooth profile/USB. **PC5 long press** (2 seconds) can turn power off (default), sleep, or pair the last profile. Sleep requests Nordic idle and optionally probes the matrix at 1 Hz; PC5 release after 0.1–2 seconds wakes, or a 2-second hold performs the configured long action directly. The Power off after sleep timer enters ordinary OFF: Nordic idle handshake, then STM32 STOP without holding PD2 high. PC5 hold of at least about 1 second followed by release resumes without STM32 reset; a 10-second hold cancels wake. USB insertion wakes ordinary OFF by reset. Only critical-battery STOP masks PC5 and requires USB to wake by reset. These two STOP paths must not be confused. When USB is absent, selecting USB is deferred until cable connection.
 
 ### Travel curve
 
@@ -236,9 +236,9 @@ In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design t
 
 - Battery matrix rate is fixed at an 11 ms target period (about 90.9 Hz); there is no battery scan-rate control.
 - **Battery ADC oversampling 4x:** independent battery-mode toggle, off by default and saved in EEPROM. USB-powered operation uses the separate ADC oversampling setting, even when sending reports over Bluetooth. Older EEPROM records default this new setting to off.
-- **Sleep after inactivity:** 0–60 minutes, step 1; default 30; 0 disables. Battery only; enters connected sleep, not OFF.
+- **Sleep after inactivity:** 0–60 minutes, step 1; default 30; 0 disables. Applies to battery and USB; enters Nordic-idle sleep, not OFF. With automatic sleep enabled, 60 seconds without a BT connection also enters sleep; 0 disables both automatic triggers.
 - **Power off after sleep:** 0/1/3/5/10/20/30/40/50/60 min; default 3; 0 never. Battery only; enters ordinary OFF, with PC5 wake without reset. Saved separately in EEPROM; older records default to 3 min without changing calibration or keymaps. This is the same stored setting formerly labelled Deep sleep after sleep.
-- **Wake with matrix:** off by default. Only controls key probing during sleep: off disables probing, on probes at 1 Hz. PC5 behavior and Nordic link retention are identical.
+- **Wake with matrix:** off by default. Only controls key probing during sleep: off disables probing, on probes at 1 Hz. PC5 behaviour and Nordic idle are identical; wake requests the last Bluetooth profile when BT output is selected.
 - **Select paired profile / Start pairing:** choose profiles 1–4; pairing may replace a bond.
 - **Show battery level on orange LED / Show battery now:** enable and trigger battery flashes.
 - **Blink orange on low battery:** once every 30 seconds at 15%; twice every 15 seconds at 5%. At 0%, the critical-battery warning below takes priority.
@@ -293,3 +293,5 @@ The EC capacitive switch relies on a conical spring compressing against PCB sens
 - **Default Actuation Point:** **75% of travel** (750 ‰, approximately 2.8 mm). The key triggers reliably right after collapsing the tactile dome, avoiding accidental triggers on light key rests.
 - **Release Hysteresis:** **0.4 mm** (100 ‰). Provides a solid deadband preventing chatter or repeated triggers near the actuation boundary.
 - **Rapid Trigger:** Disabled by default. Can be enabled on demand under **HHKB Settings → Rapid Trigger**.
+
+USB soft-OFF keeps USB enumerated and VIA accessible, stops the matrix/sensors and blanks normal LEDs. Hold PC5 about 1 second and release to resume without reset; a 10-second hold cancels wake and repeats Nordic idle after the orange warning. Power off after sleep is battery-only; sleep itself is available on USB. Matrix wake and PC5 mappings keep their existing EEPROM settings.

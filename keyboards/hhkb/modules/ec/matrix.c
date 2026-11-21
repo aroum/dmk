@@ -185,6 +185,8 @@ void matrix_task(void *pvParameters) {
     bool sleeping = false;
     bool manual_sleep = false;
     bool critical_sleep = false;
+    bool off_suspended = false;
+    bool sleep_battery = false;
     TickType_t sleep_started = last_activity;
 #endif
     for (;;) {
@@ -193,16 +195,37 @@ void matrix_task(void *pvParameters) {
         hhkb_hybrid_critical_battery_poll(xTaskGetTickCount());
         if (hhkb_hybrid_powered()) hhkb_hybrid_button_poll(xTaskGetTickCount());
         if (!hhkb_hybrid_powered()) {
-            TIM2->DIER = 0;
-            ulTaskNotifyTake(pdTRUE, 0);
-            publish_released_matrix(published_state);
-            ADC1->CR |= ADC_CR_ADDIS;
-            GPIOC->BRR = (1U << 14) | (1U << 7);
-            hhkb_hybrid_enter_stop();
+            if (!off_suspended) {
+                TIM2->DIER = 0;
+                TIM2->CR1 &= ~TIM_CR1_CEN;
+                ulTaskNotifyTake(pdTRUE, 0);
+                publish_released_matrix(published_state);
+                ADC1->CR |= ADC_CR_ADDIS;
+                GPIOC->BRR = (1U << 14) | (1U << 7) | (1U << 8) | (1U << 6);
+                GPIOB->BRR = 0xFC07U;
+                hhkb_hybrid_sleep_exti(true);
+                off_suspended = true;
+            }
+            update_battery_clock(hhkb_hybrid_on_battery());
+            hhkb_hybrid_off_service(xTaskGetTickCount());
+            if (!hhkb_hybrid_powered() && hhkb_hybrid_on_battery())
+                hhkb_hybrid_enter_stop();
+            if (!hhkb_hybrid_powered()) {
+                // USB soft-OFF retains TinyUSB and services PC5/SPI at 20 Hz.
+                ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(50));
+                continue;
+            }
             hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
-            sleeping = manual_sleep = false;
+            hhkb_hybrid_wake_radio();
+            sleeping = manual_sleep = critical_sleep = off_suspended = false;
             last_activity = xTaskGetTickCount();
+            GPIOC->BSRR = 1U << 14;
+            if (!(ADC1->CFGR1 & ADC_CFGR1_AUTOFF)) {
+                ADC1->ISR = ADC_ISR_ADRDY;
+                ADC1->CR |= ADC_CR_ADEN;
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
             update_scan_period();
             TIM2->CR1 |= TIM_CR1_CEN;
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
@@ -219,16 +242,20 @@ void matrix_task(void *pvParameters) {
         if (hhkb_hybrid_pairing() && minutes > 10) minutes = 10;
         if (hhkb_hybrid_sleep_requested()) {
             hhkb_hybrid_clear_sleep_request();
-            if (battery) { manual_sleep = true; if (sleeping) sleep_started = now; }
+            manual_sleep = true;
+            if (sleeping) sleep_started = now;
         }
-        if (!battery || button || minutes == 0 || hhkb_is_calibrating()) {
+        if (button || minutes == 0 || hhkb_is_calibrating()) {
             last_activity = now;
         }
         bool critical = hhkb_hybrid_critical_battery();
-        if (!sleeping && battery && (critical || manual_sleep || (minutes != 0 &&
+        bool disconnected_due = minutes != 0 && !hhkb_is_calibrating() &&
+                                hhkb_hybrid_disconnected_sleep_due(now);
+        if (!sleeping && (critical || manual_sleep || disconnected_due || (minutes != 0 &&
             now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
             sleeping = true;
             sleep_started = now;
+            sleep_battery = battery;
             hhkb_hybrid_set_sleeping(true);
             TIM2->CR1 &= ~TIM_CR1_CEN;
             TIM2->DIER = 0;
@@ -237,20 +264,19 @@ void matrix_task(void *pvParameters) {
             ADC1->CR |= ADC_CR_ADDIS;
             GPIOC->BRR = (1U << 14) | (1U << 7);
             last_wake_scan = now;
-            // Sleep keeps Nordic alive regardless of the matrix-wake setting.
+            // Nordic idle is independent of the optional matrix wake probes.
             publish_released_matrix(published_state);
-            for (uint8_t i = 0; i < 40; ++i) {
-                hhkb_hybrid_service();
-                vTaskDelay(pdMS_TO_TICKS(1));
-            }
+            if (!critical) hhkb_hybrid_sleep_radio_idle();
         }
         if (sleeping) {
             bool button_wake = hhkb_hybrid_take_button_wake();
             bool critical_recovered = critical_sleep && !critical;
             critical_sleep = critical;
-            bool wake = !battery || (!critical && button_wake) || critical_recovered;
+            bool radio_wake = hhkb_hybrid_take_link_wake();
+            bool wake = battery != sleep_battery ||
+                        (!critical && (button_wake || radio_wake)) || critical_recovered;
             uint8_t deep_minutes = hhkb_bt_deep_minutes();
-            bool deep_due = !critical && deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
+            bool deep_due = battery && !critical && deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
             hhkb_hybrid_service();
             bool scan = !critical && hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
             if (!wake && !button && deep_due && !scan) { hhkb_hybrid_toggle_power(); continue; }
@@ -290,6 +316,7 @@ void matrix_task(void *pvParameters) {
             critical_sleep = false;
             hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
+            hhkb_hybrid_wake_radio();
             manual_sleep = false;
             last_activity = xTaskGetTickCount();
             update_scan_period();

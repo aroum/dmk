@@ -36,14 +36,17 @@ void hhkb_hybrid_sleep_exti(bool enabled) {
     NVIC_EnableIRQ(EXTI4_15_IRQn);
 }
 
-void EXTI4_15_IRQHandler(void) {
-    uint32_t pending = EXTI->PR & ((1UL << 5) | (1UL << 13));
-    EXTI->PR = pending;
-    if (pending && sleep_exti_enabled && sleep_wake_task) {
+void hhkb_hybrid_notify_wake_from_isr(void) {
+    if (sleep_exti_enabled && sleep_wake_task) {
         BaseType_t woken = pdFALSE;
         vTaskNotifyGiveFromISR(sleep_wake_task, &woken);
         portYIELD_FROM_ISR(woken);
     }
+}
+void EXTI4_15_IRQHandler(void) {
+    uint32_t pending = EXTI->PR & ((1UL << 5) | (1UL << 13));
+    EXTI->PR = pending;
+    if (pending) hhkb_hybrid_notify_wake_from_isr();
 }
 void LPTIM1_IRQHandler(void) { LPTIM1->ICR = LPTIM_ICR_ARRMCF; }
 
@@ -145,6 +148,7 @@ void hhkb_hybrid_enter_stop(void) {
     const uint32_t saved_spi = SPI1->CR1;
     const uint32_t saved_pwr = PWR->CR;
     const uint32_t saved_primask = __get_PRIMASK();
+    bool wake = false;
     hhkb_stop_stage = 1;
     hhkb_stop_wake_count = 0;
     // Called only on battery after all pressed keys have been released.
@@ -226,50 +230,50 @@ void hhkb_hybrid_enter_stop(void) {
                         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
                         stop_once(2);
                     }
-                    held_ticks = 0;
-                    break;
+                    goto restore_context;
                 }
                 if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
             }
             GPIOA->BRR = 1UL << 8;
             if (off_press_action(held_ticks, true) == 1) {
                 hhkb_stop_stage = 6;
-                if (!hhkb_hybrid_off_is_deep()) {
-                    // Keep Nordic running. Restore clocks while interrupts and
-                    // the scheduler remain masked; RTOS OFF time stays frozen.
-                    RCC->CR |= RCC_CR_HSION;
-                    while (!(RCC->CR & RCC_CR_HSIRDY)) {}
-                    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
-                    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {}
-                    RCC->CR |= RCC_CR_PLLON;
-                    while (!(RCC->CR & RCC_CR_PLLRDY)) {}
-                    RCC->CFGR = saved_cfgr;
-                    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
-                    SystemCoreClock = saved_core_clock;
-                    PWR->CR = saved_pwr;
-                    LPTIM1->IER = 0;
-                    EXTI->IMR = saved_imr; EXTI->EMR = saved_emr;
-                    EXTI->RTSR = saved_rtsr; EXTI->FTSR = saved_ftsr;
-                    SYSCFG->EXTICR[1] = saved_exti5; SYSCFG->EXTICR[3] = saved_exti13;
-                    GPIOB->BSRR = saved_mux | ((0xFC07UL & ~saved_mux) << 16);
-                    GPIOC->BSRR = 1UL << 14;
-                    ADC1->CR |= ADC_CR_ADVREGEN;
-                    // LPTIM keeps running until the analog regulator settles.
-                    lptim_wait_ticks(3);
-                    LPTIM1->CR = 0;
-                    (void)*(volatile uint8_t *)&SPI1->DR;
-                    (void)SPI1->SR;
-                    hhkb_hybrid_resume_after_stop();
-                    SPI1->CR1 = saved_spi;
-                    NVIC->ICER[0] = 0xFFFFFFFFUL;
-                    NVIC->ICPR[0] = 0xFFFFFFFFUL;
-                    vPortUpdateSysTickClock(saved_core_clock);
-                    NVIC->ISER[0] = saved_nvic;
-                    __set_PRIMASK(saved_primask);
-                    return;
-                }
-                NVIC_SystemReset();
+                wake = true;
+                goto restore_context;
             }
         }
     }
+restore_context:
+    // Keep Nordic running. Restore clocks while interrupts and
+    // the scheduler remain masked; RTOS OFF time stays frozen.
+    RCC->CR |= RCC_CR_HSION;
+    while (!(RCC->CR & RCC_CR_HSIRDY)) {}
+    RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW) | RCC_CFGR_SW_HSI;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {}
+    RCC->CR |= RCC_CR_PLLON;
+    while (!(RCC->CR & RCC_CR_PLLRDY)) {}
+    RCC->CFGR = saved_cfgr;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {}
+    SystemCoreClock = saved_core_clock;
+    PWR->CR = saved_pwr;
+    LPTIM1->IER = 0;
+    EXTI->IMR = saved_imr; EXTI->EMR = saved_emr;
+    EXTI->RTSR = saved_rtsr; EXTI->FTSR = saved_ftsr;
+    SYSCFG->EXTICR[1] = saved_exti5; SYSCFG->EXTICR[3] = saved_exti13;
+    GPIOB->BSRR = saved_mux | ((0xFC07UL & ~saved_mux) << 16);
+    if (wake) {
+        GPIOC->BSRR = 1UL << 14;
+        ADC1->CR |= ADC_CR_ADVREGEN;
+        lptim_wait_ticks(3);
+    }
+    LPTIM1->CR = 0;
+    (void)*(volatile uint8_t *)&SPI1->DR;
+    (void)SPI1->SR;
+    hhkb_hybrid_resume_after_stop(wake);
+    SPI1->CR1 = saved_spi;
+    NVIC->ICER[0] = 0xFFFFFFFFUL;
+    NVIC->ICPR[0] = 0xFFFFFFFFUL;
+    vPortUpdateSysTickClock(saved_core_clock);
+    NVIC->ISER[0] = saved_nvic;
+    __set_PRIMASK(saved_primask);
+    return;
 }

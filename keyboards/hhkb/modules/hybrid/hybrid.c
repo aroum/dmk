@@ -54,6 +54,12 @@ static volatile uint32_t power_off_flash_until;
 static bool button_was_down;
 static bool button_handled;
 static uint32_t button_down_since;
+static bool off_retry_pending, off_wait_release, off_wake_ready;
+static bool idle_polling;
+static uint32_t idle_poll_started, off_idle_since;
+static volatile bool radio_link_wake;
+static volatile bool radio_disconnected;
+static volatile uint32_t radio_disconnected_since;
 static volatile uint8_t *const spi_data = (volatile uint8_t *)&SPI1->DR;
 
 static void start_reply(const uint8_t *payload, uint8_t count) {
@@ -83,10 +89,15 @@ void SPI1_IRQHandler(void) {
                 pairing = false;
                 pairing_active = false;
                 active_slot = 0xff;
+                radio_disconnected = true;
+                radio_disconnected_since = xTaskGetTickCountFromISR();
             } else if (notification_type == 0x83 && (command & 0x0f) == 0x03 && (command >> 4) < 4) {
                 pairing = false;
                 pairing_active = false;
                 active_slot = command >> 4;
+                radio_disconnected = false;
+                radio_link_wake = true;
+                hhkb_hybrid_notify_wake_from_isr();
                 display_slot = active_slot;
                 profile_display_until = xTaskGetTickCountFromISR() + pdMS_TO_TICKS(3000);
                 if (battery_reported <= 100) battery_pending = battery_reported + 1;
@@ -202,7 +213,7 @@ bool hhkb_hybrid_output_bluetooth(void) {
 }
 bool hhkb_hybrid_sleep_requested(void) { return sleep_requested; }
 void hhkb_hybrid_clear_sleep_request(void) { sleep_requested = false; }
-void hhkb_hybrid_request_sleep(void) { if (hhkb_hybrid_on_battery()) sleep_requested = true; }
+void hhkb_hybrid_request_sleep(void) { sleep_requested = true; }
 
 static void release_current_output(void) {
     const USB_HID_KeyboardReport_TypeDef released = {.ReportID = 1};
@@ -244,18 +255,8 @@ void hhkb_hybrid_pair_last_profile(void) {
     hhkb_hybrid_request_slot(active_slot < 4 ? active_slot : hhkb_bt_last_slot(), true);
 }
 
-static void request_power_off(bool deep) {
-    if (!powered || poweroff_pending) return; // OFF is woken only by PC5 or connecting USB.
-    if (!hhkb_hybrid_on_battery()) return; // Stock button does not power off on USB.
-    poweroff_pending = true;
-    hhkb_hybrid_refresh_indicators(); // LED owner displays orange now.
-    release_current_output();
-    if (hhkb_hybrid_output_bluetooth()) {
-        for (uint8_t i = 0; i < 40 && queue_count; ++i) {
-            hhkb_hybrid_service();
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-    }
+static bool nordic_idle_wait(bool cancel_on_usb, uint16_t minimum_ms) {
+    auto_select_needed = false;
     // Ask Nordic to disconnect through the already implemented idle handshake.
     // Keep SPI alive for its follow-up request/confirmation, bounded to 3 s.
     // Do not replace a control request whose follow-up is already in flight.
@@ -268,25 +269,104 @@ static void request_power_off(bool deep) {
     control_command = 0x04;
     attention_retries = 0;
     NVIC_EnableIRQ(SPI1_IRQn);
+    uint8_t sleep_retries = 0;
     for (uint16_t i = 0; i < 3000; ++i) {
-        if (!hhkb_hybrid_on_battery()) { poweroff_pending = false; return; }
+        if (cancel_on_usb && !hhkb_hybrid_on_battery()) return false;
         hhkb_hybrid_service();
+        // Stock standby repeats the full idle exchange, not only PB6 pulses.
+        if (!minimum_ms && i && i % 200U == 0 && sleep_retries < 6 &&
+            active_slot != 0xff && !control_command && !control_polled &&
+            !reply_length && !(SPI1->SR & SPI_SR_BSY)) {
+            NVIC_DisableIRQ(SPI1_IRQn);
+            control_command = 0x04;
+            attention_retries = 0;
+            NVIC_EnableIRQ(SPI1_IRQn);
+            ++sleep_retries;
+        }
         if ((i & 0x1ffU) == 0) IWDG->KR = 0xAAAA;
-        if (i >= 1500 && !control_command && !control_polled && active_slot == 0xff && !reply_length &&
+        if (i >= minimum_ms && !control_command && !control_polled && active_slot == 0xff && !reply_length &&
             !(SPI1->SR & SPI_SR_BSY)) break;
         vTaskDelay(pdMS_TO_TICKS(1));
     }
+    return true;
+}
+
+// Enter radio-idle sleep after publishing released matrix rows.
+void hhkb_hybrid_sleep_radio_idle(void) {
+    auto_select_needed = false;
+    radio_link_wake = false;
+    release_current_output();
+    for (uint8_t i = 0; i < 40 && queue_count; ++i) {
+        hhkb_hybrid_service();
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+    (void)nordic_idle_wait(hhkb_hybrid_on_battery(), 0);
+}
+
+bool hhkb_hybrid_take_link_wake(void) {
+    NVIC_DisableIRQ(SPI1_IRQn);
+    bool wake = radio_link_wake;
+    radio_link_wake = false;
+    NVIC_EnableIRQ(SPI1_IRQn);
+    return wake;
+}
+bool hhkb_hybrid_disconnected_sleep_due(uint32_t now_ms) {
+    return radio_disconnected && hhkb_hybrid_output_bluetooth() && !pairing &&
+           now_ms - radio_disconnected_since >= 60000U;
+}
+void hhkb_hybrid_wake_radio(void) {
+    // Do not strand Nordic in a half-finished idle follow-up on wake.
+    for (uint8_t i = 0; i < 100 && control_command == 0x04 && control_polled; ++i) {
+        hhkb_hybrid_service();
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+    if (control_command == 0x04 && control_polled) {
+        NVIC_SystemReset(); // Stock recovery for an unresponsive SPI peer.
+        return;
+    }
+    // Preserve an explicit VIA/PC5 pairing or profile-selection action.
+    auto_select_needed = hhkb_hybrid_output_bluetooth() && active_slot == 0xff &&
+                         !pairing && control_command != 0x03 && control_command != 0x06;
+    radio_disconnected = false;
+    radio_link_wake = false;
+    // Replace an idle request only if its follow-up has not begun.
+    NVIC_DisableIRQ(SPI1_IRQn);
+    if (control_command == 0x04 && !control_polled) control_command = 0;
+    NVIC_EnableIRQ(SPI1_IRQn);
+}
+
+static void request_power_off(bool deep) {
+    if (!powered || poweroff_pending) return;
+    bool battery = hhkb_hybrid_on_battery();
+    if (deep && !battery) return;
+    poweroff_pending = true;
+    hhkb_hybrid_refresh_indicators();
+    release_current_output();
+    if (hhkb_hybrid_output_bluetooth()) {
+        for (uint8_t i = 0; i < 40 && queue_count; ++i) {
+            hhkb_hybrid_service();
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+    }
+    if (!nordic_idle_wait(battery, 1500)) { poweroff_pending = false; return; }
+    // BT Power can run in the keyboard task. Publish OFF only after all
+    // state is ready, so the matrix task cannot enter a half-initialized OFF.
+    taskENTER_CRITICAL();
     off_from_battery = hhkb_hybrid_on_battery();
     off_is_deep = deep || critical_battery;
-    powered = false;
-    poweroff_pending = false;
     power_off_flash_until = xTaskGetTickCount();
+    off_idle_since = power_off_flash_until;
+    off_retry_pending = idle_polling = off_wake_ready = false;
+    off_wait_release = true;
+    poweroff_pending = false;
+    powered = false;
+    taskEXIT_CRITICAL();
 }
 void hhkb_hybrid_toggle_power(void) { request_power_off(false); }
 void hhkb_hybrid_enter_deep_sleep(void) { request_power_off(true); }
 bool hhkb_hybrid_off_is_deep(void) { return off_is_deep; }
-void hhkb_hybrid_resume_after_stop(void) {
-    powered = true;
+void hhkb_hybrid_resume_after_stop(bool wake) {
+    powered = wake;
     poweroff_pending = false;
     matrix_sleeping = false;
     sleep_requested = false;
@@ -298,7 +378,10 @@ void hhkb_hybrid_resume_after_stop(void) {
     queue_count = queue_read = queue_write = 0;
     reply_length = reply_position = 0;
     notification_value = false;
-    auto_select_needed = true;
+    auto_select_needed = wake;
+    off_retry_pending = !wake;
+    off_wait_release = off_wake_ready = idle_polling = false;
+    radio_link_wake = radio_disconnected = false;
     attention_retries = 0;
     active_slot = 0xff;
     pairing = pairing_active = false;
@@ -307,10 +390,91 @@ void hhkb_hybrid_resume_after_stop(void) {
     *spi_data = 0;
 }
 
+// Foreground service for USB soft-OFF and a cancelled battery wake.
+// USB stays enumerated; no matrix events are generated while powered is false.
+void hhkb_hybrid_off_service(uint32_t now_ms) {
+    if (powered) return;
+    IWDG->KR = 0xAAAA;
+    bool battery = hhkb_hybrid_on_battery();
+    if (!battery && off_from_battery) { NVIC_SystemReset(); return; }
+    if (battery) {
+        off_from_battery = true;
+        if (off_retry_pending) {
+            poweroff_pending = true;
+            (void)nordic_idle_wait(true, 1500);
+            poweroff_pending = false;
+            off_retry_pending = false;
+        }
+        return;
+    }
+    bool down = hhkb_hybrid_button();
+    if (off_wait_release) {
+        if (down) return;
+        off_wait_release = false;
+        button_was_down = button_handled = false;
+    }
+    if (button_handled) {
+        if (down || (int32_t)(power_off_flash_until - now_ms) > 0) return;
+        button_handled = button_was_down = false;
+        off_retry_pending = true;
+    }
+    if (down && !button_was_down) button_down_since = now_ms;
+    uint32_t held = now_ms - button_down_since;
+    if (down) {
+        off_wake_ready = held >= 1000U;
+        if (held >= 10000U) {
+            off_wake_ready = false;
+            power_off_flash_until = now_ms + 3000U;
+            button_handled = true;
+        }
+    } else if (button_was_down) {
+        off_wake_ready = false;
+        if (held >= 1000U && held < 10000U) {
+            NVIC_DisableIRQ(SPI1_IRQn);
+            hhkb_hybrid_resume_after_stop(true);
+            NVIC_EnableIRQ(SPI1_IRQn);
+            hhkb_hybrid_refresh_indicators();
+            return;
+        }
+    }
+    button_was_down = down;
+    // Repeat the idle transaction without blocking USB or PC5 polling.
+    if (!idle_polling && (off_retry_pending || now_ms - off_idle_since >= 3000U) &&
+        !control_polled && !reply_length && !(SPI1->SR & SPI_SR_BSY)) {
+        NVIC_DisableIRQ(SPI1_IRQn);
+        control_command = 0x04;
+        attention_retries = 0;
+        NVIC_EnableIRQ(SPI1_IRQn);
+        idle_poll_started = now_ms;
+        idle_polling = true;
+        off_retry_pending = false;
+    }
+    if (idle_polling) {
+        hhkb_hybrid_service();
+        if ((!control_command && !control_polled && active_slot == 0xff && !reply_length &&
+             !(SPI1->SR & SPI_SR_BSY)) || now_ms - idle_poll_started >= 3000U) {
+            if (now_ms - idle_poll_started >= 3000U) {
+                // Discard an incomplete idle transaction before retrying it.
+                NVIC_DisableIRQ(SPI1_IRQn);
+                control_command = 0;
+                control_polled = false;
+                reply_length = reply_position = 0;
+                notification_value = false;
+                SPI1->CR2 &= ~SPI_CR2_TXEIE;
+                *spi_data = 0;
+                NVIC_EnableIRQ(SPI1_IRQn);
+            }
+            idle_polling = false;
+            off_idle_since = idle_poll_started;
+        }
+    }
+}
+
 // Called by the matrix task even while connected sleep has disabled scanning.
 // This safety path is independent of VIA sleep timers and indicator settings.
 bool hhkb_hybrid_critical_battery(void) { return critical_battery; }
 void hhkb_hybrid_critical_battery_poll(uint32_t now_ms) {
+    if (!powered) return; // OFF is checked for critical battery after wake.
     bool critical = hhkb_hybrid_on_battery() && hhkb_hybrid_battery_level() == 0;
     if (critical != critical_battery) {
         critical_battery = critical;
@@ -400,8 +564,8 @@ void hhkb_hybrid_show_battery(void) {
         battery_display_until = xTaskGetTickCount() + pdMS_TO_TICKS(4000);
 }
 uint32_t hhkb_hybrid_indicator_wait_ms(uint32_t now_ms) {
-    if (matrix_sleeping) return 1000;
     if (!powered) return 50;
+    if (matrix_sleeping) return 1000;
     uint8_t flags = hhkb_bt_indicator_flags();
     if (((flags & 1) && (int32_t)(battery_display_until - now_ms) > 0) ||
         ((flags & 8) && (int32_t)(profile_display_until - now_ms) > 0) ||
@@ -413,7 +577,8 @@ uint32_t hhkb_hybrid_indicator_wait_ms(uint32_t now_ms) {
 
 bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
     if (!powered) {
-        *on = index == 1 && (int32_t)(power_off_flash_until - now_ms) > 0;
+        *on = (index == 0 && off_wake_ready) ||
+              (index == 1 && (int32_t)(power_off_flash_until - now_ms) > 0);
         return true;
     }
     if (poweroff_pending) {
@@ -499,13 +664,15 @@ bool hhkb_hybrid_request_slot(uint8_t slot, bool pair) {
     NVIC_EnableIRQ(SPI1_IRQn);
     if (accepted) {
         auto_select_needed = false;
+        radio_disconnected = false;
+        if (matrix_sleeping) button_sleep_wake = true;
         hhkb_bt_set_last_slot(slot);
     }
     return accepted;
 }
 
 void hhkb_hybrid_service(void) {
-    if (!powered) return;
+    if (!powered && !poweroff_pending && !idle_polling) return;
     bool battery = hhkb_hybrid_on_battery();
     if (!source_seen) {
         source_seen = true;
@@ -520,7 +687,8 @@ void hhkb_hybrid_service(void) {
             if (!control_command) { control_polled = false; control_command = 0x04; }
         }
     }
-    if (battery && auto_select_needed && hello_seen && !control_command)
+    if (powered && !matrix_sleeping && !poweroff_pending && !idle_polling &&
+        (battery || manual_bt_output) && auto_select_needed && hello_seen && !control_command)
         hhkb_hybrid_request_slot(hhkb_bt_last_slot(), false);
     if (active_slot < 4 && active_slot != hhkb_bt_last_slot())
         hhkb_bt_set_last_slot(active_slot);

@@ -61,7 +61,7 @@ int main(void) {
  down=true; hhkb_hybrid_button_poll(UINT32_MAX-100);
  hhkb_hybrid_button_poll(1899);
  assert(longs==2 && resets==0);
- on_battery=false;hhkb_hybrid_request_sleep();assert(!sleep_requested);
+ on_battery=false;hhkb_hybrid_request_sleep();assert(sleep_requested);
  on_battery=true;hhkb_hybrid_request_sleep();assert(sleep_requested);
 }
 '''
@@ -81,12 +81,15 @@ int main(void) {
 static bool powered=true,poweroff_pending,battery=true,off_from_battery,control_polled,off_is_deep,critical_battery;
 static struct {uint32_t KR;} iwdg;
 #define IWDG (&iwdg)
+#define taskENTER_CRITICAL() ((void)0)
+#define taskEXIT_CRITICAL() ((void)0)
 static unsigned mode,calls,delays,releases;
 static uint8_t queue_count,control_command,attention_retries,active_slot,reply_length;
 static struct {uint32_t SR;} spi;
 #define SPI1 (&spi)
 #define SPI_SR_BSY 0x80
-static uint32_t power_off_flash_until;
+static uint32_t power_off_flash_until,off_idle_since;
+static bool auto_select_needed,off_retry_pending,idle_polling,off_wake_ready,off_wait_release;
 static struct {uint32_t BSRR;} gpio;
 #define GPIOD (&gpio)
 #define SPI1_IRQn 0
@@ -108,6 +111,7 @@ static void hhkb_hybrid_service(void){
  if(mode==4){if(calls==2){control_command=0;active_slot=255;spi.SR=0x80;}if(calls==1600)spi.SR=0;}
 }
 '''
+        harness += function(source, 'static bool nordic_idle_wait(')
         harness += function(source, 'static void request_power_off(')
         harness += function(source, 'void hhkb_hybrid_toggle_power(')
         harness += function(source, 'void hhkb_hybrid_enter_deep_sleep(')
@@ -123,6 +127,8 @@ int main(void){
  setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==1600);
  assert(!hhkb_hybrid_off_is_deep());
  setup(1);hhkb_hybrid_enter_deep_sleep();assert(!powered && hhkb_hybrid_off_is_deep());
+ setup(1);battery=false;hhkb_hybrid_toggle_power();assert(!powered && !off_from_battery);
+ setup(1);battery=false;hhkb_hybrid_enter_deep_sleep();assert(powered && !calls);
  setup(1);critical_battery=true;hhkb_hybrid_toggle_power();assert(!powered && hhkb_hybrid_off_is_deep());
 }
 '''
@@ -142,6 +148,8 @@ int main(void){
 static bool powered,poweroff_pending=true,matrix_sleeping=true,sleep_requested=true;
 static bool button_sleep_wake=true,button_was_down=true,button_handled=true;
 static bool control_polled=true,notification_value=true,auto_select_needed;
+static bool off_retry_pending,off_wait_release,off_wake_ready,idle_polling;
+static bool radio_link_wake=true,radio_disconnected=true;
 static uint8_t control_command=4,queue_count=3,queue_read=1,queue_write=4;
 static uint8_t reply_length=3,reply_position=1,spi_register=0xaa;
 static uint8_t attention_retries=5,active_slot=2,report[8]={1,2,3,4,5,6,7,8};
@@ -155,7 +163,7 @@ static volatile uint8_t *spi_data=&spi_register;
         harness += function(source, 'void hhkb_hybrid_resume_after_stop(')
         harness += r'''
 int main(void) {
- hhkb_hybrid_resume_after_stop();
+ hhkb_hybrid_resume_after_stop(true);
  assert(powered && auto_select_needed);
  assert(!poweroff_pending && !matrix_sleeping && !sleep_requested);
  assert(!button_sleep_wake && !button_was_down && !button_handled);
@@ -165,6 +173,9 @@ int main(void) {
  assert(!attention_retries && active_slot==255 && !pairing && !pairing_active);
  assert(!(spi.CR2 & SPI_CR2_TXEIE));
  for(unsigned i=0;i<sizeof(report);++i)assert(report[i]==0);
+ assert(!off_retry_pending && !radio_link_wake && !radio_disconnected);
+ hhkb_hybrid_resume_after_stop(false);
+ assert(!powered && !auto_select_needed && off_retry_pending);
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:

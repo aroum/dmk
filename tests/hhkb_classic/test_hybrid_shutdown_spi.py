@@ -29,7 +29,10 @@ static uint8_t report[8],keyboard_queue[8][7],reply[9];
 static uint8_t queue_count,queue_read,control_command,control_slot,reply_length,reply_position;
 static uint8_t notification_type,active_slot,battery_pending,battery_reported,display_slot,attention_retries;
 static bool notification_value,pairing,pairing_active,battery_polled,hello_seen,control_polled;
-static uint32_t profile_display_until;
+static uint32_t profile_display_until,radio_disconnected_since;
+static bool radio_link_wake,radio_disconnected;
+static unsigned wakes;
+static void hhkb_hybrid_notify_wake_from_isr(void){++wakes;}
 static uint32_t xTaskGetTickCountFromISR(void){return 0;}
 '''
         harness += function(source,'static void start_reply(')
@@ -52,6 +55,10 @@ int main(void){
  assert(control_command==4 && queue_count==1 && battery_pending==16);
  assert(control_polled);
  transact(3,idle,sizeof(idle));assert(control_command==0 && !control_polled);
+ data=0x83;spi.SR=SPI_SR_RXNE;SPI1_IRQHandler();
+ data=1;SPI1_IRQHandler();assert(radio_disconnected && active_slot==255);
+ data=0x83;SPI1_IRQHandler();data=0x13;SPI1_IRQHandler();
+ assert(!radio_disconnected && radio_link_wake && active_slot==1 && wakes==1);
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:

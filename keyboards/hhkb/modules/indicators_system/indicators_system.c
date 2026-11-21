@@ -52,8 +52,7 @@ void keyboard_platform_tick(TickType_t now) {
             on = false;
         }
 #ifdef HHKB_HYBRID
-        else if ((battery || !hhkb_hybrid_powered()) &&
-                 hhkb_hybrid_led_override(i, now, &on)) {
+        else if (hhkb_hybrid_led_override(i, now, &on)) {
             // Hybrid status has priority over the configurable default mode.
         }
 #endif
