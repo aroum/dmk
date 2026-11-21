@@ -112,6 +112,9 @@ uv run tools/ec_curve_visualizer.py
 - **Start calibration:** Begins baseline capacitance capture (16 matrix scan cycles).
 - **Print status to HID Console:** Dumps active calibration progress and peak metrics to VIA HID Console.
 - **Finish and save:** Validates and commits calibration to EEPROM.
+
+Outside an explicit calibration session, baseline and peak remain fixed: runtime ADC spikes do not expand the saved range. Recalibrate after changing domes, silencing rings or key travel.
+
 - **Actuation point:** Actuation depth (0.1–4.0 mm in 0.1 mm steps).
 - **Release hysteresis:** Classic mode release buffer (0.1–4.0 mm in 0.1 mm steps).
 - **Settings EEPROM:** Availability of EEPROM storage (`Writable` / `Occupied`).

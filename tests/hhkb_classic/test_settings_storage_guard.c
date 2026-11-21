@@ -10,7 +10,7 @@ static void set_magic(uint8_t *p, uint32_t value) {
     p[3] = value >> 24;
 }
 static bool writable(uint8_t *bytes) {
-    return hhkb_settings_region_writable(bytes, 264, 248, 260, 264);
+    return hhkb_settings_region_writable(bytes, 0x484b4345, 264, 248, 260, 264);
 }
 int main(void) {
     uint8_t bytes[264] = {0};
@@ -37,5 +37,13 @@ int main(void) {
     assert(writable(bytes));
     set_magic(bytes, 0x484b4345);
     assert(writable(bytes));
+    set_magic(bytes, 0x484b4a45);
+    assert(!writable(bytes)); // ANSI must not own JIS data.
+    assert(hhkb_settings_region_writable(bytes, 0x484b4a45, 264, 248, 260, 264));
+    assert(hhkb_settings_owned_size(0x484b4a45, 0x484b4a45, 324, 248, 260, 264) == 324);
+    set_magic(bytes, 0x484b4345);
+    assert(!hhkb_settings_region_writable(bytes, 0x484b4a45, 264, 248, 260, 264));
+    set_magic(bytes, 0x484b4341);
+    assert(!hhkb_settings_region_writable(bytes, 0x484b4a45, 264, 248, 260, 264));
     return 0;
 }

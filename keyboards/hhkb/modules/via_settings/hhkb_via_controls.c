@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 
 /* Channel 0: calibration, actuation and LEDs. Values 1..6 retain their IDs. */
 bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
@@ -89,7 +90,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
 #endif
     if (id >= EC_CURVE_ENABLE && id <= EC_CURVE_STATUS) {
         if (request[0] == 0x08) {
-            if (id == EC_CURVE_STATUS) strcpy((char *)&response[3], ec_curve_status);
+            if (id == EC_CURVE_STATUS) snprintf((char *)&response[3], 29, "%s", ec_curve_status);
             else response[3] = ec_curve_settings[id - EC_CURVE_ENABLE];
             return true;
         }
@@ -101,7 +102,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[0] == 0x08) {
         if (id == 12) {
             const char *status = hhkb_settings_storage_writable() ? "Writable" : "Occupied: not saved";
-            strcpy((char *)&response[3], status);
+            snprintf((char *)&response[3], 29, "%s", status);
         } else if (id == 28) {
 #ifndef DMK_FW_VERSION
 #define DMK_FW_VERSION "unknown"

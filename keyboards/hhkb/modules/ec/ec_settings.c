@@ -167,7 +167,7 @@ bool vial_keyboard_settings_reset(void) {
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)words;
     size_t current_size = cal->magic == USER_EEPROM_MAGIC && cal->version == USER_EEPROM_VERSION
         ? sizeof(*cal) : offsetof(hhkb_eeprom_cal_t, curve);
-    size_t size = hhkb_settings_owned_size(cal->magic, current_size,
+    size_t size = hhkb_settings_owned_size(cal->magic, USER_EEPROM_MAGIC, current_size,
         offsetof(hhkb_eeprom_cal_t, rt), WORD_ALIGNED_SIZE(offsetof(hhkb_eeprom_cal_t, scan_rate)),
         offsetof(hhkb_eeprom_cal_t, curve));
     if (size == SIZE_MAX) return true; // Foreign data has no DMK record to reset.
@@ -181,7 +181,7 @@ bool hhkb_settings_storage_writable(void) {
         for (size_t i = offsetof(hhkb_eeprom_cal_t, curve); i < sizeof(hhkb_eeprom_cal_t); ++i)
             if (bytes[i] != 0) return false;
     }
-    return hhkb_settings_region_writable(bytes,
+    return hhkb_settings_region_writable(bytes, USER_EEPROM_MAGIC,
         sizeof(hhkb_eeprom_cal_t), offsetof(hhkb_eeprom_cal_t, rt),
         WORD_ALIGNED_SIZE(offsetof(hhkb_eeprom_cal_t, scan_rate)),
         offsetof(hhkb_eeprom_cal_t, curve));
@@ -192,13 +192,18 @@ void hhkb_settings_mark_dirty(void) {
     s_settings_dirty = true;
 }
 
+// Called by vial_eeprom_task in the USB task, before the keymap writer.
+// Do not call this EEPROM transaction concurrently from another task.
 void hhkb_calibration_save_to_eeprom(void) {
     if (!hhkb_settings_storage_writable()) return;
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
         FLASH->PEKEYR = 0x89ABCDEF;
         FLASH->PEKEYR = 0x02030405;
     }
-    while (FLASH->PECR & FLASH_PECR_PELOCK);
+    if (FLASH->PECR & FLASH_PECR_PELOCK) {
+        hhkb_settings_mark_dirty();
+        return;
+    }
 
     hhkb_eeprom_cal_t cal = {0};
     cal.magic = USER_EEPROM_MAGIC;
@@ -247,8 +252,16 @@ void hhkb_calibration_save_to_eeprom(void) {
     for (size_t i = 0; i < sizeof(hhkb_eeprom_cal_t) / 4; i++) {
         if (dst[i] != src[i]) {
             while (FLASH->SR & FLASH_SR_BSY);
+            const uint32_t errors = FLASH_SR_WRPERR | FLASH_SR_PGAERR | FLASH_SR_SIZERR |
+                FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR;
+            FLASH->SR = errors | FLASH_SR_EOP;
             dst[i] = src[i];
             while (FLASH->SR & FLASH_SR_BSY);
+            if ((FLASH->SR & errors) || dst[i] != src[i]) {
+                FLASH->PECR |= FLASH_PECR_PELOCK;
+                hhkb_settings_mark_dirty();
+                return;
+            }
             vTaskDelay(pdMS_TO_TICKS(1));
         }
     }
@@ -352,7 +365,9 @@ void hhkb_calibration_load(void) {
                 }
             }
         }
-    } else if (cal->magic == USER_EEPROM_LEGACY_MAGIC || cal->magic == USER_EEPROM_C_MAGIC || cal->magic == USER_EEPROM_PREV_MAGIC || cal->magic == USER_EEPROM_OLD_MAGIC) {
+    }
+#ifndef HHKB_JIS
+    else if (cal->magic == USER_EEPROM_LEGACY_MAGIC || cal->magic == USER_EEPROM_C_MAGIC || cal->magic == USER_EEPROM_PREV_MAGIC || cal->magic == USER_EEPROM_OLD_MAGIC) {
         // Legacy fallback
         if (cal->magic != USER_EEPROM_OLD_MAGIC) {
             if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= 1000) s_rt_cfg.act_pm = cal->rt.act_pm;
@@ -372,7 +387,9 @@ void hhkb_calibration_load(void) {
                 s_cal_peak[col][row] = (cal->peak[col][row] > s_cal_baseline[col][row] + RT_MIN_RANGE && cal->peak[col][row] <= 4095) ? cal->peak[col][row] : def_p;
             }
         }
-    } else {
+    }
+#endif
+    else {
         // Defaults: factory baseline + typical travel
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
@@ -568,14 +585,10 @@ bool hhkb_get_debug_flag(uint8_t flag) {
 }
 
 void hhkb_set_debug_flag(uint8_t flag, bool enabled) {
-    if (enabled) {
-        s_debug_flags |= flag;
-    } else {
-        s_debug_flags &= ~flag;
-    }
-    if (flag == DEBUG_FLAG_TOPRE) {
-        hhkb_settings_mark_dirty();
-    }
+    uint8_t previous = s_debug_flags;
+    if (enabled) s_debug_flags |= flag;
+    else s_debug_flags &= ~flag;
+    if (previous != s_debug_flags) hhkb_settings_mark_dirty();
 }
 
 void hhkb_record_matrix_scan(void) {
@@ -699,10 +712,6 @@ rt_cfg_t hhkb_get_scan_cfg(void) {
 
 uint16_t hhkb_get_cal_baseline(uint8_t col, uint8_t row) { return s_cal_baseline[col][row]; }
 uint16_t hhkb_get_cal_peak(uint8_t col, uint8_t row) { return s_cal_peak[col][row]; }
-void hhkb_update_dynamic_peak(uint8_t col, uint8_t row, uint16_t val) {
-    s_cal_peak[col][row] = val;
-    rt_key_set_range(&s_rt_keys[col][row], s_cal_baseline[col][row], s_cal_peak[col][row]);
-}
 void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
     s_capture_base[col][row] += val;
 }
@@ -732,7 +741,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
             debug_console_printf("[CAL] [%s] %u%% (%u/%u) | Key R%u C%u peak: %u (base: %u)\r\n",
                                  bar, pct, count, NUM_KEYS, row, col, s_capture_peak[col][row], s_capture_base[col][row]);
             if (count >= NUM_KEYS) {
-                debug_console_printf("[CAL] >>> All %u keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
+                debug_console_printf("[CAL] >>> All %u keys calibrated! Click 'Save calibration' in VIA. <<<\r\n", (unsigned)NUM_KEYS);
             }
         }
     } else if (is_down && val < release_thresh) {

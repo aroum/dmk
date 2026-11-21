@@ -32,12 +32,15 @@ static bool s_oversampling_applied = false;
 static inline uint16_t adc_read_sample(uint32_t saved_primask) {
     uint32_t timeout = 5000;
     while ((ADC1->CR & ADC_CR_ADSTP) && --timeout);
+    if (!timeout) return UINT16_MAX;
+    ADC1->ISR = ADC_ISR_EOC; // Discard completion left by a previously timed-out sample.
     ADC1->CR |= ADC_CR_ADSTART;
     // At the 1 MHz battery ADC clock, a 4x conversion outlasts a Nordic
     // SPI byte. Once triggered, acquisition is hardware-timed: let SPI run.
     if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
     timeout = 5000;
     while (!(ADC1->ISR & ADC_ISR_EOC) && --timeout);
+    if (!timeout) return UINT16_MAX;
     return (uint16_t)(ADC1->DR & 0x0FFF);
 }
 
@@ -168,6 +171,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     GPIOB->BRR  = (1U << 15);
 
     bool capture = hhkb_cal_is_capturing_baseline();
+    bool capture_failed = false;
     bool is_calibrating = hhkb_is_calibrating();
     rt_cfg_t scan_cfg = hhkb_get_scan_cfg();
     const uint16_t *curve = ec_curve_lut;
@@ -185,7 +189,6 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
 
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-        const uint16_t *col_peak = s_cal_peak[col];
         rt_key_t *col_keys = s_rt_keys[col];
 
         if (col == 8) {
@@ -224,16 +227,24 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
             settle_start = (uint16_t)TIM2->CNT;
 
+            // Never calibrate or update RT state from a stale ADC data register.
+            if (val == UINT16_MAX) {
+                if (capture) capture_failed = true;
+                if (col_keys[row].down) current_matrix[row] |= 1U << col;
+                else current_matrix[row] &= ~(1U << col);
+                if (current_matrix[row] != prev_row) changed = true;
+                continue;
+            }
+
             if (is_calibrating) {
                 if (capture) {
                     hhkb_cal_accumulate_baseline(col, row, val);
                 } else {
                     hhkb_cal_record_peak(col, row, val);
                 }
-            } else if (val > col_peak[row] && val < 4000) {
-                // Dynamic peak expansion
-                hhkb_update_dynamic_peak(col, row, val);
             }
+            // Calibrated endpoints stay fixed outside an explicit calibration.
+            // A single runtime spike must not permanently expand the range.
 
             bool is_pressed;
             rt_key_t *key = &col_keys[row];
@@ -264,7 +275,9 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     }
 
     if (capture) {
-        hhkb_cal_decrement_samples();
+        // A missing sample must not bias the 16-frame baseline average.
+        if (capture_failed) hhkb_calibration_start();
+        else hhkb_cal_decrement_samples();
     }
 
     // Disable OpAmp

@@ -22,11 +22,19 @@ class HybridSleepSettingsTest(unittest.TestCase):
 #include <string.h>
 #include "rapid_trigger.h"
 #include "ec_curve.h"
+#include "settings_storage_guard.h"
+#define WORD_ALIGNED_SIZE(x) (((x)+3U)&~3U)
 #define MATRIX_COLS 15
 #define DEBUG_FLAG_TOPRE 1
 #define pdMS_TO_TICKS(x) (x)
 #define FLASH_PECR_PELOCK 1
 #define FLASH_SR_BSY 1
+#define FLASH_SR_WRPERR 0
+#define FLASH_SR_PGAERR 0
+#define FLASH_SR_SIZERR 0
+#define FLASH_SR_NOTZEROERR 0
+#define FLASH_SR_FWWERR 0
+#define FLASH_SR_EOP 0
 static struct {uint32_t PECR,PEKEYR,SR;} flash;
 #define FLASH (&flash)
 static uint32_t storage[256];
@@ -36,8 +44,10 @@ static bool s_custom_calibration=true;
 static uint8_t s_debug_flags;
 uint8_t ec_curve_settings[EC_CURVE_FIELDS];
 static unsigned dirty;
+static bool s_settings_dirty;
+static bool hhkb_eeprom_clear_words(volatile uint32_t *dst,size_t n){while(n--)dst[n]=0;return true;}
 static void hhkb_settings_mark_dirty(void){++dirty;}
-static bool hhkb_settings_storage_writable(void){return true;}
+bool hhkb_settings_storage_writable(void);
 static void vTaskDelay(unsigned t){(void)t;}
 static uint16_t get_default_baseline(unsigned c,unsigned r){(void)c;(void)r;return 300;}
 static uint16_t get_default_peak(unsigned c,unsigned r){(void)c;(void)r;return 2800;}
@@ -50,7 +60,7 @@ void ec_curve_rebuild(void){}
         # Header prototypes for the mocked RT functions are external.
         code = code.replace('static void rt_', 'void rt_')
         code += constants + record + decl
-        for signature in ('static uint16_t compute_crc16(', 'uint8_t hhkb_bt_sleep_hz(',
+        for signature in ('bool vial_keyboard_settings_reset(', 'bool hhkb_settings_storage_writable(', 'static uint16_t compute_crc16(', 'uint8_t hhkb_bt_sleep_hz(',
                           'bool hhkb_bt_set_sleep_hz(', 'void hhkb_calibration_save_to_eeprom(',
                           'void hhkb_calibration_load('):
             code += function(source, signature) + '\n'
@@ -65,7 +75,9 @@ int main(void){
    for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++){
     s_cal_baseline[c][r]=300+c;s_cal_peak[c][r]=2800+r;
    }
+   assert(hhkb_settings_storage_writable());
    flash.PECR=0;hhkb_calibration_save_to_eeprom();
+   assert(hhkb_settings_storage_writable());
    s_bt_sleep_hz=1;s_bt_matrix_wake=false;s_bt_sleep_minutes=0;
    s_bt_deep_index=0;s_bt_short_action=0;s_bt_long_action=0;s_bt_last_slot=0;
    s_led_mode[0]=0;s_led_mode[1]=0;
@@ -84,9 +96,20 @@ int main(void){
  cal->led_mode[0]&=15;
  cal->crc16=compute_crc16((const uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
  s_bt_sleep_hz=1;hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && s_led_mode[0]==4);
+ // Reject ANSI legacy data instead of reading it as a five-row record.
+#ifdef HHKB_JIS
+ cal->magic=USER_EEPROM_LEGACY_MAGIC;
+ hhkb_calibration_load();
+ for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++)
+  assert(s_cal_baseline[c][r]==300 && s_cal_peak[c][r]==2800);
+ cal->magic=USER_EEPROM_MAGIC;
+#endif
  // Corrupted data must not enable matrix wake or load the new rate.
  cal->led_mode[0]^=0x80;s_bt_sleep_hz=1;s_bt_matrix_wake=false;
  hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && !s_bt_matrix_wake);
+ assert(vial_keyboard_settings_reset());
+ for(unsigned i=0;i<sizeof(*cal);i++)assert(((uint8_t *)cal)[i]==0);
+ assert(hhkb_settings_storage_writable());
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:
@@ -96,7 +119,8 @@ int main(void){
                 subprocess.run(['cc', '-std=c11', '-DHHKB_HYBRID=1', f'-DMATRIX_ROWS={rows}',
                                 *(['-DHHKB_JIS=1'] if rows == 5 else []),
                                 '-I', str(ROOT / 'keyboards/hhkb/modules/ec'),
-                                '-I', str(ROOT / 'dmk_core/include'), str(c), '-o', str(binary)], check=True)
+                                '-I', str(ROOT / 'dmk_core/include'),
+                                '-I', str(ROOT / 'keyboards/hhkb/modules/via_settings'), str(c), '-o', str(binary)], check=True)
                 subprocess.run([str(binary)], check=True)
 
     def test_sleep_routing_probe_period_and_via_visibility(self):

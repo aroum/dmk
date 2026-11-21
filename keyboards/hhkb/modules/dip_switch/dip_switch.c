@@ -30,6 +30,9 @@ static const struct {
     { GPIOC, 1U << 4 }  // SW6
 };
 
+// Recovery diagnostics in owned RAM, never at an arbitrary SRAM address.
+volatile uint32_t hhkb_recovery_flash_error;
+
 static void write_eeprom_byte(uint32_t addr, uint8_t val) {
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
         FLASH->PEKEYR = 0x89ABCDEF; // FLASH_PEKEY1
@@ -86,12 +89,11 @@ static void erase_bank2_vector_page_ram(void) {
 
     // 6. Check for flash errors (useful for debugging via J-Link / SWD readout)
     // Errors are non-fatal here: EEPROM flags and the erase itself provide redundancy.
-    // On error, s_flash_erase_error is readable via debugger at the SRAM address.
+    // Inspect hhkb_recovery_flash_error with a breakpoint before reset.
     volatile uint32_t sr = FLASH->SR;
     if (sr & (FLASH_SR_WRPERR | FLASH_SR_PGAERR | FLASH_SR_SIZERR
             | FLASH_SR_NOTZEROERR | FLASH_SR_FWWERR)) {
-        // Store error code in a fixed SRAM location for post-mortem debugging
-        *(volatile uint32_t *)0x20004FF0 = sr;
+        hhkb_recovery_flash_error = sr;
         // Clear error flags
         FLASH->SR = sr;
     }
@@ -106,11 +108,31 @@ static void erase_bank2_vector_page_ram(void) {
     FLASH->PECR |= FLASH_PECR_PRGLOCK;
     FLASH->PECR |= FLASH_PECR_PELOCK;
 
+    // Verify the erased page before reset. EEPROM invalidation is the fallback
+    // if erasure failed; never continue executing from a partially erased Bank 2.
+    for (unsigned i = 0; i < 128U / sizeof(uint32_t); ++i) {
+        if (((volatile const uint32_t *)HHKB_BANK2_VECTOR_PAGE_ADDR)[i] != 0)
+            hhkb_recovery_flash_error = sr | 0x80000000U;
+    }
+
     // 9. Trigger system reset into Bank 1 bootloader
     NVIC_SystemReset();
 
     while (1) { __NOP(); }
 }
+
+#if defined(HHKB_SW6_REBOOT_TO_BANK1) && (HHKB_SW6_REBOOT_TO_BANK1 == 1)
+static bool sw6_stable_on(void) {
+    // Require ten stable active-low samples, at least 1 ms apart. This runs
+    // before HAL/timers/scheduler initialization, using the startup core clock.
+    for (unsigned sample = 0; sample < 10; ++sample) {
+        for (volatile uint32_t n = 0; n < SystemCoreClock / 1000U; ++n) __NOP();
+        if (GPIOC->IDR & (1U << 4)) return false;
+    }
+
+    return true;
+}
+#endif
 
 void hhkb_early_dip_check(void) {
     // Enable GPIOA and GPIOC peripheral clocks
@@ -125,7 +147,7 @@ void hhkb_early_dip_check(void) {
     for (volatile uint32_t i = 0; i < 500; i++) __NOP();
 
 #if defined(HHKB_SW6_REBOOT_TO_BANK1) && (HHKB_SW6_REBOOT_TO_BANK1 == 1)
-    bool sw6_on = ((GPIOC->IDR & (1U << 4)) == 0);
+    bool sw6_on = sw6_stable_on();
 
     if (sw6_on) {
         // SW6 is ON: User requests failsafe stock recovery in Bank 1!
