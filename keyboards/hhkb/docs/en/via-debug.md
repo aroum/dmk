@@ -110,6 +110,9 @@ uv run tools/ec_curve_visualizer.py
 - **Use custom calibration:** Selects between PFU factory calibration constants and user calibration.
 - **Calibration status:** Displays calibration progress.
 - **Start calibration:** Begins baseline capacitance capture (16 matrix scan cycles).
+
+From **Start calibration** until **Finish and save**, physical keys remain visible in **Key Tester → Test Matrix**, but their presses are not sent as typing or keymap actions to USB or Bluetooth. Release all keys before starting and before finishing. Normal input resumes after Finish and save.
+
 - **Print status to HID Console:** Dumps active calibration progress and peak metrics to VIA HID Console.
 - **Finish and save:** Validates and commits calibration to EEPROM.
 

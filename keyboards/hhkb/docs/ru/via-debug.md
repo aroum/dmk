@@ -112,6 +112,9 @@ uv run tools/ec_curve_visualizer.py
 - **Use custom calibration:** выбор между заводскими порогами PFU и кастомной калибровкой.
 - **Calibration status:** статус процесса калибровки.
 - **Start calibration:** старт захвата baseline (16 циклов сканирования матрицы).
+
+От **Start calibration** до **Finish and save** физические нажатия отображаются в **Key Tester → Test Matrix**, но не передаются как ввод текста или действия раскладки по USB либо Bluetooth. Отпустите все клавиши перед началом и завершением калибровки. После Finish and save обычный ввод возобновляется.
+
 - **Print status to HID Console:** печать калибровки в HID Console.
 - **Finish and save:** запись калибровки в EEPROM.
 

@@ -389,9 +389,12 @@ void matrix_task(void *pvParameters) {
         s_matrix_scan_count++;
 #endif
 
+        // VIA reads s_matrix_state directly. Keep that physical state live,
+        // but publish releases to the key-processing queue during calibration.
+        bool calibrating = hhkb_is_calibrating();
         bool first_event = true;
         for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-            matrix_row_t state = s_matrix_state[row];
+            matrix_row_t state = calibrating ? 0 : s_matrix_state[row];
 #ifdef HHKB_HYBRID
             if (state || state != published_state[row]) last_activity = xTaskGetTickCount();
 #endif
