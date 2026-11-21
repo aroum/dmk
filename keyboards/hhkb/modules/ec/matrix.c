@@ -184,12 +184,14 @@ void matrix_task(void *pvParameters) {
     TickType_t last_wake_scan = last_activity;
     bool sleeping = false;
     bool manual_sleep = false;
+    bool critical_sleep = false;
     TickType_t sleep_started = last_activity;
 #endif
     for (;;) {
         bool battery = false;
 #ifdef HHKB_HYBRID
-        hhkb_hybrid_button_poll(xTaskGetTickCount());
+        hhkb_hybrid_critical_battery_poll(xTaskGetTickCount());
+        if (hhkb_hybrid_powered()) hhkb_hybrid_button_poll(xTaskGetTickCount());
         if (!hhkb_hybrid_powered()) {
             TIM2->DIER = 0;
             ulTaskNotifyTake(pdTRUE, 0);
@@ -222,7 +224,8 @@ void matrix_task(void *pvParameters) {
         if (!battery || button || minutes == 0 || hhkb_is_calibrating()) {
             last_activity = now;
         }
-        if (!sleeping && battery && (manual_sleep || (minutes != 0 &&
+        bool critical = hhkb_hybrid_critical_battery();
+        if (!sleeping && battery && (critical || manual_sleep || (minutes != 0 &&
             now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
             sleeping = true;
             sleep_started = now;
@@ -243,15 +246,17 @@ void matrix_task(void *pvParameters) {
         }
         if (sleeping) {
             bool button_wake = hhkb_hybrid_take_button_wake();
-            bool wake = !battery || button_wake;
+            bool critical_recovered = critical_sleep && !critical;
+            critical_sleep = critical;
+            bool wake = !battery || (!critical && button_wake) || critical_recovered;
             uint8_t deep_minutes = hhkb_bt_deep_minutes();
-            bool deep_due = deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
+            bool deep_due = !critical && deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
             hhkb_hybrid_service();
-            bool scan = hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
+            bool scan = !critical && hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
             if (!wake && !button && deep_due && !scan) { hhkb_hybrid_enter_deep_sleep(); continue; }
             if (!wake && !scan) {
                 TickType_t elapsed = now - last_wake_scan;
-                TickType_t remaining = !hhkb_bt_matrix_wake() ? pdMS_TO_TICKS(1000) :
+                TickType_t remaining = (critical || !hhkb_bt_matrix_wake()) ? pdMS_TO_TICKS(1000) :
                     (elapsed < pdMS_TO_TICKS(1000) ? pdMS_TO_TICKS(1000) - elapsed : 1);
                 uint32_t button_wait = hhkb_hybrid_button_wait_ms(now);
                 if (button_wait != UINT32_MAX && pdMS_TO_TICKS(button_wait) < remaining)
@@ -282,6 +287,7 @@ void matrix_task(void *pvParameters) {
                 continue;
             }
             sleeping = false;
+            critical_sleep = false;
             hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
             manual_sleep = false;

@@ -26,7 +26,8 @@ class HybridButtonTest(unittest.TestCase):
 #include <assert.h>
 static bool powered=true, off_from_battery, button_was_down;
 static bool button_handled, button_sleep_wake, matrix_sleeping=true, down;
-static bool on_battery=true,sleep_requested;
+static bool on_battery=true,sleep_requested,critical_battery;
+static void hhkb_hybrid_enter_deep_sleep(void){assert(0);}
 static uint32_t button_down_since;
 static unsigned longs, shorts, resets;
 static bool hhkb_hybrid_button(void){return down;}
@@ -77,7 +78,7 @@ int main(void) {
 #include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
-static bool powered=true,poweroff_pending,battery=true,off_from_battery,control_polled,off_is_deep;
+static bool powered=true,poweroff_pending,battery=true,off_from_battery,control_polled,off_is_deep,critical_battery;
 static struct {uint32_t KR;} iwdg;
 #define IWDG (&iwdg)
 static unsigned mode,calls,delays,releases;
@@ -122,6 +123,7 @@ int main(void){
  setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==1600);
  assert(!hhkb_hybrid_off_is_deep());
  setup(1);hhkb_hybrid_enter_deep_sleep();assert(!powered && hhkb_hybrid_off_is_deep());
+ setup(1);critical_battery=true;hhkb_hybrid_toggle_power();assert(!powered && hhkb_hybrid_off_is_deep());
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:

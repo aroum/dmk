@@ -39,6 +39,8 @@ static volatile bool powered = true;
 static volatile bool poweroff_pending;
 static volatile bool matrix_sleeping;
 static bool button_sleep_wake;
+static volatile bool critical_battery;
+static uint32_t critical_battery_since;
 
 void hhkb_hybrid_set_sleeping(bool sleeping) { matrix_sleeping = sleeping; button_sleep_wake = false; }
 static bool off_from_battery;
@@ -273,7 +275,7 @@ static void request_power_off(bool deep) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
     off_from_battery = hhkb_hybrid_on_battery();
-    off_is_deep = deep;
+    off_is_deep = deep || critical_battery;
     powered = false;
     poweroff_pending = false;
     power_off_flash_until = xTaskGetTickCount();
@@ -301,6 +303,21 @@ void hhkb_hybrid_resume_after_stop(void) {
     memset(report, 0, sizeof(report));
     SPI1->CR2 &= ~SPI_CR2_TXEIE;
     *spi_data = 0;
+}
+
+// Called by the matrix task even while connected sleep has disabled scanning.
+// This safety path is independent of VIA sleep timers and indicator settings.
+bool hhkb_hybrid_critical_battery(void) { return critical_battery; }
+void hhkb_hybrid_critical_battery_poll(uint32_t now_ms) {
+    bool critical = hhkb_hybrid_on_battery() && hhkb_hybrid_battery_level() == 0;
+    if (critical != critical_battery) {
+        critical_battery = critical;
+        critical_battery_since = now_ms;
+        hhkb_hybrid_refresh_indicators();
+    }
+    if (critical && powered && !poweroff_pending &&
+        now_ms - critical_battery_since >= 180000U)
+        hhkb_hybrid_enter_deep_sleep();
 }
 
 bool hhkb_hybrid_take_button_wake(void) {
@@ -347,14 +364,19 @@ void hhkb_hybrid_button_poll(uint32_t now_ms) {
         if (!powered && held >= 1000) {
             NVIC_SystemReset(); // Bootloader restarts the nRF and DMK cleanly.
         } else if (powered && held >= 2000) {
-            button_long_action();
+            if (critical_battery) hhkb_hybrid_enter_deep_sleep();
+            else button_long_action();
             button_handled = true;
         }
     }
     if (!down && button_was_down && !button_handled && powered) {
         uint32_t held = now_ms - button_down_since;
-        if (held >= 2000) button_long_action();
-        else if (matrix_sleeping) {
+        if (held >= 2000) {
+            if (critical_battery) hhkb_hybrid_enter_deep_sleep();
+            else button_long_action();
+        } else if (critical_battery) {
+            // A short press cannot dismiss the critical-battery warning.
+        } else if (matrix_sleeping) {
             if (held >= 100) button_sleep_wake = true;
         } else if (held <= 500) button_short_action();
     }
@@ -394,6 +416,10 @@ bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
     }
     if (poweroff_pending) {
         *on = index == 1;
+        return true;
+    }
+    if (critical_battery && hhkb_hybrid_on_battery()) {
+        *on = index == 1; // Mandatory orange warning, independent of VIA flags.
         return true;
     }
     if (matrix_sleeping) {

@@ -241,11 +241,13 @@ In the [VIA web app](https://www.usevia.app/), open **Settings → Show Design t
 - **Wake with matrix:** off by default. Only controls key probing during sleep: off disables probing, on probes at 1 Hz. PC5 behavior and Nordic link retention are identical.
 - **Select paired profile / Start pairing:** choose profiles 1–4; pairing may replace a bond.
 - **Show battery level on orange LED / Show battery now:** enable and trigger battery flashes.
-- **Blink orange on low battery:** once every 30 seconds at 15%; twice every 15 seconds at 5% or 0%.
+- **Blink orange on low battery:** once every 30 seconds at 15%; twice every 15 seconds at 5%. At 0%, the critical-battery warning below takes priority.
 - **Blink blue while pairing:** 2 Hz while pending, 4 Hz while advertising.
 - **Blink blue for active profile:** one to four flashes for profiles 1–4.
 - **Battery level (%):** reports 0, 5, 15, or 100. `100` only means all low-battery threshold inputs are inactive.
 - **PC5 short press / PC5 long press:** choose independent button actions; the choices and last profile are saved in EEPROM.
+
+**Critical battery (Hybrid):** PB9 LOW on battery forces a steady orange warning even when the low-battery LED toggle is off. Matrix scanning stops; after 180 seconds or a PC5 hold of at least 2 seconds, DMK requests Nordic idle and enters deep STOP with reset-based wake. This overrides configured PC5 actions and sleep/matrix-wake settings. Connecting USB or recovering PB9 HIGH cancels the warning. The configurable blink patterns above apply to noncritical battery warnings.
 
 PB9, PB8, and PB7 provide the 0%, 5%, and 15% battery thresholds. DMK samples them once per second and sends stable changes to the stock nRF for the BLE Battery Service. One to four manual orange flashes indicate 0%, 5%, 15%, or above 15%. These are threshold bands, not precise charge measurements. Status patterns temporarily take priority over configured base LED modes.
 
