@@ -68,6 +68,7 @@ static bool bt_power_decode(uint8_t value, bool packed, uint8_t *deep_index, uin
     return true;
 }
 static bool s_bt_matrix_wake;
+static uint8_t s_bt_sleep_hz = 1;
 static uint8_t s_bt_indicator_flags = 0x0f;
 static uint8_t s_bt_short_action = 1; // Stock: show the connected profile.
 static uint8_t s_bt_long_action = 0;  // Stock: power off after 2 seconds.
@@ -217,6 +218,10 @@ void hhkb_calibration_save_to_eeprom(void) {
                       (s_bt_last_slot << 5);
 #endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
+#ifdef HHKB_HYBRID
+    // Spare high nibble; zero in older records means the default 1 Hz.
+    cal.led_mode[0] |= s_bt_sleep_hz << 4;
+#endif
     cal.classic_release_pm = s_classic_release_pm;
     cal.scan_rate = (s_scan_rate & 0x7F) | (s_power_saving ? 0x80 : 0);
     cal.tapping_term_10ms = s_tapping_term_10ms;
@@ -315,8 +320,17 @@ void hhkb_calibration_load(void) {
             s_system = (cal->flags >> 5) & 1;
             s_led_mode[0] = (cal->flags >> 6) & 3;
             if (current) {
-                for (unsigned i = 0; i < 2; ++i)
-                    if (cal->led_mode[i] <= 4) s_led_mode[i] = cal->led_mode[i];
+                for (unsigned i = 0; i < 2; ++i) {
+                    uint8_t led = cal->led_mode[i];
+#ifdef HHKB_HYBRID
+                    if (i == 0) led &= 0x0f; // High nibble stores sleep scan rate.
+#endif
+                    if (led <= 4) s_led_mode[i] = led;
+                }
+#ifdef HHKB_HYBRID
+                uint8_t sleep_hz = cal->led_mode[0] >> 4;
+                if (sleep_hz >= 1 && sleep_hz <= 10) s_bt_sleep_hz = sleep_hz;
+#endif
                 s_debug_flags = cal->debug_flags & 0x0f;
             }
 
@@ -761,6 +775,13 @@ bool hhkb_bt_set_deep_minutes(uint8_t minutes) {
     return false;
 }
 uint8_t hhkb_bt_sleep_minutes(void) { return s_bt_sleep_minutes; }
+uint8_t hhkb_bt_sleep_hz(void) { return s_bt_sleep_hz; }
+bool hhkb_bt_set_sleep_hz(uint8_t hz) {
+    if (hz < 1 || hz > 10) return false;
+    if (s_bt_sleep_hz != hz) { s_bt_sleep_hz = hz; hhkb_settings_mark_dirty(); }
+    return true;
+}
+
 bool hhkb_bt_matrix_wake(void) { return s_bt_matrix_wake; }
 
 void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake) {

@@ -253,6 +253,12 @@ void matrix_task(void *pvParameters) {
                                 hhkb_hybrid_disconnected_sleep_due(now);
         if (!sleeping && (critical || manual_sleep || disconnected_due || (minutes != 0 &&
             now - last_activity >= pdMS_TO_TICKS((uint32_t)minutes * 60000U)))) {
+            // Without key wake there is no intermediate sleep state.
+            // Critical-battery warning keeps its separate, USB-only safety path.
+            if (!critical && !hhkb_bt_matrix_wake()) {
+                hhkb_hybrid_toggle_power();
+                continue;
+            }
             sleeping = true;
             sleep_started = now;
             sleep_battery = battery;
@@ -278,12 +284,17 @@ void matrix_task(void *pvParameters) {
             uint8_t deep_minutes = hhkb_bt_deep_minutes();
             bool deep_due = battery && !critical && deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
             hhkb_hybrid_service();
-            bool scan = !critical && hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
+            if (!critical && !wake && !hhkb_bt_matrix_wake()) {
+                hhkb_hybrid_toggle_power();
+                continue;
+            }
+            TickType_t probe_period = pdMS_TO_TICKS(1000U / hhkb_bt_sleep_hz());
+            bool scan = !critical && hhkb_bt_matrix_wake() && now - last_wake_scan >= probe_period;
             if (!wake && !button && deep_due && !scan) { hhkb_hybrid_toggle_power(); continue; }
             if (!wake && !scan) {
                 TickType_t elapsed = now - last_wake_scan;
                 TickType_t remaining = (critical || !hhkb_bt_matrix_wake()) ? pdMS_TO_TICKS(1000) :
-                    (elapsed < pdMS_TO_TICKS(1000) ? pdMS_TO_TICKS(1000) - elapsed : 1);
+                    (elapsed < probe_period ? probe_period - elapsed : 1);
                 uint32_t button_wait = hhkb_hybrid_button_wait_ms(now);
                 if (button_wait != UINT32_MAX && pdMS_TO_TICKS(button_wait) < remaining)
                     remaining = pdMS_TO_TICKS(button_wait);

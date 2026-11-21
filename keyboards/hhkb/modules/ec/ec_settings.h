@@ -38,7 +38,7 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
     uint16_t classic_release_pm;
     uint8_t curve[EC_CURVE_FIELDS];
-    uint8_t led_mode[2];
+    uint8_t led_mode[2]; // Hybrid: led_mode[0] high nibble stores sleep Hz (0 = legacy 1 Hz)
     uint8_t debug_flags; // bits 0..3: debug; bit 7: packed Hybrid deep-timer format
     uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
@@ -59,6 +59,8 @@ void vial_keyboard_eeprom_task(void);
 
 #ifdef HHKB_HYBRID
 uint8_t hhkb_bt_sleep_minutes(void);
+uint8_t hhkb_bt_sleep_hz(void);
+bool hhkb_bt_set_sleep_hz(uint8_t hz);
 bool hhkb_bt_matrix_wake(void);
 void hhkb_bt_set_sleep(uint8_t minutes, bool matrix_wake);
 uint8_t hhkb_bt_indicator_flags(void);

@@ -1,0 +1,156 @@
+"""Round-trip the production EEPROM save/load paths for ANSI and JIS."""
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+from .test_hybrid_button import ROOT, function
+
+
+class HybridSleepSettingsTest(unittest.TestCase):
+    def test_eeprom_round_trip_and_legacy_default(self):
+        source = (ROOT / 'keyboards/hhkb/modules/ec/ec_settings.c').read_text()
+        header = (ROOT / 'keyboards/hhkb/modules/ec/ec_settings.h').read_text()
+        record = header[header.index('typedef struct'):header.index('_Static_assert')]
+        constants = header[header.index('#ifdef HHKB_JIS'):header.index('typedef struct')]
+        constants = constants.replace('#define USER_EEPROM_ADDR           0x08081500UL', '#define USER_EEPROM_ADDR ((uintptr_t)storage)')
+        decl = source[source.index('static rt_cfg_t s_rt_cfg'):source.index('static volatile bool s_settings_dirty')]
+        code = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include "rapid_trigger.h"
+#include "ec_curve.h"
+#define MATRIX_COLS 15
+#define DEBUG_FLAG_TOPRE 1
+#define pdMS_TO_TICKS(x) (x)
+#define FLASH_PECR_PELOCK 1
+#define FLASH_SR_BSY 1
+static struct {uint32_t PECR,PEKEYR,SR;} flash;
+#define FLASH (&flash)
+static uint32_t storage[256];
+static uint16_t s_cal_baseline[MATRIX_COLS][MATRIX_ROWS],s_cal_peak[MATRIX_COLS][MATRIX_ROWS];
+static rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
+static bool s_custom_calibration=true;
+static uint8_t s_debug_flags;
+uint8_t ec_curve_settings[EC_CURVE_FIELDS];
+static unsigned dirty;
+static void hhkb_settings_mark_dirty(void){++dirty;}
+static bool hhkb_settings_storage_writable(void){return true;}
+static void vTaskDelay(unsigned t){(void)t;}
+static uint16_t get_default_baseline(unsigned c,unsigned r){(void)c;(void)r;return 300;}
+static uint16_t get_default_peak(unsigned c,unsigned r){(void)c;(void)r;return 2800;}
+static void rt_cfg_defaults(rt_cfg_t *c){memset(c,0,sizeof(*c));}
+static void rt_key_set_range(rt_key_t *k,uint16_t b,uint16_t p){(void)k;(void)b;(void)p;}
+static void rt_key_reset(rt_key_t *k){(void)k;}
+bool ec_curve_set(uint8_t id,uint8_t value){(void)id;(void)value;return true;}
+void ec_curve_rebuild(void){}
+'''
+        # Header prototypes for the mocked RT functions are external.
+        code = code.replace('static void rt_', 'void rt_')
+        code += constants + record + decl
+        for signature in ('static uint16_t compute_crc16(', 'uint8_t hhkb_bt_sleep_hz(',
+                          'bool hhkb_bt_set_sleep_hz(', 'void hhkb_calibration_save_to_eeprom(',
+                          'void hhkb_calibration_load('):
+            code += function(source, signature) + '\n'
+        code += r'''
+int main(void){
+ for(unsigned hz=1;hz<=10;hz++){
+  assert(hhkb_bt_set_sleep_hz(hz));
+  for(unsigned led=0;led<=4;led++)for(unsigned enabled=0;enabled<=1;enabled++){
+   s_led_mode[0]=led;s_led_mode[1]=4;
+   s_bt_matrix_wake=enabled;s_bt_sleep_minutes=23;s_bt_deep_index=7;
+   s_bt_short_action=5;s_bt_long_action=2;s_bt_last_slot=3;
+   for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++){
+    s_cal_baseline[c][r]=300+c;s_cal_peak[c][r]=2800+r;
+   }
+   flash.PECR=0;hhkb_calibration_save_to_eeprom();
+   s_bt_sleep_hz=1;s_bt_matrix_wake=false;s_bt_sleep_minutes=0;
+   s_bt_deep_index=0;s_bt_short_action=0;s_bt_long_action=0;s_bt_last_slot=0;
+   s_led_mode[0]=0;s_led_mode[1]=0;
+   hhkb_calibration_load();
+   assert(hhkb_bt_sleep_hz()==hz && s_bt_matrix_wake==enabled && s_bt_sleep_minutes==23);
+   assert(s_bt_deep_index==7 && s_bt_short_action==5 && s_bt_long_action==2 && s_bt_last_slot==3);
+   assert(s_led_mode[0]==led && s_led_mode[1]==4);
+   for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++){
+    assert(s_cal_baseline[c][r]==300+c && s_cal_peak[c][r]==2800+r);
+   }
+  }
+ }
+ assert(!hhkb_bt_set_sleep_hz(0) && !hhkb_bt_set_sleep_hz(11) && !hhkb_bt_set_sleep_hz(255));
+ hhkb_eeprom_cal_t *cal=(hhkb_eeprom_cal_t *)storage;
+ // Old record: no rate stored. Recalculate its real CRC before loading.
+ cal->led_mode[0]&=15;
+ cal->crc16=compute_crc16((const uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
+ s_bt_sleep_hz=1;hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && s_led_mode[0]==4);
+ // Corrupted data must not enable matrix wake or load the new rate.
+ cal->led_mode[0]^=0x80;s_bt_sleep_hz=1;s_bt_matrix_wake=false;
+ hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && !s_bt_matrix_wake);
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            c = Path(tmp) / 'settings.c'; c.write_text(code)
+            for rows in (4, 5):
+                binary = Path(tmp) / f'settings-{rows}'
+                subprocess.run(['cc', '-std=c11', '-DHHKB_HYBRID=1', f'-DMATRIX_ROWS={rows}',
+                                *(['-DHHKB_JIS=1'] if rows == 5 else []),
+                                '-I', str(ROOT / 'keyboards/hhkb/modules/ec'),
+                                '-I', str(ROOT / 'dmk_core/include'), str(c), '-o', str(binary)], check=True)
+                subprocess.run([str(binary)], check=True)
+
+    def test_sleep_routing_probe_period_and_via_visibility(self):
+        import json
+        source = (ROOT / 'keyboards/hhkb/modules/ec/matrix.c').read_text()
+        first = function(source, 'if (!critical && !hhkb_bt_matrix_wake())')
+        asleep = function(source, 'if (!critical && !wake && !hhkb_bt_matrix_wake())')
+        period = next(line.strip() for line in source.splitlines() if 'TickType_t probe_period =' in line)
+        code = r'''
+#include <stdbool.h>
+#include <stdint.h>
+#include <assert.h>
+typedef uint32_t TickType_t;
+#define pdMS_TO_TICKS(x) (x)
+static bool enabled;
+static uint8_t hz;
+static unsigned off;
+static bool hhkb_bt_matrix_wake(void){return enabled;}
+static uint8_t hhkb_bt_sleep_hz(void){return hz;}
+static void hhkb_hybrid_toggle_power(void){++off;}
+static bool enter(bool critical){for(unsigned i=0;i<1;i++){
+''' + first + r'''
+return true;}return false;}
+static bool stay(bool critical,bool wake){for(unsigned i=0;i<1;i++){
+''' + asleep + r'''
+return true;}return false;}
+static TickType_t probe(void){
+''' + period + r'''
+return probe_period;}
+int main(void){
+ enabled=false;assert(!enter(false) && off==1);
+ assert(enter(true) && off==1); // Critical warning is not bypassed.
+ assert(!stay(false,false) && off==2); // Turning wake off during sleep.
+ assert(stay(true,false) && stay(false,true) && off==2);
+ enabled=true;assert(enter(false) && stay(false,false) && off==2);
+ for(hz=1;hz<=10;hz++)assert(probe()==1000u/hz);
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            c = Path(tmp) / 'routing.c'; c.write_text(code)
+            binary = Path(tmp) / 'routing'
+            subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
+                            str(c), '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True)
+        definition = json.loads((ROOT / 'keyboards/hhkb/via.json').read_text())
+        def walk(node):
+            if isinstance(node, dict):
+                yield node
+                for value in node.values(): yield from walk(value)
+            elif isinstance(node, list):
+                for value in node: yield from walk(value)
+        bluetooth = next(n for n in walk(definition) if n.get('label') == 'Bluetooth')
+        self.assertEqual(bluetooth['showIf'], '{id_hhkb_hybrid} == 1')
+        controls = {n['label']: n for n in walk(bluetooth) if 'label' in n}
+        for label in ('Sleep matrix scan rate (Hz)', 'Power off after sleep (minutes)'):
+            self.assertEqual(controls[label]['showIf'], '{id_hhkb_bt_matrix_wake} == 1')
+        self.assertEqual([o[1] for o in controls['Sleep matrix scan rate (Hz)']['options']], list(range(1,11)))

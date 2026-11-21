@@ -14,6 +14,11 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     uint8_t id = request[2];
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
 #ifdef HHKB_HYBRID
+    if (id == 56) {
+        if (request[0] == 0x08) response[3] = hhkb_bt_sleep_hz();
+        else if (request[0] != 0x07 || !hhkb_bt_set_sleep_hz(request[3])) return false;
+        return true;
+    }
     if (id == 55) {
         if (request[0] == 0x08) response[3] = hhkb_bt_deep_minutes();
         else if (request[0] != 0x07 || !hhkb_bt_set_deep_minutes(request[3])) return false;
