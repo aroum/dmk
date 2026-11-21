@@ -253,7 +253,7 @@ void matrix_task(void *pvParameters) {
             bool deep_due = !critical && deep_minutes && now - sleep_started >= pdMS_TO_TICKS((uint32_t)deep_minutes * 60000U);
             hhkb_hybrid_service();
             bool scan = !critical && hhkb_bt_matrix_wake() && now - last_wake_scan >= pdMS_TO_TICKS(1000);
-            if (!wake && !button && deep_due && !scan) { hhkb_hybrid_enter_deep_sleep(); continue; }
+            if (!wake && !button && deep_due && !scan) { hhkb_hybrid_toggle_power(); continue; }
             if (!wake && !scan) {
                 TickType_t elapsed = now - last_wake_scan;
                 TickType_t remaining = (critical || !hhkb_bt_matrix_wake()) ? pdMS_TO_TICKS(1000) :
@@ -280,7 +280,7 @@ void matrix_task(void *pvParameters) {
                 }
             }
             if (!wake) {
-                if (!button && deep_due) { hhkb_hybrid_enter_deep_sleep(); continue; }
+                if (!button && deep_due) { hhkb_hybrid_toggle_power(); continue; }
                 TIM2->CR1 &= ~TIM_CR1_CEN;
                 ADC1->CR |= ADC_CR_ADDIS;
                 GPIOC->BRR = (1U << 14) | (1U << 7);

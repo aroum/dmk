@@ -56,17 +56,28 @@ static uint16_t stable_lptim_count(void) {
     return first;
 }
 
-static void prepare_wake_sources(void) {
+static uint32_t stop_wake_mask(bool critical) {
+    // Critical-battery STOP deliberately cannot be woken by PC5.
+    return WAKE_EXTI_MASK & ~(critical ? (1UL << 5) : 0UL);
+}
+
+static bool stop_button_down(void) {
+    // Also ignore held PC5 after periodic watchdog wakes in critical STOP.
+    return (EXTI->IMR & (1UL << 5)) && !(GPIOC->IDR & (1UL << 5));
+}
+
+static void prepare_wake_sources(bool critical) {
+    uint32_t mask = stop_wake_mask(critical);
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
     SYSCFG->EXTICR[1] = (SYSCFG->EXTICR[1] & ~SYSCFG_EXTICR2_EXTI5) |
                          SYSCFG_EXTICR2_EXTI5_PC;
     SYSCFG->EXTICR[3] = (SYSCFG->EXTICR[3] & ~SYSCFG_EXTICR4_EXTI13) |
                          SYSCFG_EXTICR4_EXTI13_PC;
     // Terminal path owns EXTI: do not inherit unrelated bootloader sources.
-    EXTI->FTSR = (1UL << 5) | (1UL << 13);
-    EXTI->IMR = WAKE_EXTI_MASK;
+    EXTI->FTSR = mask & ((1UL << 5) | (1UL << 13));
+    EXTI->IMR = mask;
     EXTI->EMR = 0;
-    EXTI->RTSR = (1UL << 5) | (1UL << 29); // Arm PC5 after release.
+    EXTI->RTSR = mask & ((1UL << 5) | (1UL << 29));
 
     RCC->CSR |= RCC_CSR_LSION;
     while (!(RCC->CSR & RCC_CSR_LSIRDY)) {}
@@ -123,7 +134,7 @@ static void stop_once(uint32_t stage) {
 }
 
 void hhkb_hybrid_enter_stop(void) {
-    // OFF resumes this task; deep sleep and USB wake still reset the MCU.
+    // Ordinary OFF resumes; critical STOP ignores PC5 and resets on USB wake.
     const uint32_t saved_cfgr = RCC->CFGR;
     const uint32_t saved_core_clock = SystemCoreClock;
     const uint32_t saved_nvic = NVIC->ISER[0];
@@ -156,7 +167,7 @@ void hhkb_hybrid_enter_stop(void) {
     // ICER/ICPR below cover external IRQs only. A pending RTOS exception
     // must not keep this PRIMASK-protected terminal WFI loop awake.
     SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk | SCB_ICSR_PENDSVCLR_Msk;
-    prepare_wake_sources();
+    prepare_wake_sources(hhkb_hybrid_off_is_deep());
     // Preserve an attached debug session, but do not inherit low-power debug
     // clock retention when no debugger is attached.
     // CMSIS M0+ omits CoreDebug; DHCSR.C_DEBUGEN is architectural bit 0.
@@ -182,7 +193,7 @@ void hhkb_hybrid_enter_stop(void) {
     // Finish the OFF press before sleeping. Otherwise its release can be
     // cleared just before WFI, leaving the next press unarmed.
     hhkb_stop_stage = 2;
-    while (!(GPIOC->IDR & (1UL << 5))) {
+    while (stop_button_down()) {
         IWDG->KR = 0xAAAA;
         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
         stop_once(2);
@@ -194,12 +205,12 @@ void hhkb_hybrid_enter_stop(void) {
         stop_once(3);
 
         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
-        if (!(GPIOC->IDR & (1UL << 5))) {
+        if (stop_button_down()) {
             hhkb_stop_stage = 5;
             // LPTIM continues through STOP; accumulate across its ARR wrap.
             uint16_t prev = stable_lptim_count();
             uint32_t held_ticks = 0;
-            while (!(GPIOC->IDR & (1UL << 5))) {
+            while (stop_button_down()) {
                 uint16_t now = stable_lptim_count();
                 held_ticks += now >= prev ? now - prev : LPTIM_ARR + 1U - prev + now;
                 prev = now;
@@ -210,7 +221,7 @@ void hhkb_hybrid_enter_stop(void) {
                     GPIOA->BSRR = 1UL << 9;
                     lptim_wait_ticks(867U); // Approximately 3 s orange warning.
                     GPIOA->BRR = 1UL << 9;
-                    while (!(GPIOC->IDR & (1UL << 5))) {
+                    while (stop_button_down()) {
                         IWDG->KR = 0xAAAA;
                         if (!(GPIOC->IDR & (1UL << 13))) NVIC_SystemReset();
                         stop_once(2);

@@ -29,6 +29,7 @@ bool hhkb_hybrid_take_button_wake(void);
 uint32_t hhkb_hybrid_button_wait_ms(uint32_t now_ms);
 void hhkb_hybrid_enter_stop(void);
 void hhkb_hybrid_resume_after_stop(void);
+// Critical-battery STOP: PC5 is masked; USB wake resets STM32.
 void hhkb_hybrid_enter_deep_sleep(void);
 bool hhkb_hybrid_off_is_deep(void);
 bool hhkb_hybrid_critical_battery(void);

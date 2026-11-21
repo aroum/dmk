@@ -8,6 +8,75 @@ from .test_hybrid_button import ROOT, function
 
 
 class HybridCriticalBatteryTest(unittest.TestCase):
+    def test_critical_stop_masks_pc5_and_retains_usb_watchdog_wake(self):
+        source = (ROOT / 'keyboards/hhkb/modules/hybrid/hybrid_stop.c').read_text()
+        code = r'''
+#include <stdint.h>
+#include <stdbool.h>
+#include <assert.h>
+#define WAKE_EXTI_MASK ((1UL<<5)|(1UL<<13)|(1UL<<29))
+static struct {uint32_t IMR,EMR,FTSR,RTSR;} exti;
+static struct {uint32_t IDR;} gpio;
+static struct {uint32_t APB2ENR,CSR,APB1ENR,CCIPR;} rcc={.CSR=2};
+static struct {uint32_t EXTICR[4];} syscfg;
+static struct {uint32_t CR,CFGR,IER,ICR,ARR,ISR;} lptim={.ISR=1};
+static struct {uint32_t ICER[1],ICPR[1];} nvic;
+#define EXTI (&exti)
+#define GPIOC (&gpio)
+#define RCC (&rcc)
+#define SYSCFG (&syscfg)
+#define LPTIM1 (&lptim)
+#define NVIC (&nvic)
+#define RCC_APB2ENR_SYSCFGEN 1
+#define SYSCFG_EXTICR2_EXTI5 0xF0
+#define SYSCFG_EXTICR2_EXTI5_PC 0x20
+#define SYSCFG_EXTICR4_EXTI13 0xF0
+#define SYSCFG_EXTICR4_EXTI13_PC 0x20
+#define RCC_CSR_LSION 1
+#define RCC_CSR_LSIRDY 2
+#define RCC_APB1ENR_LPTIM1EN 1
+#define RCC_APB1ENR_PWREN 2
+#define RCC_CCIPR_LPTIM1SEL 3
+#define RCC_CCIPR_LPTIM1SEL_0 1
+#define LPTIM_CFGR_PRESC_Pos 0
+#define LPTIM_IER_ARRMIE 1
+#define LPTIM_CR_ENABLE 1
+#define LPTIM_ICR_ARROKCF 1
+#define LPTIM_ISR_ARROK 1
+#define LPTIM_CR_CNTSTRT 2
+#define LPTIM_ARR 500
+#define EXTI4_15_IRQn 1
+#define LPTIM1_IRQn 2
+static void NVIC_EnableIRQ(unsigned irq){(void)irq;}
+'''
+        for signature in ('static uint32_t stop_wake_mask(',
+                          'static bool stop_button_down(',
+                          'static void prepare_wake_sources('):
+            code += function(source, signature)
+        code += r'''
+int main(void){
+ prepare_wake_sources(false);
+ assert(exti.IMR==WAKE_EXTI_MASK && exti.EMR==0);
+ assert(exti.FTSR==((1UL<<5)|(1UL<<13)));
+ assert(exti.RTSR==((1UL<<5)|(1UL<<29)));
+ gpio.IDR=0;assert(stop_button_down());
+ gpio.IDR=1UL<<5;assert(!stop_button_down());
+ prepare_wake_sources(true);
+ assert(exti.IMR==((1UL<<13)|(1UL<<29)) && exti.EMR==0);
+ assert(exti.FTSR==(1UL<<13) && exti.RTSR==(1UL<<29));
+ // A held button after an LPTIM watchdog wake cannot enter the OFF wake path.
+ gpio.IDR=0;assert(!stop_button_down());
+ gpio.IDR=1UL<<5;assert(!stop_button_down());
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            c = Path(tmp) / 'wake_sources.c'
+            binary = Path(tmp) / 'wake_sources'
+            c.write_text(code)
+            subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror',
+                            str(c), '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True)
+
     def test_critical_battery_timeout_button_and_led(self):
         source = (ROOT / 'keyboards/hhkb/modules/hybrid/hybrid.c').read_text()
         code = r'''

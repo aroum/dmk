@@ -2575,7 +2575,7 @@
               ]
             },
             {
-              "label": "Deep sleep after sleep (minutes)",
+              "label": "Power off after sleep (minutes)",
               "type": "dropdown",
               "options": [["Never",0],["1",1],["3",3],["5",5],["10",10],["20",20],["30",30],["40",40],["50",50],["60",60]],
               "content": ["id_hhkb_bt_deep_minutes",0,55]
