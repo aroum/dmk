@@ -59,6 +59,17 @@ Short PC5 presses last 0–0.5 seconds and show the connected profile by default
 
 The SPI protocol and original STOP implementation retain their MIT attribution. The selected OFF path follows the supplied stock analysis; repeated power-button cycles, Bluetooth reconnection and direct sleep-to-OFF were confirmed by the tester in build #204. Wake with matrix affects key probing only, not PC5 behaviour.
 
+### Differences from stock sleep and OFF
+
+The following stock behaviour comes from the supplied static analysis of one Bank 2 image, not an independent hardware verification. Configuration defaults are unknown, USB behaviour is only partly traced, and the key-to-wake path was not followed.
+
+- **Stock connected sleep:** state 5 keeps matrix scanning and SPI running, blanks LEDs and sends no Nordic shutdown command. Around 599 seconds of inactivity leads to state 5 when USB is present or configuration byte 5 is 1; otherwise it leads directly to OFF. In state 5, byte 5 = 0 with USB absent permits a timed transition to ordinary OFF after the minutes stored at `0x20000079`; its default value is unknown. PC5 release after 0.1–2 seconds wakes, and holding at least 2 seconds enters OFF without waking first.
+- **DMK connected sleep:** defaults to 30 minutes of inactivity, or a configurable PC5 action/keycode; battery-only. Regular matrix scans stop. VIA optionally enables 1 Hz key probes. A separate VIA timer defaults to 3 minutes and enters deep STOP with reset-based wake. Thus this timer is still different from stock's transition to ordinary OFF without reset. Neither the 3-minute default nor reset-based wake is claimed to reproduce stock ordinary sleep.
+- **Stock ordinary OFF:** the described Nordic idle exchange waits up to 3 seconds for a disconnected notification, then stops matrix/analog activity and enters low-power STOP without changing PD2. PC5 hold of at least 1 second arms wake; release resumes without reset. DMK follows this approach, and the tester confirmed repeated wake/reconnection and 0.21 mA OFF current.
+- **Ten-second guard:** stock reportedly restarts its OFF procedure, including the Nordic exchange, after the orange warning. DMK returns directly to STOP after the warning and button release, without repeating that exchange.
+- **USB:** stock reportedly allows state-5 sleep after inactivity while USB is present, but not its subsequent automatic OFF; button-driven OFF on USB follows an untraced branch. DMK intentionally disables sleep and OFF on USB power.
+- **Critical battery:** the stock path at `0x08011380` reportedly handles PB9 LOW with USB absent: orange indication, deep STOP after 180 seconds or a 2-second hold, then reset on wake. DMK reads PB9 as 0%, reports the level to Nordic, and can show the configurable low-battery warning. It has no dedicated 180-second critical-battery shutdown path. Its generic sleep timers are not a replacement for that stock logic.
+
 ### Measured battery consumption and thresholds (Hybrid)
 
 The latest comparison, received on 21 November 2026, is shown below. Earlier builds drew 4 mA in OFF (19 November) and 2.51 mA (build #196); build #204 with the selected stock-style OFF path reached 0.21 mA. These are measurements of one keyboard, not guaranteed values for every board.
@@ -81,8 +92,10 @@ Bluetooth, 3.0 V; current in mA. The tester labelled the table “50 Hz scan rat
 | Typing | 3.53–3.58 | 3.9 | 3.8 |
 | Typing on Fn layer | 3.4 | 6.0 | 5.8 |
 | OFF | 0.21 | 2.6 | 0.21 |
-| Sleep | 0.21 | 1.81 | 1.8 |
+| Sleep | Unconfirmed | 1.81 | 1.8 |
 | Sleep with matrix wake | Not available | 1.8 | 1.83 |
+
+The source reports conflict on stock sleep: the earlier table says “Not observed”, while the later comparison lists 0.21 mA. That value is confirmed for stock OFF, but is not treated here as a verified measurement of stock state 5.
 
 The tester confirmed repeated PC5 OFF/on cycles with Bluetooth reconnection, direct sleep-to-OFF, and automatic power-off in the stock-style build. OFF reached the stock reference; connected sleep still draws about 1.8 mA. Fn-layer current may include the configured layer LED; repeat with both LEDs disabled to separate that contribution. This cause has not been measured.
 
