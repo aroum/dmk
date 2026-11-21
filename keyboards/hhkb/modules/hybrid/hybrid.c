@@ -188,6 +188,8 @@ void hhkb_hybrid_init(void) {
     *spi_data = 0;
     NVIC_EnableIRQ(SPI1_IRQn);
 
+    // End the startup HIGH only after the SPI slave and its IRQ are ready.
+    GPIOD->OTYPER &= ~(1U << 2);
     GPIOD->BRR = 1U << 2;
     GPIOD->MODER = (GPIOD->MODER & ~(3UL << 4)) | (1UL << 4);
 }

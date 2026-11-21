@@ -28,10 +28,25 @@ void USB_IRQHandler(void) {
     tud_int_handler(0);
 }
 
+#ifdef HHKB_HYBRID
+static void hhkb_hybrid_startup_pd2(void) {
+    RCC->IOPENR |= RCC_IOPENR_GPIODEN;
+    (void)RCC->IOPENR; // Complete clock enable before accessing GPIOD.
+    // Preload HIGH before selecting push-pull output; keep it through init.
+    GPIOD->BSRR = 1U << 2;
+    GPIOD->OTYPER &= ~(1U << 2);
+    GPIOD->PUPDR &= ~(3U << 4);
+    GPIOD->MODER = (GPIOD->MODER & ~(3U << 4)) | (1U << 4);
+}
+#endif
+
 void platform_init(void) {
     __asm__ volatile("" : : "r"(hhkb_image_identity) : "memory");
     // 0. Early check: If SW6 is ON, branch immediately to Bank 1 (stock factory firmware)
     hhkb_early_dip_check();
+#ifdef HHKB_HYBRID
+    hhkb_hybrid_startup_pd2();
+#endif
 
     // Debug LED: initialize PA8 & PA9 outputs
     RCC->IOPENR |= RCC_IOPENR_GPIOAEN;

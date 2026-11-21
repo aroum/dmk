@@ -143,6 +143,11 @@ __attribute__((noinline)) static void scan_adc_idle(void) {
 
 __attribute__((section(".RamFunc"), optimize("O2")))
 bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
+#ifdef HHKB_HYBRID
+    // Stock scan wrapper reasserts sensor power and keeps PD2 LOW.
+    GPIOC->BSRR = 1U << 14;
+    GPIOD->BRR = 1U << 2;
+#endif
     hhkb_record_matrix_scan();
     scan_adc_prepare();
 
