@@ -450,7 +450,7 @@ bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
         }
         if ((flags & 8) && (int32_t)(profile_display_until - now_ms) > 0) {
             uint32_t phase = (3000 - (profile_display_until - now_ms)) % 3000;
-            *on = phase < (display_slot + 1) * 400 && phase % 400 < 200;
+            *on = phase < (display_slot + 1U) * 400U && phase % 400U < 200U;
             return true;
         }
     }
