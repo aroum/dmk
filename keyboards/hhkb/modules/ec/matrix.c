@@ -197,7 +197,6 @@ void matrix_task(void *pvParameters) {
             ADC1->CR |= ADC_CR_ADDIS;
             GPIOC->BRR = (1U << 14) | (1U << 7);
             hhkb_hybrid_enter_stop();
-#ifdef HHKB_STOCK_POWER_OFF
             hhkb_hybrid_sleep_exti(false);
             hhkb_hybrid_set_sleeping(false);
             sleeping = manual_sleep = false;
@@ -209,7 +208,6 @@ void matrix_task(void *pvParameters) {
             TIM2->DIER = TIM_DIER_CC1IE;
             hhkb_hybrid_refresh_indicators();
             continue;
-#endif
         }
         battery = hhkb_hybrid_on_battery();
         update_battery_clock(battery);

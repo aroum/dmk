@@ -27,12 +27,8 @@ void hhkb_hybrid_pair_last_profile(void);
 void hhkb_hybrid_toggle_power(void);
 bool hhkb_hybrid_take_button_wake(void);
 uint32_t hhkb_hybrid_button_wait_ms(uint32_t now_ms);
-#ifdef HHKB_STOCK_POWER_OFF
 void hhkb_hybrid_enter_stop(void);
 void hhkb_hybrid_resume_after_stop(void);
-#else
-void hhkb_hybrid_enter_stop(void) __attribute__((noreturn));
-#endif
 void hhkb_hybrid_enter_deep_sleep(void);
 bool hhkb_hybrid_off_is_deep(void);
 

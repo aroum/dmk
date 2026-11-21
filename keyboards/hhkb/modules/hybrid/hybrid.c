@@ -277,14 +277,10 @@ static void request_power_off(bool deep) {
     powered = false;
     poweroff_pending = false;
     power_off_flash_until = xTaskGetTickCount();
-#ifndef HHKB_STOCK_POWER_OFF
-    GPIOD->BSRR = 1U << 2;
-#endif
 }
 void hhkb_hybrid_toggle_power(void) { request_power_off(false); }
 void hhkb_hybrid_enter_deep_sleep(void) { request_power_off(true); }
 bool hhkb_hybrid_off_is_deep(void) { return off_is_deep; }
-#ifdef HHKB_STOCK_POWER_OFF
 void hhkb_hybrid_resume_after_stop(void) {
     powered = true;
     poweroff_pending = false;
@@ -306,7 +302,6 @@ void hhkb_hybrid_resume_after_stop(void) {
     SPI1->CR2 &= ~SPI_CR2_TXEIE;
     *spi_data = 0;
 }
-#endif
 
 bool hhkb_hybrid_take_button_wake(void) {
     bool wake = button_sleep_wake;

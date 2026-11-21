@@ -115,22 +115,6 @@ python3 tools/hhkb/patch_hybrid_hfb.py \
 
 Rapid Trigger and 16 MHz ADC are included in every HHKB build. VIA controls Rapid Trigger and ADC oversampling at runtime.
 
-## Hybrid: comparing OFF implementations
+## Hybrid power-off behaviour
 
-The default build retains the MIT-derived OFF path. Add `HHKB_STOCK_POWER_OFF` to select the stock-style comparison path:
-
-```bash
-# MIT-derived OFF (baseline)
-DMK_FW_VERSION=26.11.20-power-mit ./build_all.sh -b hhkb -d HHKB_HYBRID -c
-
-# Stock-style OFF (comparison)
-DMK_FW_VERSION=26.11.20-power-stock ./build_all.sh -b hhkb -d HHKB_HYBRID,HHKB_STOCK_POWER_OFF -c
-```
-
-Add `HHKB_JIS` to either define list for JIS. Patch each resulting `.bin` into the same matching official Hybrid container using the [local patcher](../../../../tools/hhkb/hhkb.html). Neither command flashes the keyboard.
-
-Both variants request Nordic idle over SPI and wait for acknowledgement/disconnection before STM32 STOP. The baseline then holds Nordic in reset through PD2 and resets STM32 when waking. The stock-style variant leaves PD2 inactive, allowing Nordic to remain idle, and resumes STM32 after ordinary OFF without resetting it. It restores clocks, ADC, SPI and matrix scanning, clears stale reports, and requests the last Bluetooth profile. Timer-triggered deep sleep and USB insertion still wake through reset.
-
-Connected sleep, the matrix-wake checkbox, sleep/deep-sleep timers, configurable PC5 actions and the 10-second stuck-button guard are identical. USB operation is unchanged. This is a comparison implementation based on the supplied stock analysis, not a claim of verified stock power consumption or complete stock equivalence. No proprietary firmware code is included.
-
-Compare at the same supply voltage, with the same settings and Bluetooth host. Disconnect SWD, fully remove power before each run, then measure active idle, typing, connected sleep with matrix wake both off and on, and OFF after the orange indicator goes out. Repeat OFF/on several times; record current, LED state, whether Bluetooth reconnects, and whether typing works. Also test holding PC5 from sleep through the long-action threshold, the 10-second guard, deep-sleep timeout and USB wake. Firmware Version in [VIA & Debug](via-debug.md) identifies `power-mit` or `power-stock` when built with the commands above. Actual power and wake behaviour require hardware verification.
+All Hybrid builds now use the stock-style OFF implementation validated in build #204: Nordic idle over SPI, STM32 STOP without holding PD2 high, and resume without STM32 reset after ordinary OFF. No additional build flag is required. The earlier MIT/stock comparison builds have been removed from CI. Hybrid ANSI and JIS artifacts include the same implementation, including Type-S. See [power modes and measurements](config.md#power-modes-and-pc5).

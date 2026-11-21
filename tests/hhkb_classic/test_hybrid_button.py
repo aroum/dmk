@@ -114,9 +114,9 @@ static void hhkb_hybrid_service(void){
         harness += r'''
 static void setup(unsigned m){mode=m;powered=true;poweroff_pending=false;battery=true;calls=delays=releases=0;gpio.BSRR=0;spi.SR=0;active_slot=0;control_command=0;}
 int main(void){
- setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==EXPECTED_PD2 && calls==1501 && releases==1);
+ setup(1);hhkb_hybrid_toggle_power();assert(!powered && gpio.BSRR==0 && calls==1501 && releases==1);
  hhkb_hybrid_toggle_power();assert(releases==1);
- setup(0);hhkb_hybrid_toggle_power();assert(!powered && delays==3000 && gpio.BSRR==EXPECTED_PD2);
+ setup(0);hhkb_hybrid_toggle_power();assert(!powered && delays==3000 && gpio.BSRR==0);
  setup(2);hhkb_hybrid_toggle_power();assert(powered && !poweroff_pending && gpio.BSRR==0);
  setup(3);hhkb_hybrid_toggle_power();assert(!powered && releases==1 && calls==3000);
  setup(4);hhkb_hybrid_toggle_power();assert(!powered && calls==1600);
@@ -128,9 +128,8 @@ int main(void){
             c = Path(tmp) / 'shutdown.c'
             binary = Path(tmp) / 'shutdown'
             c.write_text(harness)
-            for defines in (['-DEXPECTED_PD2=4'], ['-DEXPECTED_PD2=0', '-DHHKB_STOCK_POWER_OFF']):
-                subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror', *defines, str(c),'-o',str(binary)],check=True)
-                subprocess.run([str(binary)],check=True)
+            subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',str(c),'-o',str(binary)],check=True)
+            subprocess.run([str(binary)],check=True)
 
     def test_stock_resume_clears_stale_output_and_reselects_profile(self):
         source = (ROOT / 'keyboards/hhkb/modules/hybrid/hybrid.c').read_text()

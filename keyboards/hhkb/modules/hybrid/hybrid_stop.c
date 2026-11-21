@@ -123,7 +123,6 @@ static void stop_once(uint32_t stage) {
 }
 
 void hhkb_hybrid_enter_stop(void) {
-#ifdef HHKB_STOCK_POWER_OFF
     // OFF resumes this task; deep sleep and USB wake still reset the MCU.
     const uint32_t saved_cfgr = RCC->CFGR;
     const uint32_t saved_core_clock = SystemCoreClock;
@@ -135,13 +134,9 @@ void hhkb_hybrid_enter_stop(void) {
     const uint32_t saved_spi = SPI1->CR1;
     const uint32_t saved_pwr = PWR->CR;
     const uint32_t saved_primask = __get_PRIMASK();
-#endif
     hhkb_stop_stage = 1;
     hhkb_stop_wake_count = 0;
     // Called only on battery after all pressed keys have been released.
-#ifndef HHKB_STOCK_POWER_OFF
-    GPIOD->BSRR = 1UL << 2; // MIT: hold Nordic stopped during OFF.
-#endif
     TIM2->DIER = 0;
     TIM2->CR1 &= ~TIM_CR1_CEN;
     SPI1->CR1 &= ~SPI_CR1_SPE;
@@ -228,7 +223,6 @@ void hhkb_hybrid_enter_stop(void) {
             GPIOA->BRR = 1UL << 8;
             if (off_press_action(held_ticks, true) == 1) {
                 hhkb_stop_stage = 6;
-#ifdef HHKB_STOCK_POWER_OFF
                 if (!hhkb_hybrid_off_is_deep()) {
                     // Keep Nordic running. Restore clocks while interrupts and
                     // the scheduler remain masked; RTOS OFF time stays frozen.
@@ -263,7 +257,6 @@ void hhkb_hybrid_enter_stop(void) {
                     __set_PRIMASK(saved_primask);
                     return;
                 }
-#endif
                 NVIC_SystemReset();
             }
         }

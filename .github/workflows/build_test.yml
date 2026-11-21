@@ -131,24 +131,16 @@ jobs:
           if-no-files-found: error
 
   build-hhkb-hybrid:
-    name: Build HHKB Hybrid ${{ matrix.layout }} (${{ matrix.power }}, including Type-S)
+    name: Build HHKB Hybrid ${{ matrix.layout }} (including Type-S)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - layout: ansi
-            power: mit
             defines: HHKB_HYBRID
           - layout: jis
-            power: mit
             defines: HHKB_HYBRID,HHKB_JIS
-          - layout: ansi
-            power: stock
-            defines: HHKB_HYBRID,HHKB_STOCK_POWER_OFF
-          - layout: jis
-            power: stock
-            defines: HHKB_HYBRID,HHKB_JIS,HHKB_STOCK_POWER_OFF
     steps:
       - uses: actions/checkout@v7
         with:
@@ -165,21 +157,20 @@ jobs:
         env:
           HHKB_DEFINES: ${{ matrix.defines }}
           HHKB_LAYOUT: ${{ matrix.layout }}
-          HHKB_POWER: ${{ matrix.power }}
-          DMK_FW_VERSION: dev-${{ github.run_number }}-${{ matrix.power }}-${{ matrix.layout }}
+          DMK_FW_VERSION: dev-${{ github.run_number }}-${{ matrix.layout }}
         run: |
           ./build_all.sh -b hhkb -d "$HHKB_DEFINES" -c
           mkdir -p build/hhkb-hybrid-release
           # Blank-radio HFB generation is disabled after radio validation failures.
           # python3 tools/hhkb/patch_hybrid_hfb.py --stm32-only --layout "$HHKB_LAYOUT" ...
-          cp build/hhkb-script/dmk_hhkb_stm32l072.bin "build/hhkb-hybrid-release/dmk-hhkb-hybrid-${HHKB_LAYOUT}-${HHKB_POWER}.bin"
+          cp build/hhkb-script/dmk_hhkb_stm32l072.bin "build/hhkb-hybrid-release/dmk-hhkb-hybrid-${HHKB_LAYOUT}.bin"
           cp tools/hhkb/hhkb.html build/hhkb-hybrid-release/
           cp keyboards/hhkb/via.json build/hhkb-hybrid-release/
 
       - name: Upload Hybrid STM32 binary
         uses: actions/upload-artifact@v7
         with:
-          name: dmk-hhkb-hybrid-${{ matrix.layout }}-${{ matrix.power }}-stm32
+          name: dmk-hhkb-hybrid-${{ matrix.layout }}-stm32
           path: build/hhkb-hybrid-release/
           retention-days: 3
           if-no-files-found: error
