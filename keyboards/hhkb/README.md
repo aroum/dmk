@@ -33,31 +33,33 @@ See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, c
 
 ## Scan rate and power
 
-### Classic — USB power
+### Classic and Hybrid — USB power
 
 The 32 MHz CPU clock and supported scan rates are within the MCU's normal operating specifications, not overclocking. The chip remains cool.
 
-| Firmware | Matrix scan rate | CPU | ADC oversampling | Current |
-| --- | --- | --- | --- | --- |
-| Stock | 50 Hz | 16 MHz | — | 7.5 mA |
-| DMK | 50 Hz | 32 MHz | On | 7.5 mA |
-| DMK | 500 Hz | 32 MHz | On | 10 mA |
-| DMK | 1000 Hz | 32 MHz | Off | 12 mA |
+| Firmware | Matrix scan rate | CPU    | ADC oversampling | Current |
+| -------- | ---------------- | ------ | ---------------- | ------- |
+| Stock    | 50 Hz            | 16 MHz | —                | 7.5 mA  |
+| DMK      | 50 Hz            | 32 MHz | On               | 7.5 mA  |
+| DMK      | 500 Hz           | 32 MHz | On               | 10 mA   |
+| DMK      | 1000 Hz          | 32 MHz | Off              | 12 mA   |
 
 At 1000 Hz the increase over stock is 4.5 mA. At 50 Hz DMK matches the measured stock consumption.
 
+On USB power, HHKB Hybrid consumption is essentially identical to Classic, though baseline current may be slightly higher due to the dedicated Bluetooth controller being powered; the relative ratio between stock and DMK remains identical to Classic across all scan rates.
+
 ### Hybrid — battery power
 
-Bluetooth, 3.0 V; current in mA, measured on one keyboard. DMK aims to match stock battery consumption. The stock firmware powers off rather than providing DMK's optional matrix-wake sleep.
+Bluetooth, 3.0 V, measured on one keyboard. DMK aims to match stock battery consumption. The stock firmware powers off rather than providing DMK's optional matrix-wake sleep.
 
-| Mode | Stock | DMK |
-| --- | --- | --- |
-| OFF | 0.21 | 0.21 |
-| Sleep with matrix wake at 1 Hz | — | 1.44 |
-| Idle | 3.28 | 3.0 |
-| Typing | 3.55 | 3.8 |
-| Typing on Fn layer, LED off | 3.4 | 3.5 |
-| Typing on Fn layer, LED on | — | 5.8 |
+| Mode                           | Stock   | DMK     |
+| ------------------------------ | ------- | ------- |
+| OFF                            | 0.21 mA | 0.21 mA |
+| Sleep with matrix wake at 1 Hz | —       | 1.44 mA |
+| Idle                           | 3.28 mA | 3.0 mA  |
+| Typing                         | 3.55 mA | 3.8 mA  |
+| Typing on Fn layer, LED off    | 3.4 mA  | 3.5 mA  |
+| Typing on Fn layer, LED on     | —       | 5.8 mA  |
 
 Stock has no Fn-layer LED indication: its 3.4 mA measurement belongs in the LED-off row. The extra DMK Fn-layer current with the LED on was confirmed to come from that indicator. Higher sleep scan rates have not yet been measured.
 

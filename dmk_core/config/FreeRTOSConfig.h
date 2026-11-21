@@ -120,7 +120,7 @@
 #elif defined(MCU_stm32f072)
 // STM32F072 has 16 KiB SRAM; static task & queue allocation used across all core modules
 #define configTOTAL_HEAP_SIZE (1536)
-#elif defined(MCU_stm32l072) && defined(HHKB_JIS)
+#elif defined(MCU_stm32l072) && (defined(HHKB_JIS) || defined(HHKB_HYBRID))
 #define configTOTAL_HEAP_SIZE (2 * 1024)
 #elif defined(MCU_stm32l072)
 // STM32L072 has 20 KiB SRAM

@@ -144,8 +144,8 @@ The STM32L072KB microcontroller has 128 KiB Flash (arranged into two 64 KiB bank
 
 Includes SPI protocol engine for Nordic nRF52832 Bluetooth SoC, battery telemetry, and STOP power-saving state machine:
 
-- **Flash (Bank 2):** ~61.9 KiB used (61,912 bytes out of 65,536 bytes; ~94.5% of available 64 KiB bank).
-- **RAM (Link-time allocation):** 1,656 bytes `.data`, 16,736 bytes `.bss`, 2,048 bytes `._user_heap_stack`, totalling 20,440 bytes (99.8%) and leaving 40 bytes free.
+- **Flash (Bank 2):** ~62.2 KiB used (62,196 bytes out of 65,536 bytes; ~94.9% of available 64 KiB bank).
+- **RAM (Link-time allocation):** 1,704 bytes `.data`, 15,716 bytes `.bss`, 2,052 bytes `._user_heap_stack`, totalling 19,472 bytes (95.1%) and leaving 1,008 bytes free (Hybrid configures FreeRTOS heap to 2 KiB, matching JIS).
 
 _Note:_ Values reflect build-time layout (`arm-none-eabi-size`), not runtime stack depth.
 
