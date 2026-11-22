@@ -148,7 +148,7 @@ DFU or SWD can restore a saved Bank 2 image. Restoring all Flash, EEPROM, or Opt
 
 ## SW6 recovery
 
-SW6 recovery is enabled by default for Classic and Hybrid, including ANSI and JIS. Return SW6 to OFF after entering Bank 1. The Hybrid recovery path still needs testing on hardware.
+SW6 recovery is enabled by default for Classic and Hybrid, including ANSI and JIS, and is verified on hardware. Return SW6 to OFF after entering Bank 1.
 
 With `HHKB_SW6_REBOOT_TO_BANK1=1`, starting DMK with SW6 ON invalidates Bank 2 and erases its first 128-byte vector page, then resets into Bank 1. The erased page contains the initial stack pointer and reset vector, so Bank 1 cannot transfer execution to Bank 2 again. Bank 2 will remain unbootable across power cycles until a complete compatible firmware image is written back to Bank 2 through the PFU updater, DFU, or SWD.
 
