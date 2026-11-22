@@ -152,7 +152,7 @@ static bool off_retry_pending,off_wait_release,off_wake_ready,idle_polling;
 static bool radio_link_wake=true,radio_disconnected=true;
 static uint8_t control_command=4,queue_count=3,queue_read=1,queue_write=4;
 static uint8_t reply_length=3,reply_position=1,spi_register=0xaa;
-static uint8_t attention_retries=5,active_slot=2,report[8]={1,2,3,4,5,6,7,8};
+static uint8_t attention_retries=5,active_slot=2,report[8]={1,2,3,4,5,6,7,8},consumer_bits[4];
 static bool pairing=true,pairing_active=true;
 static struct {uint32_t CR2;} spi={.CR2=0x80};
 #define SPI1 (&spi)
@@ -163,6 +163,7 @@ static volatile uint8_t *spi_data=&spi_register;
         harness += function(source, 'void hhkb_hybrid_resume_after_stop(')
         harness += r'''
 int main(void) {
+ memset(consumer_bits,0xff,sizeof(consumer_bits));
  hhkb_hybrid_resume_after_stop(true);
  assert(powered && auto_select_needed);
  assert(!poweroff_pending && !matrix_sleeping && !sleep_requested);
@@ -172,6 +173,7 @@ int main(void) {
  assert(!reply_length && !reply_position && !spi_register);
  assert(!attention_retries && active_slot==255 && !pairing && !pairing_active);
  assert(!(spi.CR2 & SPI_CR2_TXEIE));
+ for(unsigned i=0;i<sizeof(consumer_bits);++i)assert(consumer_bits[i]==0);
  assert(report[0]==1); // Nordic keyboard packet type is not part of the key state.
  for(unsigned i=1;i<sizeof(report);++i)assert(report[i]==0);
  assert(!off_retry_pending && !radio_link_wake && !radio_disconnected);

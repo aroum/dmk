@@ -25,7 +25,7 @@ static struct {uint32_t SR,CR2;} spi;
 #define SPI1 (&spi)
 static volatile uint8_t data;
 static volatile uint8_t *const spi_data=&data;
-static uint8_t report[8],keyboard_queue[8][7],reply[9];
+static uint8_t report[8],input_queue[8][8],reply[9];
 static uint8_t queue_count,queue_read,control_command,control_slot,reply_length,reply_position;
 static uint8_t notification_type,active_slot,battery_pending,battery_reported,display_slot,attention_retries;
 static bool notification_value,pairing,pairing_active,battery_polled,hello_seen,control_polled;

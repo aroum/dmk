@@ -315,6 +315,9 @@ bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
 
 bool USB_HID_SendConsumerReport(uint16_t usage) {
     if (!s_keyboard_queue) return false;
+#ifdef HHKB_HYBRID
+    if (hhkb_hybrid_output_bluetooth()) return hhkb_hybrid_consumer_report(usage);
+#endif
     taskENTER_CRITICAL();
     s_latest_consumer = usage;
     taskEXIT_CRITICAL();

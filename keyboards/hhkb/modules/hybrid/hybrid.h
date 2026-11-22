@@ -7,6 +7,8 @@ void hhkb_hybrid_init(void);
 bool hhkb_hybrid_on_battery(void);
 bool hhkb_hybrid_button(void);
 void hhkb_hybrid_report(uint8_t modifiers, const uint8_t keys[6]);
+// Factory BLE consumer map; zero releases all consumer keys.
+bool hhkb_hybrid_consumer_report(uint16_t usage);
 void hhkb_hybrid_service(void);
 bool hhkb_hybrid_request_slot(uint8_t slot, bool pair);
 uint8_t hhkb_hybrid_battery_level(void);

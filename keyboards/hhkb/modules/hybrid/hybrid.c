@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Protocol constants and SPI transaction shape adapted from l3tnun's
-// hhkb_hybrid nrf_spi.c and power.c. See LICENSE.protocol for the upstream notice.
+// hhkb_hybrid nrf_spi.c, hhkb_hybrid.c (consumer map), and power.c.
+// See LICENSE.protocol for the upstream notice.
 #include "hybrid.h"
 #include "FreeRTOS.h"
 #include "hal_gpio.h"
@@ -12,7 +13,17 @@
 #include <string.h>
 
 static uint8_t report[8] = {1};
-static uint8_t keyboard_queue[8][7];
+// A shared FIFO preserves keyboard/consumer press and release ordering.
+static uint8_t input_queue[8][8];
+static uint8_t consumer_bits[4];
+// Factory nRF BLE report IDs 2..5: one byte of consumer bits per report.
+// Mapping adapted from l3tnun's MIT hhkb_hybrid.c; see LICENSE.protocol.
+static const uint16_t consumer_usages[4][8] = {
+    {0x06f,0x070,0x030,0x0b7,0x0e2,0x0e9,0x0ea,0x0b8},
+    {0x087,0x18a,0x192,0x088,0x196,0x221,0x223,0x224},
+    {0x225,0x226,0x227,0x22a,0x0cd,0x0b5,0x0b6,0x153},
+    {0x154,0x155,0x206,0x0b2,0x0b3,0x0b4,0x003,0x152},
+};
 static uint8_t queue_read;
 static uint8_t queue_write;
 static volatile uint8_t queue_count;
@@ -123,10 +134,9 @@ void SPI1_IRQHandler(void) {
                     battery_polled = true;
                     battery_pending = 0;
                 } else if (queue_count) {
-                    memcpy(report + 1, keyboard_queue[queue_read], 7);
+                    memcpy(payload, input_queue[queue_read], sizeof(payload));
                     queue_read = (queue_read + 1) % 8;
                     --queue_count;
-                    memcpy(payload, report, sizeof(report));
                 } else {
                     memcpy(payload, report, sizeof(report));
                 }
@@ -218,6 +228,7 @@ void hhkb_hybrid_request_sleep(void) { sleep_requested = true; }
 static void release_current_output(void) {
     const USB_HID_KeyboardReport_TypeDef released = {.ReportID = 1};
     USB_HID_SendReport(&released);
+    USB_HID_SendConsumerReport(0);
 }
 
 void hhkb_hybrid_show_profile(void) {
@@ -385,6 +396,7 @@ void hhkb_hybrid_resume_after_stop(bool wake) {
     attention_retries = 0;
     active_slot = 0xff;
     pairing = pairing_active = false;
+    memset(consumer_bits, 0, sizeof(consumer_bits));
     memset(report, 0, sizeof(report));
     report[0] = 0x01; // Restore the Nordic keyboard packet type after clearing keys.
     SPI1->CR2 &= ~SPI_CR2_TXEIE;
@@ -625,34 +637,73 @@ bool hhkb_hybrid_led_override(uint8_t index, uint32_t now_ms, bool *on) {
     return false;
 }
 
-void hhkb_hybrid_report(uint8_t modifiers, const uint8_t keys[6]) {
-    NVIC_DisableIRQ(SPI1_IRQn);
-    if (!control_command) {
-        if (queue_count == 8) {
-            // Keep the latest state, including releases, when the radio stalls.
-            queue_read = (queue_read + 1) % 8;
-            --queue_count;
-        }
-        keyboard_queue[queue_write][0] = modifiers;
-        memcpy(keyboard_queue[queue_write] + 1, keys, 6);
+// Caller holds the task critical section (also excludes the SPI ISR).
+static void resync_input_queue(void) {
+    memcpy(input_queue[0], report, sizeof(report));
+    memset(input_queue[1], 0, sizeof(input_queue[1]));
+    input_queue[1][0] = 2;
+    memcpy(input_queue[1] + 1, consumer_bits, sizeof(consumer_bits));
+    queue_read = 0;
+    queue_write = 2;
+    queue_count = 2;
+}
+
+static void enqueue_input(const uint8_t packet[8]) {
+    if (queue_count == 8) {
+        // Radio stalled: keep both latest full states, including releases.
+        resync_input_queue();
+    } else {
+        memcpy(input_queue[queue_write], packet, 8);
         queue_write = (queue_write + 1) % 8;
         ++queue_count;
-        attention_retries = 0;
     }
-    NVIC_EnableIRQ(SPI1_IRQn);
+    attention_retries = 0;
+}
+
+void hhkb_hybrid_report(uint8_t modifiers, const uint8_t keys[6]) {
+    taskENTER_CRITICAL();
+    if (!control_command) {
+        report[0] = 1;
+        report[1] = modifiers;
+        memcpy(report + 2, keys, 6);
+        enqueue_input(report);
+    }
+    taskEXIT_CRITICAL();
+}
+
+bool hhkb_hybrid_consumer_report(uint16_t usage) {
+    uint8_t packet[8] = {2};
+    bool supported = usage == 0;
+    for (unsigned r = 0; r < 4 && usage; ++r) {
+        for (unsigned b = 0; b < 8; ++b) {
+            if (consumer_usages[r][b] == usage) {
+                packet[1 + r] = 1U << b;
+                supported = true;
+            }
+        }
+    }
+    if (!supported) return false; // No such usage in the factory BLE report map.
+    taskENTER_CRITICAL();
+    bool accepted = control_command == 0;
+    if (accepted) {
+        memcpy(consumer_bits, packet + 1, sizeof(consumer_bits));
+        enqueue_input(packet);
+    }
+    taskEXIT_CRITICAL();
+    return accepted;
 }
 
 bool hhkb_hybrid_request_slot(uint8_t slot, bool pair) {
     if (slot > 3 || !hello_seen || control_command) return false;
     release_current_output();
     if (!hhkb_hybrid_on_battery()) manual_bt_output = true;
-    NVIC_DisableIRQ(SPI1_IRQn);
+    taskENTER_CRITICAL();
     bool accepted = control_command == 0;
     if (accepted) {
-        memset(keyboard_queue[0], 0, sizeof(keyboard_queue[0]));
-        queue_read = 0;
-        queue_write = 1;
-        queue_count = 1;
+        memset(report + 1, 0, sizeof(report) - 1);
+        report[0] = 1;
+        memset(consumer_bits, 0, sizeof(consumer_bits));
+        resync_input_queue();
         attention_retries = 0;
         control_slot = slot;
         control_polled = false;
@@ -662,7 +713,7 @@ bool hhkb_hybrid_request_slot(uint8_t slot, bool pair) {
         display_slot = slot;
         profile_display_until = xTaskGetTickCount() + pdMS_TO_TICKS(3000);
     }
-    NVIC_EnableIRQ(SPI1_IRQn);
+    taskEXIT_CRITICAL();
     if (accepted) {
         auto_select_needed = false;
         radio_disconnected = false;
@@ -685,6 +736,7 @@ void hhkb_hybrid_service(void) {
         } else if (!manual_bt_output) {
             static const uint8_t released[6] = {0};
             hhkb_hybrid_report(0, released);
+            hhkb_hybrid_consumer_report(0);
             if (!control_command) { control_polled = false; control_command = 0x04; }
         }
     }

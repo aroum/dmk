@@ -80,7 +80,7 @@ static uint32_t now,button_down_since,power_off_flash_until;
 static uint32_t idle_poll_started,off_idle_since,radio_disconnected_since;
 static uint8_t control_command,queue_count,queue_read,queue_write,attention_retries;
 static uint8_t active_slot=255,reply_length,reply_position,battery_reported=100,battery_pending;
-static uint8_t report[8],spi_data_register;
+static uint8_t report[8],consumer_bits[4],spi_data_register;
 static volatile uint8_t *const spi_data=&spi_data_register;
 static unsigned calls,idles,releases,selections,resets;
 static bool hhkb_hybrid_on_battery(void){return battery;}
@@ -98,6 +98,7 @@ static void NVIC_SystemReset(void){++resets;}
 static void vTaskDelay(uint32_t ticks){now+=ticks;}
 static void hal_sleep_us(unsigned us){(void)us;}
 static void hhkb_hybrid_report(uint8_t m,const uint8_t k[6]){(void)m;(void)k;}
+static bool hhkb_hybrid_consumer_report(uint16_t u){(void)u;return true;}
 static bool hhkb_hybrid_request_slot(uint8_t slot,bool pair){
  assert(slot==2 && !pair);++selections;auto_select_needed=false;return true;
 }
