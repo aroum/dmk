@@ -56,12 +56,13 @@ Bluetooth, 3.0 V, measured on one keyboard. DMK aims to match stock battery cons
 | ------------------------------ | ------- | ------- |
 | OFF                            | 0.21 mA | 0.21 mA |
 | Sleep with matrix wake at 1 Hz | —       | 1.44 mA |
+| Sleep with matrix wake at 10 Hz | — | 1.68 mA |
 | Idle                           | 3.28 mA | 3.0 mA  |
 | Typing                         | 3.55 mA | 3.8 mA  |
 | Typing on Fn layer, LED off    | 3.4 mA  | 3.5 mA  |
 | Typing on Fn layer, LED on     | —       | 5.8 mA  |
 
-Stock has no Fn-layer LED indication: its 3.4 mA measurement belongs in the LED-off row. The extra DMK Fn-layer current with the LED on was confirmed to come from that indicator. Higher sleep scan rates have not yet been measured.
+Stock has no Fn-layer LED indication: its 3.4 mA measurement belongs in the LED-off row. The extra DMK Fn-layer current with the LED on was confirmed to come from that indicator. The tester measured 1.68 mA at 10 Hz and confirmed reconnection on the first key press.
 
 With **Wake with matrix** off, inactivity or a sleep action enters OFF directly. With it on, sleep powers down sensors and LEDs between matrix probes at a configurable **1–10 Hz** (default 1 Hz). A detected key wakes the keyboard; holding a key briefly helps at low probe rates. **Power off after sleep** sets the battery sleep-to-OFF timeout (default 3 min; 0 never). Both controls are hidden when matrix wake is off. The tester confirmed that the timer reduces current to 0.21 mA after OFF. See [Hybrid power settings](docs/en/via-debug.md#via-settings-unique-to-hybrid).
 
