@@ -95,7 +95,7 @@ Thus the observed threshold transitions fall between 2.25–2.24 V, 2.14–2.13 
 
 ### Hardware and license notes
 
-The ANSI matrix and SPI protocol follow the supplied `hhkb_hybrid` research. Its `nrf_spi.c` and `power.c` have MIT headers; only protocol handling and the STOP wake sequence were adapted. See the attribution and full upstream notice in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol). Factory and patched PFU containers remain outside Git.
+The ANSI matrix and SPI protocol follow the supplied [l3tnun/hhkb_hybrid](https://github.com/l3tnun/hhkb_hybrid) research. Its `nrf_spi.c` and `power.c` have MIT headers; only protocol handling and the STOP wake sequence were adapted. See the attribution and full upstream notice in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol). Factory and patched PFU containers remain outside Git.
 
 JIS coordinates and the Hybrid factory calibration map remain unverified. A successful build does not establish that the keyboard boots, pairs, wakes from STOP, or reaches the expected battery current on real hardware.
 

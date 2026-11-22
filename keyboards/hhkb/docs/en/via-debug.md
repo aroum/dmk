@@ -254,7 +254,7 @@ In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debu
 
 Hybrid routes consumer/media reports to the stock Nordic module when Bluetooth output is selected, including when powered by USB. Selecting USB output uses the normal USB consumer-report path.
 
-The factory BLE report map supports **32 consumer usages**. These include volume up/down, mute, play/pause, next/previous track, stop, eject, brightness up/down, and browser/application controls. DMK encodes every usage in that map into Nordic's four consumer bitmask bytes (packet type `0x02`); it does not require changes to the Nordic firmware. The mapping is adapted from the MIT `hhkb_hybrid` reference and retains its attribution in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol).
+The factory BLE report map supports **32 consumer usages**. These include volume up/down, mute, play/pause, next/previous track, stop, eject, brightness up/down, and browser/application controls. DMK encodes every usage in that map into Nordic's four consumer bitmask bytes (packet type `0x02`); it does not require changes to the Nordic firmware. The mapping is adapted from the MIT [l3tnun/hhkb_hybrid](https://github.com/l3tnun/hhkb_hybrid) reference and retains its attribution in [LICENSE.protocol](../../modules/hybrid/LICENSE.protocol).
 
 Supported HID Consumer usage IDs (hexadecimal): `006F`, `0070`, `0030`, `00B7`, `00E2`, `00E9`, `00EA`, `00B8`, `0087`, `018A`, `0192`, `0088`, `0196`, `0221`, `0223`, `0224`, `0225`, `0226`, `0227`, `022A`, `00CD`, `00B5`, `00B6`, `0153`, `0154`, `0155`, `0206`, `00B2`, `00B3`, `00B4`, `0003`, `0152`.
 
