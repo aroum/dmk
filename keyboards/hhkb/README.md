@@ -31,6 +31,8 @@ See the detailed [Supported Models Guide](docs/en/models.md) for part numbers, c
 - Mod-Tap and Layer-Tap, with configurable tapping term, permissive hold, tap preference, and quick tap.
 - Two base/Fn layer pairs, selectable with the System 1 and System 2 keycodes in VIA.
 
+Hybrid Bluetooth also supports all 32 consumer usages in the factory Nordic report map, including volume, playback, brightness and browser controls. See [Bluetooth media support and limits](docs/en/via-debug.md#media-keys-over-bluetooth).
+
 ## Scan rate and power
 
 ### Classic and Hybrid — USB power
