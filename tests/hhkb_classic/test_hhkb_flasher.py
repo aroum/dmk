@@ -26,6 +26,13 @@ class FlasherValidationTest(unittest.TestCase):
     def setUp(self):
         self.good = flasher.wrap_binary_to_hfb(b'\x00\x50\x00\x20\x01\x00\x01\x08')
 
+    def test_complete_model_families_and_suffixes(self):
+        from .hhkb_model_cases import model_cases
+        for number, expected in model_cases().items():
+            with self.subTest(number=number):
+                self.assertEqual(flasher.device_model(number), expected)
+                self.assertEqual(flasher.device_model('  '+number.lower()+'  '), expected)
+
     def test_models(self):
         # Classic models (AHHX01)
         for model in ('PD-KB401W', 'PD-KB401B', 'PD-KB401WN', 'PD-KB401BN'):

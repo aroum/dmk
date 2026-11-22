@@ -70,6 +70,8 @@ uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py build/hhkb-script/<firmw
 
 Confirm with `--info` that the [HHKB Keymap Tool](https://happyhackingkb.com/download/) sees the expected keyboard model.
 
+The browser flasher and Python flasher recognize the hardware family rather than an exhaustive list of retail part numbers. Colour/legend variants and anniversary suffixes such as `PD-KB800YSC` / `PD-KB800YSC1` map to Hybrid ANSI (`AHUX01`); the corresponding `PD-KB820…` variants map to Hybrid JIS (`AHJX01`). Classic and Classic Type-S still require their own matching HFB model. CRC, embedded DMK model and ANSI/JIS checks remain in place; these suffixes do not require bypass flags. The browser also checks the target again after recovery and tolerates the numeric revision suffix being omitted, while rejecting a different family or colour/legend variant.
+
 ### Image Checks
 
 The local flasher validates the container strictly before transmission by default:

@@ -96,6 +96,22 @@ for(const file of files){let failed=false;try{validate(Uint8Array.from(file))}ca
 ''', files=[list(container('AHUX01', application('AHJX01'))),
             list(container('AHHS01', application('AHHX01')))])
 
+    def test_all_target_families_match_python_and_reject_cross_flashes(self):
+        from .hhkb_model_cases import model_cases, MODELS
+        self.run_js('''
+for(const [number,expected] of Object.entries(cases)){
+ if(deviceModel(number)!==expected)throw Error('wrong family: '+number);
+ if(deviceModel('  '+number.toLowerCase()+'  ')!==expected)throw Error('normalization: '+number);
+ // The actual PFU field contains at most 20 bytes.
+ if(new TextEncoder().encode(number).length>20)continue;
+ const info=new Uint8Array(64);info.set(new TextEncoder().encode(number),6);
+ for(const model of expectedModels){
+  let accepted=true;try{checkTarget(info,model)}catch(e){accepted=false}
+  if(accepted!==(expected===model))throw Error('target validation: '+model+' / '+number);
+ }
+}
+''', cases=model_cases(), expectedModels=list(MODELS))
+
     def test_original_flash_images_and_exact_device_variants(self):
         legacy = container('AHHX01', struct.pack('<II',0x20005000,0x08010009)+bytes(40))
         self.run_js('''
@@ -128,6 +144,20 @@ if(!$('patchButton').disabled||!$('patchStatus').textContent.includes('Incompati
         for wrong_at in (1,2):
             self.run_js(self.flash_harness(),image=list(container('AHUX01')),number='PD-KB800WS',wrongAt=wrong_at)
 
+    def test_anniversary_model_suffix_before_and_after_recovery(self):
+        for model, number, recovery in [
+            ('AHHS01','PD-KB401WSC1','PD-KB401WSC'),
+            ('AHKS01','PD-KB421BSC1','PD-KB421BSC'),
+            ('AHUX01','PD-KB800YSC1','PD-KB800YSC'),
+            ('AHJX01','PD-KB820WSC1','PD-KB820WSC')]:
+            self.run_js(self.flash_harness(),image=list(container(model)),
+                        number=number,recoveryNumber=recovery,wrongAt=0)
+
+    def test_same_family_different_colour_is_not_the_same_recovery_target(self):
+        self.run_js(self.flash_harness(),image=list(container('AHUX01')),
+                    number='PD-KB800YSC1',recoveryNumber='PD-KB800BSC',
+                    wrongAt=0,rejectRecovery=True)
+
     @staticmethod
     def flash_harness():
         return '''
@@ -136,12 +166,12 @@ const device={opened:false,collections:[{usagePage:0xff00,usage:1,inputReports:[
 open:async()=>{device.opened=true},close:async()=>{device.opened=false},
 addEventListener:(_,fn)=>{device.callback=fn},removeEventListener(){},
 sendReport:async(_,packet)=>{packets.push(packet);const reply=new Uint8Array(64);reply.set([85,85,packet[2],0,0,0]);
-if(packet[2]===2){infoCount++;reply.set(new TextEncoder().encode(infoCount===wrongAt?'PD-KB401W':number),6)}
+if(packet[2]===2){infoCount++;reply.set(new TextEncoder().encode(infoCount===wrongAt?'PD-KB401W':(infoCount===2 && typeof recoveryNumber!=='undefined'?recoveryNumber:number)),6)}
 device.callback({reportId:0,data:new DataView(reply.buffer)});
 }};
 navigator.hid={requestDevice:async()=>[device]};
 let failed=false;try{await flash(Uint8Array.from(image))}catch(e){failed=true}
-if(wrongAt){if(!failed||packets.some(p=>p[2]===225))throw Error('wrote to wrong target');if(wrongAt===1&&packets.some(p=>p[2]===224))throw Error('rebooted wrong target')}
+if(wrongAt || (typeof rejectRecovery!=='undefined' && rejectRecovery)){if(!failed||packets.some(p=>p[2]===225))throw Error('wrote to wrong target');if(wrongAt===1&&packets.some(p=>p[2]===224))throw Error('rebooted wrong target')}
 else {if(failed)throw Error('flash failed');const body=[];for(const p of packets.filter(p=>p[2]===226))body.push(...p.slice(7,7+p[4]-2));if(JSON.stringify(body)!==JSON.stringify(image.slice(2)))throw Error('payload mismatch');if(packets.at(-1)[2]!==227||infoCount!==2)throw Error('missing E3 or recovery check')}
 if(device.opened)throw Error('device leaked');
 '''

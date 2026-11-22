@@ -23,6 +23,7 @@ Protocol Notes (from tmk research & reverse engineering):
 
 import argparse
 import os
+import re
 import sys
 import time
 
@@ -82,23 +83,25 @@ def wrap_binary_to_hfb(raw_bin: bytes, model: str = "AHHX01", version_bytes: byt
     outer_crc = compute_crc16_mcrf4xx(body).to_bytes(2, "little")
     return outer_crc + body
 
-MODEL_NUMBERS = {
-    "AHHX01": "401W 401B 401WN 401BN",
-    "AHHS01": "401WSC 401BSC 401YSC",
-    "AHKS01": "421BSC 421WSC 421YSC",
-    "AHUX01": "800W 800B 800WN 800BN 800WS 800BS 800WNS 800BNS 800YS 800YNS 800BSC1 800WSC1 800YSC1",
-    "AHJX01": "820W 820B 820WS 820BS 820YS 820YNS 820BSC1 820WSC1 820YSC1",
+# Match a complete hardware family, including colour/legend and C/C1 revisions.
+# Classic Type-S remains separate from Classic; 800/820 distinguish ANSI/JIS.
+MODEL_PATTERNS = {
+    "AHHX01": r"PD-KB401[BW]N?",
+    "AHHS01": r"PD-KB401[BWY]N?SC[0-9]*",
+    "AHKS01": r"PD-KB421[BWY]N?SC[0-9]*",
+    "AHUX01": r"PD-KB800[BWY]N?(?:S(?:C[0-9]*)?)?",
+    "AHJX01": r"PD-KB820[BWY]N?(?:S(?:C[0-9]*)?)?",
 }
 
 
 def device_model(type_number: str):
-    """Map recognised physical model numbers to the container model ID."""
+    """Map PFU-reported part numbers to their compatible HFB family."""
     name = type_number.upper().strip()
-    if name.startswith("PD-KB"):
-        for model, numbers in MODEL_NUMBERS.items():
-            if name[5:] in numbers.split():
-                return model
+    for model, pattern in MODEL_PATTERNS.items():
+        if re.fullmatch(pattern, name):
+            return model
     return None
+
 
 def validate_container(data: bytes, expected_model=None, *, check_crc=True, check_model=True):
     """Validate the complete HFB before sending any update command."""

@@ -35,11 +35,20 @@ async function verifyFlashImage(data) {
   throw Error("Unrecognized original or legacy HFB. Use a supported official PFU image or rebuild DMK with model/version metadata.");
  return model;
 }
-const modelNumbers = {
- AHHX01:"401W 401B 401WN 401BN", AHHS01:"401WSC 401BSC 401YSC", AHKS01:"421BSC 421WSC 421YSC",
- AHUX01:"800W 800B 800WN 800BN 800WS 800BS 800WNS 800BNS 800YS 800YNS 800BSC1 800WSC1 800YSC1",
- AHJX01:"820W 820B 820WS 820BS 820YS 820YNS 820BSC1 820WSC1 820YSC1"
+// Full family matches: cosmetic suffixes/revisions do not change the HFB model.
+const modelPatterns = {
+ AHHX01:/^PD-KB401[BW]N?$/,
+ AHHS01:/^PD-KB401[BWY]N?SC[0-9]*$/,
+ AHKS01:/^PD-KB421[BWY]N?SC[0-9]*$/,
+ AHUX01:/^PD-KB800[BWY]N?(?:S(?:C[0-9]*)?)?$/,
+ AHJX01:/^PD-KB820[BWY]N?(?:S(?:C[0-9]*)?)?$/
 };
+function canonicalModelNumber(number) {return number.trim().toUpperCase().replace(/C[0-9]+$/,"C");}
+function deviceModel(number) {
+ const name=number.trim().toUpperCase();
+ for(const [model,pattern] of Object.entries(modelPatterns))if(pattern.test(name))return model;
+ return null;
+}
 function crc(data) { let v=65535; for(const b of data) { v^=b; for(let i=0;i<8;i++)v=(v&1)?(v>>>1)^0x8408:v>>>1; } return v; }
 function modelOf(data) { return new TextDecoder().decode(data.slice(-16,-10)); }
 function versionOf(data) {
@@ -132,8 +141,7 @@ async function selectDevice() {const devices=await navigator.hid.requestDevice({
 function checkTarget(info,model) {
  if(info.length<26)throw Error("Incomplete device identity response");
  const number=new TextDecoder().decode(info.slice(6,26)).replace(/\0.*$/,"").trim().toUpperCase();
- const expected=modelNumbers[model].split(" ").map(x=>"PD-KB"+x);
- if(!expected.includes(number))throw Error("Target "+number+" does not match "+modelNames[model]);
+ if(!models[model] || deviceModel(number)!==model)throw Error("Target "+number+" does not match "+modelNames[model]);
  return number;
 }
 async function flash(data) {
@@ -154,7 +162,7 @@ async function flash(data) {
   await new Promise(resolve=>{$("flashButton").disabled=false;$("flashButton").onclick=()=>{$("flashButton").disabled=true;resolve();};});
   device=await selectDevice();ids=channel(device);device.addEventListener("inputreport",onInput);
   const recovered=checkTarget(await command([170,170,2,0,0,0]),model);
-  if(recovered!==first)throw Error("Recovery device differs from the original target");
+  if(canonicalModelNumber(recovered)!==canonicalModelNumber(first))throw Error("Recovery device differs from the original target");
   log("Recovery target verified: "+recovered);
   const size=data.length;await command([170,170,225,0,8,size&255,(size>>>8)&255,(size>>>16)&255,(size>>>24)&255,data[0],data[1],0,0],15000);
   for(let offset=2,seq=0;offset<data.length;offset+=57,seq++) {const chunk=data.slice(offset,offset+57);try{await command([170,170,226,0,chunk.length+2,seq&255,seq>>>8,...chunk]);}catch(e){throw Error("Chunk "+seq+" at HFB offset 0x"+offset.toString(16)+": "+e.message);}if(seq%100===0)log("Sent "+seq+" chunks");$("progress").value=(offset+chunk.length)/data.length;}
