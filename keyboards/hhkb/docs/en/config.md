@@ -101,7 +101,7 @@ JIS coordinates and the Hybrid factory calibration map remain unverified. A succ
 
 ## Bluetooth scan rate and report delivery (Hybrid)
 
-Matrix scan frequency is configured independently of Nordic report delivery. The separate radio chip controls Bluetooth timing. The tester reports a negotiated BLE connection interval of 15 ms (about 66.67 connection intervals/s) on their host. This is not a universal 50 Hz Bluetooth limit or a guarantee of one HID report per interval. The HID measurement script observed 21.9 reports/s during typing, including typing pauses and host scheduling; this does not measure the connection interval. An HCI trace is needed to verify connection parameters and changes. The supplied static analysis of Hybrid stock firmware finds an approximately 11 ms battery matrix period; this still needs timing verification on hardware. Increasing matrix frequency cannot force the radio to send faster.
+Matrix scan frequency is configured independently of Nordic report delivery. The separate radio chip controls Bluetooth timing. The tester reports a negotiated BLE connection interval of 15 ms (about 66.67 connection intervals/s) on their host. This is not a universal 50 Hz Bluetooth limit or a guarantee of one HID report per interval. The HID measurement script observed 21.9 reports/s during typing, including typing pauses and host scheduling; this does not measure the connection interval. An HCI trace is needed to verify connection parameters and changes. The supplied static analysis of Hybrid stock firmware finds an approximately 11 ms battery matrix period. Increasing matrix frequency cannot force the radio to send faster.
 
 ## Bluetooth HID report intervals on macOS (Hybrid)
 

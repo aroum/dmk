@@ -2,7 +2,7 @@
 
 ### Hybrid battery and Bluetooth LEDs
 
-In the **Bluetooth** menu, enable the orange battery display, then click **Show battery now** or assign **BT Battery** to a key. One, two, three, or four flashes indicate 0%, 5%, 15%, or above 15%, respectively. The 100% value means all three factory low-battery thresholds are inactive; it is not a precise charge measurement. Separate toggles enable an orange low-battery warning (one flash every 30 seconds at 15%; two every 15 seconds at 5% or 0%), blue blinking while pairing (2 Hz pending, 4 Hz advertising), and 1–4 blue flashes when a profile is selected or connected. These settings are saved in EEPROM and need validation on Hybrid hardware.
+In the **Bluetooth** menu, enable the orange battery display, then click **Show battery now** or assign **BT Battery** to a key. One, two, three, or four flashes indicate 0%, 5%, 15%, or above 15%, respectively. The 100% value means all three factory low-battery thresholds are inactive; it is not a precise charge measurement. Separate toggles enable an orange low-battery warning (one flash every 30 seconds at 15%; two every 15 seconds at 5% or 0%), blue blinking while pairing (2 Hz pending, 4 Hz advertising), and 1–4 blue flashes when a profile is selected or connected. These settings are saved in EEPROM.
 
 **PC5 short press** (0–0.5 seconds) can show the connected profile (default), show battery level, sleep, select the next Bluetooth profile, or switch the last Bluetooth profile/USB. **PC5 long press** (2 seconds) can turn power off (default), sleep, or pair the last profile. With matrix wake disabled, sleep requests enter OFF directly. With it enabled, sleep requests Nordic idle and probes the matrix at 1–10 Hz; PC5 release after 0.1–2 seconds wakes, or a 2-second hold performs the configured long action directly. The Power off after sleep timer enters ordinary OFF: Nordic idle handshake, then STM32 STOP without holding PD2 high. PC5 hold of at least about 1 second followed by release resumes without STM32 reset; a 10-second hold cancels wake. USB insertion wakes ordinary OFF by reset. Only critical-battery STOP masks PC5 and requires USB to wake by reset. These two STOP paths must not be confused. When USB is absent, selecting USB is deferred until cable connection.
 
@@ -261,7 +261,6 @@ Supported HID Consumer usage IDs (hexadecimal): `006F`, `0070`, `0030`, `00B7`, 
 Press and release reports share the ordered keyboard FIFO. Transport switches and sleep/OFF release both keyboard and consumer state. If the radio stalls and the FIFO fills, DMK resynchronizes the latest state of both report types, including releases. The existing consumer API sends one active usage at a time, as on USB; the four bytes do not mean all 32 buttons are simultaneously exposed by DMK.
 
 Arbitrary Consumer usages outside the factory map, HID System Control reports, and mouse reports are not supported by this Bluetooth path. USB consumer handling is unchanged. The factory module understands HID report types and usages, not DMK/QMK keycode numbers; DMK performs that translation.
-
 
 Assign these after loading [via.json](../../via.json) in VIA:
 
