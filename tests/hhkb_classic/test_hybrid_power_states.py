@@ -187,9 +187,16 @@ int main(void){
  assert(!idle_polling && !control_polled && !control_command);
  down=true;hhkb_hybrid_off_service(6100);
  down=false;hhkb_hybrid_off_service(7100);assert(powered && !resets);
+ // Wake must restore the Nordic keyboard discriminator, not just clear keys.
+ for(unsigned attempt=0;attempt<3;attempt++){
+  setup(true);memset(report,0xff,sizeof(report));
+  hhkb_hybrid_resume_after_stop(true);
+  assert(powered && report[0]==1 && auto_select_needed);
+  for(unsigned i=1;i<sizeof(report);i++)assert(report[i]==0);
+ }
  // A cancelled battery wake restores SPI, repeats idle and remains OFF.
  setup(true);hhkb_hybrid_resume_after_stop(false);
- assert(!powered && off_retry_pending && !auto_select_needed);
+ assert(!powered && off_retry_pending && !auto_select_needed && report[0]==1);
  hhkb_hybrid_off_service(0);assert(!powered && idles && now>=1500 && !off_retry_pending);
  // Inserting USB into battery OFF retains the reset-based transition.
  off_from_battery=true;battery=false;hhkb_hybrid_off_service(0);assert(resets==1);

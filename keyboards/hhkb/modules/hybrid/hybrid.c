@@ -386,6 +386,7 @@ void hhkb_hybrid_resume_after_stop(bool wake) {
     active_slot = 0xff;
     pairing = pairing_active = false;
     memset(report, 0, sizeof(report));
+    report[0] = 0x01; // Restore the Nordic keyboard packet type after clearing keys.
     SPI1->CR2 &= ~SPI_CR2_TXEIE;
     *spi_data = 0;
 }

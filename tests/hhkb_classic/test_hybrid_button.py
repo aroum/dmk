@@ -172,7 +172,8 @@ int main(void) {
  assert(!reply_length && !reply_position && !spi_register);
  assert(!attention_retries && active_slot==255 && !pairing && !pairing_active);
  assert(!(spi.CR2 & SPI_CR2_TXEIE));
- for(unsigned i=0;i<sizeof(report);++i)assert(report[i]==0);
+ assert(report[0]==1); // Nordic keyboard packet type is not part of the key state.
+ for(unsigned i=1;i<sizeof(report);++i)assert(report[i]==0);
  assert(!off_retry_pending && !radio_link_wake && !radio_disconnected);
  hhkb_hybrid_resume_after_stop(false);
  assert(!powered && !auto_select_needed && off_retry_pending);
