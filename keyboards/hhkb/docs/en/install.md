@@ -120,3 +120,7 @@ bottom:    CLK | DIO
 ```
 
 Read [Backup & restore](backup-restore.md) before using either path.
+
+## Check USB detection after flashing
+
+If the keyboard does not appear in VIA or the HHKB Keymap Tool no longer recognizes it, follow [Check USB detection in Chrome](via-debug.md#check-usb-detection-in-chrome). Running DMK uses `CAFE:4014` / **HHKB Professional**, so the factory tool no longer recognizing it is expected.

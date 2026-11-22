@@ -35,6 +35,21 @@ All variants appear as **HHKB Professional** (`cafe:4014`). The firmware reports
 > **Blank keycaps (missing legends) on Layer 0:**
 > If the keys on Layer 0 appear blank upon connecting to VIA, this is an asynchronous WebHID rendering race in the VIA web client. Simply click **Layer 1** and then return to **Layer 0** (`Layer 1 → Layer 0`) to immediately render all key legends from the cache.
 
+## Check USB detection in Chrome
+
+Use a USB data cable for this check, even on Hybrid. These pages inspect USB enumeration; a Bluetooth connection alone will not show the DMK USB identity. Type each address directly into Chrome's address bar:
+
+1. Open `chrome://device-log`, then unplug and reconnect the keyboard. Look for the new USB/HID connection and any associated errors. If investigating a VIA connection failure, leave this page open while retrying **Authorize device** in the [VIA web app](https://www.usevia.app/).
+2. Open `chrome://usb-internals` and find the keyboard among the connected USB devices. Inspect its product name, Vendor ID and Product ID. Refresh the device list or reopen the page after reconnecting if necessary.
+
+For release **2026.11.22**, all supported DMK HHKB variants identify as **HHKB Professional**, VID `0xCAFE`, PID `0x4014` (`CAFE:4014`; case is irrelevant). Seeing this identity confirms that DMK has enumerated over USB, but does not by itself prove that typing or VIA communication works.
+
+The **HHKB Keymap Tool does not recognize running DMK** because DMK uses different USB identifiers. This is expected. The factory firmware or Bank 1 recovery interface uses VID `0x04FE`; its PID and product name depend on the model and mode. Seeing `04FE` alone does not distinguish stock operation from recovery. Follow the [installation and SW6 recovery instructions](install.md) when returning to Bank 1 for an update.
+
+If the keyboard is missing from Chrome's list, also inspect USB devices with your operating system's tools: **System Information → USB** on macOS, **Device Manager → device Properties → Details → Hardware IDs** on Windows, or `lsusb` on Linux. Try a known USB data cable and another port before assuming the firmware failed to install. If the OS sees DMK but VIA cannot connect, check browser authorization and, on Linux, the hidraw permissions described below.
+
+For a support report, include your operating system, keyboard model, firmware version if available, the displayed product name and VID/PID, and relevant USB/HID log entries. State whether the device appears after reconnecting and whether typing works.
+
 ## Chromium on Linux sees the HHKB, but VIA cannot connect
 
 If VIA detects **HHKB Professional** with VID/PID `cafe:4014` but reports that the keyboard is not responding, try granting Chromium access to its `/dev/hidraw*` devices. This rule grants the active local session user access to devices with this VID/PID.
