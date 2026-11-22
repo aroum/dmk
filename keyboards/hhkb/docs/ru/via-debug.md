@@ -144,7 +144,7 @@ uv run tools/ec_curve_visualizer.py
 
 ### 6. Диагностика и отладка (Debug)
 
-- **Firmware Version:** версия прошивки (`DMK_FW_VERSION`).
+- **Firmware Version:** версия прошивки (`DMK_FW_VERSION`). В релизе 2026.11.22 здесь отображается `2026.11.22`; версия контейнера HFB (например, A4.50) — отдельное значение.
 - **EC Matrix Stream:** потоковый вывод отсчётов матрицы `[EC]` в HID Console.
 - **VIA Telemetry Diag:** диагностика служебных пакетов обмена VIA v3.
 - **Polling Rate Monitor:** мониторинг частоты опроса матрицы и USB.

@@ -50,6 +50,8 @@ On USB power, HHKB Hybrid consumption is essentially identical to Classic, thoug
 
 ### Hybrid — battery power
 
+On USB power, the matrix scan rate remains configurable in [VIA](https://www.usevia.app/) up to **1000 Hz**. Battery operation uses the stock-style matrix period of approximately **11 ms, or about 91–92 Hz**. This is key scanning, not the Bluetooth report rate: report timing is controlled by the stock Nordic firmware and connection parameters.
+
 Bluetooth, 3.0 V, measured on one keyboard. DMK aims to match stock battery consumption. The stock firmware powers off rather than providing DMK's optional matrix-wake sleep.
 
 | Mode                           | Stock   | DMK     |

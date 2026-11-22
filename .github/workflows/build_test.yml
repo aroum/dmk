@@ -3,6 +3,7 @@ name: Build Firmware
 on:
   push:
     branches: [ main, master, dev ]
+    tags: [ "20*" ]
   pull_request:
     branches: [ main, master, dev ]
   workflow_dispatch:
@@ -157,7 +158,6 @@ jobs:
         env:
           HHKB_DEFINES: ${{ matrix.defines }}
           HHKB_LAYOUT: ${{ matrix.layout }}
-          DMK_FW_VERSION: dev-${{ github.run_number }}-${{ matrix.layout }}
         run: |
           ./build_all.sh -b hhkb -d "$HHKB_DEFINES" -c
           mkdir -p build/hhkb-hybrid-release

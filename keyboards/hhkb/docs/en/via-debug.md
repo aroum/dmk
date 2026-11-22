@@ -147,7 +147,7 @@ Outside an explicit calibration session, baseline and peak remain fixed: runtime
 
 ### 6. Debug
 
-- **Firmware Version:** Displays the compiled DMK firmware version.
+- **Firmware Version:** Displays the compiled DMK firmware version. Release 2026.11.22 reports `2026.11.22` here; HFB versions such as A4.50 are separate.
 - **EC Matrix Stream:** Streams real-time `[EC]` capacitance readings to the HID Console.
 - **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
 - **Polling Rate Monitor:** Telemetry for matrix scan and USB report frequency.
