@@ -120,6 +120,12 @@ static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
     return via_kc;
 }
 
+static uint8_t to_via_mod_mask(uint8_t dmk_mod) {
+    // Unlike a modifier HID keycode, this argument is always a bitmask.
+    return (dmk_mod & 0xF0) ? (uint8_t)(0x10 | (dmk_mod >> 4) | (dmk_mod & 0x0F))
+                            : (dmk_mod & 0x0F);
+}
+
 static uint8_t to_via_mods(uint8_t dmk_mod) {
     // If given an HID modifier keycode (0xE0..0xE7), map to single VIA modifier value
     switch (dmk_mod) {
@@ -134,45 +140,14 @@ static uint8_t to_via_mods(uint8_t dmk_mod) {
     default: break;
     }
 
-    uint8_t via_mod = 0;
-    if (dmk_mod & MOD_LCTRL)
-        via_mod |= 0x01;
-    if (dmk_mod & MOD_LSHIFT)
-        via_mod |= 0x02;
-    if (dmk_mod & MOD_LALT)
-        via_mod |= 0x04;
-    if (dmk_mod & MOD_LGUI)
-        via_mod |= 0x08;
-    if (dmk_mod & MOD_RCTRL)
-        via_mod |= 0x11;
-    if (dmk_mod & MOD_RSHIFT)
-        via_mod |= 0x12;
-    if (dmk_mod & MOD_RALT)
-        via_mod |= 0x14;
-    if (dmk_mod & MOD_RGUI)
-        via_mod |= 0x18;
-    return via_mod;
+    return to_via_mod_mask(dmk_mod);
 }
 
 static uint8_t from_via_mods(uint8_t via_mod) {
-    uint8_t dmk_mod = 0;
-    if (via_mod & 0x01)
-        dmk_mod |= MOD_LCTRL;
-    if (via_mod & 0x02)
-        dmk_mod |= MOD_LSHIFT;
-    if (via_mod & 0x04)
-        dmk_mod |= MOD_LALT;
-    if (via_mod & 0x08)
-        dmk_mod |= MOD_LGUI;
-    if (via_mod & 0x11)
-        dmk_mod |= MOD_RCTRL;
-    if (via_mod & 0x12)
-        dmk_mod |= MOD_RSHIFT;
-    if (via_mod & 0x14)
-        dmk_mod |= MOD_RALT;
-    if (via_mod & 0x18)
-        dmk_mod |= MOD_RGUI;
-    return dmk_mod;
+    // VIA bit 4 selects the side; bits 0..3 select Ctrl/Shift/Alt/GUI.
+    // HID uses the same four bits in the low (left) or high (right) nibble.
+    uint8_t mask = via_mod & 0x0F;
+    return (via_mod & 0x10) ? (uint8_t)(mask << 4) : mask;
 }
 
 // Helper function to map DMK 32-bit keycodes to VIA 16-bit keycodes
@@ -232,7 +207,7 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
                                    : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
     }
     if ((dmk_key & 0xFF000000) == DMK_MK) {
-        return 0x0100 | (to_via_mods((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
+        return (to_via_mod_mask((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
     }
     if (dmk_key >= L_0 && dmk_key <= L_15)
         return 0x5220 | (dmk_key - L_0);

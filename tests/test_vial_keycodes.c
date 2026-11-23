@@ -33,6 +33,37 @@ uint32_t from_via_keycode(uint16_t via_key);
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 
 int main(void) {
+    // VIA bit 4 selects one side, never both. Test all modifier masks.
+    for (unsigned mods = 0; mods < 32; ++mods) {
+        uint8_t expected = (mods & 0x10) ? ((mods & 0x0F) << 4) : (mods & 0x0F);
+        if (mods != 0) {
+            uint16_t encoded = (uint16_t)((mods << 8) | 0x33);
+            assert(from_via_keycode(encoded) == (uint32_t)MK(expected, K_SCLN));
+            if (mods & 0x0F) assert(to_via_keycode(from_via_keycode(encoded)) == encoded);
+        }
+        assert(from_via_keycode((uint16_t)(0x2000 | (mods << 8) | 0x33)) == (uint32_t)HT(expected, K_SCLN));
+    }
+    // Issue #6: LCTL(KC_SCLN) must not read back as RCTL(KC_SCLN).
+    assert(from_via_keycode(0x0133) == MK(MOD_LCTRL, K_SCLN));
+    assert(to_via_keycode(from_via_keycode(0x0133)) == 0x0133);
+    assert(from_via_keycode(0x1133) == MK(MOD_RCTRL, K_SCLN));
+    assert(to_via_keycode(from_via_keycode(0x1133)) == 0x1133);
+    assert(from_via_keycode(0x0433) == MK(MOD_LALT, K_SCLN));
+    assert(from_via_keycode(0x1433) == MK(MOD_RALT, K_SCLN));
+
+    // Exercise the actual VIA write/read commands, not only conversion helpers.
+    const uint16_t modified[] = {0x0133, 0x0233, 0x0433, 0x0833,
+                                 0x1133, 0x1233, 0x1433, 0x1833, 0x0F33, 0x1E33, 0x1F33};
+    for (unsigned i = 0; i < sizeof(modified) / sizeof(modified[0]); ++i) {
+        uint8_t set[32] = {0x05, 0, 0, 0, modified[i] >> 8, modified[i] & 0xFF};
+        uint8_t get[32] = {0x04, 0, 0, 0};
+        uint8_t response[32] = {0};
+        vial_process_packet(set, response);
+        assert(dynamic_keymap[0][0] == from_via_keycode(modified[i]));
+        vial_process_packet(get, response);
+        assert(response[4] == (modified[i] >> 8) && response[5] == (modified[i] & 0xFF));
+    }
+
     // 1. Media keys roundtrip
     assert(from_via_keycode(0x00A8) == K_MUTE);
     assert(to_via_keycode(K_MUTE) == 0x00A8);
