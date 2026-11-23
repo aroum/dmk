@@ -1,4 +1,7 @@
 #include "ec_settings.h"
+#ifdef HHKB_COMPACT_STORAGE
+#include "../via_settings/hhkb_compact_storage.h"
+#endif
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #endif
@@ -163,6 +166,9 @@ bool vial_keyboard_reset_allowed(void) {
 
 bool vial_keyboard_settings_reset(void) {
     s_settings_dirty = false;
+#ifdef HHKB_COMPACT_STORAGE
+    return hhkb_compact_reset();
+#else
     volatile uint32_t *words = (volatile uint32_t *)USER_EEPROM_ADDR;
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)words;
     size_t current_size = cal->magic == USER_EEPROM_MAGIC && cal->version == USER_EEPROM_VERSION
@@ -173,9 +179,13 @@ bool vial_keyboard_settings_reset(void) {
     if (size == SIZE_MAX) return true; // Foreign data has no DMK record to reset.
     // The version is cleared near the end of the erase. The appended bytes are cleared first.
     return hhkb_eeprom_clear_words(words, size / sizeof(*words));
+#endif
 }
 
 bool hhkb_settings_storage_writable(void) {
+#ifdef HHKB_COMPACT_STORAGE
+    return hhkb_compact_writable();
+#else
     const volatile uint8_t *bytes = (const volatile uint8_t *)USER_EEPROM_ADDR;
     if (bytes[4] != USER_EEPROM_VERSION || *(const volatile uint32_t *)bytes != USER_EEPROM_MAGIC) {
         for (size_t i = offsetof(hhkb_eeprom_cal_t, curve); i < sizeof(hhkb_eeprom_cal_t); ++i)
@@ -185,6 +195,7 @@ bool hhkb_settings_storage_writable(void) {
         sizeof(hhkb_eeprom_cal_t), offsetof(hhkb_eeprom_cal_t, rt),
         WORD_ALIGNED_SIZE(offsetof(hhkb_eeprom_cal_t, scan_rate)),
         offsetof(hhkb_eeprom_cal_t, curve));
+#endif
 }
 
 void hhkb_settings_mark_dirty(void) {
@@ -196,6 +207,7 @@ void hhkb_settings_mark_dirty(void) {
 // Do not call this EEPROM transaction concurrently from another task.
 void hhkb_calibration_save_to_eeprom(void) {
     if (!hhkb_settings_storage_writable()) return;
+#ifndef HHKB_COMPACT_STORAGE
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
         FLASH->PEKEYR = 0x89ABCDEF;
         FLASH->PEKEYR = 0x02030405;
@@ -205,6 +217,7 @@ void hhkb_calibration_save_to_eeprom(void) {
         return;
     }
 
+#endif
     hhkb_eeprom_cal_t cal = {0};
     cal.magic = USER_EEPROM_MAGIC;
     cal.version = USER_EEPROM_VERSION;
@@ -247,6 +260,9 @@ void hhkb_calibration_save_to_eeprom(void) {
     }
     cal.crc16 = compute_crc16((const uint8_t *)&cal.baseline, sizeof(cal) - offsetof(hhkb_eeprom_cal_t, baseline));
 
+#ifdef HHKB_COMPACT_STORAGE
+    hhkb_compact_save_cal(&cal);
+#else
     volatile uint32_t *dst = (volatile uint32_t *)USER_EEPROM_ADDR;
     const uint32_t *src = (const uint32_t *)&cal;
     for (size_t i = 0; i < sizeof(hhkb_eeprom_cal_t) / 4; i++) {
@@ -266,10 +282,15 @@ void hhkb_calibration_save_to_eeprom(void) {
         }
     }
     FLASH->PECR |= FLASH_PECR_PELOCK;
+#endif
 }
 
 void hhkb_calibration_load(void) {
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)USER_EEPROM_ADDR;
+#ifdef HHKB_COMPACT_STORAGE
+    hhkb_eeprom_cal_t restored = {0};
+    if (hhkb_compact_load_cal(&restored) || !hhkb_compact_legacy_allowed()) cal = &restored;
+#endif
     for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
         for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
             s_cal_baseline[col][row] = get_default_baseline(col, row);
@@ -406,6 +427,9 @@ void hhkb_calibration_load(void) {
         }
     }
     ec_curve_rebuild();
+#ifdef HHKB_COMPACT_STORAGE
+    hhkb_calibration_save_to_eeprom();
+#endif
 }
 
 void vial_keyboard_eeprom_task(void) {
@@ -678,6 +702,15 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
         return;
     }
 
+#ifdef HHKB_COMPACT_STORAGE
+    const char *status = hhkb_compact_status();
+    if (strcmp(status, "Saved (compressed)") != 0 || s_settings_dirty) {
+        snprintf(buf, max_len, "%s", s_settings_dirty ? "Pending" : status);
+        return;
+    }
+    const volatile uint16_t (*saved_base)[MATRIX_ROWS] = s_cal_baseline;
+    const volatile uint16_t (*saved_peak)[MATRIX_ROWS] = s_cal_peak;
+#else
     const volatile hhkb_eeprom_cal_t *cal = (const volatile hhkb_eeprom_cal_t *)USER_EEPROM_ADDR;
     size_t size = cal->version == USER_EEPROM_VERSION ? sizeof(*cal) : offsetof(hhkb_eeprom_cal_t, curve);
     if (cal->magic != USER_EEPROM_MAGIC ||
@@ -687,12 +720,15 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
         snprintf(buf, max_len, "No verified EEPROM record");
         return;
     }
+    const volatile uint16_t (*saved_base)[MATRIX_ROWS] = cal->baseline;
+    const volatile uint16_t (*saved_peak)[MATRIX_ROWS] = cal->peak;
+#endif
     unsigned custom_count = 0;
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
             if (keyboard_get_flat_key_index(r, c) < 0) continue;
-            uint16_t base = cal->baseline[c][r];
-            uint16_t peak = cal->peak[c][r];
+            uint16_t base = saved_base[c][r];
+            uint16_t peak = saved_peak[c][r];
             if (base >= 100 && base <= 2000 && peak > base + RT_MIN_RANGE && peak <= 4095 &&
                 (base != get_default_baseline(c, r) || peak != get_default_peak(c, r))) {
                 custom_count++;

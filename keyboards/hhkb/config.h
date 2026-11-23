@@ -11,6 +11,7 @@
 #endif
 #define VIA_V3 1
 #define VIA_FULL_SETTINGS_RESET 1
+#define HHKB_COMPACT_STORAGE 1
 #ifdef HHKB_HYBRID
 #define VIA_FIRMWARE_VERSION 4U
 #else

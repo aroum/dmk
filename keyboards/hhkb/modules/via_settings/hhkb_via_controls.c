@@ -1,4 +1,7 @@
 #include "classic_matrix.h"
+#ifdef HHKB_COMPACT_STORAGE
+#include "hhkb_compact_storage.h"
+#endif
 #include "ec_curve.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
@@ -101,7 +104,11 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (id < 1 || id > 29) return false;
     if (request[0] == 0x08) {
         if (id == 12) {
+#ifdef HHKB_COMPACT_STORAGE
+            const char *status = hhkb_compact_status();
+#else
             const char *status = hhkb_settings_storage_writable() ? "Writable" : "Occupied: not saved";
+#endif
             snprintf((char *)&response[3], 29, "%s", status);
         } else if (id == 28) {
 #ifndef DMK_FW_VERSION

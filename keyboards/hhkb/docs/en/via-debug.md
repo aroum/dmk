@@ -135,7 +135,7 @@ Outside an explicit calibration session, baseline and peak remain fixed: runtime
 
 - **Actuation point:** Actuation depth (0.1–4.0 mm in 0.1 mm steps).
 - **Release hysteresis:** Classic mode release buffer (0.1–4.0 mm in 0.1 mm steps).
-- **Settings EEPROM:** Availability of EEPROM storage (`Writable` / `Occupied`).
+- **Settings EEPROM:** Compressed storage status: `Pending`, `Saving (compressed)`, `Saved (compressed)`, `Occupied: not saved`, `Full: not saved`, or a write error. See [compressed EEPROM storage](#compressed-eeprom-storage).
 
 ### 3. Rapid Trigger
 
@@ -242,7 +242,7 @@ In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debu
 **How reset works and what it erases:**
 
 - **Accidental trigger protection:** The erase button is hidden and disarmed until the _Arm settings reset_ toggle is engaged.
-- **EEPROM configuration & calibration erase:** Firmware clears the user EEPROM region (starting at `0x08081500`), wiping custom capacitance baseline/peak calibrations, travel curve lookup tables, actuation point, Rapid Trigger sensitivities, scan rate, debug flags, and indicator modes.
+- **EEPROM configuration & calibration erase:** Firmware invalidates both compressed DMK snapshots and records a persistent reset marker, resetting custom baseline/peak calibrations, travel curve parameters, actuation point, Rapid Trigger sensitivities, scan rate, debug flags, and indicator modes. An interrupted reset cannot reload an older DMK snapshot after its reset marker has been written.
 - **Dynamic VIA/Vial keymap reset:** All dynamic keymap layers, macros, combos, and key overrides stored in EEPROM are erased, reverting the keyboard to its default compiled-in ROM keymap.
 - **Bootloader & factory calibration safety:** The reset operation affects **only** DMK runtime settings. The original PFU Topre factory calibration data (stored at `0x08081100`/`0x08081200`) and both firmware banks (Bank 1 recovery bootloader and Bank 2) remain untouched.
 - **Automatic reboot:** Once the EEPROM regions are cleared, the microcontroller automatically executes a software system reset (`platform_system_reset()`) and boots up cleanly with default parameters.
@@ -347,3 +347,18 @@ The EC capacitive switch relies on a conical spring compressing against PCB sens
 - **Rapid Trigger:** Disabled by default. Can be enabled on demand under **HHKB Settings → Rapid Trigger**.
 
 USB soft-OFF keeps USB enumerated and VIA accessible, stops the matrix/sensors and blanks normal LEDs. Hold PC5 about 1 second and release to resume without reset; a 10-second hold cancels wake and repeats Nordic idle after the orange warning. Power off after sleep is battery-only; sleep itself is available on USB. Matrix wake and PC5 mappings keep their existing EEPROM settings.
+
+
+## Compressed EEPROM storage
+
+The development firmware uses one atomic snapshot for all four keymap layers, eight combos, the full macro buffer, calibration, travel curve parameters and VIA settings. This applies to Classic and Hybrid, ANSI and JIS, including Type-S. Hybrid-only settings remain exclusive to Hybrid.
+
+Storage occupies **1,772 bytes**: two 880-byte slots and a 12-byte ownership/reset header. Each slot has a 20-byte header and up to 860 compressed payload bytes. Calibration stores each real key's baseline and peak as a lossless pair of 12-bit ADC values (216 bytes for ANSI settings including calibration; 243 for JIS). Empty matrix positions are omitted. Keymaps retain all 32 bits of every DMK keycode; byte-plane ordering and a bounded-window lossless codec compress repeated bytes. No keycodes, macro capacity or ADC precision are discarded. Compression runs only on save/load; scanning uses the existing RAM arrays.
+
+A generation number, checksum and commit marker validate each snapshot. The previous snapshot remains intact until the replacement is complete. Writes are spread across storage polls, and unchanged snapshots are skipped. A failed EEPROM write is retried. If a configuration cannot compress into a slot, **Full: not saved** preserves the previous complete configuration; simplify macros/combos or the keymap before saving again. Do not disconnect power until **Settings EEPROM** reports **Saved (compressed)**. VIA status labels require switching menus or reloading the page to refresh.
+
+The fragmented physical ranges are `0x08080480–0x080804FF`, `0x08080524–0x080806FF`, `0x08080D00–0x08080FFF`, `0x08081370–0x080813FF`, and `0x08081700–0x080817FF`. These avoid the known PFU keymap, factory sensor, Bluetooth configuration and boot/update metadata regions. Enrollment checks every candidate word: unknown nonzero data blocks writing with **Occupied: not saved**. ANSI and JIS ownership markers differ; one layout never reinterprets the other's records.
+
+On first startup, compatible legacy DMK records are imported automatically (ANSI DMK1/DMK2 or JIS DMK2, plus compatible settings). When necessary, the newest legacy DMK2 snapshot is first copied and committed into its first legacy slot. Only after the new compact snapshot commits are owned legacy bytes in PFU table regions cleared. Power cuts during migration are recoverable. This does not reconstruct PFU bytes overwritten by older DMK firmware: restoring stock may still require the same-board backup or resetting the stock keymap in HHKB Keymap Tool. Older DMK builds cannot read the compressed format.
+
+Normal Bank 1 firmware updates should preserve the new storage because it avoids the known update metadata and stock keymap regions. This layout is a development implementation based on the available EEPROM map and Classic backup; it still needs a complete Hybrid/JIS EEPROM backup and hardware verification. Keep a [same-board EEPROM backup](backup-restore.md) before migration, and verify Settings EEPROM after updating.

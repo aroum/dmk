@@ -1,7 +1,14 @@
-/* HHKB Classic: two independently validated EEPROM snapshots of VIA keymap, combos, and macros.
- * 0x08080600..0x08080d9f were zero in the supplied stock EEPROM backup.
- * Never overwrite a slot containing data that is not ours. */
+/* Legacy HHKB DMK1/DMK2 decoder and standalone legacy-storage tests.
+ * Production uses the compressed writer included below; the old format is
+ * retained for migration, not for new saves. */
 #include "vial.h"
+#ifdef HHKB_COMPACT_STORAGE
+#define vial_keyboard_keymap_load legacy_keymap_load
+#define vial_keyboard_keymap_save legacy_keymap_save
+#define vial_keyboard_keymap_poll legacy_keymap_poll
+#define vial_keyboard_keymap_reset legacy_keymap_reset
+#endif
+
 #include "stm32l0xx.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -64,8 +71,13 @@ static bool valid(unsigned n) {
     return p[0] == SLOT_MAGIC && p[3] == SLOT_COMMIT && p[2] == slot_hash(p);
 }
 static bool valid_v1(unsigned n) {
+#ifdef HHKB_JIS
+    (void)n;
+    return false; // DMK1 contained exactly 240 ANSI keys; no JIS geometry.
+#else
     volatile const uint32_t *p = slot_v1(n);
     return p[0] == SLOT_MAGIC_V1 && p[3] == SLOT_COMMIT && p[2] == slot_v1_hash(p);
+#endif
 }
 static bool has_valid_v1(void) {
     return valid_v1(0) || valid_v1(1);
@@ -113,6 +125,9 @@ void vial_keyboard_keymap_save(void) { pending = true; }
 
 static bool write_word(volatile uint32_t *dst, uint32_t value) {
     if (*dst == value) return true;
+#ifdef HHKB_EEPROM_WRITE
+    return HHKB_EEPROM_WRITE(dst, value);
+#else
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
         FLASH->PEKEYR = 0x89ABCDEFU;
         FLASH->PEKEYR = 0x02030405U;
@@ -125,6 +140,7 @@ static bool write_word(volatile uint32_t *dst, uint32_t value) {
     bool ok = !(FLASH->SR & FLASH_ERRORS) && *dst == value;
     FLASH->PECR |= FLASH_PECR_PELOCK;
     return ok;
+#endif
 }
 
 bool hhkb_eeprom_clear_words(volatile uint32_t *dst, size_t words) {
@@ -183,3 +199,11 @@ void vial_keyboard_keymap_poll(void) {
         target_slot = -1;
     }
 }
+
+#ifdef HHKB_COMPACT_STORAGE
+#undef vial_keyboard_keymap_load
+#undef vial_keyboard_keymap_save
+#undef vial_keyboard_keymap_poll
+#undef vial_keyboard_keymap_reset
+#include "hhkb_compact_storage.inc"
+#endif

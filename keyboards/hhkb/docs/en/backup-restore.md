@@ -190,8 +190,8 @@ Both families employ a dual-bank Flash structure, but boot validation flags and 
 | **Bank 3 / Reserved**     | `0x08020000–0x0802FFFF` (64 KB)    | Unused by PFU scheme                              | Unused by PFU scheme                                                   |
 | **Embedded EEPROM**       | `0x08080000–0x080817FF` (6 KB)     | Factory calibrations, Bank 2 boot flags           | Factory calibrations, Bank 2 & Bluetooth boot flags                    |
 | ↳ _Bank 2 status flags_   | `0x08080348` and `0x08080370`      | Status (`0x01` = broken) and 2-byte CRC tag       | Hybrid uses byte `0x08080360` (`0x01` = Bank 2 valid/boot-enabled)     |
-| ↳ _EC Matrix calibration_ | `0x08081000–0x080813FF`            | Factory baselines and thresholds                  | Factory thresholds (structure differs)                                 |
-| ↳ _User DMK Data_         | `0x08081500–...`                   | DMK calibration profile, VIA/Vial dynamic layers  | DMK calibration profile, VIA layers, BT profile slots                  |
+| ↳ _EC Matrix calibration_ | `0x08081000–0x080812FF`            | Factory baselines and thresholds                  | Factory thresholds (structure differs)                                 |
+| ↳ _User DMK Data_ | Fragmented, 1,772 bytes | [Compressed snapshots](via-debug.md#compressed-eeprom-storage): calibration, keymaps, macros, combos, settings | Same format, plus Hybrid power/button/indicator settings; PFU pairing data stays separate |
 | **Option Bytes**          | `0x1FF80000–0x1FF8001F` (32 bytes) | Readout protection (RDP Level 0/1) & boot flags   | Readout protection (RDP Level 0/1) & boot flags                        |
 
 ### STM32 SWD Pinout (CN3 Pads)

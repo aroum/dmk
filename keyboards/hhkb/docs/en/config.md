@@ -32,7 +32,7 @@ The timer-driven scanner is enabled by default. [VIA](https://www.usevia.app/) s
 
 ## Factory Data and Calibration
 
-Factory classic-mode thresholds are read from the keyboard's EEPROM at startup. A single DMK build preserves individual thresholds when installed across different boards. User calibration records per-key baseline and peak in an EEPROM record (`0x08081500`). Disabling user calibration selects default calibrated ranges without overwriting factory tables.
+Factory classic-mode thresholds are read from the keyboard's EEPROM at startup. A single DMK build preserves individual thresholds when installed across different boards. User calibration stores each real key's baseline and peak in the [compressed EEPROM snapshots](via-debug.md#compressed-eeprom-storage), together with the keymap and VIA settings. Disabling user calibration selects default calibrated ranges without overwriting factory tables.
 
 ## DIP Switches
 
