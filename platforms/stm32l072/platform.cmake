@@ -114,17 +114,6 @@ endif()
 
 # Post-build packaging into .bin and HHKB .hfb container
 function(platform_post_build TARGET_NAME)
-    # Hybrid shares a 64 KiB application bank with the PFU update format.
-    # GCC releases differ enough in -Os output to exceed that bank without IPO.
-    # Keep timing-sensitive matrix code and the assembly-based RTOS port out of
-    # LTO so their RAM placement and assembly-only references stay unchanged.
-    if(HHKB_BUILD_HYBRID)
-        set_property(TARGET ${TARGET_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-        set_source_files_properties(
-            "${PLATFORM_DIR}/freertos_port/port.c"
-            "${DMK_ROOT}/keyboards/hhkb/modules/ec/classic_matrix.c"
-            PROPERTIES COMPILE_OPTIONS "-fno-lto")
-    endif()
     if(HHKB_BUILD_HYBRID)
         add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_BINARY_DIR}/${TARGET_NAME}.hfb

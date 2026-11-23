@@ -6,6 +6,10 @@
 
 Run builds from the repository root using standard DMK definition flags. DMK supports building for all HHKB models: Classic, Classic Type-S, Hybrid, and Hybrid Type-S (in both 60-key ANSI and 69-key Japanese JIS layouts).
 
+## Compiler version
+
+HHKB CI builds use **Arm GNU Toolchain 15.3.Rel2 (GCC 15.3.1)**, downloaded from [Arm's official release](https://gitlab.arm.com/tooling/gnu-toolchains-for-arm/-/blob/releases/15.3.rel2/README.md) with a pinned SHA256. Use the same version locally and put its `bin` directory first in `PATH`. Check `arm-none-eabi-gcc --version`, then rebuild with `-c` after changing the compiler. HHKB keeps the normal `-Os` build without LTO. Older compiler versions can exceed Hybrid's 64 KiB Bank 2 limit even when this pinned version fits.
+
 ## Build Commands
 
 ### 1. HHKB Classic and Classic Type-S (Wired)

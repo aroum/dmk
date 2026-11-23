@@ -6,6 +6,10 @@
 
 Запускайте сборку из корня репозитория. DMK поддерживает сборку для всех линеек HHKB: Classic, Classic Type-S, Hybrid и Hybrid Type-S (как ANSI 60 клавиш, так и японских JIS 69 клавиш).
 
+## Версия компилятора
+
+HHKB в CI собирается **Arm GNU Toolchain 15.3.Rel2 (GCC 15.3.1)** из [официального релиза Arm](https://gitlab.arm.com/tooling/gnu-toolchains-for-arm/-/blob/releases/15.3.rel2/README.md) с фиксированной проверкой SHA256. Для локальной сборки используйте ту же версию и поставьте её каталог `bin` первым в `PATH`. Проверьте `arm-none-eabi-gcc --version`; после смены компилятора пересоберите с `-c`. Для HHKB сохраняется обычная сборка `-Os` без LTO. Старые версии компилятора могут превысить лимит Bank 2 Hybrid в 64 КиБ, даже если выбранная версия укладывается.
+
 ## Команды сборки
 
 ### 1. HHKB Classic и Classic Type-S (Wired)
