@@ -22,12 +22,13 @@ class ReviewRegressionTest(unittest.TestCase):
 #include <stdbool.h>
 #include <stdint.h>
 static unsigned calls,high_sample;
-static struct {uint32_t IDR;} gpio;
+static struct {uint32_t IDR;} gpio,a;
+#define GPIOA (&a)
 static unsigned SystemCoreClock=1000;
 static void __NOP(void){}
 static void *next_gpio(void){gpio.IDR=(++calls==high_sample)?16:0;return &gpio;}
 #define GPIOC ((__typeof__(&gpio))next_gpio())
-''' + function(source, 'static bool sw6_stable_on(') + r'''
+''' + function(source, 'static bool recovery_switches_stable_on(') + function(source, 'static bool sw6_stable_on(') + r'''
 int main(void){
  for(high_sample=1;high_sample<=10;high_sample++){
   calls=0;assert(!sw6_stable_on());assert(calls==high_sample);
@@ -35,6 +36,89 @@ int main(void){
  high_sample=0;calls=0;assert(sw6_stable_on() && calls==10);
 }
 ''')
+
+    def test_sw5_reset_requires_both_switches_stably_on(self):
+        source = (ROOT / 'keyboards/hhkb/modules/dip_switch/dip_switch.c').read_text()
+        self.run_c(r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+static unsigned calls,high_sample;
+static struct {uint32_t IDR;} a,c;
+static unsigned SystemCoreClock=1000;
+static void __NOP(void){}
+static void *next_a(void){a.IDR=(++calls==high_sample)?128:0;return &a;}
+#define GPIOA ((__typeof__(&a))next_a())
+#define GPIOC (&c)
+''' + function(source, 'static bool recovery_switches_stable_on(') + function(source, 'static bool sw5_stable_on(') + r'''
+int main(void){
+ for(high_sample=1;high_sample<=10;high_sample++){
+  calls=0;c.IDR=0;assert(!sw5_stable_on() && calls==high_sample);
+ }
+ high_sample=0;calls=0;assert(sw5_stable_on() && calls==10);
+ calls=0;c.IDR=16;assert(!sw5_stable_on() && calls==0);
+}
+''')
+
+    def test_sw56_clears_before_recovery_and_stops_on_write_failure(self):
+        source = (ROOT / 'keyboards/hhkb/modules/dip_switch/dip_switch.c').read_text()
+        code = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <setjmp.h>
+#define HHKB_SW6_REBOOT_TO_BANK1 1
+#define RCC_IOPENR_GPIOAEN 1
+#define RCC_IOPENR_GPIOCEN 2
+#define HHKB_EEPROM_BANK2_STATUS_ADDR 0x08080348
+#define HHKB_EEPROM_BANK2_CRC_ADDR 0x08080370
+static struct {uint32_t IDR,MODER,PUPDR;} a,c;
+static struct {uint32_t IOPENR;} rcc;
+#define GPIOA (&a)
+#define GPIOC (&c)
+#define RCC (&rcc)
+static unsigned SystemCoreClock=1000,clear_calls,metadata_calls,pages;
+static uint32_t hhkb_recovery_flash_error;
+static bool clear_ok;
+static jmp_buf done;
+static void __NOP(void){}
+static void __disable_irq(void){}
+static void __WFI(void){longjmp(done,2);}
+static bool hhkb_storage_erase_early(void){assert(metadata_calls==0 && pages==0);++clear_calls;return clear_ok;}
+static void write_eeprom_byte(uint32_t address,uint8_t value){
+#ifdef HHKB_HYBRID
+ assert(address==0x08080360 && value==0);
+#else
+ assert((address==0x08080348 && value==1)||((address==0x08080370||address==0x08080371)&&value==0));
+#endif
+ ++metadata_calls;
+}
+static void erase_bank2_vector_page_ram(void){++pages;longjmp(done,1);}
+'''
+        code += function(source, 'static bool recovery_switches_stable_on(')
+        code += function(source, 'static bool sw6_stable_on(')
+        code += function(source, 'static bool sw5_stable_on(')
+        code += function(source, 'void hhkb_early_dip_check(')
+        code += r'''
+int main(void){
+ for(unsigned sw5=0;sw5<2;++sw5)for(unsigned sw6=0;sw6<2;++sw6)for(unsigned ok=0;ok<2;++ok){
+  a.IDR=sw5?0:128;c.IDR=sw6?0:16;clear_ok=ok;
+  clear_calls=metadata_calls=pages=0;hhkb_recovery_flash_error=0;
+  int path=setjmp(done);if(!path)hhkb_early_dip_check();
+  assert(clear_calls==(sw5&&sw6));
+  if(!sw6){assert(!metadata_calls && !pages);continue;}
+  if(sw5&&!ok){assert(path==2 && !metadata_calls && !pages && hhkb_recovery_flash_error==0x40000000);continue;}
+#ifdef HHKB_HYBRID
+  assert(metadata_calls==1);
+#else
+  assert(metadata_calls==3);
+#endif
+  assert(path==1 && pages==1);
+ }
+}
+'''
+        self.run_c(code)
+        self.run_c('#define HHKB_HYBRID 1\n' + code)
 
     def test_adc_timeout_does_not_return_stale_dr(self):
         source = (ROOT / 'keyboards/hhkb/modules/ec/classic_matrix.c').read_text()

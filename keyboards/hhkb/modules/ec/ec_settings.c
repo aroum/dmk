@@ -117,6 +117,9 @@ static inline void set_reported_down(uint8_t col, uint8_t row, bool down) {
 }
 
 static uint16_t compute_crc16(const uint8_t *data, size_t len) {
+#ifdef HHKB_COMPACT_STORAGE
+    return hhkb_storage_crc16(data, len);
+#else
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; i++) {
         crc ^= (uint16_t)data[i] << 8;
@@ -126,6 +129,7 @@ static uint16_t compute_crc16(const uint8_t *data, size_t len) {
         }
     }
     return crc;
+#endif
 }
 
 #define HHKB_FACTORY_BASELINE_ADDR 0x08081000UL

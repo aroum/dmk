@@ -32,6 +32,8 @@ typedef enum {
 /**
  * @brief Early check executed before full DMK init.
  * When HHKB_SW6_REBOOT_TO_BANK1 is enabled:
+ * - If SW5 and SW6 are both stably ON: erase recognized DMK EEPROM records
+ *   first, preserving PFU/factory data. An EEPROM failure stops before Bank 2 erase.
  * - If SW6 is ON: triggers failsafe recovery to Bank 1 by:
  *   1. Invalidating EEPROM status byte (0x01) and CRC tag (0x0000).
  *   2. Erasing the first page (128 bytes) of Bank 2 Flash (clearing SP & Reset Vector).

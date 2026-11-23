@@ -154,6 +154,32 @@ With `HHKB_SW6_REBOOT_TO_BANK1=1`, starting DMK with SW6 ON invalidates Bank 2 a
 
 After this transition, Bank 1 can install the latest matching stock firmware from the [official HHKB download centre](https://happyhackingkb.com/download/) through Keymap Tool or `hhkb_flasher.py`. Select the correct Classic or Classic Type-S HFB. Keep SW6 OFF during normal use.
 
+### SW5 + SW6: erase DMK settings and enter Bank 1 (dev)
+
+This combination is implemented in the **dev** branch. For a normal update that keeps DMK settings, use **SW5 OFF + SW6 ON**. With **SW5 ON + SW6 ON**, startup first clears recognized DMK EEPROM records, then performs the usual Bank 1 recovery. Both switches must remain ON through the debounce interval; SW5 alone never erases anything.
+
+1. Disconnect USB; on Hybrid also remove the batteries to force a complete startup.
+2. Set both SW5 and SW6 to ON, then connect USB.
+3. Keep power connected until the PFU Bank 1 USB device appears. Then set SW6 to OFF and restore SW5 to its usual position before flashing.
+
+The erase removes the owned compressed slots and their ownership header, plus recognized older DMK1/DMK2 keymap records and DMK settings/calibration records. ANSI and JIS formats are recognized independently of the running build. Legacy snapshots and versioned calibration records require valid checksums; unknown records and records with invalid checksums are left untouched. This deliberately does **not** erase all 6 KiB of EEPROM or reset PFU keymaps. Factory sensor tables, PFU Bluetooth connection records, model/version metadata and Nordic firmware are preserved. The normal SW6 recovery path still updates its own Bank 2 status/CRC fields and erases the Bank 2 vector page.
+
+If an EEPROM write fails, Bank 2 is not invalidated or erased: startup stops, and `hhkb_recovery_flash_error` is `0x40000000` for SWD inspection. Reconnect stable power and retry SW5+SW6. Do not disconnect power during erasure. This new erase combination has host tests and build checks; hardware verification is still required.
+
+### Classic and Hybrid EEPROM differences
+
+The available full EEPROM backup (`hhkb-eeprom.bin`, 6,144 bytes; paired Flash identifies **PD-KB401W**) is Classic. No separate complete Hybrid EEPROM dump was found, so the Hybrid column below is based on the stock A0.48 reverse engineering in [l3tnun/hhkb_hybrid](https://github.com/l3tnun/hhkb_hybrid), not a byte-for-byte comparison of two backups.
+
+| Region | Available Classic backup | Hybrid A0.48 EEPROM map |
+| --- | --- | --- |
+| `0x08080380–0x0808047F` | All zero | Bluetooth connection journal: 16 × 16 bytes |
+| `0x08080700–0x08080CFF` | All zero | Stock keymap table B, 1,536 bytes |
+| `0x08081400–0x080816FF` | All zero | Second half of stock keymap table A, 768 bytes |
+| `0x08081000–0x080812FF` | Individual nonzero sensor tables | Individual sensor/calibration tables; preserve the same-board data |
+| Recovery fields | Backup has `0x348=0`, `0x360=1`, CRC bytes at `0x370=07 DE`; DMK Classic recovery changes `0x348` and CRC | DMK Hybrid recovery clears boot-enable byte `0x360` |
+
+The **DMK** compressed record format is the same for Classic and Hybrid with the same matrix geometry. Hybrid power, button and LED options occupy packed reserved fields; they do not require another EEPROM region. ANSI and JIS have different ownership identifiers and calibration geometry. A zero Classic region must not be treated as free Hybrid EEPROM, and a Classic EEPROM backup must never be copied onto Hybrid.
+
 ## Flashing Methods and Limitations
 
 Currently, there are three ways to flash DMK onto the keyboard:

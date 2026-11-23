@@ -8,5 +8,8 @@ void hhkb_compact_save_cal(const hhkb_eeprom_cal_t *cal);
 bool hhkb_compact_legacy_allowed(void);
 bool hhkb_compact_writable(void);
 bool hhkb_compact_reset(void);
+/* Boot-time SW5+SW6 reset: no FreeRTOS or runtime storage initialization. */
+bool hhkb_storage_erase_early(void);
+uint16_t hhkb_storage_crc16(const uint8_t *data, size_t size);
 const char *hhkb_compact_status(void);
 #endif

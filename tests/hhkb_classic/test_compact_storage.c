@@ -37,7 +37,7 @@ static void defaults(void) {
         dynamic_keymap[1][i]=0x10000000+(i%10);
     }
     cal.rt.act_pm=750; cal.led_mode[0]=0xa1;cal.reserved[1]=0xf3;
-    cal.crc16=c_crc16((uint8_t *)&cal.baseline,sizeof(cal)-8);
+    cal.crc16=hhkb_storage_crc16((uint8_t *)&cal.baseline,sizeof(cal)-8);
 }
 static void reboot(void) {
     c_initialized=c_keymap_ready=c_cal_ready=c_pending=c_blocked=false;
@@ -60,7 +60,17 @@ static void legacy(unsigned n,unsigned gen,unsigned key) {
     memcpy(p+4+KEYMAP_WORDS+COMBO_WORDS,vial_storage.data.macro_buffer,sizeof(vial_storage.data.macro_buffer));
     p[2]=slot_hash(p);
 }
-int main(void) {
+int main(int argc, char **argv) {
+    if(argc==2) {
+        FILE *file=fopen(argv[1],"rb");assert(file);
+        assert(fread(memory,1,sizeof(memory),file)==sizeof(memory) && fgetc(file)==EOF);
+        fclose(file);
+        uint32_t original[1536];memcpy(original,memory,sizeof(memory));
+        assert(hhkb_storage_erase_early() && writes==0 && !c_initialized);
+        assert(!memcmp(original,memory,sizeof(memory)));
+        puts("stock EEPROM backup preserved byte-for-byte");return 0;
+    }
+    assert(hhkb_storage_crc16((const uint8_t *)"123456789",9)==0x29b1);
     uint8_t input[2000],encoded[2100],decoded[2000];
     uint32_t seed=7;
     for(unsigned mode=0;mode<4;++mode) {
@@ -163,5 +173,57 @@ int main(void) {
         budget=cut;poll();budget=-1;reboot();poll();reboot();
         assert(dynamic_keymap[0][0]==4);
     }
-    puts("compact EEPROM transactions passed");
+    /* Boot-time SW5+SW6 is independent of current matrix geometry and never
+     * initializes FreeRTOS or the runtime storage state. */
+    fresh();poll();
+    dynamic_keymap[0][0]=123;vial_keyboard_keymap_save();poll();
+    for(unsigned i=0x700/4;i<0xd00/4;++i) memory[i]=0x51515151;
+    for(unsigned i=0x1000/4;i<0x1370/4;++i) memory[i]=0x81818181;
+    for(unsigned i=0x1400/4;i<0x1700/4;++i) memory[i]=0x41414141;
+    for(unsigned i=0x300/4;i<0x480/4;++i) memory[i]=0x31313131;
+    uint32_t compact_base[1536];memcpy(compact_base,memory,sizeof(memory));
+    bool ours[1536]={0};
+    for(unsigned n=0;n<2;++n)for(unsigned w=0;w<C_SLOT_BYTES/4;++w) ours[c_word(n,w)-memory]=true;
+    for(unsigned i=0x1700/4;i<0x170c/4;++i) ours[i]=true;
+    for(unsigned cut=0;cut<450;++cut) {
+        memcpy(memory,compact_base,sizeof(memory));c_initialized=false;
+        budget=cut;hhkb_storage_erase_early();budget=-1;
+        assert(hhkb_storage_erase_early() && !c_initialized);
+        for(unsigned i=0;i<1536;++i) assert(memory[i]==(ours[i]?0:compact_base[i]));
+    }
+    /* Both old ANSI formats and the JIS format, even when booting the other
+     * layout. Factory bytes around each exact record are preserved. */
+    static const struct {unsigned off,words;uint32_t magic;} legacy_cases[]={
+      {0x600,244,0x314b4d44},{0x9d0,244,0x314b4d44},
+      {0x600,320,0x324b4d44},{0xb00,320,0x324b4d44},
+      {0x600,316,0x324a4d44},{0xaf0,316,0x324a4d44}};
+    for(unsigned n=0;n<6;++n) {
+        for(unsigned i=0;i<1536;++i) memory[i]=0x71717171;
+        unsigned start=legacy_cases[n].off/4,words=legacy_cases[n].words;
+        uint32_t *p=memory+start;
+        p[0]=legacy_cases[n].magic;p[1]=13;p[3]=SLOT_COMMIT;p[2]=legacy_hash(p,words-4);
+        memcpy(saved,memory,sizeof(memory));
+        assert(hhkb_storage_erase_early());
+        for(unsigned i=0;i<1536;++i) assert(memory[i]==(i>=start && i<start+words?0:saved[i]));
+        // A stale header does not claim PFU bytes whose checksum no longer matches.
+        memcpy(memory,saved,sizeof(memory));memory[start+4]^=1;
+        memcpy(saved,memory,sizeof(memory));assert(hhkb_storage_erase_early());
+        assert(!memcmp(memory,saved,sizeof(memory)));
+    }
+    for(unsigned kind=0;kind<6;++kind)for(unsigned version=1;version<=2;++version) {
+        for(unsigned i=0;i<1536;++i) memory[i]=0x61616161;
+        uint32_t *p=memory+0x1500/4;
+        static const unsigned old_words[]={62,65,66,66};
+        unsigned words=kind<4?old_words[kind]:(kind==4?66:81)+(version==2?3:0);
+        p[0]=kind<5?0x484b4341+kind:0x484b4a45;
+        if(kind>=4) p[1]=version|((uint32_t)hhkb_storage_crc16((uint8_t *)(p+2),words*4-8)<<16);
+        memcpy(saved,memory,sizeof(memory));assert(hhkb_storage_erase_early());
+        for(unsigned i=0;i<1536;++i) assert(memory[i]==(i>=0x1500/4 && i<0x1500/4+words?0:saved[i]));
+        if(kind>=4) {
+            memcpy(memory,saved,sizeof(memory));p[2]^=1;
+            memcpy(saved,memory,sizeof(memory));assert(hhkb_storage_erase_early());
+            assert(!memcmp(memory,saved,sizeof(memory)));
+        }
+    }
+    puts("compact EEPROM transactions and early recovery reset passed");
 }

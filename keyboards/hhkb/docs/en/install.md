@@ -42,6 +42,8 @@ DMK uses a different USB identity, so Keymap Tool cannot flash it directly. If D
 
 With the keyboard powered off, set SW6 to ON, connect power, and return SW6 to OFF after Bank 1 starts. This recovery action erases the first 128-byte page of Bank 2. See [SW6 recovery](backup-restore.md#sw6-recovery) for the detailed description of this irreversible transition to Bank 1. Then flash the generated `.hfb` with the official updater and reconnect the keyboard after it completes.
 
+> **Dev: keep SW5 OFF when using SW6 for a normal update.** SW5+SW6 ON also [erases recognized DMK EEPROM settings](backup-restore.md#sw5--sw6-erase-dmk-settings-and-enter-bank-1-dev). Factory calibration and PFU Bluetooth records are preserved. For either recovery mode, remove all power first (including Hybrid batteries) and wait for Bank 1 USB detection before switching SW6 back OFF.
+
 If the keyboard is currently running the original PFU firmware, its PFU update interface is already available: do **not** use SW6.
 
 > [!WARNING]

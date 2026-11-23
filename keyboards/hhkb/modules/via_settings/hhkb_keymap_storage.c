@@ -56,16 +56,14 @@ static uint32_t hash_word(uint32_t hash, uint32_t word) {
     for (unsigned n = 0; n < 4; n++) { hash ^= word & 0xffU; hash *= 16777619U; word >>= 8; }
     return hash;
 }
-static uint32_t slot_hash(volatile const uint32_t *p) {
+/* Shared with early recovery; no scheduler or storage initialization required. */
+__attribute__((noinline)) static uint32_t legacy_hash(volatile const uint32_t *p, unsigned payload_words) {
     uint32_t h = hash_word(2166136261U, p[1]);
-    for (unsigned i = 0; i < PAYLOAD_WORDS; i++) h = hash_word(h, p[4 + i]);
+    for (unsigned i = 0; i < payload_words; i++) h = hash_word(h, p[4 + i]);
     return h;
 }
-static uint32_t slot_v1_hash(volatile const uint32_t *p) {
-    uint32_t h = hash_word(2166136261U, p[1]);
-    for (unsigned i = 0; i < V1_KEYMAP_WORDS; i++) h = hash_word(h, p[4 + i]);
-    return h;
-}
+static uint32_t slot_hash(volatile const uint32_t *p) { return legacy_hash(p, PAYLOAD_WORDS); }
+static uint32_t slot_v1_hash(volatile const uint32_t *p) { return legacy_hash(p, V1_KEYMAP_WORDS); }
 static bool valid(unsigned n) {
     volatile const uint32_t *p = slot(n);
     return p[0] == SLOT_MAGIC && p[3] == SLOT_COMMIT && p[2] == slot_hash(p);

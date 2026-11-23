@@ -2,12 +2,13 @@
 #include "pin_defs.h"
 #include "config.h"
 #include "ec_settings.h"
+#include "../via_settings/hhkb_compact_storage.h"
 #include "stm32l0xx.h"
 #include "stm32l0xx_ll_gpio.h"
 #include <stdbool.h>
 
 /**
- * HHKB Classic DIP Switches:
+ * HHKB Classic / Hybrid DIP Switches:
  * SW1: PA3
  * SW2: PA4
  * SW3: PA5
@@ -122,16 +123,18 @@ static void erase_bank2_vector_page_ram(void) {
 }
 
 #if defined(HHKB_SW6_REBOOT_TO_BANK1) && (HHKB_SW6_REBOOT_TO_BANK1 == 1)
-static bool sw6_stable_on(void) {
-    // Require ten stable active-low samples, at least 1 ms apart. This runs
-    // before HAL/timers/scheduler initialization, using the startup core clock.
+__attribute__((noinline))
+static bool recovery_switches_stable_on(uint32_t sw5_mask) {
+    // Called before HAL/timers/scheduler setup, using the startup core clock.
     for (unsigned sample = 0; sample < 10; ++sample) {
         for (volatile uint32_t n = 0; n < SystemCoreClock / 1000U; ++n) __NOP();
-        if (GPIOC->IDR & (1U << 4)) return false;
+        if ((GPIOC->IDR & (1U << 4)) || (GPIOA->IDR & sw5_mask)) return false;
     }
-
     return true;
 }
+
+static bool sw6_stable_on(void) { return recovery_switches_stable_on(0); }
+static bool sw5_stable_on(void) { return recovery_switches_stable_on(1U << 7); }
 #endif
 
 void hhkb_early_dip_check(void) {
@@ -143,6 +146,11 @@ void hhkb_early_dip_check(void) {
     GPIOC->PUPDR &= ~(3U << (4 * 2));
     GPIOC->PUPDR |=  (1U << (4 * 2)); // 01: Pull-up
 
+    // PA7 (SW5) is sampled only to request an explicit DMK settings erase.
+    GPIOA->MODER &= ~(3U << (7 * 2));
+    GPIOA->PUPDR &= ~(3U << (7 * 2));
+    GPIOA->PUPDR |=  (1U << (7 * 2));
+
     // Small delay to let line settle
     for (volatile uint32_t i = 0; i < 500; i++) __NOP();
 
@@ -150,6 +158,13 @@ void hhkb_early_dip_check(void) {
     bool sw6_on = sw6_stable_on();
 
     if (sw6_on) {
+        // SW6 alone preserves settings. SW5+SW6 explicitly discards DMK data.
+        if (sw5_stable_on() && !hhkb_storage_erase_early()) {
+            hhkb_recovery_flash_error = 0x40000000U;
+            // Leave Bank 2 intact for a retry; never boot after a partial reset.
+            __disable_irq();
+            while (1) __WFI();
+        }
         // SW6 is ON: User requests failsafe stock recovery in Bank 1!
 #ifdef HHKB_HYBRID
         // The Hybrid loader uses a separate Bank 2 boot-enable byte.

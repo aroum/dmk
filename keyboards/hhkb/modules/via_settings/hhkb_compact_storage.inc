@@ -49,7 +49,7 @@ static volatile uint32_t *c_word(unsigned slot_index, unsigned word) {
         if (offset < ranges[i].size) return c_phys(ranges[i].offset + offset);
         offset -= ranges[i].size;
     }
-    return NULL; /* callers use fixed, checked slot bounds */
+    return NULL; /* callers stay within the fixed two-slot logical range */
 }
 static uint32_t c_hash(const uint32_t *p) {
     uint32_t h = hash_word(2166136261U, p[0]);
@@ -138,7 +138,7 @@ bool hhkb_compact_writable(void) { c_init(); return !c_blocked; }
 const char *hhkb_compact_status(void) { c_init(); return c_status; }
 /* Header/tail retain the original settings representation; only actual keys'
  * ADC ranges are packed. JIS holes are reconstructed as zero, then CRC rebuilt. */
-static uint16_t c_crc16(const uint8_t *p, size_t n) {
+uint16_t hhkb_storage_crc16(const uint8_t *p, size_t n) {
     uint16_t crc = 0xffff;
     while (n--) { crc ^= (uint16_t)*p++ << 8; for(unsigned b=0;b<8;++b) crc = (crc&0x8000)?(crc<<1)^0x1021:crc<<1; }
     return crc;
@@ -151,7 +151,7 @@ static void c_cal_unpack(const uint8_t *p, hhkb_eeprom_cal_t *cal) {
         cal->peak[c][r]=(p[1]>>4)|(p[2]<<4); p+=3;
     }
     memcpy(&cal->rt,p,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,rt));
-    cal->crc16=c_crc16((uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
+    cal->crc16=hhkb_storage_crc16((uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
 }
 typedef struct { size_t start, size; uint8_t *dest; } c_range;
 static void c_extract(size_t i, uint8_t value, void *ctx) {
@@ -298,4 +298,58 @@ void vial_keyboard_keymap_poll(void) {
     if(++c_stage==C_SLOT_BYTES/4+2) {
         c_active=c_target; c_target=-1; c_generation=c_image[1]; c_status=c_pending?"Pending":"Saved (compressed)";
     }
+}
+
+/* Read ownership before erasing overlapping legacy/compact windows. Never use
+ * the current build's matrix geometry to decode a different model's record. */
+bool hhkb_storage_erase_early(void) {
+    static const struct { uint16_t offset, words; uint32_t magic; } old[] = {
+        {0x600,244,0x314b4d44U}, {0x9d0,244,0x314b4d44U}, /* ANSI DMK1 */
+        {0x600,320,0x324b4d44U}, {0xb00,320,0x324b4d44U}, /* ANSI DMK2 */
+        {0x600,316,0x324a4d44U}, {0xaf0,316,0x324a4d44U}, /* JIS DMK2 */
+    };
+    unsigned mask = 0;
+    for (unsigned n = 0; n < sizeof(old)/sizeof(old[0]); ++n) {
+        volatile const uint32_t *p = c_phys(old[n].offset);
+        if (p[0] == old[n].magic && p[3] == SLOT_COMMIT &&
+            p[2] == legacy_hash(p, old[n].words-4)) mask |= 1U << n;
+    }
+    uint32_t owner = *c_phys(0x1700), flags = *c_phys(0x1704);
+    bool compact = (owner == 0x33484b3cU || owner == 0x33484b45U) &&
+        (uint16_t)(flags >> 16) == (uint16_t)~flags &&
+        ((flags & 0xffffU) >> 4) <= (owner == 0x33484b3cU ? 69U : 84U) &&
+        !((flags & 3U) && (flags & 12U));
+    // Retry the final ownership-word clear after a power cut. This proof
+    // accepts no nonzero payload without the normal valid ownership header.
+    if (!compact && (owner == 0x33484b3cU || owner == 0x33484b45U) &&
+        flags == 0 && *c_phys(0x1708) == 0) {
+        compact = true;
+        for (unsigned w = 0; w < 2*C_SLOT_BYTES/4; ++w)
+            if (*c_word(0,w)) compact = false;
+    }
+    volatile uint32_t *cal = c_phys(0x1500);
+    uint32_t magic = cal[0];
+    unsigned cal_words = 0;
+    if (magic >= 0x484b4341U && magic <= 0x484b4344U) {
+        static const uint8_t sizes[] = {62,65,66,66};
+        cal_words = sizes[magic - 0x484b4341U];
+    } else if (magic == 0x484b4345U || magic == 0x484b4a45U) {
+        unsigned version = cal[1] & 255U;
+        unsigned words = magic == 0x484b4345U ? 66U : 81U;
+        if (version == 2) words += 3;
+        if ((version == 1 || version == 2) && (cal[1] >> 16) ==
+            hhkb_storage_crc16((const uint8_t *)&cal[2], words*4-8)) cal_words = words;
+    }
+    /* Valid CRCs are required for old snapshots: a stale DMK header beside
+     * subsequently restored PFU tables is not ownership of those PFU bytes. */
+    for (unsigned n = 0; n < sizeof(old)/sizeof(old[0]); ++n)
+        if ((mask & (1U << n)) && !hhkb_eeprom_clear_words(c_phys(old[n].offset), old[n].words)) return false;
+    if (cal_words && !hhkb_eeprom_clear_words(cal, cal_words)) return false;
+    if (compact) {
+        for (unsigned w = 0; w < 2*C_SLOT_BYTES/4; ++w)
+            if (!write_word(c_word(0,w),0)) return false;
+        // Ownership magic is removed last, after all fragmented payload bytes.
+        if (!hhkb_eeprom_clear_words(c_phys(0x1700),3)) return false;
+    }
+    return true;
 }

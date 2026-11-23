@@ -22,3 +22,8 @@ class CompactStorageTest(unittest.TestCase):
                     command += ['-I', str(ROOT / include)]
                 subprocess.run(command + [str(ROOT/'tests/hhkb_classic/test_compact_storage.c'), '-o', exe], check=True)
                 subprocess.run([exe], check=True)
+                # Private same-board backup stays outside Git; validate it locally
+                # when available without making CI depend on proprietary data.
+                backup = ROOT / 'keyboards/hhkb/binaries/backups/hhkb-eeprom.bin'
+                if backup.exists():
+                    subprocess.run([exe, str(backup)], check=True)
