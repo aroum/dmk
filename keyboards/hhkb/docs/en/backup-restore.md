@@ -158,6 +158,17 @@ After this transition, Bank 1 can install the latest matching stock firmware fro
 
 This combination is implemented in the **dev** branch. For a normal update that keeps DMK settings, use **SW5 OFF + SW6 ON**. With **SW5 ON + SW6 ON**, startup first clears recognized DMK EEPROM records, then performs the usual Bank 1 recovery. Both switches must remain ON through the debounce interval; SW5 alone never erases anything.
 
+At startup:
+
+| SW5 | SW6 | Recovery / erase action |
+| --- | --- | --- |
+| OFF | OFF | Normal DMK startup; no EEPROM erase or Bank 1 transition |
+| ON | OFF | Normal DMK startup; no EEPROM erase or Bank 1 transition |
+| OFF | ON | Enter Bank 1, keeping DMK settings |
+| ON | ON | Erase recognized DMK records, then enter Bank 1 |
+
+With SW6 OFF, SW5 retains its normal DIP-switch function; it never triggers recovery or erasure by itself.
+
 1. Disconnect USB; on Hybrid also remove the batteries to force a complete startup.
 2. Set both SW5 and SW6 to ON, then connect USB.
 3. Keep power connected until the PFU Bank 1 USB device appears. Then set SW6 to OFF and restore SW5 to its usual position before flashing.

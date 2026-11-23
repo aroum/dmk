@@ -137,21 +137,52 @@ Model ID (6), version (4), trailing 0xFF (6)
 
 ## 3. Flash and RAM usage
 
-The STM32L072KB microcontroller has 128 KiB Flash (arranged into two 64 KiB banks; DMK runs exclusively in Bank 2 at `0x08010000–0x0801FFFF`) and 20 KiB (20,480 bytes) SRAM.
+The [HHKB linker layout](../../../../platforms/stm32l072/stm32l072_bank2.ld) provides **65,536 bytes of Bank 2 Flash** at `0x08010000–0x0801FFFF` and **20,480 bytes of SRAM**. The measurements below are fresh builds of code commit `67ba4d90`, made on 2026-11-23 with **Arm GNU Toolchain 15.3.Rel2 / GCC 15.3.1**, `-Os`, no LTO, and the default configuration including compressed EEPROM storage and SW5+SW6 recovery. All sizes are bytes.
 
-### HHKB Classic (ANSI / Type-S)
+### HHKB Classic
 
-- **Flash (Bank 2):** ~51.1 KiB used (51,116 bytes out of 65,536 bytes; ~78.0% of available 64 KiB bank).
-- **RAM (Link-time allocation):** 1,656 bytes `.data`, 15,532 bytes `.bss`, 2,052 bytes `._user_heap_stack`, totalling 19,240 bytes (93.9%) and leaving 1,240 bytes free (FreeRTOS heap configured to 2 KiB).
+| Variant | Flash used / 65,536 B | Flash free | RAM allocated / 20,480 B | RAM unallocated |
+| --- | ---: | ---: | ---: | ---: |
+| ANSI: Classic / Classic Type-S | 54,052 (82.48%) | 11,484 | 19,160 (93.55%) | 1,320 |
+| JIS: Classic Type-S | 53,856 (82.18%) | 11,680 | 19,696 (96.17%) | 784 |
 
-### HHKB Hybrid (ANSI / Type-S / JIS)
+RAM section breakdown:
 
-Includes SPI protocol engine for Nordic nRF52832 Bluetooth SoC, battery telemetry, and STOP power-saving state machine:
+- **ANSI:** `.data` 1,664 + `.bss` 15,448 + `._user_heap_stack` 2,048 = **19,160**.
+- **JIS:** `.data` 1,688 + `.bss` 15,956 + `._user_heap_stack` 2,052 = **19,696**.
 
-- **Flash (Bank 2):** ~62.2 KiB used (62,196 bytes out of 65,536 bytes; ~94.9% of available 64 KiB bank).
-- **RAM (Link-time allocation):** 1,704 bytes `.data`, 15,716 bytes `.bss`, 2,052 bytes `._user_heap_stack`, totalling 19,472 bytes (95.1%) and leaving 1,008 bytes free (FreeRTOS heap configured to 2 KiB).
+Classic and Classic Type-S ANSI were built separately and have identical memory usage.
 
-_Note:_ Values reflect build-time layout (`arm-none-eabi-size`), not runtime stack depth.
+### HHKB Hybrid
+
+Includes the Nordic SPI transport, battery telemetry, and sleep/OFF state machines. Type-S uses the same build.
+
+| Variant | Flash used / 65,536 B | Flash free | RAM allocated / 20,480 B | RAM unallocated |
+| --- | ---: | ---: | ---: | ---: |
+| ANSI: Hybrid / Type-S | 65,468 (99.90%) | 68 | 19,416 (94.80%) | 1,064 |
+| JIS: Hybrid / Type-S | 65,296 (99.63%) | 240 | 19,952 (97.42%) | 528 |
+
+RAM section breakdown:
+
+- **ANSI:** `.data` 1,720 + `.bss` 15,644 + `._user_heap_stack` 2,052 = **19,416**.
+- **JIS:** `.data` 1,744 + `.bss` 16,156 + `._user_heap_stack` 2,052 = **19,952**.
+
+Hybrid ANSI has **68 bytes** of Bank 2 Flash remaining in this reference build; JIS has **240 bytes**. Compiler, feature flags and firmware-version string changes can change these values.
+
+### How to interpret the numbers
+
+Flash usage is the raw `.bin` length, including the Flash initialization image for `.data` and RAM functions. The fixed-size, padded HFB container is not a measure of occupied Flash. RAM allocation is `.data + .bss + ._user_heap_stack`; `.data` includes RAM functions, `.bss` includes static task stacks and the **2 KiB FreeRTOS heap**, and `._user_heap_stack` reserves the main/interrupt stack with alignment (the linker reserves no separate libc heap). Do not add the FreeRTOS heap a second time. Unallocated RAM is not the runtime free heap or unused stack capacity; those require runtime measurements.
+
+Inspect the sections after any build:
+
+```bash
+arm-none-eabi-size -A -d build/hhkb-script/dmk_hhkb_stm32l072
+arm-none-eabi-objdump -h build/hhkb-script/dmk_hhkb_stm32l072
+```
+
+### EEPROM
+
+[Compressed DMK storage](via-debug.md#compressed-eeprom-storage) reserves **1,772 bytes** of the 6,144-byte EEPROM for every supported Classic/Hybrid ANSI/JIS variant: two 880-byte snapshots plus a 12-byte ownership/reset header. This is separate from Flash and SRAM usage. Each snapshot allows 860 compressed payload bytes; actual payload length depends on the saved configuration. The rest of EEPROM includes PFU/factory data and must not be treated as free DMK space.
 
 ## GitHub Actions and Prebuilt Releases
 
