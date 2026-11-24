@@ -11,6 +11,7 @@
 - `HHKB_HYBRID` builds firmware for wireless Hybrid and Hybrid Type-S (enables SPI communications with Nordic nRF, battery management, profiles, and STOP mode).
 - `HHKB_JIS` enables support for the 69-key Japanese JIS matrix (sparse matrix, 15 columns, Kana/Henkan/Muhenkan keys, and arrow cluster).
 - `HHKB_SCAN_DIAGNOSTICS` adds measurement counters accessible over SWD.
+- `HHKB_SOF_LOCK` (default 1) locks the scan to the USB frame so reports reach the host's next poll sooner; `HHKB_SOF_MARGIN_US` (default 150) is the lead margin. With `HHKB_SCAN_DIAGNOSTICS`, the HID console prints `[LAT]` (report age, lock state, phase error).
 
 ## Matrix Scanning
 

@@ -43,6 +43,10 @@
 #define PERMISSIVE_HOLD 1
 #define HOLD_TAP_TAP_PREFERRED 0
 #define QUICK_TAP_TERM 150
+#ifndef HHKB_SOF_LOCK
+#define HHKB_SOF_LOCK 1
+#endif
+#define HHKB_SOF_MARGIN_US 150
 // #define HHKB_SCAN_DIAGNOSTICS 1
 
 /* --- Matrix Geometry --- */
