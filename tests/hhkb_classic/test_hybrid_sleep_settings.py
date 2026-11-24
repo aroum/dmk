@@ -24,6 +24,7 @@ class HybridSleepSettingsTest(unittest.TestCase):
 #include "rapid_trigger.h"
 #include "ec_curve.h"
 #include "settings_storage_guard.h"
+#define HHKB_CAL_BASE_MIN 20u
 #define WORD_ALIGNED_SIZE(x) (((x)+3U)&~3U)
 #define MATRIX_COLS 15
 #define DEBUG_FLAG_TOPRE 1
@@ -83,7 +84,7 @@ int main(void){
    s_bt_matrix_wake=enabled;s_bt_sleep_minutes=23;s_bt_deep_index=7;
    s_bt_short_action=5;s_bt_long_action=2;s_bt_last_slot=3;
    for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++){
-    s_cal_baseline[c][r]=300+c;s_cal_peak[c][r]=2800+r;
+    s_cal_baseline[c][r]=c==0 ? 99 : 300+c;s_cal_peak[c][r]=2800+r;
    }
    assert(hhkb_settings_storage_writable());
    flash.PECR=0;hhkb_calibration_save_to_eeprom();assert(snapshot_depth==0);
@@ -96,7 +97,7 @@ int main(void){
    assert(s_bt_deep_index==7 && s_bt_short_action==5 && s_bt_long_action==2 && s_bt_last_slot==3);
    assert(s_led_mode[0]==led && s_led_mode[1]==4);
    for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++){
-    assert(s_cal_baseline[c][r]==300+c && s_cal_peak[c][r]==2800+r);
+    assert(s_cal_baseline[c][r]==(c==0 ? 99 : 300+c) && s_cal_peak[c][r]==2800+r);
    }
   }
  }

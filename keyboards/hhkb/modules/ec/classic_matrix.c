@@ -1,4 +1,5 @@
 #include "classic_matrix.h"
+#include "layers.h"
 #include "ec_settings.h"
 #include "ec_curve.h"
 #include "rapid_trigger.h"
@@ -47,6 +48,8 @@ static inline uint16_t adc_finish_sample(void) {
 }
 
 static hhkb_scan_cache_t s_scan_cache;
+// Reused by the single matrix task; no extra stack pressure.
+static uint16_t s_cal_samples[MATRIX_COLS][MATRIX_ROWS];
 typedef struct {
     uint16_t raw, travel;
     uint8_t col, row;
@@ -265,7 +268,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             uint16_t discharge_start = (uint16_t)TIM2->CNT;
             scan_prepare_pending(&pending, &prepared, debug_topre);
             changed |= scan_process_pending(&pending, &prepared, current_matrix);
-            scan_report_pending(&pending, capture, is_calibrating, debug_topre, &capture_failed);
+            scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
             scan_wait_since(discharge_start, 2);
             scan_wait_since(settle_start, 4);
 
@@ -286,6 +289,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             __set_PRIMASK(saved_primask);
             settle_start = (uint16_t)TIM2->CNT;
 
+            if (is_calibrating) s_cal_samples[col][row] = val;
             pending = (scan_pending_t){.raw = val, .col = col, .row = row, .valid = true};
         }
     }
@@ -293,16 +297,28 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     // Flush the last key in this pass; no sample is deferred to the next scan.
     scan_prepare_pending(&pending, &prepared, debug_topre);
     changed |= scan_process_pending(&pending, &prepared, current_matrix);
-    scan_report_pending(&pending, capture, is_calibrating, debug_topre, &capture_failed);
+    scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
 
+    // Disable OpAmp
+    GPIOC->BRR = (1U << 7);
+    scan_adc_idle();
+    // Calibration bookkeeping must not change the interval between key samples.
+    if (is_calibrating) {
+        for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+            for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+                if (keyboard_get_flat_key_index(row, col) < 0) continue;
+                scan_pending_t sample = {.raw = s_cal_samples[col][row], .col = col,
+                                         .row = row, .valid = true};
+                scan_report_pending(&sample, capture, true, false, &capture_failed);
+            }
+        }
+    }
     if (capture) {
         // A missing sample must not bias the 16-frame baseline average.
         if (capture_failed) hhkb_calibration_start();
         else hhkb_cal_decrement_samples();
     }
 
-    // Disable OpAmp
-    GPIOC->BRR = (1U << 7);
-    scan_adc_idle();
+
     return changed;
 }

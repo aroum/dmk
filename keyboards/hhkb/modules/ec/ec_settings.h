@@ -117,6 +117,7 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
 void hhkb_get_debug_key_str(char *buf, size_t max_len);
 void hhkb_get_debug_raw_str(char *buf, size_t max_len);
 void hhkb_get_debug_travel_str(char *buf, size_t max_len);
+void hhkb_cal_print_keys(void);
 void hhkb_get_cal_status_str(char *buf, size_t max_len);
 
 // Direct matrix arrays for zero-call-overhead inner loop scan

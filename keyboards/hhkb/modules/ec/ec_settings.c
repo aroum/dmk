@@ -45,6 +45,8 @@ static uint16_t s_cal_press_start_peak[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_base[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
+#define HHKB_CAL_BASE_MIN 20u
+
 static rt_cfg_t s_rt_cfg = {
     .rt_enabled = false,
     .act_pm = 750,
@@ -145,7 +147,7 @@ static uint16_t get_factory_baseline(uint8_t col, uint8_t row) {
     const uint16_t *base = (const uint16_t *)HHKB_FACTORY_BASELINE_ADDR;
     uint8_t idx = (col << 3) | (row & 7);
     uint16_t val = base[idx];
-    return (val >= 100 && val <= 2000) ? val : 0;
+    return (val >= HHKB_CAL_BASE_MIN && val <= 2000) ? val : 0;
 #endif
 }
 
@@ -387,7 +389,7 @@ void hhkb_calibration_load(void) {
                 for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
                     uint16_t def_b = get_default_baseline(col, row);
                     uint16_t def_p = get_default_peak(col, row);
-                    s_cal_baseline[col][row] = (s_custom_calibration && cal->baseline[col][row] >= 100 && cal->baseline[col][row] <= 2000) ? cal->baseline[col][row] : def_b;
+                    s_cal_baseline[col][row] = (s_custom_calibration && cal->baseline[col][row] >= HHKB_CAL_BASE_MIN && cal->baseline[col][row] <= 2000) ? cal->baseline[col][row] : def_b;
                     s_cal_peak[col][row] = (s_custom_calibration && cal->peak[col][row] > s_cal_baseline[col][row] + RT_MIN_RANGE && cal->peak[col][row] <= 4095) ? cal->peak[col][row] : def_p;
                 }
             }
@@ -410,7 +412,7 @@ void hhkb_calibration_load(void) {
             for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
                 uint16_t def_b = get_default_baseline(col, row);
                 uint16_t def_p = get_default_peak(col, row);
-                s_cal_baseline[col][row] = (cal->baseline[col][row] >= 100 && cal->baseline[col][row] <= 2000) ? cal->baseline[col][row] : def_b;
+                s_cal_baseline[col][row] = (cal->baseline[col][row] >= HHKB_CAL_BASE_MIN && cal->baseline[col][row] <= 2000) ? cal->baseline[col][row] : def_b;
                 s_cal_peak[col][row] = (cal->peak[col][row] > s_cal_baseline[col][row] + RT_MIN_RANGE && cal->peak[col][row] <= 4095) ? cal->peak[col][row] : def_p;
             }
         }
@@ -485,9 +487,16 @@ void hhkb_calibration_finish(void) {
         for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
             uint8_t k_idx = c * MATRIX_ROWS + r;
             bool was_actuated = (s_calibrated_mask[k_idx / 32] & (1U << (k_idx % 32))) != 0;
-            if (was_actuated) {
+            // Do not save a range that the loader would reject after reboot.
+            if (was_actuated && s_capture_base[c][r] >= HHKB_CAL_BASE_MIN &&
+                s_capture_base[c][r] <= 2000 &&
+                s_capture_peak[c][r] > s_capture_base[c][r] + RT_MIN_RANGE &&
+                s_capture_peak[c][r] <= 4095) {
                 s_cal_baseline[c][r] = s_capture_base[c][r];
                 s_cal_peak[c][r] = s_capture_peak[c][r];
+            } else {
+                // Unusable captures remain unchanged, and must not count as saved.
+                s_calibrated_mask[k_idx / 32] &= ~(1U << (k_idx % 32));
             }
             rt_key_set_range(&s_rt_keys[c][r], s_cal_baseline[c][r], s_cal_peak[c][r]);
             rt_key_reset(&s_rt_keys[c][r]);
@@ -714,6 +723,22 @@ void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
     }
 }
 
+void hhkb_cal_print_keys(void) {
+    debug_console_printf(s_calibration_mode ? "[CAL] missing:" : "[CAL] unchanged:");
+    unsigned missing = 0;
+    for (uint8_t c = 0; c < MATRIX_COLS; ++c) {
+        for (uint8_t r = 0; r < MATRIX_ROWS; ++r) {
+            if (keyboard_get_flat_key_index(r, c) < 0) continue;
+            unsigned index = c * MATRIX_ROWS + r;
+            if (!(s_calibrated_mask[index / 32] & (1U << (index % 32)))) {
+                debug_console_printf(" R%u C%u", r, c);
+                ++missing;
+            }
+        }
+    }
+    debug_console_printf(missing ? "\r\n" : " none\r\n");
+}
+
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
     if (s_cal_request == CAL_REQ_START) {
         snprintf(buf, max_len, "In progress: 0/%u keys", NUM_KEYS);
@@ -756,7 +781,7 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
             if (keyboard_get_flat_key_index(r, c) < 0) continue;
             uint16_t base = saved_base[c][r];
             uint16_t peak = saved_peak[c][r];
-            if (base >= 100 && base <= 2000 && peak > base + RT_MIN_RANGE && peak <= 4095 &&
+            if (base >= HHKB_CAL_BASE_MIN && base <= 2000 && peak > base + RT_MIN_RANGE && peak <= 4095 &&
                 (base != get_default_baseline(c, r) || peak != get_default_peak(c, r))) {
                 custom_count++;
             }

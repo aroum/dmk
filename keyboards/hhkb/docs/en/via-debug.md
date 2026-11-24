@@ -246,6 +246,16 @@ Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key
 
 The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Previous-key processing overlaps C57 discharge with interrupts enabled. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
 
+### Calibration and bottom-out pressure fixes (dev)
+
+Calibration accepts resting baselines from 20 to 2000 ADC counts, including switches below 100 counts. Finish validates the same baseline and peak bounds used at load time; an invalid capture leaves that key's previous range unchanged. The ADC peak must be at most 4095 and exceed baseline by more than 150 counts. The EEPROM format is unchanged.
+
+During calibration, acquisition stores one frame (120 bytes for ANSI, 150 for JIS). Baseline/peak bookkeeping runs after acquisition with the OpAmp off, instead of extending each inter-key interval. This does not guarantee calibration meets a 1 ms deadline: check diagnostics on hardware. Calibration-rate changes and the fork's special inter-scan OpAmp policy are not included.
+
+Use **Print status to HID Console** to list `[CAL] missing:` positions during calibration or `[CAL] unchanged:` positions afterwards. These lists use physical keys only, including on JIS. Release every key before starting; press each to bottom-out with normal force, rather than squeezing harder after it stops moving. Check the missing list before Finish. Coordinates refer to matrix positions, not the current layer's keycodes.
+
+RT release tracking is capped at the calibrated bottom (or the travel curve's endpoint), so extra pressure above peak does not deepen the release anchor. This is a zero-width bottom dead zone, not a configurable 0.5 mm zone. Per-key RT profiles, per-key actuation and an adjustable bottom zone from [issue #11](https://github.com/aroum/dmk/issues/11) are not included. The calibration follow-up is tracked in [issue #12](https://github.com/aroum/dmk/issues/12).
+
 ### 1000 Hz scan timing
 
 [Issue #8](https://github.com/aroum/dmk/issues/8) reports scan overruns on Hybrid ANSI in release `2026.11.22` and dev at `6ef2a5e`. Dev now places RT scan functions in RAM on ARM and processes the previous key during C57 discharge, preserving cached classic thresholds, ADC timeout handling and same-pass final-key processing. Discharge lasts at least 2 µs; release/mux selection to the next strobe lasts at least 4 µs. This extends the discharge interval; it needs hardware validation on Classic and JIS. `HHKB_SCAN_1KHZ` has been removed: timer scheduling is always available and VIA selects the USB rate up to 1000 Hz. Battery scan settings are unchanged.

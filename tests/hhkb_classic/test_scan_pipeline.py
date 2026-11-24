@@ -48,14 +48,22 @@ static struct {uint16_t CNT;} timer;
 static rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
 static rt_key_t reference[MATRIX_COLS][MATRIX_ROWS];
 static hhkb_scan_cache_t s_scan_cache;
+static uint16_t s_cal_samples[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t raw[KEYS];
 static uint8_t columns[KEYS],rows[KEYS];
 static unsigned primask,starts,finishes,reports,captures,peaks,frames,restarts,decrements;
-static unsigned next_index,reported_index,fault=1000;
+static unsigned next_index,reported_index,debug_index,fault=1000;
 static bool converting,debug,calibrating,capture;
 static rt_cfg_t cfg;
 const uint16_t *ec_curve_lut;
 uint32_t ec_curve_revision;
+static int keyboard_get_flat_key_index(unsigned row,unsigned col){
+#ifdef HHKB_JIS
+ static const unsigned populated[15]={29,27,29,31,29,29,31,29,31,31,31,31,31,31,31};
+ if(!(populated[col]&(1u<<row)))return -1;
+#endif
+ return col*MATRIX_ROWS+row;
+}
 static bool hhkb_hybrid_on_battery(void){return false;}
 static void scan_adc_prepare(void){}
 static void scan_adc_idle(void){assert(!primask && !converting);}
@@ -83,20 +91,20 @@ static uint16_t adc_finish_sample(void){
  converting=false;++finishes;return raw[next_index];
 }
 static void hhkb_cal_accumulate_baseline(unsigned col,unsigned row,unsigned val){
- assert(!primask && !converting);while(reported_index==fault)++reported_index;assert(col==columns[reported_index] && row==rows[reported_index]);
- assert(val==raw[reported_index]);++captures;if(!debug)++reported_index;
+ assert(!primask && !converting && GPIOC->BRR==(1u<<7));assert(finishes==KEYS-(fault<KEYS));while(reported_index==fault)++reported_index;assert(col==columns[reported_index] && row==rows[reported_index]);
+ assert(val==raw[reported_index]);++captures;++reported_index;
 }
 static void hhkb_cal_record_peak(unsigned col,unsigned row,unsigned val){
- assert(!primask && !converting);while(reported_index==fault)++reported_index;assert(col==columns[reported_index] && row==rows[reported_index]);
- assert(val==raw[reported_index]);++peaks;if(!debug)++reported_index;
+ assert(!primask && !converting && GPIOC->BRR==(1u<<7));assert(finishes==KEYS-(fault<KEYS));while(reported_index==fault)++reported_index;assert(col==columns[reported_index] && row==rows[reported_index]);
+ assert(val==raw[reported_index]);++peaks;++reported_index;
 }
 static void hhkb_debug_feed_sample(unsigned col,unsigned row,unsigned val,unsigned travel,bool down){
  assert(!primask && !converting);
- while(reported_index==fault)++reported_index;
- assert(col==columns[reported_index] && row==rows[reported_index]);
- assert(val==raw[reported_index]);
+ while(debug_index==fault)++debug_index;
+ assert(col==columns[debug_index] && row==rows[debug_index]);
+ assert(val==raw[debug_index]);
  assert(travel==rt_normalize_curve(&reference[col][row],val,ec_curve_lut));
- assert(down==reference[col][row].down);++reported_index;++reports;
+ assert(down==reference[col][row].down);++debug_index;++reports;
 }
 static void hhkb_calibration_start(void){assert(!primask && !converting);++restarts;}
 static void hhkb_cal_decrement_samples(void){assert(!primask && !converting);++decrements;}
@@ -138,7 +146,7 @@ int main(void){
    if(down)expected[row]|=1u<<col;else expected[row]&=~(1u<<col);
    changed|=previous!=expected[row];
   }
-  starts=finishes=reports=captures=peaks=0;reported_index=0;
+  starts=finishes=reports=captures=peaks=0;reported_index=debug_index=0;
   unsigned before_restart=restarts,before_decrement=decrements;
   assert(hhkb_matrix_scan_raw(matrix)==changed);
   assert(starts==KEYS && finishes==KEYS-(fault<KEYS));
