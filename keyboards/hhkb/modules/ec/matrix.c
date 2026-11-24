@@ -347,10 +347,12 @@ void matrix_task(void *pvParameters) {
         if (usb_power_saving) {
             if (!sensor_power_down) {
                 // Stop scan interrupts as well as the analog hardware.
+#ifdef HHKB_SCAN_1KHZ
                 TIM2->DIER &= ~TIM_DIER_CC1IE;
                 TIM2->SR = 0;
                 NVIC_ClearPendingIRQ(TIM2_IRQn);
                 (void)ulTaskNotifyTake(pdTRUE, 0);
+#endif
                 // Disable power for capacitive sensor board and OpAmp
                 GPIOC->BRR = (1U << 14) | (1U << 7);
                 sensor_power_down = true;
@@ -362,11 +364,13 @@ void matrix_task(void *pvParameters) {
             GPIOC->BSRR = (1U << 14) | (1U << 7);
             vTaskDelay(pdMS_TO_TICKS(10)); // Settle analog power
             sensor_power_down = false;
+#ifdef HHKB_SCAN_1KHZ
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
             TIM2->SR = 0;
             NVIC_ClearPendingIRQ(TIM2_IRQn);
             TIM2->DIER |= TIM_DIER_CC1IE;
+#endif
         }
 
 #ifdef HHKB_SCAN_1KHZ
