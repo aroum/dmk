@@ -279,15 +279,21 @@ bool vial_keyboard_settings_reset(void) {
 }
 
 static volatile uint8_t s_cal_request;
+static volatile uint8_t s_cal_enable_request;
 
 void hhkb_calibration_request_start(void) { cal_request_post(&s_cal_request, CAL_REQ_START); }
 void hhkb_calibration_request_finish(void) { cal_request_post(&s_cal_request, CAL_REQ_FINISH); }
+void hhkb_calibration_request_set_enabled(bool enabled) {
+    cal_request_post(&s_cal_enable_request, enabled ? CAL_REQ_ENABLE : CAL_REQ_DISABLE);
+}
 
 // Matrix task only, outside a scan.
 void hhkb_calibration_apply_pending(void) {
     cal_request_t req = cal_request_take(&s_cal_request);
     if (req == CAL_REQ_START) hhkb_calibration_start();
     else if (req == CAL_REQ_FINISH) hhkb_calibration_finish();
+    req = cal_request_take(&s_cal_enable_request);
+    if (req != CAL_REQ_NONE) hhkb_calibration_set_enabled(req == CAL_REQ_ENABLE);
 }
 
 void hhkb_calibration_start(void) {
@@ -347,7 +353,9 @@ void hhkb_calibration_finish(void) {
         debug_console_printf("[CAL] Finished. Updated %u keys.\r\n", updated);
 }
 
+// Applied state; a pending set_enabled request is not reflected until applied.
 bool hhkb_calibration_enabled(void) { return s_custom_calibration; }
+// Matrix task only (rewrites rt key ranges); other tasks use request_set_enabled.
 void hhkb_calibration_set_enabled(bool enabled) {
     taskENTER_CRITICAL();
     s_custom_calibration = enabled;

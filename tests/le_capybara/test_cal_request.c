@@ -17,6 +17,20 @@ int main(void) {
     cal_request_post(&slot, CAL_REQ_FINISH);
     cal_request_post(&slot, CAL_REQ_START);
     assert(cal_request_take(&slot) == CAL_REQ_START);
+    cal_request_post(&slot, CAL_REQ_ENABLE);
+    cal_request_post(&slot, CAL_REQ_DISABLE); // last wins
+    assert(cal_request_take(&slot) == CAL_REQ_DISABLE);
+    cal_request_post(&slot, CAL_REQ_DISABLE);
+    cal_request_post(&slot, CAL_REQ_ENABLE);
+    assert(cal_request_take(&slot) == CAL_REQ_ENABLE);
+    assert(cal_request_take(&slot) == CAL_REQ_NONE);
+    { // set_enabled uses its own slot: does not displace start/finish
+        volatile uint8_t en = 0;
+        cal_request_post(&slot, CAL_REQ_START);
+        cal_request_post(&en, CAL_REQ_DISABLE);
+        assert(cal_request_take(&slot) == CAL_REQ_START);
+        assert(cal_request_take(&en) == CAL_REQ_DISABLE);
+    }
     assert(s_depth == 0 && s_max_depth == 1);
     return 0;
 }

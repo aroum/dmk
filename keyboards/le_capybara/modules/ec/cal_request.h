@@ -3,9 +3,10 @@
 
 // Cross-task calibration requests. Other tasks only post a request; the matrix
 // task alone applies it at a scan boundary, so scan state is never changed
-// mid-scan. A newer request replaces a pending one (last wins).
+// mid-scan. A newer request replaces a pending one in the same slot (last
+// wins). ENABLE/DISABLE carry the set_enabled value and use their own slot.
 // The including file supplies CAL_REQ_ENTER()/CAL_REQ_EXIT() (critical section).
-typedef enum { CAL_REQ_NONE = 0, CAL_REQ_START, CAL_REQ_FINISH } cal_request_t;
+typedef enum { CAL_REQ_NONE = 0, CAL_REQ_START, CAL_REQ_FINISH, CAL_REQ_ENABLE, CAL_REQ_DISABLE } cal_request_t;
 
 static inline void cal_request_post(volatile uint8_t *slot, cal_request_t req) {
     CAL_REQ_ENTER();

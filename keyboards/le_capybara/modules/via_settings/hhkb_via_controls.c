@@ -94,7 +94,7 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         } else if (id == 13) {
             hhkb_set_scan_rate(request[3]);
         } else if (id == 2) {
-            hhkb_calibration_set_enabled(request[3] != 0);
+            hhkb_calibration_request_set_enabled(request[3] != 0);
         } else if (id == 7 && request[3]) {
             hhkb_calibration_request_start();
         } else if (id == 8 && request[3]) {
