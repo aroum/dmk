@@ -7,19 +7,28 @@
 #include "sof_lock.h"
 
 #if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
-static volatile uint16_t s_last_compare;
-static volatile uint16_t s_publish_compare;
 static volatile bool s_report_pending;
+#endif
+#ifdef HHKB_SCAN_DIAGNOSTICS
+static volatile uint16_t s_publish_compare;
 static volatile uint16_t s_age_from;
 static volatile uint32_t s_age_sum, s_age_cnt, s_age_max;
-static volatile int16_t s_last_err;
-
+#endif
+#if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
+static volatile uint16_t s_last_compare;
 void sof_lock_note_fire(uint16_t fired) { s_last_compare = fired; }
+#endif
+#ifdef HHKB_SCAN_DIAGNOSTICS
+static volatile int16_t s_last_err;
 void sof_lock_note_publish(void) { s_publish_compare = s_last_compare; }
+#endif
 
+#if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
 void usb_keyboard_report_armed(void) {
     if (!s_report_pending) {
+#ifdef HHKB_SCAN_DIAGNOSTICS
         s_age_from = s_publish_compare;
+#endif
         s_report_pending = true;
     }
 }
@@ -71,7 +80,9 @@ uint16_t sof_lock_step(uint16_t fired, uint16_t nominal) {
     if (!ms) ms = 1;
     uint16_t base = (uint16_t)(((uint32_t)ms * pq + 8U) >> 4);
     int16_t corr = sof_lock_correction(fired, s_sof_cnt, p, sof_lock_target(p, s_in_off, s_lead), 100);
+#ifdef HHKB_SCAN_DIAGNOSTICS
     s_last_err = (int16_t)(-4 * corr);
+#endif
     return (uint16_t)(base + corr);
 }
 
@@ -97,29 +108,32 @@ void usb_xfer_complete_from_isr(void) {
     if (!s_report_pending) return;
     s_report_pending = false;
     uint16_t now = (uint16_t)TIM2->CNT;
+#ifdef HHKB_SCAN_DIAGNOSTICS
     uint32_t age = (uint16_t)(now - s_age_from);
     s_age_sum += age;
     s_age_cnt++;
     if (age > s_age_max) s_age_max = age;
+#endif
 #if HHKB_SOF_LOCK
     if (fresh(now)) {
-        uint16_t p = (uint16_t)((s_sof_p_q4 + 8) >> 4);
-        int32_t ph = sof_phase(now, s_sof_cnt, p);
-        int32_t dlt = sof_wrap(ph - s_in_off, p);
+        int32_t p = (int32_t)((s_sof_p_q4 + 8) >> 4);
+        int32_t dlt = sof_wrap((int32_t)sof_phase(now, s_sof_cnt, (uint16_t)p) - s_in_off, p);
         int32_t off = s_in_off;
-        if (s_in_n < 8) {
-            off += dlt / (int32_t)(s_in_n + 1);
+        if (s_in_n < 4) {
+            off += dlt >> s_in_n; // 1, 1/2, 1/4, 1/8: fast acquire without division
             s_in_n++;
         } else if (dlt <= 400 && dlt >= -400) {
-            off += dlt / 8;
+            off += dlt >> 3;
         }
-        off %= (int32_t)p;
+        if (off >= p) off -= p;
         if (off < 0) off += p;
         s_in_off = (int16_t)off;
     }
 #endif
 }
+#endif
 
+#ifdef HHKB_SCAN_DIAGNOSTICS
 void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *err_us,
                                   uint32_t *locked, uint32_t *lead_us, int32_t *in_us) {
     taskENTER_CRITICAL();

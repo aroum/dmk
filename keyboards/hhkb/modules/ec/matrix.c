@@ -437,7 +437,7 @@ void matrix_task(void *pvParameters) {
         uint32_t work_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         if (work_us > s_matrix_work_max_us) s_matrix_work_max_us = work_us;
 #endif
-#if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
+#ifdef HHKB_SCAN_DIAGNOSTICS
         if (!first_event) sof_lock_note_publish();
 #endif
 #if HHKB_SOF_LOCK
