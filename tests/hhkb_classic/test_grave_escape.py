@@ -32,7 +32,7 @@ void layers_toggle(uint8_t l){(void)l;}
 void keyboard_send_modifier_mask(uint8_t m,bool p){if(p)s_real_mods|=m;else s_real_mods&=~m;}
 void keyboard_send_modifiers(uint8_t m,bool p){keyboard_send_modifier_mask(m,p);}
 void keyboard_send_key(uint16_t key,bool pressed);
-''' + function(usb,'uint8_t usb_get_effective_modifiers(') + r'''
+''' + 'static uint8_t s_real_refs[8],s_weak_refs[8];\n' + function(usb,'static void update_mods(') + function(usb,'uint8_t usb_get_effective_modifiers(') + r'''
 static int current_report;
 static bool sync_report_modifiers(void){return true;}
 static bool add_key_to_report(uint8_t k){(void)k;return false;}
@@ -60,6 +60,13 @@ int main(void){
   s_real_mods=s_weak_mods=0;release();
  }
  overrides=0;
+ usb_process_modifiers(MOD_RSHIFT,true);usb_process_modifiers(MOD_RSHIFT,true);
+ usb_process_modifiers(MOD_RSHIFT,false);assert(usb_get_effective_modifiers()==MOD_RSHIFT);
+ usb_process_modifiers(MOD_RSHIFT,false);assert(!usb_get_effective_modifiers());
+ usb_process_key_with_modifiers(MOD_RALT,0,true);usb_process_key_with_modifiers(MOD_RALT,0,true);
+ usb_process_key_with_modifiers(MOD_RALT,0,false);assert(usb_get_effective_modifiers()==MOD_RALT);
+ usb_process_key_with_modifiers(MOD_RALT,0,false);assert(!usb_get_effective_modifiers());
+ assert(OS(MOD_RCTRL)==OS_MOD(MOD_RCTRL));
  // Exercise the actual USB physical and MK weak-modifier update paths.
  for(unsigned bit=0;bit<8;bit++){
   s_real_mods=s_weak_mods=0;

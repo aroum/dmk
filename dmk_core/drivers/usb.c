@@ -25,6 +25,15 @@ static USB_HID_KeyboardReport_TypeDef current_report;
 static uint8_t s_real_mods = 0;
 static uint8_t s_weak_mods = 0;
 
+static uint8_t s_real_refs[8], s_weak_refs[8];
+static void update_mods(uint8_t *state, uint8_t refs[8], uint8_t mask, bool pressed) {
+    for (unsigned i = 0; i < 8; ++i) if (mask & (1U << i)) {
+        if (pressed) { if (refs[i] != UINT8_MAX) ++refs[i]; }
+        else if (refs[i]) --refs[i];
+        if (refs[i]) *state |= 1U << i; else *state &= ~(1U << i);
+    }
+}
+
 uint8_t usb_get_effective_modifiers(void) {
     return s_real_mods | s_weak_mods;
 }
@@ -101,6 +110,7 @@ static bool del_key_from_report(uint8_t keycode) {
 void usb_init(void) {
     USB_HID_Init();
 
+    for (unsigned i = 0; i < 8; ++i) s_real_refs[i] = s_weak_refs[i] = 0;
     s_real_mods = 0;
     s_weak_mods = 0;
     current_report.ReportID = 1;
@@ -131,11 +141,7 @@ void usb_process_key(uint16_t keycode, bool pressed) {
 
     if (keycode >= 0xE0 && keycode <= 0xE7) {
         uint8_t mod_bit = (uint8_t)(1U << (keycode - 0xE0));
-        if (pressed) {
-            s_real_mods |= mod_bit;
-        } else {
-            s_real_mods &= ~mod_bit;
-        }
+        update_mods(&s_real_mods, s_real_refs, mod_bit, pressed);
         report_changed = sync_report_modifiers();
     } else if (keycode != 0) {
         report_changed = pressed ? add_key_to_report((uint8_t)keycode) : del_key_from_report((uint8_t)keycode);
@@ -157,11 +163,7 @@ void usb_process_modifiers(uint8_t mod_mask, bool pressed) {
     if (mod_mask == 0) {
         return;
     }
-    if (pressed) {
-        s_real_mods |= mod_mask;
-    } else {
-        s_real_mods &= ~mod_mask;
-    }
+    update_mods(&s_real_mods, s_real_refs, mod_mask, pressed);
     if (sync_report_modifiers()) {
         USB_HID_SendReport(&current_report);
     }
@@ -174,11 +176,7 @@ void usb_process_key_with_modifiers(uint8_t mod_mask, uint8_t keycode, bool pres
 #ifdef MATRIX_REPORT_BATCH
     usb_flush_batched_keys();
 #endif
-    if (pressed) {
-        s_weak_mods |= mod_mask;
-    } else {
-        s_weak_mods &= ~mod_mask;
-    }
+    update_mods(&s_weak_mods, s_weak_refs, mod_mask, pressed);
     bool mod_changed = sync_report_modifiers();
     bool key_changed = false;
     if (keycode != 0) {

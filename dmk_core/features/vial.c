@@ -122,6 +122,8 @@ static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
 }
 
 static uint8_t to_via_mod_mask(uint8_t dmk_mod) {
+    // VIA has a single side selector; reject mixed-side masks.
+    if ((dmk_mod & 0xF0) && (dmk_mod & 0x0F)) return 0xff;
     // Unlike a modifier HID keycode, this argument is always a bitmask.
     return (dmk_mod & 0xF0) ? (uint8_t)(0x10 | (dmk_mod >> 4) | (dmk_mod & 0x0F))
                             : (dmk_mod & 0x0F);
@@ -156,6 +158,9 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
 #ifdef HHKB_GRAVE_ESCAPE
     if (dmk_key == 0x7c16u) return 0x7c16u;
 #endif
+    if ((dmk_key & 0xFF000000u) == DMK_OS || (dmk_key & 0xFF000000u) == DMK_MK) {
+        if (to_via_mod_mask((dmk_key >> 8) & 255) == 0xff) return 0;
+    }
     if ((dmk_key & 0xFF000000u) == DMK_OS) {
         if (dmk_key & 0x10000u) return 0x52A0u | to_via_mod_mask((dmk_key >> 8) & 0xFF);
         return 0x5280u | (dmk_key & 0x0F);
@@ -214,6 +219,7 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
         uint8_t kc = to_via_mouse_keycode((uint8_t)tap);
         if ((hold & 0xFF000000u) == DMK_MO)
             return 0x4000 | ((hold & 15) << 8) | kc;
+        if ((hold & 0xFF000000u) == DMK_MK && to_via_mod_mask((hold >> 8) & 255) == 0xff) return 0;
         if ((hold & 0xFF000000u) == DMK_MK)
             return 0x2000 | (to_via_mod_mask((hold >> 8) & 0xFF) << 8) | kc;
         if (hold >= HID_KEY_CONTROL_LEFT && hold <= HID_KEY_GUI_RIGHT)

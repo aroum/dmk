@@ -40,16 +40,17 @@ bool oneshot_should_consume(uint32_t key) {
 
 void oneshot_send_lazy_mods(void) {
     for (int i = 0; i < MAX_OS_TRACKERS; i++) {
-        if (os_trackers[i].active && os_trackers[i].is_mod && ONESHOT_LAZY) {
+        if (os_trackers[i].active && os_trackers[i].is_mod && ONESHOT_LAZY && !os_trackers[i].mods_sent) {
             keyboard_send_modifier_mask(os_trackers[i].mod_mask, true);
+            os_trackers[i].mods_sent = true;
         }
     }
 }
 
 static void deactivate_os(OneShotState *os) {
-    if (os->is_mod)
+    if (os->is_mod && os->mods_sent)
         keyboard_send_modifier_mask(os->mod_mask, false);
-    else
+    else if (!os->is_mod)
         layers_off(os->layer);
     memset(os, 0, sizeof(OneShotState));
 }
@@ -150,6 +151,7 @@ bool oneshot_process_event(uint32_t key, bool pressed) {
             }
         }
         if (idx != -1) {
+            if (os_trackers[idx].mods_sent) deactivate_os(&os_trackers[idx]);
             os_trackers[idx] = (OneShotState){.activate_time = xTaskGetTickCount(),
                                               .active = true,
                                               .pending_release = false,
@@ -158,8 +160,10 @@ bool oneshot_process_event(uint32_t key, bool pressed) {
                                               .mod_mask = target,
                                               .layer = target};
             if (is_mod) {
-                if (!ONESHOT_LAZY)
+                if (!ONESHOT_LAZY) {
                     keyboard_send_modifier_mask(target, true);
+                    os_trackers[idx].mods_sent = true;
+                }
             } else {
                 layers_on(target);
             }

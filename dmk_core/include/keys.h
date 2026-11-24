@@ -763,9 +763,10 @@ typedef struct {
 #define TG(layer) (DMK_TG | (layer))
 #define MO(layer) (DMK_MO | (layer))
 
-#define OS(val)                                                                                                        \
+#define DMK_OS_LEGACY(val)                                                                                                        \
     ((val) < 32 ? (DMK_OS | 0x20000 | (val))                                                                           \
                 : (DMK_OS | 0x10000 | (((val) >= 0xE0 && (val) <= 0xE7 ? (1 << ((val) - 0xE0)) : (val)) << 8)))
+#define OS(val) (DMK_HT_IS_MASK_SPELLING(#val) ? OS_MOD(val) : DMK_OS_LEGACY(val))
 #define OS_LAYER(layer) OS(layer)
 #define OS_MOD(mod_mask) (DMK_OS | 0x10000u | ((uint32_t)(uint8_t)(mod_mask) << 8))
 

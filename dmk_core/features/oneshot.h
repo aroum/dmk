@@ -17,6 +17,7 @@ typedef struct {
     bool pending_release;
     TickType_t activate_time;
     bool key_pressed;
+    bool mods_sent;
 } OneShotState;
 
 #ifndef MAX_OS_TRACKERS

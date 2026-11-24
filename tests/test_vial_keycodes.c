@@ -33,6 +33,10 @@ uint32_t from_via_keycode(uint16_t via_key);
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 
 int main(void) {
+    assert(to_via_keycode(MK(MOD_LCTRL|MOD_RSHIFT,K_A))==0);
+    assert(to_via_keycode(HT(MK(MOD_LCTRL|MOD_RSHIFT,K_NULL),K_A))==0);
+    assert(to_via_keycode(OS_MOD(MOD_LCTRL|MOD_RSHIFT))==0);
+
 #ifdef HHKB_GRAVE_ESCAPE
     assert(from_via_keycode(0x7c16) == 0x7c16);
     assert(to_via_keycode(0x7c16) == 0x7c16);

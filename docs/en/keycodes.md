@@ -282,3 +282,5 @@ Old EEPROM HT records and the short-lived dev modifier-tap records remain readab
 | `GP_RX_LEFT` / `GP_RX_RIGHT`     | -                        | Right Analog Stick X: Left (-127) / Right (+127)       | `0x7228` / `0x7229`   |
 | `GP_RY_UP` / `GP_RY_DOWN`        | -                        | Right Analog Stick Y: Up (-127) / Down (+127)          | `0x722A` / `0x722B`   |
 | `GP_TRIGGER_L` / `GP_TRIGGER_R`  | `GP_LT` / `GP_RT`        | Analog triggers Left Trigger (Rx) / Right Trigger (Ry) | `0x722C` / `0x722D`   |
+
+Mixed left/right modifier masks work internally, but VIA cannot represent them: these assignments read as unassigned instead of changing sides. Configure them in source and do not overwrite them through VIA. `OS(MOD_...)` recognizes modifier spelling; numeric layer syntax remains compatible. Prefer explicit `OS_MOD(mask)` and `OS_LAYER(layer)`.
