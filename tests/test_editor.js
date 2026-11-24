@@ -314,13 +314,13 @@ test('Modal Keycode Builder & Modifiers', () => {
     assert.strictEqual(sandbox.buildFinalModalKeycode(), 'LC(LS(K_C))');
 
     sandbox.activeModalModifiers = ['HT_LSHIFT'];
-    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'MT(MOD_LSHIFT, K_C)');
+    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'HT(K_LSFT, K_C)');
 
     sandbox.activeModalModifiers = ['HT_LCTRL'];
-    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'MT(MOD_LCTRL, K_C)');
+    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'HT(K_LCTL, K_C)');
 
     sandbox.activeModalModifiers = ['HT_LGUI'];
-    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'MT(MOD_LGUI, K_C)');
+    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'HT(K_LGUI, K_C)');
 });
 
 test('Pin Validation & MCU Pin Formats', () => {

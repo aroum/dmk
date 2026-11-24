@@ -355,9 +355,7 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
 ### Hold-Tap
 
-- HT > Layer-tap/Mod-tap. Momentarily activates a layer or modifier when held, and sends a regular keycode when tapped. Only supports layers 0-15.
-
-In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` (`&lt`) is merged into a single universal **Hold-Tap (HT)** function. The firmware automatically determines what to do: if the passed index is less than 16, it activates a layer; if it's a modifier mask, it activates a modifier.
+`HT(hold, tap)` resolves two explicit actions. Either side can be a normal HID key, a modifier or `MO`/`TG` layer action. Layer numbers must be wrapped explicitly: `HT(MO(FN1), K_A)`. See [Universal Hold-Tap](keycodes.md#universal-hold-tap) for examples and VIA limitations.
 
 ```c
 // Duration (in ms) to hold the key to recognize it as "Hold" 
@@ -383,15 +381,11 @@ In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` 
 // - To enable: set desired window (e.g. 120-150 ms).
 #define QUICK_TAP_TERM 0
 
-// HT selects a layer (0..15); MT explicitly selects a modifier mask.
-// They use distinct internal tags, even when mask and layer have equal values.
-#define HT(layer_or_mod, kc)    (DMK_HT | ((layer_or_mod) << 8) | (kc))
-#define MT(mod_mask, kc) (DMK_MT | ((uint32_t)(uint8_t)(mod_mask) << 8) | (kc))
-#define MT_T(mod_mask, kc, ms) (MT(mod_mask, kc) | ((uint32_t)(ms) << 16))
-
-// Custom hold-tap definition with individual timeout
-#define HT_T(layer_or_mod, kc, ms) (DMK_HT | ((layer_or_mod) << 8) | (kc) | ((uint32_t)(ms) << 16))
-
+// HT and HT_T are provided by keys.h; do not redefine their encoding.
+// HT(K_A, K_B): hold A, tap B.
+// HT(MO(FN1), K_A): hold layer FN1, tap A.
+// HT(K_A, TG(FN1)): hold A, toggle FN1 on tap.
+// HT_T(K_LCTL, K_SPC, 200): custom timeout, 1..255 ms (0 = global).
 
 // ==========================================================================
 // 3. KEYMAP USAGE EXAMPLE
@@ -408,16 +402,16 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
     [BASE_LAYER] = {
         // 1. LAYER-TAP EQUIVALENT (&lt 1 A)
         // Held: activates layer 1 (FN1). Tapped: sends regular key 'A'.
-        { HT(FN1, K_A),
+        { HT(MO(FN1), K_A),
 
         // 2. MOD-TAP EQUIVALENT (&mt LSHIFT F)
         // Held: is Left Shift. Tapped: sends key 'F'.
-        // MT explicitly marks this as Mod-Tap, not Layer-Tap.
-        MT(MOD_LSHIFT, K_F),
+        // The hold argument is an ordinary HID modifier key.
+        HT(K_LSFT, K_F),
 
         // 3. CUSTOM HOLD-TAP WITH INDIVIDUAL TIMEOUT
         // For this key (Space / Ctrl), the per-key timeout is 200ms (1..255).
-        MT_T(MOD_LCTRL, K_SPC, 200) }
+        HT_T(K_LCTL, K_SPC, 200) }
     }
 };
 ```

@@ -692,7 +692,7 @@ typedef struct {
 #define KEY_ALT K_ALT
 #define KEY_TAB K_TAB
 
-// Modifier bitmasks (for MK, HT, OS)
+// Modifier bitmasks (for MK, OS, and HT(MK(mask, K_NULL), tap))
 #define MOD_LCTRL (1 << 0)
 #define MOD_LSHIFT (1 << 1)
 #define MOD_LALT (1 << 2)
@@ -706,17 +706,36 @@ typedef struct {
 // DMK encoding prefixes (32-bit keycodes)
 #define DMK_MK 0x01000000
 #define DMK_OS 0x02000000
-#define DMK_HT 0x04000000
-#define DMK_MT 0x40000000 // Explicit modifier-tap; never infer a layer from its mask
+#define DMK_HT_LEGACY 0x04000000u
+#define DMK_HT_MOD_LEGACY 0x40000000u // Read-only compatibility with early dev Mod-Tap records
+#define DMK_HT 0x80000000u
 #define DMK_TG 0x08000000
 #define DMK_MO 0x10000000
 
 // Helper Macros for Keymaps
 #define MK(mod_mask, kc) (DMK_MK | ((mod_mask) << 8) | (kc))
-#define HT(layer_or_mod, kc) (DMK_HT | ((layer_or_mod) << 8) | (kc))
-#define HT_T(layer_or_mod, kc, ms) (DMK_HT | ((layer_or_mod) << 8) | (kc) | ((uint32_t)(ms) << 16))
-#define MT(mod_mask, kc) (DMK_MT | ((uint32_t)(uint8_t)(mod_mask) << 8) | (kc))
-#define MT_T(mod_mask, kc, ms) (MT(mod_mask, kc) | ((uint32_t)(ms) << 16))
+// Unified hold/tap actions: HID key, explicit MO/TG layer, or MK(mask, K_NULL).
+// Two action-kind fields distinguish low HID usages from layer/modifier numbers.
+#define DMK_HT_ACTION_KIND(a) \
+    ((((a) & 0xFF000000u) == DMK_MO || (((uint32_t)(a) - L_0) <= 15u) || \
+      ((a) & 0xFF000000u) == DMK_TG) ? 1u : (((a) & 0xFF000000u) == DMK_MK ? 2u : 0u))
+#define DMK_HT_ACTION_VALUE(a) \
+    (((a) & 0xFF000000u) == DMK_MK ? (((a) >> 8) & 0xFFu) : \
+     (((a) & 0xFF000000u) == DMK_TG ? (0x10u | ((a) & 0xFu)) : \
+      (((uint32_t)(a) - L_0) <= 15u ? (a) - L_0 : ((a) & 0xFFu))))
+#define DMK_HT_ACTION_VALID(a) \
+    ((uint32_t)(a) <= 0xFFu || (((uint32_t)(a) - L_0) <= 15u) || \
+     ((((a) & 0xFF000000u) == DMK_MO || ((a) & 0xFF000000u) == DMK_TG) && ((a) & 0xFFFFFFu) < 16u) || \
+     (((a) & 0xFF000000u) == DMK_MK && ((a) & 0xFFu) == K_NULL))
+#define HT(hold, tap) \
+    ((DMK_HT_ACTION_VALID(hold) && DMK_HT_ACTION_VALID(tap)) ? \
+     (DMK_HT | (DMK_HT_ACTION_KIND(hold) << 26) | (DMK_HT_ACTION_KIND(tap) << 24) | \
+      (DMK_HT_ACTION_VALUE(hold) << 8) | DMK_HT_ACTION_VALUE(tap)) : K_NULL)
+#define HT_T(hold, tap, ms) \
+    (((ms) <= 255u && HT(hold, tap) != K_NULL) ? (HT(hold, tap) | ((uint32_t)(ms) << 16)) : K_NULL)
+#define DMK_IS_HT(key) \
+    ((((key) & 0xF0000000u) == DMK_HT) || (((key) & 0xFF000000u) == DMK_HT_LEGACY) || \
+     (((key) & 0xFF000000u) == DMK_HT_MOD_LEGACY))
 #define TG(layer) (DMK_TG | (layer))
 #define MO(layer) (DMK_MO | (layer))
 

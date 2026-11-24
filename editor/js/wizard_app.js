@@ -1919,6 +1919,7 @@
                             if (km[i] === `OS(${oldName})`) km[i] = `OS(${cleanName})`;
                             if (km[i] === `OSL(${oldName})`) km[i] = `OS(${cleanName})`;
                             if (km[i] === `TO(${oldName})`) km[i] = `TO(${cleanName})`;
+                            if (km[i]) km[i] = km[i].replace(`HT(MO(${oldName}),`, `HT(MO(${cleanName}),`);
                             if (km[i] && km[i].startsWith(`HT(${oldName},`)) {
                                 km[i] = km[i].replace(`HT(${oldName},`, `HT(${cleanName},`);
                             }
@@ -2339,7 +2340,7 @@
             else if (initialModType === 'RG(...)') activeModalModifiers = ['RG'];
             else if (initialModType === 'HYPER(...)') activeModalModifiers = ['LG', 'LS', 'LA', 'LC'];
             else if (initialModType === 'MEH(...)') activeModalModifiers = ['LC', 'LS', 'LA'];
-            else if (initialModType === 'HT(...)' || initialModType === 'MT(...)') activeModalModifiers = ['HT_LSHIFT'];
+            else if (initialModType === 'HT(...)') activeModalModifiers = ['HT_LSHIFT'];
             else activeModalModifiers = ['LS'];
 
             renderModalKeyChoiceContent(callback);
@@ -2482,21 +2483,21 @@
             let result = key;
             activeModalModifiers.slice().reverse().forEach(mod => {
                 if (mod === 'HT_LSHIFT' || mod === 'HT_SHIFT') {
-                    result = `MT(MOD_LSHIFT, ${result})`;
+                    result = `HT(K_LSFT, ${result})`;
                 } else if (mod === 'HT_RSHIFT') {
-                    result = `MT(MOD_RSHIFT, ${result})`;
+                    result = `HT(K_RSFT, ${result})`;
                 } else if (mod === 'HT_LCTRL') {
-                    result = `MT(MOD_LCTRL, ${result})`;
+                    result = `HT(K_LCTL, ${result})`;
                 } else if (mod === 'HT_RCTRL') {
-                    result = `MT(MOD_RCTRL, ${result})`;
+                    result = `HT(K_RCTL, ${result})`;
                 } else if (mod === 'HT_LALT') {
-                    result = `MT(MOD_LALT, ${result})`;
+                    result = `HT(K_LALT, ${result})`;
                 } else if (mod === 'HT_RALT') {
-                    result = `MT(MOD_RALT, ${result})`;
+                    result = `HT(K_RALT, ${result})`;
                 } else if (mod === 'HT_LGUI') {
-                    result = `MT(MOD_LGUI, ${result})`;
+                    result = `HT(K_LGUI, ${result})`;
                 } else if (mod === 'HT_RGUI') {
-                    result = `MT(MOD_RGUI, ${result})`;
+                    result = `HT(K_RGUI, ${result})`;
                 } else {
                     result = `${mod}(${result})`;
                 }
@@ -3131,7 +3132,7 @@
                     addOpt(`TG(${l})`, `Слой ${l} (переключатель)`);
                     addOpt(`OS(${l})`, `Слой ${l} (One-Shot на 1 клавишу)`);
                     addOpt(`TO(${l})`, `Слой ${l} (активировать)`);
-                    addOpt(`HT(${l}, K_SPC)`, `Hold-Tap: зажатие ${l} / тап Space`);
+                    addOpt(`HT(MO(${l}), K_SPC)`, `Hold-Tap: зажатие ${l} / тап Space`);
                 });
 
                 // Add custom macros
@@ -3948,8 +3949,8 @@ visualElements.push({
                 "HYPER(...)", "MEH(...)",
                 // Unified One-Shot (OSM & Layers)
                 "OS(...)",
-                // Explicit Modifier-Tap (Layer-Tap choices are listed per layer)
-                "MT(...)",
+                // Universal Hold-Tap
+                "HT(...)",
                 // Standard modifier keys
                 "K_LCTRL","K_LSHIFT","K_LALT","K_LGUI","K_RCTRL","K_RSHIFT","K_RALT","K_RGUI",
                 "K_LOCKING_CAPS","K_LOCKING_NUM","K_LOCKING_SCROLL",

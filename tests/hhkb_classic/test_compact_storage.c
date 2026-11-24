@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "config.h"
+#include "../../dmk_core/include/keys.h"
 #include "vial.h"
 #include "ec_settings.h"
 #include "stm32l0xx.h"
@@ -227,7 +228,7 @@ int main(int argc, char **argv) {
     }
     // Explicit modifier-tap tags survive repeated saves and reboot (ANSI/JIS).
     fresh();poll();
-    const uint32_t modtaps[]={0x40001065,0x400020e7,0x40000104,0x4000e005};
+    const uint32_t modtaps[]={HT(K_RCTL,K_APP),HT(K_RSFT,K_RGUI),HT(K_A,K_B),HT(MO(1),TG(2))};
     for(unsigned pass=0;pass<3;++pass) {
         for(unsigned i=0;i<4;++i)dynamic_keymap[0][i]=modtaps[(i+pass)%4];
         vial_keyboard_keymap_save();poll();reboot();

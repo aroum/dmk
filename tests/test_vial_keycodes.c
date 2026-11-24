@@ -42,14 +42,15 @@ int main(void) {
             if (mods & 0x0F) assert(to_via_keycode(from_via_keycode(encoded)) == encoded);
         }
         uint16_t mt = (uint16_t)(0x2000 | (mods << 8) | 0x33);
-        assert(from_via_keycode(mt) == (uint32_t)MT(expected, K_SCLN));
+        assert(from_via_keycode(mt) == (uint32_t)HT(MK(expected,K_NULL), K_SCLN));
         if (mods & 0x0F) assert(to_via_keycode(from_via_keycode(mt)) == mt);
     }
-    assert(to_via_keycode(HT(MOD_RCTRL, K_APP)) == 0x3165); // Existing EEPROM encoding.
+    assert(to_via_keycode((DMK_HT_LEGACY | (MOD_RCTRL << 8) | K_APP)) == 0x3165); // Existing EEPROM encoding.
+    assert(to_via_keycode(0x40001065) == 0x3165); // Prior dev format.
     assert(to_via_keycode(HT(K_RCTL, K_APP)) == 0x3165); // Legacy static keymap.
     for (unsigned layer = 0; layer < 16; ++layer) {
         uint16_t lt = 0x4000 | (layer << 8) | 0x33;
-        assert(from_via_keycode(lt) == (uint32_t)HT(layer, K_SCLN));
+        assert(from_via_keycode(lt) == (uint32_t)HT(MO(layer), K_SCLN));
         assert(to_via_keycode(from_via_keycode(lt)) == lt);
     }
     // Issue #6: LCTL(KC_SCLN) must not read back as RCTL(KC_SCLN).

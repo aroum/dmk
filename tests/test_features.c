@@ -22,7 +22,7 @@ const Macro keyboard_macros[] = {{steps, 3, MACRO_NO_LAYER}};
 const uint8_t keyboard_macros_count = 1;
 
 int main(void) {
-    assert(!oneshot_should_consume(MT(MOD_RCTRL,K_APP)));
+    assert(!oneshot_should_consume(HT(K_RCTL,K_APP)));
     oneshot_init();
     assert(oneshot_process_event(OS_LAYER(2), true));
     assert(layer_state == 4);

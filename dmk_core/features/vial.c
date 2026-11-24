@@ -1,4 +1,5 @@
 #include "vial.h"
+#include "hold_tap_keycode.h"
 #include "FreeRTOS.h"
 #include "keyboard.h"
 #include "keys.h"
@@ -200,14 +201,18 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
     if ((dmk_key & 0xFF000000) == DMK_TG)
         return 0x5260 | (dmk_key & 0xFF);
 
-    if ((dmk_key & 0xFF000000) == DMK_MT) {
-        return 0x2000 | (to_via_mod_mask((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
-    }
-    if ((dmk_key & 0xFF000000) == DMK_HT) {
-        uint8_t layer_or_mod = (dmk_key >> 8) & 0xFF;
-        uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
-        return (layer_or_mod < 16) ? (0x4000 | (layer_or_mod << 8) | kc)
-                                   : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
+    if (DMK_IS_HT(dmk_key)) {
+        uint32_t hold, tap; uint8_t ms;
+        if (!ht_decode(dmk_key, &hold, &tap, &ms) || tap > 0xFF) return 0;
+        uint8_t kc = to_via_mouse_keycode((uint8_t)tap);
+        if ((hold & 0xFF000000u) == DMK_MO)
+            return 0x4000 | ((hold & 15) << 8) | kc;
+        if ((hold & 0xFF000000u) == DMK_MK)
+            return 0x2000 | (to_via_mod_mask((hold >> 8) & 0xFF) << 8) | kc;
+        if (hold >= HID_KEY_CONTROL_LEFT && hold <= HID_KEY_GUI_RIGHT)
+            return 0x2000 | (to_via_mods((uint8_t)hold) << 8) | kc;
+        // VIA/QMK has no representation for arbitrary key/key or tap-layer HT.
+        return 0;
     }
     if ((dmk_key & 0xFF000000) == DMK_MK) {
         return (to_via_mod_mask((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
@@ -276,9 +281,9 @@ uint32_t from_via_keycode(uint16_t via_key) {
     if (via_key >= 0x0100 && via_key <= 0x1FFF)
         return MK(from_via_mods((via_key >> 8) & 0xFF), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x2000 && via_key <= 0x3FFF)
-        return MT(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
+        return HT(MK(from_via_mods((via_key >> 8) & 0x1F), K_NULL), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x4000 && via_key <= 0x4FFF)
-        return HT((via_key >> 8) & 0x0F, from_via_mouse_keycode(via_key & 0xFF));
+        return HT(MO((via_key >> 8) & 0x0F), from_via_mouse_keycode(via_key & 0xFF));
 
     // Layer Toggle
     if (via_key >= 0x5260 && via_key <= 0x527F) {

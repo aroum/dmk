@@ -72,9 +72,52 @@ void hook_key_sent(uint16_t keycode, bool pressed) { (void)keycode; (void)presse
 #include "hold_tap.h"
 #include "hold_tap.c"
 
+
+static void test_unified_hold_tap_actions(void) {
+    for(unsigned h=0;h<256;++h)for(unsigned t=0;t<256;++t){
+        uint32_t hold,tap;uint8_t ms;
+        assert(ht_decode(HT(h,t),&hold,&tap,&ms));assert(hold==h && tap==t && !ms);
+    }
+    const uint32_t actions[]={K_A,K_RSFT,MO(0),MO(15),TG(2),MK(0xff,K_NULL)};
+    for(unsigned h=0;h<6;++h)for(unsigned t=0;t<6;++t)for(unsigned n=0;n<256;++n){
+        uint32_t hold,tap;uint8_t ms;
+        assert(ht_decode(HT_T(actions[h],actions[t],n),&hold,&tap,&ms));
+        assert(hold==actions[h] && tap==actions[t] && ms==n);
+    }
+    assert(HT(K_VOLU,K_A)==K_NULL);
+    mock_reset_records();hold_tap_init();layers_init();
+    uint32_t key=HT(K_A,K_B); // HID usage 4 must never mean layer 4.
+    hold_tap_process_event(0,0,key,true);g_mock_ticks=250;hold_tap_check_timeouts(g_mock_ticks);
+    assert(s_recorded_keys_count==1 && s_recorded_keys[0].keycode==K_A && s_recorded_keys[0].pressed);
+    assert(layers_get_state()==1);hold_tap_process_event(0,0,key,false);
+    assert(s_recorded_keys_count==2 && !s_recorded_keys[1].pressed);
+    mock_reset_records();hold_tap_init();layers_init();
+    key=HT(K_A,TG(1));
+    hold_tap_process_event(0,0,key,true);g_mock_ticks=20;hold_tap_process_event(0,0,key,false);
+    assert(layers_get_active()==1 && s_recorded_keys_count==0);
+    mock_reset_records();hold_tap_init();layers_init();
+    key=HT(MO(1),TG(2));hold_tap_process_event(0,0,key,true);
+    g_mock_ticks=250;hold_tap_check_timeouts(g_mock_ticks);assert(layers_get_active()==1);
+    hold_tap_process_event(0,0,key,false);assert(layers_get_active()==0);
+    mock_reset_records();hold_tap_init();
+    hold_tap_process_event(0,0,key,true);g_mock_ticks=20;hold_tap_process_event(0,0,key,false);
+    assert(layers_get_active()==2);
+    mock_reset_records();hold_tap_init();
+    key=HT(K_A,K_B);hold_tap_process_event(0,0,key,true);g_mock_ticks=20;
+    hold_tap_process_event(0,0,HT(K_C,K_D),false);
+    assert(s_recorded_keys_count==2 && s_recorded_keys[0].keycode==K_B && s_recorded_keys[1].keycode==K_B);
+    // Both prior EEPROM formats decode into the same generic actions.
+    const uint32_t legacy[]={0x04001065,0x40001065};
+    for(unsigned i=0;i<2;++i){
+        mock_reset_records();hold_tap_init();
+        hold_tap_process_event(0,0,legacy[i],true);g_mock_ticks=250;hold_tap_check_timeouts(g_mock_ticks);
+        assert(s_raw_mod_calls==1 && s_recorded_mods[0].mod_mask==MOD_RCTRL);
+        hold_tap_process_event(0,0,legacy[i],false);assert(s_raw_mod_calls==2);
+    }
+}
 static void test_explicit_modifier_taps(void) {
     mock_reset_records();hold_tap_init();
-    uint32_t timed=MT_T(MOD_RCTRL,K_APP,80);
+    uint32_t timed=HT_T(MK(MOD_RCTRL,K_NULL),K_APP,80);
     hold_tap_process_event(0,0,timed,true);
     g_mock_ticks=79;hold_tap_check_timeouts(g_mock_ticks);assert(!s_raw_mod_calls);
     g_mock_ticks=80;hold_tap_check_timeouts(g_mock_ticks);assert(s_raw_mod_calls==1);
@@ -83,7 +126,7 @@ static void test_explicit_modifier_taps(void) {
     for (unsigned i=0;i<sizeof(masks);++i) {
         mock_reset_records();hold_tap_init();layers_init();
         uint8_t tap=masks[i]==MOD_RSHIFT?K_RGUI:K_APP;
-        uint32_t key=MT(masks[i],tap);
+        uint32_t key=HT(MK(masks[i],K_NULL),tap);
         assert(hold_tap_process_event(0,0,key,true));
         g_mock_ticks=1000;hold_tap_check_timeouts(g_mock_ticks);
         assert(s_raw_mod_calls==1 && s_recorded_mods_count==1 && s_recorded_mods[0].mod_mask==masks[i] && s_recorded_mods[0].pressed);
@@ -144,18 +187,18 @@ static void test_hold_tap_hold_after_timeout(void) {
     (void)next_deadline;
 
     // Verify modifier activated (target >= 16 sent to keyboard_send_modifiers)
-    assert(s_recorded_mods_count == 1);
-    assert(s_recorded_mods[0].mod_mask == K_LCTL && s_recorded_mods[0].pressed == true);
-    assert(s_recorded_keys_count == 0);
+    assert(s_recorded_keys_count == 1);
+    assert(s_recorded_keys[0].keycode == K_LCTL && s_recorded_keys[0].pressed == true);
+    assert(s_recorded_mods_count == 0);
 
     // Release key at t=400
     g_mock_ticks = 400;
     hold_tap_process_event(0, 0, ht_key, false);
 
     // Verify modifier released
-    assert(s_recorded_mods_count == 2);
-    assert(s_recorded_mods[1].mod_mask == K_LCTL && s_recorded_mods[1].pressed == false);
-    assert(s_recorded_keys_count == 0);
+    assert(s_recorded_keys_count == 2);
+    assert(s_recorded_keys[1].keycode == K_LCTL && s_recorded_keys[1].pressed == false);
+    assert(s_recorded_mods_count == 0);
 
     printf("  ✔ test_hold_tap_hold_after_timeout passed\n");
 }
@@ -166,7 +209,7 @@ static void test_hold_tap_layer_tap(void) {
     layers_init();
 
     // Layer-Tap: Hold = Layer 1 (< 16), Tap = K_B
-    uint32_t lt_key = HT(1, K_B);
+    uint32_t lt_key = HT(MO(1), K_B);
 
     // Press key at t=100
     g_mock_ticks = 100;
@@ -208,14 +251,14 @@ static void test_hold_tap_custom_timeout(void) {
     // At t=185 (85ms elapsed > 80ms): should be HOLD
     g_mock_ticks = 185;
     hold_tap_check_timeouts(g_mock_ticks);
-    assert(s_recorded_mods_count == 1);
-    assert(s_recorded_mods[0].mod_mask == K_LSFT && s_recorded_mods[0].pressed == true);
+    assert(s_recorded_keys_count == 1);
+    assert(s_recorded_keys[0].keycode == K_LSFT && s_recorded_keys[0].pressed == true);
 
     // Release at t=200
     g_mock_ticks = 200;
     hold_tap_process_event(0, 1, ht_key, false);
-    assert(s_recorded_mods_count == 2);
-    assert(s_recorded_mods[1].mod_mask == K_LSFT && s_recorded_mods[1].pressed == false);
+    assert(s_recorded_keys_count == 2);
+    assert(s_recorded_keys[1].keycode == K_LSFT && s_recorded_keys[1].pressed == false);
 
     printf("  ✔ test_hold_tap_custom_timeout passed\n");
 }
@@ -431,6 +474,7 @@ static void test_usb_matrix_batch(void) {
 
 int main(void) {
     test_explicit_modifier_taps();
+    test_unified_hold_tap_actions();
     printf("\n=== Running DMK Host-Based C Core Unit Tests ===\n\n");
 
     printf("[1/3] Testing Hold-Tap subsystem...\n");

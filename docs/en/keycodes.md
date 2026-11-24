@@ -229,11 +229,15 @@ This document lists all the standard HID keycodes, consumer media keys, modifier
 | `L_0` ... `L_15`     | -                                                         | Raw Layer Momentary Switch (Layer 0 ... 15)                      | `0x0100` ... `0x010F` |
 | `K_FN0` ... `K_FN15` | -                                                         | Fn Keys (Bound to momentary layer switches `MO(0)` ... `MO(15)`) | Encoded Layer         |
 
-## Modifier-Tap and Layer-Tap
+## Universal Hold-Tap
 
-Use `MT(MOD_RCTRL, K_APP)` or `MT(MOD_RSHIFT, K_RGUI)` for a modifier on hold and a key on tap. Use `HT(layer, key)` for Layer-Tap (layers 0–15). `MT_T(mask, key, ms)` adds an individual timeout of 1–255 ms. Modifier masks are HID masks (`MOD_LCTRL`, `MOD_RCTRL`, etc.), not HID keycodes such as `K_RCTL`.
+DMK has one native `HT(hold, tap)` action. Either argument can be a basic HID key (including Ctrl/Shift/Alt/GUI), a modifier mask wrapped in `MK(mask, K_NULL)`, or an explicit layer action `MO(0..15)` / `TG(0..15)` / `L_0..L_15`. `HT_T(hold, tap, ms)` adds a per-key timeout of 1–255 ms; zero uses the global timeout. Keys are pressed/released normally, `MO` activates/releases a layer, and `TG` toggles a layer on activation. Thus a tap on `MO` activates and immediately releases the layer; use `TG` for a persistent change.
 
-VIA/Vial Mod-Tap writes use a distinct internal tag, so Right Ctrl cannot turn into a layer code and left modifier masks cannot be mistaken for layer numbers. Existing legacy `HT` entries remain readable; no EEPROM reset or format migration is needed. Ambiguous old low-mask entries and modifiers already corrupted by older firmware cannot be repaired reliably: reassign those keys after updating. New tagged entries require this firmware or newer; older firmware cannot execute them correctly.
+Examples: `HT(K_A, K_B)`, `HT(K_RSFT, K_RGUI)`, `HT(MO(1), K_APP)`, `HT(K_A, TG(2))`, `HT(MO(1), TG(2))`, `HT(MK(MOD_RCTRL | MOD_RSHIFT, K_NULL), K_APP)`. Bare small numbers are HID usages, never inferred layer numbers: use `HT(MO(FN), key)` instead of the old `HT(FN, key)` source syntax. Media keys, macros and nonzero-key `MK` chords are outside this compact action format.
+
+Mod-Tap and Layer-Tap are VIA/Vial wire formats only. The adapter translates supported pairs to/from the single HT model; QMK cannot represent arbitrary key/key or tap-layer pairs, so VIA reads those as unassigned. Configure such pairs in source, and do not overwrite them through the restricted VIA controls. There is no native MT/LT split or extra pair table: each assignment remains 32 bits.
+
+Old EEPROM HT records and the short-lived dev modifier-tap records remain readable without erasing settings. Already corrupted or ambiguous old assignments need reassignment. Older firmware does not understand the new unified encoding, so downgrading requires restoring compatible assignments.
 
 ## MIDI Keycodes and Helper Macros
 

@@ -1,4 +1,5 @@
 #include "hold_tap.h"
+#include "hold_tap_keycode.h"
 #include "config.h"
 #include "keys.h"
 #include "layers.h"
@@ -28,7 +29,6 @@ __attribute__((weak)) uint16_t hold_tap_config_value(uint8_t id) {
 }
 
 extern void keyboard_send_key(uint16_t keycode, bool pressed);
-extern void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
 extern void keyboard_send_modifier_mask(uint8_t mod_mask, bool pressed);
 extern void oneshot_send_lazy_mods(void);
 extern void oneshot_on_tap_key(void);
@@ -43,15 +43,29 @@ bool hold_tap_has_active(void) {
     return s_active_ht_count > 0;
 }
 
-static void send_hold_action(uint32_t key, bool pressed) {
-    uint8_t target = (key >> 8) & 0xFF;
-    if ((key & 0xFF000000) == DMK_MT) {
-        keyboard_send_modifier_mask(target, pressed);
-    } else if (target < 16) {
-        if (pressed) layers_on(target); else layers_off(target);
+static void send_action(uint32_t action, bool pressed) {
+    if (action == K_NULL || action == K_TRNS) return;
+    uint32_t type = action & 0xFF000000u;
+    if (type == DMK_MO) {
+        if (pressed) layers_on(action & 15); else layers_off(action & 15);
+    } else if (type == DMK_TG) {
+        if (pressed) layers_toggle(action & 15);
+    } else if (type == DMK_MK) {
+        keyboard_send_modifier_mask((action >> 8) & 0xFF, pressed);
     } else {
-        // Preserve historical HT(layer/HID modifier/large mask) keymaps.
-        keyboard_send_modifiers(target, pressed);
+        keyboard_send_key((uint16_t)action, pressed);
+    }
+}
+static void send_hold_action(uint32_t key, bool pressed) {
+    uint32_t hold, tap; uint8_t ms;
+    if (ht_decode(key, &hold, &tap, &ms)) send_action(hold, pressed);
+}
+static void send_tap_action(uint32_t key, bool pressed) {
+    uint32_t hold, tap; uint8_t ms;
+    if (ht_decode(key, &hold, &tap, &ms)) {
+        if (pressed && tap <= 0xFF) oneshot_send_lazy_mods();
+        send_action(tap, pressed);
+        if (!pressed && tap <= 0xFF) oneshot_on_tap_key();
     }
 }
 
@@ -94,9 +108,11 @@ TickType_t hold_tap_check_timeouts(TickType_t now) {
 }
 
 bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
-    if ((key & 0xFF000000) != DMK_HT && (key & 0xFF000000) != DMK_MT)
+    if (!DMK_IS_HT(key))
         return false;
 
+    uint32_t hold, tap; uint8_t ms;
+    if (!ht_decode(key, &hold, &tap, &ms)) return true;
     TickType_t now = xTaskGetTickCount();
 
     if (pressed) {
@@ -120,9 +136,7 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                                                  .press_time = now,
                                                  .timeout_ticks = 0,
                                                  .state = HT_STATE_REPEAT};
-                    uint8_t kc = key & 0xFF;
-                    oneshot_send_lazy_mods();
-                    keyboard_send_key(kc, true);
+                    send_tap_action(key, true);
                     return true;
                 }
             }
@@ -131,7 +145,6 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
 
         for (int i = 0; i < MAX_HT_TRACKERS; i++) {
             if (ht_trackers[i].state == HT_STATE_IDLE) {
-                uint32_t ms = (key >> 16) & 0xFF;
                 ht_trackers[i] = (HTTracker){.row = row,
                                              .col = col,
                                              .keycode = key,
@@ -145,20 +158,16 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
     } else {
         for (int i = 0; i < MAX_HT_TRACKERS; i++) {
             if (ht_trackers[i].state != HT_STATE_IDLE && ht_trackers[i].row == row && ht_trackers[i].col == col) {
-                uint8_t kc = ht_trackers[i].keycode & 0xFF;
 
                 if (ht_trackers[i].state == HT_STATE_REPEAT) {
-                    keyboard_send_key(kc, false);
-                    oneshot_on_tap_key();
+                    send_tap_action(ht_trackers[i].keycode, false);
                     s_last_release.valid = false;
                 } else if (ht_trackers[i].state == HT_STATE_PRESSED) {
                     if (s_active_ht_count > 0) {
                         s_active_ht_count--;
                     }
-                    oneshot_send_lazy_mods();
-                    keyboard_send_key(kc, true);
-                    keyboard_send_key(kc, false);
-                    oneshot_on_tap_key();
+                    send_tap_action(ht_trackers[i].keycode, true);
+                    send_tap_action(ht_trackers[i].keycode, false);
 
                     // Record tap release for potential quick-tap repeat
                     s_last_release.row = row;
