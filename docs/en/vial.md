@@ -106,6 +106,14 @@ In VIA v3 mode, the keyboard firmware reports its exact build version dynamicall
 
 ---
 
+## Persistent settings on RP2040 / RP2350
+
+Vial/VIA settings use an append-only snapshot journal in two 8 KiB Flash banks. A snapshot contains the existing configuration data and a 256-byte header with generation and checksums. The header is written last, after reading back the payload. On boot DMK loads the newest valid snapshot; an interrupted save leaves the preceding committed snapshot available. Identical settings cause no Flash writes.
+
+Several snapshots can fit in a bank, depending on configuration size. Only when that bank fills does DMK erase the other bank and start there. Erase operations are still blocking, with interrupts disabled for one 4 KiB sector at a time; this is not an asynchronous Flash driver. Wear is spread across both banks, but save latency and erase frequency depend on snapshot size.
+
+The last **24 KiB** of Flash is reserved: the original Vial sector (last 4 KiB, read-only migration source), the Hall-calibration sector (unchanged), and the two journal banks (16 KiB). The linker rejects firmware overlapping this reservation, and the writer also checks the application boundary. Existing layouts migrate on the next save. Downgrading to older firmware reads its old snapshot and does not see later journal edits. Custom Flash owners must use the shared allocation map in [flash_storage.h](../../dmk_core/include/flash_storage.h). The current RP ports run one CPU core; enabling SMP requires cross-core Flash lockout first.
+
 ## RGB Lighting Integration
 
 `dmk` supports WS2812 RGB underglow/backlight control directly through the Vial GUI:

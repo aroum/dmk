@@ -86,6 +86,15 @@ set(PLATFORM_LIBS
 
 # Platform-specific post-build command
 function(platform_post_build TARGET_NAME)
+    # Reserve the legacy Vial/Hall sectors and two 8 KiB journal banks.
+    # Fail the build rather than let settings writes erase application code.
+    file(STRINGS "${DMK_ROOT}/dmk_core/include/flash_storage.h" storage_sectors_line
+        REGEX "^#define DMK_FLASH_RESERVED_SECTORS [0-9]+u?$")
+    string(REGEX MATCH "[0-9]+" storage_sectors "${storage_sectors_line}")
+    set(storage_assert "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_storage.ld")
+    file(WRITE "${storage_assert}"
+        "ASSERT(__flash_binary_end <= 0x10000000 + ${PICO_FLASH_SIZE_BYTES} - ${storage_sectors} * 4096, \"Firmware overlaps DMK persistent storage\");\n")
+    target_link_options(${TARGET_NAME} PRIVATE "LINKER:-T,${storage_assert}")
     pico_add_extra_outputs(${TARGET_NAME})
     if(RGB_ENABLED)
         target_sources(${TARGET_NAME} PRIVATE "${PLATFORM_DIR}/pio/ws2812.c")

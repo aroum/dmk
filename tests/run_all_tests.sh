@@ -20,6 +20,10 @@ echo -e "${BOLD}====================================================${NC}"
 echo -e "${BOLD}              DMK Comprehensive Test Suite          ${NC}"
 echo -e "${BOLD}====================================================${NC}\n"
 
+clang -std=c11 -Wall -Wextra -Werror -O2 -I "${SCRIPT_DIR}/dmk_core/include" \
+    "${SCRIPT_DIR}/tests/test_flash_journal.c" -o /tmp/dmk-flash-journal-test
+/tmp/dmk-flash-journal-test
+
 # 1. C Core Unit Tests
 echo -e "${BOLD}[1/3] Running Host-Based C Core Unit Tests...${NC}"
 clang -Wall -Wextra -DMATRIX_REPORT_BATCH \

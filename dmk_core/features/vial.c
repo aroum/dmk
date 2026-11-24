@@ -406,37 +406,59 @@ void vial_platform_storage_save_now(void) {
 #include "hardware/sync.h"
 
 #include "flash_storage.h"
+#include "flash_journal.h"
+#if configNUMBER_OF_CORES != 1
+#error "RP flash persistence needs cross-core lockout before enabling SMP"
+#endif
 #define FLASH_STORAGE_OFFSET DMK_FLASH_OFFSET(DMK_FLASH_SECTOR_VIAL)
-_Static_assert(sizeof(vial_storage_t) <= FLASH_SECTOR_SIZE, "Vial storage exceeds its reserved sector");
-_Static_assert(sizeof(vial_storage_t) % FLASH_PAGE_SIZE == 0, "Vial storage must fill whole flash pages");
-
+#define VIAL_BANK_SIZE (DMK_FLASH_VIAL_BANK_SECTORS * FLASH_SECTOR_SIZE)
+_Static_assert(sizeof(vial_storage_t) <= FLASH_SECTOR_SIZE, "Vial storage exceeds the legacy size limit");
+_Static_assert(DMK_JOURNAL_PAGE == FLASH_PAGE_SIZE, "Journal page size must match flash hardware");
+extern char __flash_binary_end;
+static uint32_t vial_bank_offset(unsigned bank) {
+    return DMK_FLASH_OFFSET(bank ? DMK_FLASH_SECTOR_VIAL_BANK1 : DMK_FLASH_SECTOR_VIAL_BANK0);
+}
+static bool vial_journal_erase(unsigned bank) {
+    for (size_t off = 0; off < VIAL_BANK_SIZE; off += FLASH_SECTOR_SIZE) {
+        uint32_t ints = save_and_disable_interrupts();
+        flash_range_erase(vial_bank_offset(bank) + off, FLASH_SECTOR_SIZE);
+        restore_interrupts(ints);
+    }
+    return true;
+}
+static bool vial_journal_program(unsigned bank, size_t off, const uint8_t *page) {
+    uint32_t ints = save_and_disable_interrupts();
+    flash_range_program(vial_bank_offset(bank) + off, page, FLASH_PAGE_SIZE);
+    restore_interrupts(ints);
+    return true;
+}
+static dmk_journal_t vial_journal(void) {
+    return (dmk_journal_t){
+        .bank = {(const uint8_t *)(XIP_BASE + DMK_FLASH_OFFSET(DMK_FLASH_SECTOR_VIAL_BANK0)),
+                 (const uint8_t *)(XIP_BASE + DMK_FLASH_OFFSET(DMK_FLASH_SECTOR_VIAL_BANK1))},
+        .bank_size = VIAL_BANK_SIZE, .erase = vial_journal_erase, .program = vial_journal_program,
+    };
+}
 bool vial_platform_storage_load(void) {
-    const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
-    if (flash_storage->data.magic == VIAL_EEPROM_MAGIC) {
-        memcpy(&vial_storage.data, &flash_storage->data, sizeof(vial_storage_data_t));
+    dmk_journal_t journal = vial_journal();
+    dmk_journal_record_t record = dmk_journal_latest(&journal, sizeof(vial_storage_data_t));
+    const vial_storage_data_t *stored = record.data ? (const void *)record.data :
+        (const void *)(XIP_BASE + FLASH_STORAGE_OFFSET);
+    if (stored->magic == VIAL_EEPROM_MAGIC) {
+        memcpy(&vial_storage.data, stored, sizeof(vial_storage_data_t));
         rgb_set_config(vial_storage.data.rgb_cfg);
     } else {
         vial_storage_init_default();
     }
     return true;
 }
-
 void vial_platform_storage_save_now(void) {
+    // This also protects external/custom linker scripts that omit our assertion.
+    if ((uintptr_t)&__flash_binary_end > XIP_BASE + DMK_FLASH_OFFSET(DMK_FLASH_RESERVED_SECTORS)) return;
     vial_storage.data.magic = VIAL_EEPROM_MAGIC;
     rgb_get_config(vial_storage.data.rgb_cfg);
-    const vial_storage_t *flash_storage = (const vial_storage_t *)(XIP_BASE + FLASH_STORAGE_OFFSET);
-    if (memcmp(&flash_storage->data, &vial_storage.data, sizeof(vial_storage_data_t)) == 0) {
-        return;
-    }
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(FLASH_STORAGE_OFFSET, FLASH_SECTOR_SIZE);
-    restore_interrupts(ints);
-    // Give interrupts an opportunity to run between page programs.
-    for (size_t offset = 0; offset < sizeof(vial_storage); offset += FLASH_PAGE_SIZE) {
-        ints = save_and_disable_interrupts();
-        flash_range_program(FLASH_STORAGE_OFFSET + offset, (const uint8_t *)&vial_storage + offset, FLASH_PAGE_SIZE);
-        restore_interrupts(ints);
-    }
+    dmk_journal_t journal = vial_journal();
+    (void)dmk_journal_save(&journal, &vial_storage.data, sizeof(vial_storage_data_t));
 }
 #endif
 
