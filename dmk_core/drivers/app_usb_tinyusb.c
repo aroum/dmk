@@ -54,20 +54,29 @@ static volatile uint32_t s_usb_keyboard_queue_peak;
 static volatile uint32_t s_usb_keyboard_queue_full;
 #endif
 
+#ifndef KEYBOARD_REPORT_ENQUEUE_TRIES
+#define KEYBOARD_REPORT_ENQUEUE_TRIES 8
+#endif
+static volatile bool s_resync_pending;
+
 // Resend current states after reconnect, even if no new event occurs.
 void USB_HID_ResyncKeyboard(void) {
     if (!s_keyboard_queue) return;
     taskENTER_CRITICAL();
-    xQueueReset(s_keyboard_queue);
     queued_key_report_t keyboard = {.report_id = 1, .keyboard = s_latest_keyboard_report};
     queued_key_report_t consumer = {.report_id = 2, .consumer = s_latest_consumer};
+    taskEXIT_CRITICAL();
+    xQueueReset(s_keyboard_queue);
     xQueueSend(s_keyboard_queue, &keyboard, 0);
     xQueueSend(s_keyboard_queue, &consumer, 0);
-    taskEXIT_CRITICAL();
 }
 
 static void usb_keyboard_flush(void) {
     queued_key_report_t report;
+    if (s_resync_pending && s_keyboard_queue && uxQueueMessagesWaiting(s_keyboard_queue) == 0) {
+        s_resync_pending = false;
+        USB_HID_ResyncKeyboard();
+    }
     if (!s_keyboard_queue || !tud_mounted() || tud_suspended() || !tud_hid_ready() ||
         xQueuePeek(s_keyboard_queue, &report, 0) != pdTRUE) return;
     bool sent = report.report_id == 1
@@ -84,7 +93,7 @@ static bool usb_enqueue_key_report(const queued_key_report_t *report) {
             tud_remote_wakeup();
         }
     }
-    while (tud_mounted() && !tud_suspended()) {
+    for (uint8_t tries = 0; tries < KEYBOARD_REPORT_ENQUEUE_TRIES && tud_mounted() && !tud_suspended(); tries++) {
 #if defined(MATRIX_REPORT_BATCH) && defined(HHKB_SCAN_DIAGNOSTICS)
         if (uxQueueSpacesAvailable(s_keyboard_queue) == 0) s_usb_keyboard_queue_full++;
 #endif
@@ -96,6 +105,12 @@ static bool usb_enqueue_key_report(const queued_key_report_t *report) {
             if (s_usb_task_handle) xTaskNotifyGive(s_usb_task_handle);
             return true;
         }
+    }
+    if (tud_mounted() && !tud_suspended()) {
+        // Host stopped polling: drop and resend the latest full state later.
+        s_resync_pending = true;
+        if (s_usb_task_handle) xTaskNotifyGive(s_usb_task_handle);
+        return false;
     }
     return true;
 }

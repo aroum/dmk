@@ -167,7 +167,7 @@ uint32_t layers_lookup_key_on_layer(uint8_t layer_idx, uint8_t row, uint8_t col)
         return 0;
     }
 #ifdef VIAL
-    return dynamic_keymap[layer_idx][ki];
+    return layer_idx < DYNAMIC_KEYMAP_MAX_LAYERS ? dynamic_keymap[layer_idx][ki] : 0;
 #else
     if (layer_idx < keymap_layers) {
         return keymap[layer_idx][ki];
@@ -196,7 +196,7 @@ uint32_t layers_lookup_key(uint8_t row, uint8_t col) {
         }
         uint32_t key = 0;
 #ifdef VIAL
-        key = dynamic_keymap[l][ki];
+        if (l < DYNAMIC_KEYMAP_MAX_LAYERS) key = dynamic_keymap[l][ki];
 #else
         if ((size_t)l < keymap_layers) {
             key = keymap[l][ki];
