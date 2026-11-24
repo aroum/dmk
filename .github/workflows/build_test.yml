@@ -7,9 +7,15 @@ on:
   pull_request:
     branches: [ main, master, dev ]
   workflow_dispatch:
+    inputs:
+      hhkb_scan_diagnostics:
+        description: Build only HHKB variants with detailed scan timing diagnostics
+        type: boolean
+        default: false
 
 jobs:
   build-keyboards:
+    if: ${{ !inputs.hhkb_scan_diagnostics }}
     name: Build ${{ matrix.keyboard }} (${{ matrix.mcu }})
     runs-on: ubuntu-latest
     strategy:
@@ -84,7 +90,7 @@ jobs:
           if-no-files-found: error
 
   build-hhkb-classic:
-    name: Build HHKB Classic ${{ matrix.variant }} (max ADC)
+    name: Build HHKB Classic ${{ matrix.variant }}${{ inputs.hhkb_scan_diagnostics && ' (scan debug)' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -117,7 +123,7 @@ jobs:
       - name: Build HFB
         run: |
           chmod +x build_all.sh
-          ./build_all.sh -b hhkb --mcu stm32l072 -d "${{ matrix.defines }}" -c
+          ./build_all.sh -b hhkb --mcu stm32l072 -d "${{ matrix.defines }}${{ inputs.hhkb_scan_diagnostics && ',HHKB_SCAN_DIAGNOSTICS=1' || '' }}" -c
 
       - name: Package HFB and VIA layout
         run: |
@@ -129,13 +135,13 @@ jobs:
       - name: Upload HFB
         uses: actions/upload-artifact@v7
         with:
-          name: dmk-hhkb-classic-${{ matrix.variant }}-via.hfb
+          name: dmk-hhkb-classic-${{ matrix.variant }}-via.hfb${{ inputs.hhkb_scan_diagnostics && '-scan-debug' || '' }}
           path: build/hhkb-release/
           retention-days: 3
           if-no-files-found: error
 
   build-hhkb-hybrid:
-    name: Build HHKB Hybrid ${{ matrix.layout }} (including Type-S)
+    name: Build HHKB Hybrid ${{ matrix.layout }}${{ inputs.hhkb_scan_diagnostics && ' (scan debug)' || '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -162,7 +168,7 @@ jobs:
 
       - name: Build and package Hybrid STM32 binary
         env:
-          HHKB_DEFINES: ${{ matrix.defines }}
+          HHKB_DEFINES: ${{ matrix.defines }}${{ inputs.hhkb_scan_diagnostics && ',HHKB_SCAN_DIAGNOSTICS=1' || '' }}
           HHKB_LAYOUT: ${{ matrix.layout }}
         run: |
           ./build_all.sh -b hhkb -d "$HHKB_DEFINES" -c
@@ -176,12 +182,13 @@ jobs:
       - name: Upload Hybrid STM32 binary
         uses: actions/upload-artifact@v7
         with:
-          name: dmk-hhkb-hybrid-${{ matrix.layout }}-stm32
+          name: dmk-hhkb-hybrid-${{ matrix.layout }}-stm32${{ inputs.hhkb_scan_diagnostics && '-scan-debug' || '' }}
           path: build/hhkb-hybrid-release/
           retention-days: 3
           if-no-files-found: error
 
   build-le-capybara:
+    if: ${{ !inputs.hhkb_scan_diagnostics }}
     name: Build Le Capybara (${{ matrix.target }})
     runs-on: ubuntu-latest
     strategy:

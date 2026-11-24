@@ -226,10 +226,25 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
   > [!NOTE]
   > **Matrix Scan Rate (`matrix`) vs USB Task Loop (`usb_loop`):**
   >
-  > - `matrix`: The actual physical hardware scan frequency of the capacitive matrix. At 1000 Hz, scanning executes strictly every 1 ms under FreeRTOS timing.
-  > - `usb_loop`: The iteration frequency of the background USB service task. The task sleeps on `ulTaskNotifyTake(..., pdMS_TO_TICKS(2))` with a **2 ms timeout**. When there is no active typing or streaming debug traffic, it wakes up on the 2 ms timeout (~500 Hz) to conserve CPU cycles and power. As soon as keystrokes or data packets arrive, it wakes up instantly on task notification without latency at full 1000 Hz USB polling (`bInterval=1`). Seeing `usb_loop=500 Hz` during idle periods is expected and indicates healthy power-efficient scheduling.
+  > - `matrix`: Measured full-matrix scan rate. Selecting 1000 Hz requests a 1 ms period; actual throughput depends on scan duration and load. Use detailed scan diagnostics to verify deadlines.
+  > - `usb_loop`: USB service-task iterations, not the USB HID polling rate. An idle HHKB waits for notifications with a one-second heartbeat; pending EEPROM work uses shorter waits. Input queues and USB events wake the task immediately. The HID endpoint still advertises a 1 ms interval (`bInterval=1`).
 
 - **VIA Telemetry Diag:** Diagnostic logging of incoming and outgoing VIA v3 protocol packets (`[VIA_DIAG] rx=... tx_sub=...`).
+
+### Detailed scan timing (ANSI and JIS)
+
+In **Actions → Build Firmware → Run workflow**, select the `dev` branch and enable **hhkb_scan_diagnostics**. This builds only HHKB variants with `HHKB_SCAN_DIAGNOSTICS=1`; artifact names end in `scan-debug`. Classic artifacts contain ready HFB containers. Hybrid artifacts contain STM32 binaries for local patching with the included HTML tool. Ordinary builds keep detailed scan diagnostics disabled.
+
+After flashing, enable HID Console and **Debug → Polling Rate Monitor** in VIA. At 1000 Hz, watch `[SCAN]`:
+
+- `raw` / `max`: current and maximum duration of acquisition plus key processing.
+- `work_max`: maximum complete scan-and-publication duration, in microseconds. It should remain below 1000 µs with headroom.
+- `miss`: timer deadlines missed since the previous diagnostic report; it should remain zero in steady operation.
+- `q_full`: failed matrix-event queue submissions.
+
+Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key presses, and EC Matrix Stream off/on. First calibrate, finish calibration, then leave settings unchanged for a few seconds before recording results. Threshold-cache rebuilding after calibration/settings/curve changes is one-time work and can produce a transient timing spike. USB polling remains up to 1000 Hz; battery scanning retains its stock-style interval.
+
+The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Only arithmetic for the preceding key overlaps the next ADC conversion; calibration callbacks and console output run after interrupts are restored. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
 
 ### Reset all DMK settings (Factory reset)
 
