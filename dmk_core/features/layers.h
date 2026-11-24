@@ -23,6 +23,8 @@ uint16_t layers_get_state(void);
 
 // Directly set the layer state bitmask
 void layers_set_state(uint16_t state);
+// Persistent bits only, excluding momentary MO/HT/One-Shot owners.
+uint16_t layers_get_latched_state(void);
 
 // Activate a layer in the bitmask
 void layers_on(uint8_t layer_idx);

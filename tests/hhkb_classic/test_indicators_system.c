@@ -7,6 +7,7 @@ static uint16_t state = 1;
 static uint8_t system_id, modes[2];
 static bool gpio[10], suspended;
 static bool power_saving = true;
+uint16_t layers_get_latched_state(void) { return state; }
 uint16_t layers_get_state(void) { return state; }
 void layers_set_state(uint16_t s) { state = s; }
 uint8_t hhkb_get_system(void) { return system_id; }

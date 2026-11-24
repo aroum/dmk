@@ -284,3 +284,5 @@ Old EEPROM HT records and the short-lived dev modifier-tap records remain readab
 | `GP_TRIGGER_L` / `GP_TRIGGER_R`  | `GP_LT` / `GP_RT`        | Analog triggers Left Trigger (Rx) / Right Trigger (Ry) | `0x722C` / `0x722D`   |
 
 Mixed left/right modifier masks work internally, but VIA cannot represent them: these assignments read as unassigned instead of changing sides. Configure them in source and do not overwrite them through VIA. `OS(MOD_...)` recognizes modifier spelling; numeric layer syntax remains compatible. Prefer explicit `OS_MOD(mask)` and `OS_LAYER(layer)`.
+
+Momentary layers (`MO`, HT and One-Shot) retain separate hold counts from persistent `TG`/`layers_set_state` bits. Releasing one owner leaves other holds and toggles active. Ordinary 6KRO keys also remain pressed until their last owner releases. Use `layers_get_latched_state()` when editing persistent state without latching temporary holds. Repository configs use explicit `HT(MO(layer), tap)`; bare numeric hold layers remain supported as legacy syntax.

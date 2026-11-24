@@ -331,6 +331,18 @@ static void test_layers_stack_and_fallthrough(void) {
     assert(layers_get_active() == 0);
     assert(layers_get_state() == 1); // Bit 0 active
 
+    // Two momentary owners; neither release can erase a persistent toggle.
+    layers_on(2); layers_on(2); layers_off(2);
+    assert(layers_get_active()==2);
+    layers_off(2);assert(layers_get_active()==0);
+    layers_toggle(2);layers_on(2);layers_off(2);
+    assert(layers_get_active()==2);
+    layers_toggle(2);assert(layers_get_active()==0);
+    layers_on(2);layers_toggle(2);layers_toggle(2);
+    assert(layers_get_active()==2);layers_off(2);assert(layers_get_active()==0);
+    layers_on(1);layers_set_state(1u<<2);layers_off(1);
+    assert(layers_get_state()==4);layers_set_state(1);
+
     // Layer 0 lookups
     assert(layers_lookup_key(0, 0) == K_A);
     assert(layers_lookup_key(0, 1) == K_B);
@@ -354,7 +366,10 @@ static void test_layers_stack_and_fallthrough(void) {
     assert(layers_get_active() == 1);
     assert(layers_lookup_key(0, 2) == K_3); // Restores Layer 1
 
-    // Toggle Layer 1 off
+    // Toggle latches layer 1 independently of the momentary owner.
+    layers_toggle(1);
+    layers_off(1);
+    assert(layers_get_active() == 1);
     layers_toggle(1);
     assert(layers_get_active() == 0);
     assert(layers_lookup_key(0, 0) == K_A); // Restores Layer 0
@@ -408,7 +423,9 @@ static void test_usb_hid_reports_and_zero_queue(void) {
     usb_process_key(K_A, true);
     assert(s_send_report_count == 2);
 
-    // Release K_A
+    // First owner releases; the second still holds A.
+    usb_process_key(K_A, false);
+    assert(s_send_report_count == 2 && s_last_sent_report.Keycodes[0] == K_A);
     usb_process_key(K_A, false);
     assert(s_send_report_count == 3);
     assert(s_last_sent_report.Keycodes[0] == 0);
@@ -473,6 +490,22 @@ static void test_usb_matrix_batch(void) {
 }
 #endif
 
+static void test_shared_key_owners(void) {
+    usb_init();
+    usb_process_key(K_A, true);
+    usb_process_key_with_modifiers(MOD_RSHIFT, K_A, true);
+    usb_process_key_with_modifiers(MOD_RSHIFT, K_A, false);
+    assert(s_last_sent_report.Modifier == 0 && s_last_sent_report.Keycodes[0] == K_A);
+    usb_process_key(K_A, false);
+    assert(s_last_sent_report.Keycodes[0] == 0);
+    usb_process_key(K_A, false); // Unmatched release is harmless.
+    usb_process_key(K_B, true);
+    assert(s_last_sent_report.Keycodes[0] == K_B);
+    usb_init(); // Reset must clear all ownership.
+    usb_process_key(K_B, true);usb_process_key(K_B, false);
+    assert(s_last_sent_report.Keycodes[0] == 0);
+}
+
 int main(void) {
     test_explicit_modifier_taps();
     test_unified_hold_tap_actions();
@@ -490,6 +523,7 @@ int main(void) {
 
     printf("\n[3/3] Testing USB HID Zero-Queue subsystem...\n");
     test_usb_hid_reports_and_zero_queue();
+    test_shared_key_owners();
 #ifdef MATRIX_REPORT_BATCH
     test_usb_matrix_batch();
 #endif

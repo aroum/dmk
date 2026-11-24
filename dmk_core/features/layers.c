@@ -20,6 +20,8 @@ uint8_t layer = 0;
 
 // Layer state bitmask (bit 0 is active by default for base layer)
 static uint16_t layer_state = 1;
+static uint16_t latched_state = 1;
+static uint8_t held_refs[16];
 
 // Flat key index lookup table: layout_map[row][col] = flat layout index or 0xFF (unmapped)
 static uint8_t layout_map[NUM_ROWS][NUM_COLS];
@@ -59,7 +61,8 @@ void layers_init(void) {
             layout_map[layout[i].r][layout[i].c] = (uint8_t)i;
         }
     }
-    layer_state = 1;
+    layer_state = latched_state = 1;
+    memset(held_refs, 0, sizeof(held_refs));
     layer = 0;
 }
 
@@ -88,56 +91,41 @@ uint16_t layers_get_state(void) {
  * @brief Set the full layer bitmask state and recalculate the active layer index.
  * @param state New 16-bit layer bitmask.
  */
-void layers_set_state(uint16_t state) {
-    layer_state = state ? state : 1;
-    layer = compute_active_layer(layer_state);
+static void publish_layers(void) {
+    uint16_t state = latched_state;
+    for (unsigned i = 0; i < 16; ++i) if (held_refs[i]) state |= 1U << i;
+    if (!state) state = 1;
+    if (state == layer_state) return;
+    layer_state = state;
+    layer = compute_active_layer(state);
     macros_run_layer_triggers(layer);
     hooks_dispatch_layer_change(layer);
 }
 
-/**
- * @brief Enable a specific layer in the active layer bitmask.
- * @param layer_idx Layer index (0..15).
- */
+uint16_t layers_get_latched_state(void) { return latched_state; }
+
+// Absolute persistent state; momentary owners remain effective until released.
+void layers_set_state(uint16_t state) {
+    latched_state = state;
+    publish_layers();
+}
+
 void layers_on(uint8_t layer_idx) {
-    if (layer_idx < 16) {
-        layer_state |= (1U << layer_idx);
-        layer = compute_active_layer(layer_state);
-        macros_run_layer_triggers(layer);
-        hooks_dispatch_layer_change(layer);
-    }
+    if (layer_idx >= 16) return;
+    if (held_refs[layer_idx] != UINT8_MAX) ++held_refs[layer_idx];
+    publish_layers();
 }
 
-/**
- * @brief Disable a specific layer in the active layer bitmask (base layer 0 fallback guaranteed).
- * @param layer_idx Layer index (0..15).
- */
 void layers_off(uint8_t layer_idx) {
-    if (layer_idx < 16) {
-        layer_state &= ~(1U << layer_idx);
-        if (layer_state == 0) {
-            layer_state = 1; // Default base layer always remains active
-        }
-        layer = compute_active_layer(layer_state);
-        macros_run_layer_triggers(layer);
-        hooks_dispatch_layer_change(layer);
-    }
+    if (layer_idx >= 16) return;
+    if (held_refs[layer_idx]) --held_refs[layer_idx];
+    publish_layers();
 }
 
-/**
- * @brief Toggle the state of a specific layer in the active bitmask.
- * @param layer_idx Layer index (0..15).
- */
 void layers_toggle(uint8_t layer_idx) {
-    if (layer_idx < 16) {
-        layer_state ^= (1U << layer_idx);
-        if (layer_state == 0) {
-            layer_state = 1;
-        }
-        layer = compute_active_layer(layer_state);
-        macros_run_layer_triggers(layer);
-        hooks_dispatch_layer_change(layer);
-    }
+    if (layer_idx >= 16) return;
+    latched_state ^= 1U << layer_idx;
+    publish_layers();
 }
 
 /**

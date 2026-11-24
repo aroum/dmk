@@ -24,6 +24,8 @@
 static USB_HID_KeyboardReport_TypeDef current_report;
 static uint8_t s_real_mods = 0;
 static uint8_t s_weak_mods = 0;
+// Only reported 6KRO slots need ownership counts.
+static uint8_t s_key_refs[KEY_REPORT_SIZE];
 
 static uint8_t s_real_refs[8], s_weak_refs[8];
 static void update_mods(uint8_t *state, uint8_t refs[8], uint8_t mask, bool pressed) {
@@ -81,6 +83,7 @@ static bool add_key_to_report(uint8_t keycode) {
     int empty_idx = -1;
     for (int i = 0; i < KEY_REPORT_SIZE; i++) {
         if (current_report.Keycodes[i] == keycode) {
+            if (s_key_refs[i] != UINT8_MAX) ++s_key_refs[i];
             return false;
         }
         if (empty_idx < 0 && current_report.Keycodes[i] == 0) {
@@ -89,6 +92,7 @@ static bool add_key_to_report(uint8_t keycode) {
     }
     if (empty_idx >= 0) {
         current_report.Keycodes[empty_idx] = keycode;
+        s_key_refs[empty_idx] = 1;
         return true;
     }
     return false;
@@ -97,6 +101,8 @@ static bool add_key_to_report(uint8_t keycode) {
 static bool del_key_from_report(uint8_t keycode) {
     for (int i = 0; i < KEY_REPORT_SIZE; i++) {
         if (current_report.Keycodes[i] == keycode) {
+            if (s_key_refs[i] > 1) { --s_key_refs[i]; return false; }
+            s_key_refs[i] = 0;
             current_report.Keycodes[i] = 0;
             return true;
         }
@@ -118,6 +124,7 @@ void usb_init(void) {
     current_report.Reserved = 0;
     for (int i = 0; i < KEY_REPORT_SIZE; i++) {
         current_report.Keycodes[i] = 0;
+        s_key_refs[i] = 0;
     }
 }
 

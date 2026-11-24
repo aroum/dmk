@@ -23,7 +23,7 @@ enum {
 static bool caps_lock;
 
 static void update_system_layer(void) {
-    uint16_t state = layers_get_state() & (uint16_t)~(1U << 2);
+    uint16_t state = layers_get_latched_state() & (uint16_t)~(1U << 2);
     if (hhkb_get_system()) state |= 1U << 2;
     layers_set_state(state | 1U);
 }

@@ -48,20 +48,20 @@ void bootloader_jump(void) {
 // FreeRTOS queues
 extern QueueHandle_t matrix_queue;
 
-// Keep the key resolved at press time for every matrix position. A layer can
+// Keep the key resolved at press time for every physical key. A layer can
 // change while any number of keys are held, so releases must use that value.
-static uint32_t s_active_keys[NUM_ROWS][NUM_COLS];
+static uint32_t s_active_keys[NUM_KEYS];
 
 void keyboard_record_pressed_key(uint8_t row, uint8_t col, uint32_t key) {
-    if (row < NUM_ROWS && col < NUM_COLS) {
-        s_active_keys[row][col] = key;
-    }
+    int16_t index = keyboard_get_flat_key_index(row, col);
+    if (index >= 0 && index < NUM_KEYS) s_active_keys[index] = key;
 }
 
 static uint32_t pop_pressed_key(uint8_t row, uint8_t col) {
-    if (row < NUM_ROWS && col < NUM_COLS && s_active_keys[row][col] != 0) {
-        uint32_t key = s_active_keys[row][col];
-        s_active_keys[row][col] = 0;
+    int16_t index = keyboard_get_flat_key_index(row, col);
+    if (index >= 0 && index < NUM_KEYS && s_active_keys[index]) {
+        uint32_t key = s_active_keys[index];
+        s_active_keys[index] = 0;
         return key;
     }
     return layers_lookup_key(row, col);
@@ -121,14 +121,14 @@ void keyboard_init(void) {
 static bool process_system_key(uint32_t key, bool pressed) {
     if (key == K_LYRUP) {
         if (pressed && (layers_get_active() + 1 < layers_get_count())) {
-            layers_on(layers_get_active() + 1);
+            layers_set_state(layers_get_latched_state() | (1U << (layers_get_active() + 1)));
             led_on();
         }
         return true;
     }
     if (key == K_LYRDWN) {
         if (pressed && (layers_get_active() > 0)) {
-            layers_off(layers_get_active());
+            layers_set_state(layers_get_latched_state() & ~(1U << layers_get_active()));
             led_off();
         }
         return true;

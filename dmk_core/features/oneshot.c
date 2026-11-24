@@ -151,7 +151,8 @@ bool oneshot_process_event(uint32_t key, bool pressed) {
             }
         }
         if (idx != -1) {
-            if (os_trackers[idx].mods_sent) deactivate_os(&os_trackers[idx]);
+            if (os_trackers[idx].active || os_trackers[idx].pending_release)
+                deactivate_os(&os_trackers[idx]);
             os_trackers[idx] = (OneShotState){.activate_time = xTaskGetTickCount(),
                                               .active = true,
                                               .pending_release = false,
