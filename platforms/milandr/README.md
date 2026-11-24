@@ -34,3 +34,9 @@ The platform supports two bootloader modes: **UF2 Mass Storage** (default for US
      ```bash
      dfu-util -a 0 -d 1209:be92 -D build/dmk_<keyboard>_milandr.bin
      ```
+
+## WS2812 RGB transport
+
+SSP1/SSP2 sends the encoded frame through hardware DMA (TX channel 4/6). The RGB task waits one RTOS tick at a time with interrupts enabled, then waits for the SSP shifter to finish and holds LOW for 350 µs. USB and matrix interrupts can run throughout transmission. The shared primary/alternate DMA control table consumes 1 KiB RAM plus linker alignment; the encoded frame remains 768 bytes for up to 64 LEDs.
+
+A stalled DMA transfer is aborted after approximately 20 ms of waiting; `ws2812_dma_timeouts` is available through SWD. Driver sequencing and timeout paths have host tests, and the firmware builds, but waveform timing and USB responsiveness under RGB load still need hardware verification.

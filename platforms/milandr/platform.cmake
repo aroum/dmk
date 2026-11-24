@@ -81,6 +81,9 @@ set(PLATFORM_SRC
 
 # Platform libraries
 set(PLATFORM_LIBS milandr_sdk)
+# The RGB SSP driver shares the SDK control table with future DMA users.
+list(APPEND PLATFORM_SRC "${PLATFORM_DIR}/dma.c"
+    "${COMMON_DIR}/Drivers/SPL/src/MDR32FxQI_dma.c")
 
 # Platform-specific post-build command
 function(platform_post_build TARGET_NAME)

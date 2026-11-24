@@ -1,6 +1,9 @@
 #include "MDR32FxQI_port.h"
 #include "MDR32FxQI_rst_clk.h"
 #include "MDR32FxQI_ssp.h"
+#include "MDR32FxQI_dma.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "pin_defs.h"
 #include "hal_gpio.h"
 #include <stdbool.h>
@@ -11,6 +14,7 @@ static uint16_t _rgb[WS2812_MAX_LEDS * 6];
 static uint32_t ws2812_len = 0;
 static MDR_SSP_TypeDef *active_ssp = MDR_SSP1;
 static uint32_t active_ssp_idx = 1;
+volatile uint32_t ws2812_dma_timeouts;
 
 extern uint32_t SystemCoreClock;
 
@@ -121,21 +125,52 @@ void ws2812_set_color(uint32_t index, uint32_t color) {
 }
 
 void ws2812_show(void) {
-    uint32_t primask = __get_PRIMASK();
-    __disable_irq();
+    if (!ws2812_len) return;
+    // rgb.c serializes setters and show(), so DMA owns an immutable frame.
+    const uint8_t channel = active_ssp_idx == 1 ? DMA_Channel_SSP1_TX : DMA_Channel_SSP2_TX;
+    RST_CLK_PCLKcmd(RST_CLK_PCLK_DMA, ENABLE);
+    SSP_DMACmd(active_ssp, SSP_DMA_TXE, DISABLE);
+    DMA_Cmd(channel, DISABLE);
+    DMA_CtrlDataInitTypeDef data = {
+        .DMA_SourceBaseAddr = (uint32_t)_rgb,
+        .DMA_DestBaseAddr = (uint32_t)&active_ssp->DR,
+        .DMA_SourceIncSize = DMA_SourceIncHalfword,
+        .DMA_DestIncSize = DMA_DestIncNo,
+        .DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord,
+        .DMA_Mode = DMA_Mode_Basic,
+        .DMA_CycleSize = ws2812_len * 6,
+        .DMA_NumContinuous = DMA_Transfers_1,
+    };
+    DMA_ChannelInitTypeDef init;
+    DMA_StructInit(&init);
+    init.DMA_PriCtrlData = &data;
+    DMA_Init(channel, &init);
+    __DMB();
+    SSP_DMACmd(active_ssp, SSP_DMA_TXE, ENABLE);
 
-    for (uint32_t i = 0; i < ws2812_len * 6; ++i) {
-        while (SSP_GetFlagStatus(active_ssp, SSP_FLAG_TNF) == RESET) {
+    // SSP DMA requests keep FIFO full independently of USB/scan interrupts.
+    // Poll once per RTOS tick instead of occupying the CPU for the whole frame.
+    uint32_t waited_us = 0;
+    bool scheduled = xTaskGetSchedulerState() == taskSCHEDULER_RUNNING;
+    while (MDR_DMA->CHNL_ENABLE_SET & (1u << channel)) {
+        if (waited_us >= 20000) {
+            SSP_DMACmd(active_ssp, SSP_DMA_TXE, DISABLE);
+            DMA_Cmd(channel, DISABLE);
+            // Bound an unavailable DMA peripheral; preserve a diagnostic for SWD.
+            ++ws2812_dma_timeouts;
+            break;
         }
-        SSP_SendData(active_ssp, _rgb[i]);
+        if (scheduled) {
+            vTaskDelay(1);
+            waited_us += portTICK_PERIOD_MS * 1000U;
+        } else {
+            // Also support an initial frame before the scheduler starts.
+            hal_sleep_us(10);
+            waited_us += 10;
+        }
     }
-
-    // Wait for the transmission to finish completely
-    while (SSP_GetFlagStatus(active_ssp, SSP_FLAG_TFE) == RESET) {
-    }
-    while (SSP_GetFlagStatus(active_ssp, SSP_FLAG_BSY) == SET) {
-    }
-
-    __set_PRIMASK(primask);
+    SSP_DMACmd(active_ssp, SSP_DMA_TXE, DISABLE);
+    // DMA completion is not completion of the final bit in the SSP shifter.
+    while (SSP_GetFlagStatus(active_ssp, SSP_FLAG_BSY) == SET) {}
     hal_sleep_us(350);
 }
