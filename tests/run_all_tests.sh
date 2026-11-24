@@ -149,6 +149,10 @@ if [[ -f "${SCRIPT_DIR}/keyboards/hhkb/modules/ec/rapid_trigger.c" ]]; then
         -o "${HHKB_TEST_DIR}/test_rapid_trigger"
     "${HHKB_TEST_DIR}/test_rapid_trigger"
     rm -f "${HHKB_TEST_DIR}/test_rapid_trigger"
+    clang -std=c11 -Wall -Wextra -Werror -O2 -I "${HHKB_MODULES_DIR}/ec" -I "${SCRIPT_DIR}/dmk_core/include" \
+        "${HHKB_MODULES_DIR}/ec/rapid_trigger.c" "${HHKB_TEST_DIR}/rapid_trigger_reference.c" \
+        "${HHKB_TEST_DIR}/test_scan_processing.c" -o /tmp/dmk-scan-processing-test
+    /tmp/dmk-scan-processing-test
     clang -std=c11 -Wall -Wextra -Werror -O2 -I "${SCRIPT_DIR}/tests/split_mocks" \
         -I "${SCRIPT_DIR}/dmk_core/include" "${SCRIPT_DIR}/dmk_core/features/ec_curve.c" \
         "${HHKB_TEST_DIR}/test_ec_curve.c" -o "${HHKB_TEST_DIR}/test_ec_curve"

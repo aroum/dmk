@@ -2,6 +2,7 @@
 #include "ec_settings.h"
 #include "ec_curve.h"
 #include "rapid_trigger.h"
+#include "scan_cache.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #endif
@@ -29,19 +30,70 @@ static inline void scan_wait_since(uint16_t start, uint16_t us) {
 
 static bool s_oversampling_applied = false;
 
-static inline uint16_t adc_read_sample(uint32_t saved_primask) {
+static inline bool adc_start_sample(void) {
     uint32_t timeout = 5000;
     while ((ADC1->CR & ADC_CR_ADSTP) && --timeout);
-    if (!timeout) return UINT16_MAX;
+    if (!timeout) return false;
     ADC1->ISR = ADC_ISR_EOC; // Discard completion left by a previously timed-out sample.
     ADC1->CR |= ADC_CR_ADSTART;
-    // At the 1 MHz battery ADC clock, a 4x conversion outlasts a Nordic
-    // SPI byte. Once triggered, acquisition is hardware-timed: let SPI run.
-    if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
-    timeout = 5000;
+    return true;
+}
+
+static inline uint16_t adc_finish_sample(void) {
+    uint32_t timeout = 5000;
     while (!(ADC1->ISR & ADC_ISR_EOC) && --timeout);
     if (!timeout) return UINT16_MAX;
     return (uint16_t)(ADC1->DR & 0x0FFF);
+}
+
+static hhkb_scan_cache_t s_scan_cache;
+typedef struct {
+    uint16_t raw, travel;
+    uint8_t col, row;
+    bool valid, pressed;
+} scan_pending_t;
+
+// Normalize once while the next mux/row is settling, with IRQs enabled.
+static inline __attribute__((always_inline))
+void scan_prepare_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan, bool debug) {
+    if (pending->valid && pending->raw != UINT16_MAX && (scan->cfg.rt_enabled || debug))
+        pending->travel = rt_scan_normalize(&s_rt_keys[pending->col][pending->row], pending->raw, scan);
+}
+
+// Pure RAM work only: this runs while the next ADC conversion is in progress.
+// Logging and calibration callbacks must stay outside the acquisition IRQ mask.
+static inline __attribute__((always_inline))
+bool scan_process_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan,
+                          matrix_row_t matrix[]) {
+    if (!pending->valid) return false;
+    rt_key_t *key = &s_rt_keys[pending->col][pending->row];
+    matrix_row_t previous = matrix[pending->row];
+    if (pending->raw == UINT16_MAX) {
+        pending->pressed = key->down;
+    } else if (scan->cfg.rt_enabled) {
+        pending->pressed = rt_update_scan_travel(key, scan, pending->travel);
+    } else {
+        pending->pressed = rt_update_raw_cached(key, &s_scan_cache.key[pending->col][pending->row], pending->raw);
+    }
+    if (pending->pressed) matrix[pending->row] |= 1U << pending->col;
+    else matrix[pending->row] &= ~(1U << pending->col);
+    return previous != matrix[pending->row];
+}
+
+static inline __attribute__((always_inline))
+void scan_report_pending(const scan_pending_t *pending, bool capture, bool calibrating,
+                         bool debug, bool *capture_failed) {
+    if (!pending->valid) return;
+    if (pending->raw == UINT16_MAX) {
+        if (capture) *capture_failed = true;
+        return;
+    }
+    if (calibrating) {
+        if (capture) hhkb_cal_accumulate_baseline(pending->col, pending->row, pending->raw);
+        else hhkb_cal_record_peak(pending->col, pending->row, pending->raw);
+    }
+    if (__builtin_expect(debug, 0))
+        hhkb_debug_feed_sample(pending->col, pending->row, pending->raw, pending->travel, pending->pressed);
 }
 
 void hhkb_matrix_hardware_init(void) {
@@ -188,10 +240,12 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     if (scan_cfg.press_pm > max_travel) scan_cfg.press_pm = max_travel;
     if (scan_cfg.release_pm > max_travel) scan_cfg.release_pm = max_travel;
     bool debug_topre = hhkb_get_debug_flag(DEBUG_FLAG_TOPRE);
+    rt_scan_cfg_t prepared;
+    rt_prepare_scan(&prepared, &scan_cfg, curve);
+    hhkb_scan_cache_prepare(&s_scan_cache, s_rt_keys, &prepared, rt_range_revision, ec_curve_revision);
+    scan_pending_t pending = {0};
 
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-        rt_key_t *col_keys = s_rt_keys[col];
-
         if (col == 8) {
             GPIOC->BRR  = (1U << 6);
             GPIOB->BSRR = (1U << 15);
@@ -205,8 +259,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             static const uint8_t populated[MATRIX_COLS] = {29, 27, 29, 31, 29, 29, 31, 29, 31, 31, 31, 31, 31, 31, 31};
             if (!(populated[col] & (1U << row))) continue;
 #endif
-            matrix_row_t prev_row = current_matrix[row];
-
+            scan_prepare_pending(&pending, &prepared, debug_topre);
             scan_wait_since(settle_start, 2);
 
             uint32_t saved_primask = __get_PRIMASK();
@@ -221,59 +274,25 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             GPIOB->BRR = row_pins[row];
             scan_delay_us(row_settle_us);
 
-            uint16_t val = adc_read_sample(saved_primask);
+            bool started = adc_start_sample();
+            // Preserve the existing analog IRQ policy. Battery AUTOFF already
+            // allows Nordic SPI after triggering; USB stays masked until EOC.
+            if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
+            changed |= scan_process_pending(&pending, &prepared, current_matrix);
+            uint16_t val = started ? adc_finish_sample() : UINT16_MAX;
             GPIOB->BSRR = row_pins[row];
-
             __set_PRIMASK(saved_primask);
-
             settle_start = (uint16_t)TIM2->CNT;
 
-            // Never calibrate or update RT state from a stale ADC data register.
-            if (val == UINT16_MAX) {
-                if (capture) capture_failed = true;
-                if (col_keys[row].down) current_matrix[row] |= 1U << col;
-                else current_matrix[row] &= ~(1U << col);
-                if (current_matrix[row] != prev_row) changed = true;
-                continue;
-            }
-
-            if (is_calibrating) {
-                if (capture) {
-                    hhkb_cal_accumulate_baseline(col, row, val);
-                } else {
-                    hhkb_cal_record_peak(col, row, val);
-                }
-            }
-            // Calibrated endpoints stay fixed outside an explicit calibration.
-            // A single runtime spike must not permanently expand the range.
-
-            bool is_pressed;
-            rt_key_t *key = &col_keys[row];
-            {
-                if (val <= key->base) {
-                    key->ext = 0;
-                    key->down = false;
-                    key->latched = false;
-                    is_pressed = false;
-                } else {
-                    is_pressed = rt_update_curve(key, &scan_cfg, val, curve);
-                }
-            }
-
-            // Feed debug monitoring only when EC debug streaming is active
-            if (__builtin_expect(debug_topre, 0)) {
-                uint16_t norm = rt_normalize_curve(key, val, curve);
-                hhkb_debug_feed_sample(col, row, val, norm, is_pressed);
-            }
-
-            if (is_pressed) current_matrix[row] |= (1U << col);
-            else current_matrix[row] &= ~(1U << col);
-
-            if (current_matrix[row] != prev_row) {
-                changed = true;
-            }
+            scan_report_pending(&pending, capture, is_calibrating, debug_topre, &capture_failed);
+            pending = (scan_pending_t){.raw = val, .col = col, .row = row, .valid = true};
         }
     }
+
+    // Flush the last key in this pass; no sample is deferred to the next scan.
+    scan_prepare_pending(&pending, &prepared, debug_topre);
+    changed |= scan_process_pending(&pending, &prepared, current_matrix);
+    scan_report_pending(&pending, capture, is_calibrating, debug_topre, &capture_failed);
 
     if (capture) {
         // A missing sample must not bias the 16-frame baseline average.

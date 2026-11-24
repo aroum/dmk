@@ -37,6 +37,32 @@ typedef struct {
     bool     latched;  /* crossed act_pm since last visit to reset zone */
 } rt_key_t;
 
+/* Prepared once per scan; classic thresholds are inverted only on settings or
+ * calibrated-range changes. Raw cache targets the HHKB 12-bit ADC (0..4095). */
+typedef struct {
+    rt_cfg_t cfg;
+    const uint16_t *curve;
+    uint16_t classic_release;
+} rt_scan_cfg_t;
+typedef struct {
+    uint16_t press_raw, release_raw, last_raw;
+} rt_raw_cache_t;
+extern uint32_t rt_range_revision;
+void rt_prepare_scan(rt_scan_cfg_t *scan, const rt_cfg_t *cfg, const uint16_t *curve);
+void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_scan_cfg_t *scan);
+uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan);
+bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t travel);
+bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel);
+
+static inline __attribute__((always_inline))
+bool rt_update_raw_cached(rt_key_t *key, rt_raw_cache_t *cache, uint16_t raw) {
+    cache->last_raw = raw;
+    key->down = raw >= (key->down ? cache->release_raw : cache->press_raw);
+    key->latched = key->down;
+    // ext is unused in classic mode. Restore from last_raw before enabling RT.
+    return key->down;
+}
+
 void     rt_cfg_defaults(rt_cfg_t *c);
 void     rt_key_reset(rt_key_t *k);
 void     rt_key_set_range(rt_key_t *k, uint16_t base, uint16_t peak);

@@ -1,6 +1,8 @@
 #include "rapid_trigger.h"
 #include "ec_curve.h"
 
+uint32_t rt_range_revision;
+
 void rt_cfg_defaults(rt_cfg_t *c) {
     c->rt_enabled = false;
     c->act_pm     = 750;  /* 75 % of range                   */
@@ -22,6 +24,7 @@ void rt_key_set_range(rt_key_t *k, uint16_t base, uint16_t peak) {
     }
     k->base  = base;
     k->scale = ((uint32_t)RT_FULL_SCALE << 16) / range;
+    ++rt_range_revision;
 }
 
 static inline __attribute__((always_inline)) uint16_t normalize(const rt_key_t *k, uint16_t raw, const uint16_t *lut) {
@@ -43,12 +46,50 @@ uint16_t rt_normalize_curve(const rt_key_t *k, uint16_t raw, const uint16_t *lut
     return normalize(k, raw, lut);
 }
 
-#ifdef HHKB_SCAN_1KHZ
-__attribute__((section(".RamFunc"), optimize("O2")))
-#endif
-bool rt_update_curve(rt_key_t *k, const rt_cfg_t *c, uint16_t raw, const uint16_t *lut) {
-    int16_t v = (int16_t)normalize(k, raw, lut);
+void rt_prepare_scan(rt_scan_cfg_t *scan, const rt_cfg_t *cfg, const uint16_t *curve) {
+    scan->cfg = *cfg;
+    scan->curve = curve;
+    uint16_t release = cfg->act_pm > cfg->release_pm ? cfg->act_pm - cfg->release_pm : cfg->reset_pm;
+    scan->classic_release = release > cfg->reset_pm ? release : cfg->reset_pm;
+}
 
+/* Find the first raw sample whose normalized travel is >= threshold. 4096 is
+ * an unreachable sentinel. Binary search preserves every rounding/LUT plateau. */
+static uint16_t raw_threshold(const rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t threshold) {
+    uint16_t low = 0, high = 4096;
+    while (low < high) {
+        uint16_t middle = low + (high - low) / 2;
+        if (normalize(key, middle, scan->curve) >= threshold) high = middle;
+        else low = middle + 1;
+    }
+    return low;
+}
+void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_scan_cfg_t *scan) {
+    uint16_t press = scan->cfg.act_pm > scan->cfg.reset_pm ? scan->cfg.act_pm : scan->cfg.reset_pm + 1;
+    cache->press_raw = raw_threshold(key, scan, press);
+    cache->release_raw = raw_threshold(key, scan, scan->classic_release + 1);
+}
+
+#ifdef HHKB_SCAN_1KHZ
+#define RT_SCAN_CODE __attribute__((section(".RamFunc"), optimize("O2")))
+#else
+#define RT_SCAN_CODE
+#endif
+static inline __attribute__((always_inline)) uint16_t scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan) {
+    if (raw <= key->base) return 0;
+    // range>=150 and raw<=4095: the complete Q16 product fits uint32_t.
+    uint32_t pm = ((uint32_t)(raw - key->base) * key->scale + (scan->curve ? 32768u : 0u)) >> 16;
+    if (scan->curve) return ec_curve_apply(scan->curve, pm > 1000 ? 1000 : (uint16_t)pm);
+    return pm > RT_MAX_PM ? RT_MAX_PM : (uint16_t)pm;
+}
+
+RT_SCAN_CODE uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan) {
+    return scan_normalize(key, raw, scan);
+}
+
+static inline __attribute__((always_inline))
+bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
+    const rt_cfg_t *c = &scan->cfg;
     /* Top dead zone: key is definitely up, RT disarmed until act_pm is crossed again. */
     if (v <= (int16_t)c->reset_pm) {
         k->down    = false;
@@ -59,10 +100,7 @@ bool rt_update_curve(rt_key_t *k, const rt_cfg_t *c, uint16_t raw, const uint16_
 
     /* Classic mode: fixed actuation point with release hysteresis. */
     if (!c->rt_enabled) {
-        int16_t rel = (c->act_pm > c->release_pm) ? (int16_t)(c->act_pm - c->release_pm) : (int16_t)c->reset_pm;
-        if (rel < (int16_t)c->reset_pm) {
-            rel = (int16_t)c->reset_pm;
-        }
+        int16_t rel = (int16_t)scan->classic_release;
         if (k->down) {
             if (v <= rel) {
                 k->down = false;
@@ -105,6 +143,21 @@ bool rt_update_curve(rt_key_t *k, const rt_cfg_t *c, uint16_t raw, const uint16_
         }
     }
     return k->down;
+}
+
+RT_SCAN_CODE bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t travel) {
+    return update_travel(key, scan, (int16_t)travel);
+}
+
+bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
+    *travel = rt_scan_normalize(key, raw, scan);
+    return rt_update_scan_travel(key, scan, *travel);
+}
+
+bool rt_update_curve(rt_key_t *key, const rt_cfg_t *cfg, uint16_t raw, const uint16_t *curve) {
+    rt_scan_cfg_t scan;
+    rt_prepare_scan(&scan, cfg, curve);
+    return update_travel(key, &scan, (int16_t)normalize(key, raw, curve));
 }
 
 bool rt_update(rt_key_t *k, const rt_cfg_t *c, uint16_t raw) {
