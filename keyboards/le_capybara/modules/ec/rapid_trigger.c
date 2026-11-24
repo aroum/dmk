@@ -43,9 +43,6 @@ uint16_t rt_normalize_curve(const rt_key_t *k, uint16_t raw, const uint16_t *lut
     return normalize(k, raw, lut);
 }
 
-#ifdef HHKB_SCAN_1KHZ
-__attribute__((section(".RamFunc"), optimize("O2")))
-#endif
 bool rt_update_curve(rt_key_t *k, const rt_cfg_t *c, uint16_t raw, const uint16_t *lut) {
     int16_t v = (int16_t)normalize(k, raw, lut);
 

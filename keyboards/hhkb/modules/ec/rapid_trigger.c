@@ -70,15 +70,15 @@ void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_s
     cache->release_raw = raw_threshold(key, scan, scan->classic_release + 1);
 }
 
-#ifdef HHKB_SCAN_1KHZ
+#ifdef __arm__
 #define RT_SCAN_CODE __attribute__((section(".RamFunc"), optimize("O2")))
 #else
 #define RT_SCAN_CODE
 #endif
 static inline __attribute__((always_inline)) uint16_t scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan) {
-    if (raw <= key->base) return 0;
+    uint32_t delta = raw > key->base ? (uint32_t)(raw - key->base) : 0;
     // range>=150 and raw<=4095: the complete Q16 product fits uint32_t.
-    uint32_t pm = ((uint32_t)(raw - key->base) * key->scale + (scan->curve ? 32768u : 0u)) >> 16;
+    uint32_t pm = (delta * key->scale + (scan->curve ? 32768u : 0u)) >> 16;
     if (scan->curve) return ec_curve_apply(scan->curve, pm > 1000 ? 1000 : (uint16_t)pm);
     return pm > RT_MAX_PM ? RT_MAX_PM : (uint16_t)pm;
 }

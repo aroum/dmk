@@ -68,7 +68,7 @@ static bool hhkb_get_debug_flag(unsigned f){assert(f==1);return debug;}
 static unsigned __get_PRIMASK(void){return primask;}
 static void __disable_irq(void){primask=1;}
 static void __set_PRIMASK(unsigned p){primask=p;}
-static void scan_wait_since(unsigned start,unsigned us){(void)start;assert(us==2 && !primask);++timer.CNT;}
+static void scan_wait_since(unsigned start,unsigned us){(void)start;assert((us==2 || us==4) && !primask && !converting);assert(GPIOC->BSRR==(1u<<8));++timer.CNT;}
 static void scan_delay_us(unsigned us){assert(primask && (us==2 || us==3 || us==25));++timer.CNT;}
 static bool adc_start_sample(void){
  assert(primask && !converting);assert(starts<KEYS);

@@ -53,14 +53,14 @@ typedef struct {
     bool valid, pressed;
 } scan_pending_t;
 
-// Normalize once while the next mux/row is settling, with IRQs enabled.
+// Normalize once while C57 discharges, with IRQs enabled.
 static inline __attribute__((always_inline))
 void scan_prepare_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan, bool debug) {
     if (pending->valid && pending->raw != UINT16_MAX && (scan->cfg.rt_enabled || debug))
         pending->travel = rt_scan_normalize(&s_rt_keys[pending->col][pending->row], pending->raw, scan);
 }
 
-// Pure RAM work only: this runs while the next ADC conversion is in progress.
+// Pure RAM work: process the preceding key while C57 discharges.
 // Logging and calibration callbacks must stay outside the acquisition IRQ mask.
 static inline __attribute__((always_inline))
 bool scan_process_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan,
@@ -259,16 +259,19 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             static const uint8_t populated[MATRIX_COLS] = {29, 27, 29, 31, 29, 29, 31, 29, 31, 31, 31, 31, 31, 31, 31};
             if (!(populated[col] & (1U << row))) continue;
 #endif
+            // Overlap all previous-key work with discharge, not the row strobe.
+            // Keep >=2 us of discharge and >=4 us since release/mux selection.
+            GPIOC->BSRR = (1U << 8);
+            uint16_t discharge_start = (uint16_t)TIM2->CNT;
             scan_prepare_pending(&pending, &prepared, debug_topre);
-            scan_wait_since(settle_start, 2);
+            changed |= scan_process_pending(&pending, &prepared, current_matrix);
+            scan_report_pending(&pending, capture, is_calibrating, debug_topre, &capture_failed);
+            scan_wait_since(discharge_start, 2);
+            scan_wait_since(settle_start, 4);
 
             uint32_t saved_primask = __get_PRIMASK();
             __disable_irq();
-
-            // Discharge capacitor C57
-            GPIOC->BSRR = (1U << 8);
-            scan_delay_us(2);
-            GPIOC->BRR  = (1U << 8);
+            GPIOC->BRR = (1U << 8);
 
             // Drive row strobe active (LOW)
             GPIOB->BRR = row_pins[row];
@@ -278,13 +281,11 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             // Preserve the existing analog IRQ policy. Battery AUTOFF already
             // allows Nordic SPI after triggering; USB stays masked until EOC.
             if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
-            changed |= scan_process_pending(&pending, &prepared, current_matrix);
             uint16_t val = started ? adc_finish_sample() : UINT16_MAX;
             GPIOB->BSRR = row_pins[row];
             __set_PRIMASK(saved_primask);
             settle_start = (uint16_t)TIM2->CNT;
 
-            scan_report_pending(&pending, capture, is_calibrating, debug_topre, &capture_failed);
             pending = (scan_pending_t){.raw = val, .col = col, .row = row, .valid = true};
         }
     }

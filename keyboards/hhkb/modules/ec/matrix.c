@@ -8,13 +8,10 @@
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #endif
-#if defined(HHKB_SCAN_DIAGNOSTICS) || defined(HHKB_SCAN_1KHZ)
 #include "stm32l072xx.h"
-#endif
 
 extern QueueHandle_t matrix_queue;
 static matrix_row_t s_matrix_state[MATRIX_ROWS] = {0};
-#ifdef HHKB_SCAN_1KHZ
 static TaskHandle_t s_matrix_task;
 static volatile uint16_t s_scan_period_ticks;
 static volatile uint8_t s_scan_divider;
@@ -50,7 +47,6 @@ void TIM2_IRQHandler(void) {
     vTaskNotifyGiveFromISR(s_matrix_task, &higher_priority_woken);
     portYIELD_FROM_ISR(higher_priority_woken);
 }
-#endif
 #ifdef HHKB_SCAN_DIAGNOSTICS
 static volatile uint32_t s_matrix_scan_count;
 static volatile uint32_t s_matrix_scan_us;
@@ -59,9 +55,7 @@ static volatile uint32_t s_matrix_period_us;
 static volatile uint32_t s_matrix_work_max_us;
 static volatile uint32_t s_matrix_queue_full;
 static volatile uint32_t s_matrix_queue_peak;
-#ifdef HHKB_SCAN_1KHZ
 static volatile uint32_t s_matrix_scan_deadline_misses;
-#endif
 #endif
 
 bool matrix_is_pressed(unsigned char row, unsigned char col) {
@@ -151,7 +145,6 @@ void matrix_task(void *pvParameters) {
     // main creates and checks this queue before starting the scheduler.
     configASSERT(matrix_queue != NULL);
 
-#if defined(HHKB_SCAN_DIAGNOSTICS) || defined(HHKB_SCAN_1KHZ)
     // The platform sets APB1 to HCLK with no prescaling.
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
     RCC->APB1RSTR |= RCC_APB1RSTR_TIM2RST;
@@ -160,11 +153,9 @@ void matrix_task(void *pvParameters) {
     TIM2->ARR = UINT16_MAX;
     TIM2->EGR = TIM_EGR_UG;
     TIM2->CR1 = TIM_CR1_CEN;
-#endif
 #ifdef HHKB_SCAN_DIAGNOSTICS
     uint16_t previous_scan_start = (uint16_t)TIM2->CNT;
 #endif
-#ifdef HHKB_SCAN_1KHZ
     s_matrix_task = xTaskGetCurrentTaskHandle();
     update_scan_period();
     TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
@@ -173,7 +164,6 @@ void matrix_task(void *pvParameters) {
     NVIC_SetPriority(TIM2_IRQn, (1U << __NVIC_PRIO_BITS) - 1U);
     NVIC_EnableIRQ(TIM2_IRQn);
     TIM2->DIER = TIM_DIER_CC1IE;
-#endif
     matrix_row_t published_state[MATRIX_ROWS] = {0};
     bool sensor_power_down = false;
 #ifdef HHKB_HYBRID
@@ -347,12 +337,10 @@ void matrix_task(void *pvParameters) {
         if (usb_power_saving) {
             if (!sensor_power_down) {
                 // Stop scan interrupts as well as the analog hardware.
-#ifdef HHKB_SCAN_1KHZ
                 TIM2->DIER &= ~TIM_DIER_CC1IE;
                 TIM2->SR = 0;
                 NVIC_ClearPendingIRQ(TIM2_IRQn);
                 (void)ulTaskNotifyTake(pdTRUE, 0);
-#endif
                 // Disable power for capacitive sensor board and OpAmp
                 GPIOC->BRR = (1U << 14) | (1U << 7);
                 sensor_power_down = true;
@@ -364,16 +352,13 @@ void matrix_task(void *pvParameters) {
             GPIOC->BSRR = (1U << 14) | (1U << 7);
             vTaskDelay(pdMS_TO_TICKS(10)); // Settle analog power
             sensor_power_down = false;
-#ifdef HHKB_SCAN_1KHZ
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
             TIM2->SR = 0;
             NVIC_ClearPendingIRQ(TIM2_IRQn);
             TIM2->DIER |= TIM_DIER_CC1IE;
-#endif
         }
 
-#ifdef HHKB_SCAN_1KHZ
         if (s_scan_rate_applied != hhkb_get_effective_scan_rate()) {
             NVIC_DisableIRQ(TIM2_IRQn);
             update_scan_period();
@@ -387,7 +372,6 @@ void matrix_task(void *pvParameters) {
         if (notifications > 1) s_matrix_scan_deadline_misses += notifications - 1;
 #else
         (void)notifications;
-#endif
 #endif
 #ifdef HHKB_SCAN_DIAGNOSTICS
         uint16_t scan_start = (uint16_t)TIM2->CNT;
@@ -439,7 +423,6 @@ void matrix_task(void *pvParameters) {
         uint32_t work_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         if (work_us > s_matrix_work_max_us) s_matrix_work_max_us = work_us;
 #endif
-#ifdef HHKB_SCAN_1KHZ
         // Drop overdue timer notifications to prevent
         // starvation of USB and keyboard tasks.
         uint32_t missed = ulTaskNotifyTake(pdTRUE, 0);
@@ -447,9 +430,6 @@ void matrix_task(void *pvParameters) {
         s_matrix_scan_deadline_misses += missed;
 #else
         (void)missed;
-#endif
-#else
-        vTaskDelay(pdMS_TO_TICKS(1));
 #endif
     }
 }
@@ -459,11 +439,7 @@ void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_
     if (scan_us) *scan_us = s_matrix_scan_us;
     if (scan_max_us) *scan_max_us = s_matrix_scan_max_us;
     if (work_max_us) *work_max_us = s_matrix_work_max_us;
-#ifdef HHKB_SCAN_1KHZ
     if (missed) *missed = s_matrix_scan_deadline_misses;
-#else
-    if (missed) *missed = 0;
-#endif
     if (q_full) *q_full = s_matrix_queue_full;
 }
 

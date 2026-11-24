@@ -35,7 +35,7 @@ Hybrid Bluetooth also supports all 32 consumer usages in the factory Nordic repo
 
 ## Scan rate and power
 
-Selecting 1000 Hz requests that matrix rate; it is not a guarantee. Hybrid ANSI scan overruns are reported in [issue #8](https://github.com/aroum/dmk/issues/8). See [scan diagnostics and the current limitation](docs/en/via-debug.md#known-1000-hz-scan-limitation) to check actual throughput.
+Selecting 1000 Hz requests that matrix rate; it is not a guarantee. Hybrid ANSI scan overruns are reported in [issue #8](https://github.com/aroum/dmk/issues/8). See [scan diagnostics and the current limitation](docs/en/via-debug.md#1000-hz-scan-timing) to check actual throughput.
 
 ### Classic and Hybrid — USB power
 

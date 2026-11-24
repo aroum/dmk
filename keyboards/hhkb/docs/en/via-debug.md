@@ -244,13 +244,19 @@ After flashing, enable HID Console and **Debug → Polling Rate Monitor** in VIA
 
 Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key presses, and EC Matrix Stream off/on. First calibrate, finish calibration, then leave settings unchanged for a few seconds before recording results. Threshold-cache rebuilding after calibration/settings/curve changes is one-time work and can produce a transient timing spike. USB polling remains up to 1000 Hz; battery scanning retains its stock-style interval.
 
-The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Only arithmetic for the preceding key overlaps the next ADC conversion; calibration callbacks and console output run after interrupts are restored. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
+The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Previous-key processing overlaps C57 discharge with interrupts enabled. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
 
-### Known 1000 Hz scan limitation
+### 1000 Hz scan timing
 
-[Issue #8](https://github.com/aroum/dmk/issues/8) reports approximately 500–660 full matrix scans/s on Hybrid ANSI over USB with release `2026.11.22` and `dev` at `6ef2a5e`, despite selecting 1000 Hz. A scan exceeding 1 ms can miss timer deadlines. USB HID polling and matrix scanning are separate: a 1 ms USB interval does not guarantee 1000 fresh matrix scans/s.
+[Issue #8](https://github.com/aroum/dmk/issues/8) reports scan overruns on Hybrid ANSI in release `2026.11.22` and dev at `6ef2a5e`. Dev now places RT scan functions in RAM on ARM and processes the previous key during C57 discharge, preserving cached classic thresholds, ADC timeout handling and same-pass final-key processing. Discharge lasts at least 2 µs; release/mux selection to the next strobe lasts at least 4 µs. This extends the discharge interval; it needs hardware validation on Classic and JIS. `HHKB_SCAN_1KHZ` has been removed: timer scheduling is always available and VIA selects the USB rate up to 1000 Hz. Battery scan settings are unchanged.
 
-The report identifies RT scan functions remaining in flash because `rapid_trigger.c` does not include the configuration defining `HHKB_SCAN_1KHZ`. It also proposes processing the previous sample during discharge. The author's fork reaches about 850 µs per scan on their Hybrid ANSI; this is not a measurement of the current DMK branch or confirmation for Classic/JIS. These proposed changes are not included merely by enabling diagnostics. Until verified fixes are available, select 500 Hz if 1000 Hz misses deadlines, and include the firmware commit, model, RT/curve settings and `[RATE]` / `[SCAN]` output in reports.
+Use `[RATE]` / `[SCAN]` to verify actual throughput: a 1 ms USB HID interval does not guarantee 1000 fresh matrix scans/s. The author's approximately 850 µs result is from their fork on Hybrid ANSI, not a measurement of this implementation. Compare builds with the optional emulator (MIT attribution and license: `tools/hhkb/LICENSE.scan_emu`):
+
+```bash
+uv run --with unicorn --with pyelftools tools/hhkb/scan_emu.py time build/hhkb-script/dmk_hhkb_stm32l072
+```
+
+Install `arm-none-eabi-nm` on PATH. The emulator estimates peripheral timing and instruction cost; use it for relative comparisons, not hardware timing guarantees. Calibration buffering and per-key RT profiles from the fork are not included.
 
 ### Hold-Tap configuration compatibility (dev)
 
