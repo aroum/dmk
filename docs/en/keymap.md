@@ -355,7 +355,7 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
 ### Hold-Tap
 
-`HT(hold, tap)` resolves two explicit actions. Either side can be a normal HID key, a modifier or `MO`/`TG` layer action. Layer numbers must be wrapped explicitly: `HT(MO(FN1), K_A)`. See [Universal Hold-Tap](keycodes.md#universal-hold-tap) for examples and VIA limitations.
+`HT(hold, tap)` resolves two explicit actions. Either side can be a normal HID key, a modifier or `MO`/`TG` layer action. Legacy `HT(1, key)` / `HT(FN1, key)` remain supported; explicit `HT(MO(FN1), K_A)` is recommended in new configs. Use `KEY(value)` for a numeric/custom HID alias. See [Universal Hold-Tap](keycodes.md#universal-hold-tap) for examples and VIA limitations.
 
 ```c
 // Duration (in ms) to hold the key to recognize it as "Hold" 

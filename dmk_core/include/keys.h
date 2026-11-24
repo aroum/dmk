@@ -706,6 +706,7 @@ typedef struct {
 // DMK encoding prefixes (32-bit keycodes)
 #define DMK_MK 0x01000000
 #define DMK_OS 0x02000000
+#define DMK_HT_KEY_ACTION 0x03000000u // Constructor-only HID marker; not stored in HT payload
 #define DMK_HT_LEGACY 0x04000000u
 #define DMK_HT_MOD_LEGACY 0x40000000u // Read-only compatibility with early dev Mod-Tap records
 #define DMK_HT 0x80000000u
@@ -722,17 +723,40 @@ typedef struct {
 #define DMK_HT_ACTION_VALUE(a) \
     (((a) & 0xFF000000u) == DMK_MK ? (((a) >> 8) & 0xFFu) : \
      (((a) & 0xFF000000u) == DMK_TG ? (0x10u | ((a) & 0xFu)) : \
-      (((uint32_t)(a) - L_0) <= 15u ? (a) - L_0 : ((a) & 0xFFu))))
+      (((uint32_t)(a) - L_0) <= 15u ? (uint32_t)(a) - L_0 : ((a) & 0xFFu))))
 #define DMK_HT_ACTION_VALID(a) \
-    ((uint32_t)(a) <= 0xFFu || (((uint32_t)(a) - L_0) <= 15u) || \
+    ((uint32_t)(a) <= 0xFFu || (((a) & 0xFFFFFF00u) == DMK_HT_KEY_ACTION) || (((uint32_t)(a) - L_0) <= 15u) || \
      ((((a) & 0xFF000000u) == DMK_MO || ((a) & 0xFF000000u) == DMK_TG) && ((a) & 0xFFFFFFu) < 16u) || \
      (((a) & 0xFF000000u) == DMK_MK && ((a) & 0xFFu) == K_NULL))
-#define HT(hold, tap) \
+// Keep source spelling before C macro expansion: K_A is a key, while an
+// untyped 4 / FN enum retains the historical layer/modifier interpretation.
+// GCC/Clang fold these literal-string tests, including in static keymaps.
+#ifndef KEY
+#define KEY(kc) (DMK_HT_KEY_ACTION | (uint32_t)(kc))
+#endif
+#define DMK_HT_UNPAREN(s) \
+    ((__builtin_strncmp((s), "(", 1) == 0 || __builtin_strncmp((s), " ", 1) == 0) ? (s) + 1 : (s))
+#define DMK_HT_SPELLING(s) DMK_HT_UNPAREN(DMK_HT_UNPAREN(s))
+#define DMK_HT_IS_KEY_SPELLING(s) \
+    (__builtin_strncmp(DMK_HT_SPELLING(s), "K_", 2) == 0 || \
+     __builtin_strncmp(DMK_HT_SPELLING(s), "HID_KEY_", 8) == 0 || \
+     __builtin_strncmp(DMK_HT_SPELLING(s), "KEY(", 4) == 0 || \
+     __builtin_strncmp(DMK_HT_SPELLING(s), "KEY (", 5) == 0)
+#define DMK_HT_IS_MASK_SPELLING(s) (__builtin_strncmp(DMK_HT_SPELLING(s), "MOD_", 4) == 0)
+#define DMK_HT_LEGACY_HOLD(h) \
+    ((uint32_t)(h) < 16u ? (uint32_t)MO(h) : \
+     ((uint32_t)(h) <= 0xFFu && !((uint32_t)(h) >= 0xE0u && (uint32_t)(h) <= 0xE7u) ? (uint32_t)MK((uint8_t)(h), K_NULL) : (uint32_t)(h)))
+#define DMK_HT_PACK(hold, tap) \
     ((DMK_HT_ACTION_VALID(hold) && DMK_HT_ACTION_VALID(tap)) ? \
      (DMK_HT | (DMK_HT_ACTION_KIND(hold) << 26) | (DMK_HT_ACTION_KIND(tap) << 24) | \
       (DMK_HT_ACTION_VALUE(hold) << 8) | DMK_HT_ACTION_VALUE(tap)) : K_NULL)
-#define HT_T(hold, tap, ms) \
-    (((ms) <= 255u && HT(hold, tap) != K_NULL) ? (HT(hold, tap) | ((uint32_t)(ms) << 16)) : K_NULL)
+#define DMK_HT_FROM_SOURCE(hold, spelling, tap) \
+    (DMK_HT_IS_MASK_SPELLING(spelling) ? DMK_HT_PACK(MK((uint8_t)(hold), K_NULL), tap) : \
+     (DMK_HT_IS_KEY_SPELLING(spelling) ? DMK_HT_PACK(hold, tap) : DMK_HT_PACK(DMK_HT_LEGACY_HOLD(hold), tap)))
+#define HT(hold, tap) DMK_HT_FROM_SOURCE(hold, #hold, tap)
+#define DMK_HT_WITH_TIMEOUT(key, ms) \
+    (((ms) <= 255u && (key) != K_NULL) ? ((key) | ((uint32_t)(ms) << 16)) : K_NULL)
+#define HT_T(hold, tap, ms) DMK_HT_WITH_TIMEOUT(DMK_HT_FROM_SOURCE(hold, #hold, tap), ms)
 #define DMK_IS_HT(key) \
     ((((key) & 0xF0000000u) == DMK_HT) || (((key) & 0xFF000000u) == DMK_HT_LEGACY) || \
      (((key) & 0xFF000000u) == DMK_HT_MOD_LEGACY))

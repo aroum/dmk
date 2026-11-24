@@ -76,12 +76,13 @@ void hook_key_sent(uint16_t keycode, bool pressed) { (void)keycode; (void)presse
 static void test_unified_hold_tap_actions(void) {
     for(unsigned h=0;h<256;++h)for(unsigned t=0;t<256;++t){
         uint32_t hold,tap;uint8_t ms;
-        assert(ht_decode(HT(h,t),&hold,&tap,&ms));assert(hold==h && tap==t && !ms);
+        assert(ht_decode(HT(KEY(h),t),&hold,&tap,&ms));assert(hold==h && tap==t && !ms);
     }
     const uint32_t actions[]={K_A,K_RSFT,MO(0),MO(15),TG(2),MK(0xff,K_NULL)};
     for(unsigned h=0;h<6;++h)for(unsigned t=0;t<6;++t)for(unsigned n=0;n<256;++n){
         uint32_t hold,tap;uint8_t ms;
-        assert(ht_decode(HT_T(actions[h],actions[t],n),&hold,&tap,&ms));
+        uint32_t hold_action=actions[h]<=0xff?KEY(actions[h]):actions[h];
+        assert(ht_decode(HT_T(hold_action,actions[t],n),&hold,&tap,&ms));
         assert(hold==actions[h] && tap==actions[t] && ms==n);
     }
     assert(HT(K_VOLU,K_A)==K_NULL);

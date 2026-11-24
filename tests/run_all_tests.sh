@@ -21,6 +21,10 @@ echo -e "${BOLD}              DMK Comprehensive Test Suite          ${NC}"
 echo -e "${BOLD}====================================================${NC}\n"
 
 clang -std=c11 -Wall -Wextra -Werror -O2 -I "${SCRIPT_DIR}/dmk_core/include" \
+    "${SCRIPT_DIR}/tests/test_ht_source_compat.c" -o /tmp/dmk-ht-source-compat
+/tmp/dmk-ht-source-compat
+
+clang -std=c11 -Wall -Wextra -Werror -O2 -I "${SCRIPT_DIR}/dmk_core/include" \
     "${SCRIPT_DIR}/tests/test_flash_journal.c" -o /tmp/dmk-flash-journal-test
 /tmp/dmk-flash-journal-test
 
