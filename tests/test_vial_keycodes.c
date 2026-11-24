@@ -33,6 +33,17 @@ uint32_t from_via_keycode(uint16_t via_key);
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 
 int main(void) {
+#ifdef HHKB_GRAVE_ESCAPE
+    assert(from_via_keycode(0x7c16) == 0x7c16);
+    assert(to_via_keycode(0x7c16) == 0x7c16);
+#endif
+    for (unsigned mods = 1; mods < 32; ++mods) {
+        if (!(mods & 15)) continue;
+        uint32_t key = from_via_keycode(0x52a0 | mods);
+        assert((key & 0xff000000) == DMK_OS && (key & 0x10000));
+        assert(to_via_keycode(key) == (0x52a0 | mods));
+    }
+
     // VIA bit 4 selects one side, never both. Test all modifier masks.
     for (unsigned mods = 0; mods < 32; ++mods) {
         uint8_t expected = (mods & 0x10) ? ((mods & 0x0F) << 4) : (mods & 0x0F);

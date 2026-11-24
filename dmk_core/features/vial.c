@@ -153,6 +153,13 @@ static uint8_t from_via_mods(uint8_t via_mod) {
 
 // Helper function to map DMK 32-bit keycodes to VIA 16-bit keycodes
 uint16_t to_via_keycode(uint32_t dmk_key) {
+#ifdef HHKB_GRAVE_ESCAPE
+    if (dmk_key == 0x7c16u) return 0x7c16u;
+#endif
+    if ((dmk_key & 0xFF000000u) == DMK_OS) {
+        if (dmk_key & 0x10000u) return 0x52A0u | to_via_mod_mask((dmk_key >> 8) & 0xFF);
+        return 0x5280u | (dmk_key & 0x0F);
+    }
     if (dmk_key == K_TRNS)
         return 0x0001;
     if ((dmk_key & 0xFF000000) == DMK_CONSUMER) {
@@ -229,6 +236,9 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
 
 // Helper function to map VIA 16-bit keycodes to DMK 32-bit keycodes
 uint32_t from_via_keycode(uint16_t via_key) {
+#ifdef HHKB_GRAVE_ESCAPE
+    if (via_key == 0x7c16u) return 0x7c16u;
+#endif
     if (via_key == 0x0000)
         return K_NULL;
     if (via_key == 0x0001)
@@ -284,6 +294,11 @@ uint32_t from_via_keycode(uint16_t via_key) {
         return HT(MK(from_via_mods((via_key >> 8) & 0x1F), K_NULL), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x4000 && via_key <= 0x4FFF)
         return HT(MO((via_key >> 8) & 0x0F), from_via_mouse_keycode(via_key & 0xFF));
+
+    if (via_key >= 0x52A0 && via_key <= 0x52BF)
+        return OS_MOD(from_via_mods(via_key & 0x1F));
+    if (via_key >= 0x5280 && via_key <= 0x529F)
+        return OS_LAYER(via_key & 0x0F);
 
     // Layer Toggle
     if (via_key >= 0x5260 && via_key <= 0x527F) {

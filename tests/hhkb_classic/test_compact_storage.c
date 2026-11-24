@@ -37,7 +37,7 @@ static void defaults(void) {
         dynamic_keymap[0][i]=4+i;
         dynamic_keymap[1][i]=0x10000000+(i%10);
     }
-    cal.rt.act_pm=750; cal.led_mode[0]=0xa1;cal.reserved[1]=0xf3;
+    cal.rt.act_pm=750; cal.led_mode[0]=0xa1;cal.led_mode[1]=0xf4;cal.reserved[1]=0xf3;
     cal.crc16=hhkb_storage_crc16((uint8_t *)&cal.baseline,sizeof(cal)-8);
 }
 static void reboot(void) {
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
     unsigned packed=*c_word(0,2);printf("%u keys: %u/%u compressed bytes\n",NUM_KEYS,packed,(unsigned)C_RAW_BYTES);
     assert(packed<=C_CAPACITY);
     unsigned before=writes;reboot();poll();assert(writes==before); /* no boot wear */
-    assert(cal.led_mode[0]==0xa1 && cal.reserved[1]==0xf3);
+    assert(cal.led_mode[0]==0xa1 && cal.led_mode[1]==0xf4 && cal.reserved[1]==0xf3);
     for(unsigned i=0;i<NUM_KEYS;++i) assert(cal.baseline[c_positions[i][1]][c_positions[i][0]]==300+i);
     /* Every single write boundary of a replacement snapshot. */
     uint32_t saved[1536];memcpy(saved,memory,sizeof(saved));

@@ -19,13 +19,17 @@
 #endif
 
 static OneShotState os_trackers[MAX_OS_TRACKERS];
-extern void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
+extern void keyboard_send_modifier_mask(uint8_t mod_mask, bool pressed);
 
 void oneshot_init(void) {
     memset(os_trackers, 0, sizeof(os_trackers));
 }
 
 bool oneshot_should_consume(uint32_t key) {
+#ifdef HHKB_GRAVE_ESCAPE
+    // The HHKB module sends lazy mods and consumes them after releasing output.
+    if (key == 0x7c16u) return false;
+#endif
     if (key == 0 || (key >= L_0 && key <= L_15) || (key >= 0xE0 && key <= 0xE7))
         return false;
     uint32_t pfx = key & 0xFF000000;
@@ -37,14 +41,14 @@ bool oneshot_should_consume(uint32_t key) {
 void oneshot_send_lazy_mods(void) {
     for (int i = 0; i < MAX_OS_TRACKERS; i++) {
         if (os_trackers[i].active && os_trackers[i].is_mod && ONESHOT_LAZY) {
-            keyboard_send_modifiers(os_trackers[i].mod_mask, true);
+            keyboard_send_modifier_mask(os_trackers[i].mod_mask, true);
         }
     }
 }
 
 static void deactivate_os(OneShotState *os) {
     if (os->is_mod)
-        keyboard_send_modifiers(os->mod_mask, false);
+        keyboard_send_modifier_mask(os->mod_mask, false);
     else
         layers_off(os->layer);
     memset(os, 0, sizeof(OneShotState));
@@ -155,7 +159,7 @@ bool oneshot_process_event(uint32_t key, bool pressed) {
                                               .layer = target};
             if (is_mod) {
                 if (!ONESHOT_LAZY)
-                    keyboard_send_modifiers(target, true);
+                    keyboard_send_modifier_mask(target, true);
             } else {
                 layers_on(target);
             }

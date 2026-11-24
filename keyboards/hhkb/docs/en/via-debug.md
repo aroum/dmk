@@ -246,6 +246,14 @@ Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key
 
 The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Previous-key processing overlaps C57 discharge with interrupts enabled. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
 
+### Grave Escape
+
+Assign VIA's **QK_GESC** (`QK_GRAVE_ESCAPE`, `0x7C16`) to a key. It sends Escape normally, or Grave with Shift or GUI held. Modifiers are preserved: Shift + Grave normally produces `~` on a US layout; GUI + Grave remains a GUI shortcut. The OS layout determines the character. Ctrl and Alt alone keep Escape.
+
+The separate **HHKB Settings → Grave Escape** tab has four toggles: **Always Escape with Alt / Ctrl / GUI / Shift**. All default off. An enabled toggle forces Escape whenever either the left or right version of that modifier is active, even with other modifiers held. It does not suppress the modifiers themselves. Overrides take precedence over the normal Shift/GUI rule.
+
+Physical modifiers, held HT modifiers, One-Shot modifiers and active `MK(...)` modifiers are considered. Choose the output on press and release that same output even if modifiers or settings change while held. Multiple GESC bindings share one held action until all are released. The overrides persist in EEPROM without increasing the record size or erasing existing calibration/keymaps. Reload the updated `via.json` to see the tab. The behavior is supplied by the HHKB module on Classic/Hybrid, ANSI/JIS, over USB or Hybrid Bluetooth.
+
 ### Calibration and bottom-out pressure fixes (dev)
 
 Calibration accepts resting baselines from 20 to 2000 ADC counts, including switches below 100 counts. Finish validates the same baseline and peak bounds used at load time; an invalid capture leaves that key's previous range unchanged. The ADC peak must be at most 4095 and exceed baseline by more than 150 counts. The EEPROM format is unchanged.

@@ -47,6 +47,8 @@ static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
 #define HHKB_CAL_BASE_MIN 20u
 
+static uint8_t s_gesc_overrides;
+
 static rt_cfg_t s_rt_cfg = {
     .rt_enabled = false,
     .act_pm = 750,
@@ -247,6 +249,7 @@ void hhkb_calibration_save_to_eeprom(void) {
                       (s_bt_last_slot << 5);
 #endif
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
+    cal.led_mode[1] |= s_gesc_overrides << 4;
 #ifdef HHKB_HYBRID
     // Spare high nibble; zero in older records means the default 1 Hz.
     cal.led_mode[0] |= s_bt_sleep_hz << 4;
@@ -313,6 +316,7 @@ void hhkb_calibration_load(void) {
     s_rt_cfg.release_pm = 25;
     s_rt_cfg.rt_enabled = false;
     s_debug_flags = 0;
+    s_gesc_overrides = 0;
 
     if (cal->magic == USER_EEPROM_MAGIC) {
         // Versioned format with CRC16
@@ -364,6 +368,7 @@ void hhkb_calibration_load(void) {
             if (current) {
                 for (unsigned i = 0; i < 2; ++i) {
                     uint8_t led = cal->led_mode[i];
+                    if (i == 1) led &= 0x0f;
 #ifdef HHKB_HYBRID
                     if (i == 0) led &= 0x0f; // High nibble stores sleep scan rate.
 #endif
@@ -374,6 +379,7 @@ void hhkb_calibration_load(void) {
                 if (sleep_hz >= 1 && sleep_hz <= 10) s_bt_sleep_hz = sleep_hz;
 #endif
                 s_debug_flags = cal->debug_flags & 0x0f;
+                s_gesc_overrides = cal->led_mode[1] >> 4;
             }
 
             if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= (current ? 1125 : 1000)) s_rt_cfg.act_pm = cal->rt.act_pm;
@@ -518,6 +524,16 @@ void hhkb_calibration_set_enabled(bool enabled) {
     hhkb_settings_mark_dirty();
 }
 bool hhkb_is_calibrating(void) { return s_calibration_mode; }
+
+uint8_t hhkb_gesc_overrides(void) { return s_gesc_overrides; }
+void hhkb_gesc_set_override(uint8_t index, bool enabled) {
+    if (index >= 4) return;
+    uint8_t mask = 1U << index;
+    uint8_t value = enabled ? s_gesc_overrides | mask : s_gesc_overrides & ~mask;
+    if (value == s_gesc_overrides) return;
+    s_gesc_overrides = value;
+    hhkb_settings_mark_dirty();
+}
 
 uint8_t hhkb_get_scan_rate(void) { return s_scan_rate; }
 void hhkb_set_scan_rate(uint8_t rate) {

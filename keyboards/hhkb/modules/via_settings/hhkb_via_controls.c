@@ -91,6 +91,13 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
                hhkb_hybrid_request_slot(request[3] - 1, id == 43));
     }
 #endif
+    if (id >= 57 && id <= 60) {
+        if (request[0] == 0x08) response[3] = (hhkb_gesc_overrides() >> (id - 57)) & 1;
+        else if (request[0] == 0x07 && request[3] <= 1)
+            hhkb_gesc_set_override(id - 57, request[3] != 0);
+        else return false;
+        return true;
+    }
     if (id >= EC_CURVE_ENABLE && id <= EC_CURVE_STATUS) {
         if (request[0] == 0x08) {
             if (id == EC_CURVE_STATUS) snprintf((char *)&response[3], 29, "%s", ec_curve_status);

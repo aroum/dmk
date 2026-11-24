@@ -194,6 +194,47 @@
           ]
         },
         {
+          "label": "Grave Escape",
+          "content": [
+            {
+              "label": "Always Escape with Alt",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_gesc_alt",
+                0,
+                57
+              ]
+            },
+            {
+              "label": "Always Escape with Ctrl",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_gesc_ctrl",
+                0,
+                58
+              ]
+            },
+            {
+              "label": "Always Escape with GUI",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_gesc_gui",
+                0,
+                59
+              ]
+            },
+            {
+              "label": "Always Escape with Shift",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_gesc_shift",
+                0,
+                60
+              ]
+            }
+          ]
+        },
+        {
           "label": "Calibration",
           "content": [
             {

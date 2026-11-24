@@ -13,7 +13,7 @@ void keyboard_send_key(uint16_t key, bool pressed) {
     assert(key == K_A);
     if (pressed) ++key_down; else ++key_up;
 }
-void keyboard_send_modifiers(uint8_t mask, bool pressed) {
+void keyboard_send_modifier_mask(uint8_t mask, bool pressed) {
     assert(mask == 1);
     if (pressed) ++mod_down; else ++mod_up;
 }

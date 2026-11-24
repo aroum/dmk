@@ -38,7 +38,7 @@ typedef struct __attribute__((aligned(4))) {
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
     uint16_t classic_release_pm;
     uint8_t curve[EC_CURVE_FIELDS];
-    uint8_t led_mode[2]; // Hybrid: led_mode[0] high nibble stores sleep Hz (0 = legacy 1 Hz)
+    uint8_t led_mode[2]; // led_mode[1] high nibble: Grave Escape overrides; Hybrid: led_mode[0] high nibble stores sleep Hz (0 = legacy 1 Hz)
     uint8_t debug_flags; // bits 0..3: debug; bit 7: packed Hybrid deep-timer format
     uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
@@ -75,6 +75,10 @@ void hhkb_bt_set_button_action(bool long_press, uint8_t action);
 uint8_t hhkb_bt_last_slot(void);
 void hhkb_bt_set_last_slot(uint8_t slot);
 #endif
+
+// Grave Escape overrides: Alt, Ctrl, GUI, Shift (both sides).
+uint8_t hhkb_gesc_overrides(void);
+void hhkb_gesc_set_override(uint8_t index, bool enabled);
 
 // Getters & Setters for VIA
 uint8_t hhkb_get_scan_rate(void);

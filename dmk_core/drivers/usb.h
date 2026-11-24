@@ -32,6 +32,9 @@ void usb_flush_batched_keys(void);
  * @param mod_mask 8-bit modifier mask (MOD_LCTRL, etc.)
  * @param pressed True on press, false on release
  */
+// Current physical/HT/One-Shot modifiers combined with MK weak modifiers.
+uint8_t usb_get_effective_modifiers(void);
+
 void usb_process_modifiers(uint8_t mod_mask, bool pressed);
 
 /**

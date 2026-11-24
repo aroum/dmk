@@ -25,6 +25,10 @@ static USB_HID_KeyboardReport_TypeDef current_report;
 static uint8_t s_real_mods = 0;
 static uint8_t s_weak_mods = 0;
 
+uint8_t usb_get_effective_modifiers(void) {
+    return s_real_mods | s_weak_mods;
+}
+
 #ifdef MATRIX_REPORT_BATCH
 static bool add_key_to_report(uint8_t keycode);
 static bool del_key_from_report(uint8_t keycode);
