@@ -406,6 +406,15 @@ __attribute__((weak)) void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t
     if (q_full) *q_full = 0;
 }
 __attribute__((weak)) void hhkb_reset_scan_diagnostics_peaks(void) {}
+__attribute__((weak)) void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *err_us,
+                                                       uint32_t *locked, uint32_t *lead_us, int32_t *in_us) {
+    if (avg_us) *avg_us = 0;
+    if (max_us) *max_us = 0;
+    if (err_us) *err_us = 0;
+    if (locked) *locked = 0;
+    if (lead_us) *lead_us = 0;
+    if (in_us) *in_us = 0;
+}
 
 static uint32_t s_last_diag_tick = 0;
 static uint32_t s_usb_loop_total = 0;
@@ -445,6 +454,14 @@ void vial_diag_task(void) {
                                  (unsigned long)scan_us, (unsigned long)scan_max_us,
                                  (unsigned long)work_max_us, (unsigned long)missed, (unsigned long)q_full,
                                  (unsigned long)usb_rate_hz);
+            {
+                uint32_t age_avg = 0, age_max = 0, lock = 0, lead = 0;
+                int32_t err = 0, in_off = 0;
+                hhkb_get_latency_diagnostics(&age_avg, &age_max, &err, &lock, &lead, &in_off);
+                debug_console_printf("[LAT] age_avg=%lu age_max=%lu us err=%ld us lock=%lu lead=%lu us in=%ld us\r\n",
+                                     (unsigned long)age_avg, (unsigned long)age_max, (long)err,
+                                     (unsigned long)lock, (unsigned long)lead, (long)in_off);
+            }
             hhkb_reset_scan_diagnostics_peaks();
 #else
             debug_console_printf("[RATE] matrix=%lu Hz (target: %u Hz), usb_loop=%lu Hz\r\n",
