@@ -5,6 +5,7 @@
 #include "task.h"
 #include "config.h"
 #include "tusb.h"
+#include "sof_lock.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #endif
@@ -32,12 +33,19 @@ void TIM2_IRQHandler(void) {
     if (!(TIM2->SR & TIM_SR_CC1IF)) return;
     TIM2->SR = (uint32_t)~TIM_SR_CC1IF;
 
-    uint16_t next = (uint16_t)(TIM2->CCR1 + s_scan_period_ticks);
+    uint16_t fired = (uint16_t)TIM2->CCR1;
+    uint16_t step = s_scan_period_ticks;
+#if HHKB_SOF_LOCK
+    step = sof_lock_step(fired, step);
+#elif defined(HHKB_SCAN_DIAGNOSTICS)
+    sof_lock_note_fire(fired);
+#endif
+    uint16_t next = (uint16_t)(fired + step);
     TIM2->CCR1 = next;
     uint16_t remaining = (uint16_t)(next - (uint16_t)TIM2->CNT);
-    if (remaining > s_scan_period_ticks) {
+    if (remaining > step) {
         // A delayed interrupt can miss a compare. Restart from the current count.
-        TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
+        TIM2->CCR1 = (uint16_t)(TIM2->CNT + step);
     }
 
     if (++s_scan_phase < s_scan_divider) return;
@@ -120,6 +128,9 @@ static void update_battery_clock(bool battery) {
         while (!(ADC1->ISR & ADC_ISR_ADRDY)) {}
     }
     vPortUpdateSysTickClock(hz);
+#if HHKB_SOF_LOCK
+    sof_lock_reset();
+#endif
     taskEXIT_CRITICAL();
 }
 
@@ -164,6 +175,9 @@ void matrix_task(void *pvParameters) {
     NVIC_SetPriority(TIM2_IRQn, (1U << __NVIC_PRIO_BITS) - 1U);
     NVIC_EnableIRQ(TIM2_IRQn);
     TIM2->DIER = TIM_DIER_CC1IE;
+#if HHKB_SOF_LOCK
+    sof_lock_init();
+#endif
     matrix_row_t published_state[MATRIX_ROWS] = {0};
     bool sensor_power_down = false;
 #ifdef HHKB_HYBRID
@@ -422,6 +436,12 @@ void matrix_task(void *pvParameters) {
         }
         uint32_t work_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         if (work_us > s_matrix_work_max_us) s_matrix_work_max_us = work_us;
+#endif
+#if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
+        if (!first_event) sof_lock_note_publish();
+#endif
+#if HHKB_SOF_LOCK
+        sof_lock_note_work();
 #endif
         // Drop overdue timer notifications to prevent
         // starvation of USB and keyboard tasks.

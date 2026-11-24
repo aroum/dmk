@@ -9,10 +9,10 @@
 #include "queue.h"
 #include "task_internal.h"
 #include "tusb.h"
+#include "device/dcd.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #include "stm32l072xx.h"
-#include "device/dcd.h"
 #endif
 
 #if defined(MCU_rp2350)
@@ -59,6 +59,10 @@ static volatile uint32_t s_usb_keyboard_queue_full;
 #endif
 static volatile bool s_resync_pending;
 
+// Optional hooks (HHKB SOF-locked scan overrides these).
+__attribute__((weak)) void usb_keyboard_report_armed(void) {}
+__attribute__((weak)) void usb_xfer_complete_from_isr(void) {}
+
 // Resend current states after reconnect, even if no new event occurs.
 void USB_HID_ResyncKeyboard(void) {
     if (!s_keyboard_queue) return;
@@ -83,7 +87,10 @@ static void usb_keyboard_flush(void) {
     bool sent = report.report_id == 1
         ? tud_hid_keyboard_report(1, report.keyboard.Modifier, report.keyboard.Keycodes)
         : tud_hid_report(2, &report.consumer, sizeof(report.consumer));
-    if (sent) xQueueReceive(s_keyboard_queue, &report, 0);
+    if (sent) {
+        if (report.report_id == 1) usb_keyboard_report_armed();
+        xQueueReceive(s_keyboard_queue, &report, 0);
+    }
 }
 
 static bool usb_enqueue_key_report(const queued_key_report_t *report) {
@@ -124,7 +131,7 @@ static StackType_t s_usb_task_stack[512];
 
 void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
     (void)rhport;
-    (void)eventid;
+    if (in_isr && eventid == DCD_EVENT_XFER_COMPLETE) usb_xfer_complete_from_isr();
     if (s_usb_task_handle == NULL) {
         return;
     }
