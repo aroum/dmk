@@ -1,0 +1,85 @@
+name: Core and HHKB Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, dev]
+    paths:
+      - 'dmk_core/**'
+      - 'keyboards/**'
+      - 'tests/**'
+      - 'tools/**'
+      - 'editor/**'
+      - 'lib/freertos/**'
+      - '.github/workflows/core_hhkb_tests.yml'
+  pull_request:
+    branches: [main, master, dev]
+    paths:
+      - 'dmk_core/**'
+      - 'keyboards/**'
+      - 'tests/**'
+      - 'tools/**'
+      - 'editor/**'
+      - 'lib/freertos/**'
+      - '.github/workflows/core_hhkb_tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-hhkb-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    name: Full host suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Install host compilers
+        run: sudo apt-get update && sudo apt-get install -y clang build-essential
+      - name: Core, HHKB, tooling and editor regressions
+        shell: bash
+        run: |
+          mkdir -p reports
+          bash tests/run_all_tests.sh 2>&1 | tee reports/host-tests.log
+      - name: Preserve test output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: core-hhkb-host-test-log
+          path: reports/*.log
+          if-no-files-found: ignore
+
+  sanitizers:
+    name: Runtime sanitizers (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Runtime integration with ASan and UBSan
+        shell: bash
+        env:
+          CC: clang
+          DMK_TEST_SANITIZERS: '1'
+          ASAN_OPTIONS: abort_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          mkdir -p reports
+          bash tests/run_runtime_tests.sh 2>&1 | tee reports/runtime-sanitizers.log
+      - name: Preserve sanitizer output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-sanitizers-${{ matrix.os }}
+          path: reports/*.log
+          if-no-files-found: ignore

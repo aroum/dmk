@@ -136,7 +136,7 @@ int main(void){
    for(unsigned col=0;col<MATRIX_COLS;++col)for(unsigned row=0;row<MATRIX_ROWS;++row){rt_key_reset(&s_rt_keys[col][row]);rt_key_reset(&reference[col][row]);}}
   adc.CFGR1=(pass%2)?ADC_CFGR1_AUTOFF:0;
   debug=pass%4!=0;capture=pass%6==0;calibrating=capture || pass%6==1;
-  fault=pass%7==0?(pass?pass*17%KEYS:KEYS-1):1000;
+  fault=pass%12==0?(pass?0:KEYS-1):(pass%7==0?pass*17%KEYS:1000);
   bool changed=false;
   for(unsigned i=0;i<KEYS;++i){
    unsigned col=columns[i],row=rows[i];

@@ -506,6 +506,22 @@ static void test_shared_key_owners(void) {
     assert(s_last_sent_report.Keycodes[0] == 0);
 }
 
+static void test_6kro_slot_ownership(void) {
+    usb_init();
+    for (unsigned k=K_A;k<K_A+6;k++) usb_process_key(k,true);
+    usb_process_key(K_A,true); // Second owner, even when all slots are occupied.
+    usb_process_key(K_A,false);
+    assert(s_last_sent_report.Keycodes[0]==K_A);
+    usb_process_key(K_A,false);
+    assert(s_last_sent_report.Keycodes[0]==0);
+    usb_process_key(K_Z,true); // Reuse must start with one owner.
+    assert(s_last_sent_report.Keycodes[0]==K_Z);
+    usb_process_key(K_Z,false);assert(s_last_sent_report.Keycodes[0]==0);
+    usb_process_key(K_Z,false);assert(s_last_sent_report.Keycodes[0]==0);
+    for(unsigned k=K_B;k<K_A+6;k++)usb_process_key(k,false);
+    for(unsigned i=0;i<6;i++)assert(s_last_sent_report.Keycodes[i]==0);
+}
+
 int main(void) {
     test_explicit_modifier_taps();
     test_unified_hold_tap_actions();
@@ -524,6 +540,7 @@ int main(void) {
     printf("\n[3/3] Testing USB HID Zero-Queue subsystem...\n");
     test_usb_hid_reports_and_zero_queue();
     test_shared_key_owners();
+    test_6kro_slot_ownership();
 #ifdef MATRIX_REPORT_BATCH
     test_usb_matrix_batch();
 #endif

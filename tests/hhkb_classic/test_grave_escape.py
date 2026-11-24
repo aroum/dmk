@@ -93,6 +93,11 @@ int main(void){
   assert(s_real_mods==(1u<<bit));press();assert(last_down==expected(1u<<bit,0));
   assert(hold_tap_process_event(0,0,ht,false));release();
  }
+ // Changing settings while held must not change the key released.
+ overrides=0;s_real_mods=MOD_RSHIFT;s_weak_mods=0;press();assert(last_down==K_GRAV);
+ overrides=8;s_real_mods=0;release();assert(last_up==K_GRAV);
+ s_real_mods=MOD_RSHIFT;press();assert(last_down==K_ESC);
+ overrides=0;release();assert(last_up==K_ESC);s_real_mods=0;
  // A second binding must not prematurely release the shared held action.
  unsigned before=ups;s_real_mods=0;press();s_real_mods=0x22;press();
  assert(selected==K_ESC);release();assert(ups==before);release();assert(ups==before+1);
