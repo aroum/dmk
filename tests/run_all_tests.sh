@@ -169,6 +169,15 @@ else
     echo "HHKB Classic sources absent; skipping HHKB firmware tests."
 fi
 
+if [[ -f "${SCRIPT_DIR}/keyboards/le_capybara/modules/ec/cal_request.h" ]]; then
+    # le_capybara cross-task calibration request slot
+    CAPYBARA_TEST_DIR="${SCRIPT_DIR}/tests/le_capybara"
+    clang -std=c11 -Wall -Wextra -Werror -I "${SCRIPT_DIR}/keyboards/le_capybara/modules/ec" \
+        "${CAPYBARA_TEST_DIR}/test_cal_request.c" -o "${CAPYBARA_TEST_DIR}/test_cal_request"
+    "${CAPYBARA_TEST_DIR}/test_cal_request"
+    rm -f "${CAPYBARA_TEST_DIR}/test_cal_request"
+fi
+
 # 2. Python Tool Tests
 echo -e "${BOLD}[2/3] Running Python Tool Unit Tests...${NC}"
 uv run python3 -m unittest discover -s "${SCRIPT_DIR}/tests" -p "test_*.py"

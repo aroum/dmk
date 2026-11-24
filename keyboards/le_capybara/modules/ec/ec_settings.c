@@ -8,6 +8,9 @@
 #include "task.h"
 #include <string.h>
 #include <stdio.h>
+#define CAL_REQ_ENTER() taskENTER_CRITICAL()
+#define CAL_REQ_EXIT() taskEXIT_CRITICAL()
+#include "cal_request.h"
 
 #define TOPRE_TYPICAL_TRAVEL_COUNTS 1500U
 #define CAL_BASELINE_SAMPLES 16U
@@ -275,6 +278,18 @@ bool vial_keyboard_settings_reset(void) {
     return vial_stm32f072_erase_settings_page(USER_EEPROM_ADDR);
 }
 
+static volatile uint8_t s_cal_request;
+
+void hhkb_calibration_request_start(void) { cal_request_post(&s_cal_request, CAL_REQ_START); }
+void hhkb_calibration_request_finish(void) { cal_request_post(&s_cal_request, CAL_REQ_FINISH); }
+
+// Matrix task only, outside a scan.
+void hhkb_calibration_apply_pending(void) {
+    cal_request_t req = cal_request_take(&s_cal_request);
+    if (req == CAL_REQ_START) hhkb_calibration_start();
+    else if (req == CAL_REQ_FINISH) hhkb_calibration_finish();
+}
+
 void hhkb_calibration_start(void) {
     taskENTER_CRITICAL();
     s_cal_baseline_samples = 0;
@@ -481,7 +496,7 @@ void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
 }
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
     unsigned count = __builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]);
-    if (s_capture_baseline) snprintf(buf, max_len, "Capturing baseline");
+    if (s_cal_request == CAL_REQ_START || s_capture_baseline) snprintf(buf, max_len, "Capturing baseline");
     else if (s_calibration_mode) snprintf(buf, max_len, "Measured: %u keys", count);
     else snprintf(buf, max_len, "Idle");
 }

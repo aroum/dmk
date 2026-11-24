@@ -96,9 +96,9 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         } else if (id == 2) {
             hhkb_calibration_set_enabled(request[3] != 0);
         } else if (id == 7 && request[3]) {
-            hhkb_calibration_start();
+            hhkb_calibration_request_start();
         } else if (id == 8 && request[3]) {
-            hhkb_calibration_finish();
+            hhkb_calibration_request_finish();
         } else if (id == 9 || id == 10) {
             hhkb_set_led_mode(id - 9, request[3]);
         } else if (id == 27) {

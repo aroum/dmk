@@ -41,8 +41,13 @@ _Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 228, "Preserve the v1 setti
 void hhkb_settings_init(void);
 void hhkb_calibration_load(void);
 void hhkb_calibration_save_to_eeprom(void);
+// start/finish: matrix task only (call apply_pending at a scan boundary).
+// Other tasks must use the request_* functions.
 void hhkb_calibration_start(void);
 void hhkb_calibration_finish(void);
+void hhkb_calibration_request_start(void);
+void hhkb_calibration_request_finish(void);
+void hhkb_calibration_apply_pending(void);
 bool hhkb_calibration_enabled(void);
 void hhkb_calibration_set_enabled(bool enabled);
 bool hhkb_is_calibrating(void);
