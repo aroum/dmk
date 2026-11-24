@@ -383,11 +383,11 @@ In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` 
 // - To enable: set desired window (e.g. 120-150 ms).
 #define QUICK_TAP_TERM 0
 
-// [Universal Hold-Tap Macro]
-// Replaces both &mt and &lt from ZMK.
-// Argument layer_or_mod: if 0-15 is passed, it is Layer-Tap.
-//                        if modifier mask (e.g. MOD_LSHIFT) is passed, it is Mod-Tap.
+// HT selects a layer (0..15); MT explicitly selects a modifier mask.
+// They use distinct internal tags, even when mask and layer have equal values.
 #define HT(layer_or_mod, kc)    (DMK_HT | ((layer_or_mod) << 8) | (kc))
+#define MT(mod_mask, kc) (DMK_MT | ((uint32_t)(uint8_t)(mod_mask) << 8) | (kc))
+#define MT_T(mod_mask, kc, ms) (MT(mod_mask, kc) | ((uint32_t)(ms) << 16))
 
 // Custom hold-tap definition with individual timeout
 #define HT_T(layer_or_mod, kc, ms) (DMK_HT | ((layer_or_mod) << 8) | (kc) | ((uint32_t)(ms) << 16))
@@ -412,12 +412,12 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
         // 2. MOD-TAP EQUIVALENT (&mt LSHIFT F)
         // Held: is Left Shift. Tapped: sends key 'F'.
-        // Firmware detects MOD_LSHIFT and handles it as Mod-Tap, not Layer-Tap.
-        HT(MOD_LSHIFT, K_F),
+        // MT explicitly marks this as Mod-Tap, not Layer-Tap.
+        MT(MOD_LSHIFT, K_F),
 
         // 3. CUSTOM HOLD-TAP WITH INDIVIDUAL TIMEOUT
-        // For this key (Space / Ctrl), hold timing is increased to 300ms.
-        HT_T(MOD_LCTRL, K_SPC, 300) }
+        // For this key (Space / Ctrl), the per-key timeout is 200ms (1..255).
+        MT_T(MOD_LCTRL, K_SPC, 200) }
     }
 };
 ```

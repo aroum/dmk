@@ -34,10 +34,12 @@ static size_t s_recorded_keys_count = 0;
 
 static mod_event_record_t s_recorded_mods[MAX_RECORDS];
 static size_t s_recorded_mods_count = 0;
+static unsigned s_raw_mod_calls;
 
 void mock_reset_records(void) {
     s_recorded_keys_count = 0;
     s_recorded_mods_count = 0;
+    s_raw_mod_calls = 0;
     g_mock_ticks = 0;
 }
 
@@ -53,6 +55,11 @@ void keyboard_send_modifiers(uint8_t mod_mask, bool pressed) {
     }
 }
 
+void keyboard_send_modifier_mask(uint8_t mask, bool pressed) {
+    ++s_raw_mod_calls;
+    keyboard_send_modifiers(mask, pressed);
+}
+
 void oneshot_send_lazy_mods(void) {}
 void oneshot_on_tap_key(void) {}
 void hook_layer_change(uint8_t layer) { (void)layer; }
@@ -64,6 +71,31 @@ void hook_key_sent(uint16_t keycode, bool pressed) { (void)keycode; (void)presse
 #include "keys.h"
 #include "hold_tap.h"
 #include "hold_tap.c"
+
+static void test_explicit_modifier_taps(void) {
+    mock_reset_records();hold_tap_init();
+    uint32_t timed=MT_T(MOD_RCTRL,K_APP,80);
+    hold_tap_process_event(0,0,timed,true);
+    g_mock_ticks=79;hold_tap_check_timeouts(g_mock_ticks);assert(!s_raw_mod_calls);
+    g_mock_ticks=80;hold_tap_check_timeouts(g_mock_ticks);assert(s_raw_mod_calls==1);
+    hold_tap_process_event(0,0,timed,false);assert(s_raw_mod_calls==2);
+    const uint8_t masks[] = {1,2,4,8,16,32,64,128,0xe0,0xe7,0xf0,0xff};
+    for (unsigned i=0;i<sizeof(masks);++i) {
+        mock_reset_records();hold_tap_init();layers_init();
+        uint8_t tap=masks[i]==MOD_RSHIFT?K_RGUI:K_APP;
+        uint32_t key=MT(masks[i],tap);
+        assert(hold_tap_process_event(0,0,key,true));
+        g_mock_ticks=1000;hold_tap_check_timeouts(g_mock_ticks);
+        assert(s_raw_mod_calls==1 && s_recorded_mods_count==1 && s_recorded_mods[0].mod_mask==masks[i] && s_recorded_mods[0].pressed);
+        assert(layers_get_state()==1);
+        hold_tap_process_event(0,0,key,false);
+        assert(s_raw_mod_calls==2 && s_recorded_mods_count==2 && s_recorded_mods[1].mod_mask==masks[i] && !s_recorded_mods[1].pressed);
+        mock_reset_records();hold_tap_init();
+        hold_tap_process_event(0,0,key,true);g_mock_ticks=20;hold_tap_process_event(0,0,key,false);
+        assert(s_recorded_mods_count==0 && s_recorded_keys_count==2);
+        assert(s_recorded_keys[0].keycode==tap && s_recorded_keys[0].pressed && !s_recorded_keys[1].pressed);
+    }
+}
 
 static void test_hold_tap_tap_before_timeout(void) {
     mock_reset_records();
@@ -398,6 +430,7 @@ static void test_usb_matrix_batch(void) {
 #endif
 
 int main(void) {
+    test_explicit_modifier_taps();
     printf("\n=== Running DMK Host-Based C Core Unit Tests ===\n\n");
 
     printf("[1/3] Testing Hold-Tap subsystem...\n");

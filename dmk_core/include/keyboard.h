@@ -32,6 +32,8 @@ void keyboard_send_key(uint16_t keycode, bool pressed);
  * @param pressed True on press, false on release
  */
 void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
+// Unambiguous HID bitmask: unlike the legacy helper, 0xE0..0xE7 are not keycodes.
+void keyboard_send_modifier_mask(uint8_t mod_mask, bool pressed);
 
 /**
  * @brief Core event processor for resolving matrix coordinate into keycode action.

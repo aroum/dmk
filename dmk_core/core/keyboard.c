@@ -82,6 +82,10 @@ void keyboard_send_key(uint16_t keycode, bool pressed) {
  * @param mod_mask Bitmask (MOD_LCTRL, etc.) or HID modifier code (0xE0..0xE7).
  * @param pressed True for keydown, false for keyup.
  */
+void keyboard_send_modifier_mask(uint8_t mod_mask, bool pressed) {
+    usb_process_modifiers(mod_mask, pressed);
+}
+
 void keyboard_send_modifiers(uint8_t mod_mask, bool pressed) {
     // If given a HID modifier keycode (0xE0 - 0xE7), convert to standard bitmask
     if (mod_mask >= 0xE0 && mod_mask <= 0xE7) {

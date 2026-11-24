@@ -200,10 +200,13 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
     if ((dmk_key & 0xFF000000) == DMK_TG)
         return 0x5260 | (dmk_key & 0xFF);
 
+    if ((dmk_key & 0xFF000000) == DMK_MT) {
+        return 0x2000 | (to_via_mod_mask((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
+    }
     if ((dmk_key & 0xFF000000) == DMK_HT) {
         uint8_t layer_or_mod = (dmk_key >> 8) & 0xFF;
         uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
-        return (layer_or_mod < 32) ? (0x4000 | (layer_or_mod << 8) | kc)
+        return (layer_or_mod < 16) ? (0x4000 | (layer_or_mod << 8) | kc)
                                    : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
     }
     if ((dmk_key & 0xFF000000) == DMK_MK) {
@@ -273,7 +276,7 @@ uint32_t from_via_keycode(uint16_t via_key) {
     if (via_key >= 0x0100 && via_key <= 0x1FFF)
         return MK(from_via_mods((via_key >> 8) & 0xFF), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x2000 && via_key <= 0x3FFF)
-        return HT(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
+        return MT(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x4000 && via_key <= 0x4FFF)
         return HT((via_key >> 8) & 0x0F, from_via_mouse_keycode(via_key & 0xFF));
 

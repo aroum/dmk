@@ -229,6 +229,12 @@ This document lists all the standard HID keycodes, consumer media keys, modifier
 | `L_0` ... `L_15`     | -                                                         | Raw Layer Momentary Switch (Layer 0 ... 15)                      | `0x0100` ... `0x010F` |
 | `K_FN0` ... `K_FN15` | -                                                         | Fn Keys (Bound to momentary layer switches `MO(0)` ... `MO(15)`) | Encoded Layer         |
 
+## Modifier-Tap and Layer-Tap
+
+Use `MT(MOD_RCTRL, K_APP)` or `MT(MOD_RSHIFT, K_RGUI)` for a modifier on hold and a key on tap. Use `HT(layer, key)` for Layer-Tap (layers 0–15). `MT_T(mask, key, ms)` adds an individual timeout of 1–255 ms. Modifier masks are HID masks (`MOD_LCTRL`, `MOD_RCTRL`, etc.), not HID keycodes such as `K_RCTL`.
+
+VIA/Vial Mod-Tap writes use a distinct internal tag, so Right Ctrl cannot turn into a layer code and left modifier masks cannot be mistaken for layer numbers. Existing legacy `HT` entries remain readable; no EEPROM reset or format migration is needed. Ambiguous old low-mask entries and modifiers already corrupted by older firmware cannot be repaired reliably: reassign those keys after updating. New tagged entries require this firmware or newer; older firmware cannot execute them correctly.
+
 ## MIDI Keycodes and Helper Macros
 
 > [!NOTE]

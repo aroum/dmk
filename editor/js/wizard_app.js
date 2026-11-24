@@ -2339,7 +2339,7 @@
             else if (initialModType === 'RG(...)') activeModalModifiers = ['RG'];
             else if (initialModType === 'HYPER(...)') activeModalModifiers = ['LG', 'LS', 'LA', 'LC'];
             else if (initialModType === 'MEH(...)') activeModalModifiers = ['LC', 'LS', 'LA'];
-            else if (initialModType === 'HT(...)') activeModalModifiers = ['HT_LSHIFT'];
+            else if (initialModType === 'HT(...)' || initialModType === 'MT(...)') activeModalModifiers = ['HT_LSHIFT'];
             else activeModalModifiers = ['LS'];
 
             renderModalKeyChoiceContent(callback);
@@ -2482,21 +2482,21 @@
             let result = key;
             activeModalModifiers.slice().reverse().forEach(mod => {
                 if (mod === 'HT_LSHIFT' || mod === 'HT_SHIFT') {
-                    result = `HT(MOD_LSHIFT, ${result})`;
+                    result = `MT(MOD_LSHIFT, ${result})`;
                 } else if (mod === 'HT_RSHIFT') {
-                    result = `HT(MOD_RSHIFT, ${result})`;
+                    result = `MT(MOD_RSHIFT, ${result})`;
                 } else if (mod === 'HT_LCTRL') {
-                    result = `HT(MOD_LCTRL, ${result})`;
+                    result = `MT(MOD_LCTRL, ${result})`;
                 } else if (mod === 'HT_RCTRL') {
-                    result = `HT(MOD_RCTRL, ${result})`;
+                    result = `MT(MOD_RCTRL, ${result})`;
                 } else if (mod === 'HT_LALT') {
-                    result = `HT(MOD_LALT, ${result})`;
+                    result = `MT(MOD_LALT, ${result})`;
                 } else if (mod === 'HT_RALT') {
-                    result = `HT(MOD_RALT, ${result})`;
+                    result = `MT(MOD_RALT, ${result})`;
                 } else if (mod === 'HT_LGUI') {
-                    result = `HT(MOD_LGUI, ${result})`;
+                    result = `MT(MOD_LGUI, ${result})`;
                 } else if (mod === 'HT_RGUI') {
-                    result = `HT(MOD_RGUI, ${result})`;
+                    result = `MT(MOD_RGUI, ${result})`;
                 } else {
                     result = `${mod}(${result})`;
                 }
@@ -3948,8 +3948,8 @@ visualElements.push({
                 "HYPER(...)", "MEH(...)",
                 // Unified One-Shot (OSM & Layers)
                 "OS(...)",
-                // Universal Hold-Tap (Mod-Tap / Layer-Tap)
-                "HT(...)",
+                // Explicit Modifier-Tap (Layer-Tap choices are listed per layer)
+                "MT(...)",
                 // Standard modifier keys
                 "K_LCTRL","K_LSHIFT","K_LALT","K_LGUI","K_RCTRL","K_RSHIFT","K_RALT","K_RGUI",
                 "K_LOCKING_CAPS","K_LOCKING_NUM","K_LOCKING_SCROLL",

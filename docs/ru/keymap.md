@@ -385,11 +385,11 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 // - Чтобы включить: укажите желаемый интервал (например 120-150 мс).
 #define QUICK_TAP_TERM 0
 
-// [Универсальный Hold-Tap макрос]
-// Заменяет собой и &mt, и &lt из ZMK.
-// Аргумент layer_or_mod: если передаем 0-15 — это слой (Layer-Tap),
-//                        если передаем маску (напр. MOD_LSHIFT) — это модификатор (Mod-Tap).
+// HT выбирает слой (0..15), MT явно задаёт маску модификаторов.
+// Разные признаки типа исключают путаницу одинаковых чисел слоя и маски.
 #define HT(layer_or_mod, kc)    (DMK_HT | ((layer_or_mod) << 8) | (kc))
+#define MT(mod_mask, kc) (DMK_MT | ((uint32_t)(uint8_t)(mod_mask) << 8) | (kc))
+#define MT_T(mod_mask, kc, ms) (MT(mod_mask, kc) | ((uint32_t)(ms) << 16))
 
 // Аналог создания кастомного hold-tap узла с индивидуальным таймаутом
 #define HT_T(layer_or_mod, kc, ms) (DMK_HT | ((layer_or_mod) << 8) | (kc) | ((uint32_t)(ms) << 16))
@@ -414,12 +414,12 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
         // 2. АНАЛОГ MOD-TAP (&mt LSHIFT F)
         // Зажимаем: работает как левый Shift. Тапаем: отправляет букву 'F'.
-        // Прошивка сама видит маску MOD_LSHIFT и обрабатывает это как Mod-Tap, а не Layer-Tap.
-        HT(MOD_LSHIFT, K_F),
+        // MT явно задаёт Mod-Tap, а не Layer-Tap.
+        MT(MOD_LSHIFT, K_F),
 
         // 3. АНАЛОГ КАСТОМНОГО HOLD-TAP С ИНДИВИДУАЛЬНЫМ ТАЙМИНГОМ
-        // Для этой конкретной клавиши (Пробел / Ctrl) тайминг удержания увеличен до 300мс.
-        HT_T(MOD_LCTRL, K_SPC, 300) }
+        // Индивидуальный таймаут этой клавиши (Пробел / Ctrl) — 200 мс (1..255).
+        MT_T(MOD_LCTRL, K_SPC, 200) }
     }
 };
 ```

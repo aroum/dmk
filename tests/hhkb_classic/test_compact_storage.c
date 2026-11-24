@@ -225,5 +225,13 @@ int main(int argc, char **argv) {
             assert(!memcmp(memory,saved,sizeof(memory)));
         }
     }
+    // Explicit modifier-tap tags survive repeated saves and reboot (ANSI/JIS).
+    fresh();poll();
+    const uint32_t modtaps[]={0x40001065,0x400020e7,0x40000104,0x4000e005};
+    for(unsigned pass=0;pass<3;++pass) {
+        for(unsigned i=0;i<4;++i)dynamic_keymap[0][i]=modtaps[(i+pass)%4];
+        vial_keyboard_keymap_save();poll();reboot();
+        for(unsigned i=0;i<4;++i)assert(dynamic_keymap[0][i]==modtaps[(i+pass)%4]);
+    }
     puts("compact EEPROM transactions and early recovery reset passed");
 }

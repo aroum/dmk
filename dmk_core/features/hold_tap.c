@@ -29,6 +29,7 @@ __attribute__((weak)) uint16_t hold_tap_config_value(uint8_t id) {
 
 extern void keyboard_send_key(uint16_t keycode, bool pressed);
 extern void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
+extern void keyboard_send_modifier_mask(uint8_t mod_mask, bool pressed);
 extern void oneshot_send_lazy_mods(void);
 extern void oneshot_on_tap_key(void);
 
@@ -42,16 +43,24 @@ bool hold_tap_has_active(void) {
     return s_active_ht_count > 0;
 }
 
+static void send_hold_action(uint32_t key, bool pressed) {
+    uint8_t target = (key >> 8) & 0xFF;
+    if ((key & 0xFF000000) == DMK_MT) {
+        keyboard_send_modifier_mask(target, pressed);
+    } else if (target < 16) {
+        if (pressed) layers_on(target); else layers_off(target);
+    } else {
+        // Preserve historical HT(layer/HID modifier/large mask) keymaps.
+        keyboard_send_modifiers(target, pressed);
+    }
+}
+
 static void activate_hold(HTTracker *tracker) {
     if (tracker->state == HT_STATE_PRESSED && s_active_ht_count > 0) {
         s_active_ht_count--;
     }
     tracker->state = HT_STATE_HOLD;
-    uint8_t target = (tracker->keycode >> 8) & 0xFF;
-    if (target < 16)
-        layers_on(target);
-    else
-        keyboard_send_modifiers(target, true);
+    send_hold_action(tracker->keycode, true);
 }
 
 void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
@@ -85,7 +94,7 @@ TickType_t hold_tap_check_timeouts(TickType_t now) {
 }
 
 bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
-    if ((key & 0xFF000000) != DMK_HT)
+    if ((key & 0xFF000000) != DMK_HT && (key & 0xFF000000) != DMK_MT)
         return false;
 
     TickType_t now = xTaskGetTickCount();
@@ -136,7 +145,6 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
     } else {
         for (int i = 0; i < MAX_HT_TRACKERS; i++) {
             if (ht_trackers[i].state != HT_STATE_IDLE && ht_trackers[i].row == row && ht_trackers[i].col == col) {
-                uint8_t target = (ht_trackers[i].keycode >> 8) & 0xFF;
                 uint8_t kc = ht_trackers[i].keycode & 0xFF;
 
                 if (ht_trackers[i].state == HT_STATE_REPEAT) {
@@ -159,10 +167,7 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                     s_last_release.release_time = now;
                     s_last_release.valid = true;
                 } else if (ht_trackers[i].state == HT_STATE_HOLD) {
-                    if (target < 16)
-                        layers_off(target);
-                    else
-                        keyboard_send_modifiers(target, false);
+                    send_hold_action(ht_trackers[i].keycode, false);
                     s_last_release.valid = false;
                 }
                 ht_trackers[i].state = HT_STATE_IDLE;

@@ -41,7 +41,16 @@ int main(void) {
             assert(from_via_keycode(encoded) == (uint32_t)MK(expected, K_SCLN));
             if (mods & 0x0F) assert(to_via_keycode(from_via_keycode(encoded)) == encoded);
         }
-        assert(from_via_keycode((uint16_t)(0x2000 | (mods << 8) | 0x33)) == (uint32_t)HT(expected, K_SCLN));
+        uint16_t mt = (uint16_t)(0x2000 | (mods << 8) | 0x33);
+        assert(from_via_keycode(mt) == (uint32_t)MT(expected, K_SCLN));
+        if (mods & 0x0F) assert(to_via_keycode(from_via_keycode(mt)) == mt);
+    }
+    assert(to_via_keycode(HT(MOD_RCTRL, K_APP)) == 0x3165); // Existing EEPROM encoding.
+    assert(to_via_keycode(HT(K_RCTL, K_APP)) == 0x3165); // Legacy static keymap.
+    for (unsigned layer = 0; layer < 16; ++layer) {
+        uint16_t lt = 0x4000 | (layer << 8) | 0x33;
+        assert(from_via_keycode(lt) == (uint32_t)HT(layer, K_SCLN));
+        assert(to_via_keycode(from_via_keycode(lt)) == lt);
     }
     // Issue #6: LCTL(KC_SCLN) must not read back as RCTL(KC_SCLN).
     assert(from_via_keycode(0x0133) == MK(MOD_LCTRL, K_SCLN));
@@ -53,6 +62,7 @@ int main(void) {
 
     // Exercise the actual VIA write/read commands, not only conversion helpers.
     const uint16_t modified[] = {0x0133, 0x0233, 0x0433, 0x0833,
+                                 0x32E7, 0x3165, 0x2104, 0x2204, 0x2404, 0x2804, 0x3E04, 0x3F04,
                                  0x1133, 0x1233, 0x1433, 0x1833, 0x0F33, 0x1E33, 0x1F33};
     for (unsigned i = 0; i < sizeof(modified) / sizeof(modified[0]); ++i) {
         uint8_t set[32] = {0x05, 0, 0, 0, modified[i] >> 8, modified[i] & 0xFF};
