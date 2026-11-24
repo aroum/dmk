@@ -137,19 +137,19 @@ Model ID (6), version (4), trailing 0xFF (6)
 
 ## 3. Flash and RAM usage
 
-The [HHKB linker layout](../../../../platforms/stm32l072/stm32l072_bank2.ld) provides **65,536 bytes of Bank 2 Flash** at `0x08010000–0x0801FFFF` and **20,480 bytes of SRAM**. These measurements use code commit `fc0694da`, built on 2026-11-24 with **Arm GNU Toolchain 15.3.Rel2 / GCC 15.3.1**, `-Os`, no LTO, and the default configuration including compressed EEPROM storage and SW5+SW6 recovery. All sizes are bytes.
+The [HHKB linker layout](../../../../platforms/stm32l072/stm32l072_bank2.ld) provides **65,536 bytes of Bank 2 Flash** at `0x08010000–0x0801FFFF` and **20,480 bytes of SRAM**. These measurements use code commit `3e48c218`, built on 2026-11-24 with **Arm GNU Toolchain 15.3.Rel2 / GCC 15.3.1**, `-Os`, no LTO, and the default configuration including compressed EEPROM storage and SW5+SW6 recovery. All sizes are bytes.
 
 ### HHKB Classic
 
 | Variant | Flash used / 65,536 B | Flash free | RAM allocated / 20,480 B | RAM unallocated |
 | --- | ---: | ---: | ---: | ---: |
-| ANSI: Classic / Classic Type-S | 49,984 (76.27%) | 15,552 | 16,824 (82.15%) | 3,656 |
-| JIS: Classic Type-S | 49,808 (76.00%) | 15,728 | 17,344 (84.69%) | 3,136 |
+| ANSI: Classic / Classic Type-S | 51,320 (78.31%) | 14,216 | 18,080 (88.28%) | 2,400 |
+| JIS: Classic Type-S | 51,088 (77.95%) | 14,448 | 18,632 (90.98%) | 1,848 |
 
 RAM section breakdown:
 
-- **ANSI:** `.data` 1,664 + `.bss` 13,112 + `._user_heap_stack` 2,048 = **16,824**.
-- **JIS:** `.data` 1,688 + `.bss` 13,604 + `._user_heap_stack` 2,052 = **17,344**.
+- **ANSI:** `.data` 2,536 + `.bss` 13,492 + `._user_heap_stack` 2,052 = **18,080**.
+- **JIS:** `.data` 2,504 + `.bss` 14,080 + `._user_heap_stack` 2,048 = **18,632**.
 
 Classic and Classic Type-S ANSI were built separately and have identical memory usage.
 
@@ -159,15 +159,15 @@ Includes the Nordic SPI transport, battery telemetry, and sleep/OFF state machin
 
 | Variant | Flash used / 65,536 B | Flash free | RAM allocated / 20,480 B | RAM unallocated |
 | --- | ---: | ---: | ---: | ---: |
-| ANSI: Hybrid / Type-S | 61,424 (93.73%) | 4,112 | 17,080 (83.40%) | 3,400 |
-| JIS: Hybrid / Type-S | 61,280 (93.51%) | 4,256 | 17,600 (85.94%) | 2,880 |
+| ANSI: Hybrid / Type-S | 62,760 (95.76%) | 2,776 | 18,328 (89.49%) | 2,152 |
+| JIS: Hybrid / Type-S | 62,560 (95.46%) | 2,976 | 18,888 (92.23%) | 1,592 |
 
 RAM section breakdown:
 
-- **ANSI:** `.data` 1,720 + `.bss` 13,308 + `._user_heap_stack` 2,052 = **17,080**.
-- **JIS:** `.data` 1,744 + `.bss` 13,804 + `._user_heap_stack` 2,052 = **17,600**.
+- **ANSI:** `.data` 2,592 + `.bss` 13,688 + `._user_heap_stack` 2,048 = **18,328**.
+- **JIS:** `.data` 2,560 + `.bss` 14,276 + `._user_heap_stack` 2,052 = **18,888**.
 
-Hybrid ANSI now has **4,112 bytes** of Bank 2 Flash remaining; JIS has **4,256 bytes**. Compiler, feature flags and firmware-version strings can change these values.
+Hybrid ANSI now has **2,776 bytes** of Bank 2 Flash remaining; JIS has **2,976 bytes**. Compiler, feature flags and firmware-version strings can change these values.
 
 ### Memory and idle-work optimizations
 
@@ -176,6 +176,10 @@ The EC curve LUT is built with Q20 integer arithmetic at startup or after a sett
 HHKB uses its statically created matrix queue. Removing the unreachable dynamic-queue fallback lets the linker discard the 2 KiB FreeRTOS heap in these default builds. Vial also omits unused encoder storage and Flash-page padding from HHKB RAM; the compact EEPROM serialization format remains unchanged.
 
 When USB power saving suspends matrix scanning, scan timer interrupts are disabled and rearmed on resume. An idle HHKB USB task waits for USB/producer notifications, with a one-second background heartbeat; pending EEPROM operations retain frequent service. Keyboard reports still wake the task immediately. Other platforms retain their existing USB fallback cadence.
+
+The scanner additionally caches exact raw press/release thresholds and the last raw sample: 376 bytes for ANSI or 468 bytes for JIS, plus a 4-byte range revision. Fixed-mode scanning needs no LUT/normalization unless EC streaming is enabled. RT normalization runs once per key and its result is reused for logging. Normalization overlaps the inter-key settling interval; state updates overlap the next ADC conversion. This trades additional cache and RAM-resident code for less per-key CPU work. The tables above include that memory cost.
+
+With `HHKB_SCAN_DIAGNOSTICS=1`, the reference builds use Flash/RAM respectively: Classic ANSI **51,784 / 18,120 B**, Classic JIS **51,560 / 18,672 B**, Hybrid ANSI **63,256 / 18,368 B**, Hybrid JIS **63,056 / 18,928 B**. Hybrid JIS retains **1,552 B** of unallocated RAM in the diagnostic build. Runtime stack headroom and scan deadlines require hardware measurements; see [detailed scan timing](via-debug.md#detailed-scan-timing-ansi-and-jis).
 
 ### How to interpret the numbers
 
