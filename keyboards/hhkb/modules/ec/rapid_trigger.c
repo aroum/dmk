@@ -90,6 +90,10 @@ RT_SCAN_CODE uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const
 static inline __attribute__((always_inline))
 bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
     const rt_cfg_t *c = &scan->cfg;
+    // Pressure beyond calibrated bottom-out must not deepen the RT release anchor.
+    // Keep EEPROM/config layout unchanged: this is a zero-width bottom dead zone.
+    uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
+    if (c->rt_enabled && v > (int16_t)bottom) v = (int16_t)bottom;
     /* Top dead zone: key is definitely up, RT disarmed until act_pm is crossed again. */
     if (v <= (int16_t)c->reset_pm) {
         k->down    = false;

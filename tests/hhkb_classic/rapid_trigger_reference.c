@@ -56,6 +56,8 @@ __attribute__((section(".RamFunc"), optimize("O2")))
 #endif
 bool rt_update_curve(rt_key_t *k, const rt_cfg_t *c, uint16_t raw, const uint16_t *lut) {
     int16_t v = (int16_t)normalize(k, raw, lut);
+    uint16_t bottom = lut ? lut[125] : RT_FULL_SCALE;
+    if (c->rt_enabled && v > (int16_t)bottom) v = (int16_t)bottom;
 
     /* Top dead zone: key is definitely up, RT disarmed until act_pm is crossed again. */
     if (v <= (int16_t)c->reset_pm) {

@@ -22,6 +22,27 @@ static void setup(bool rt) {
 
 int main(void) {
     int events;
+    // Bottom-out pressure above peak must not create a false upward movement.
+    setup(true);
+    assert(feed(1000));
+    assert(feed(1100));
+    assert(feed(1010));
+    assert(feed(1000));
+    assert(feed(971));
+    assert(!feed(970));
+
+
+    // Curve endpoint, not the raw over-travel clamp, limits the anchor too.
+    setup(true);
+    uint16_t endpoint_curve[126] = {0};
+    endpoint_curve[125] = 900;
+    rt_scan_cfg_t prepared;
+    rt_prepare_scan(&prepared, &cfg, endpoint_curve);
+    assert(rt_update_scan_travel(&key, &prepared, 900));
+    assert(rt_update_scan_travel(&key, &prepared, 1100));
+    assert(key.ext == 900);
+    assert(rt_update_scan_travel(&key, &prepared, 900));
+    assert(!rt_update_scan_travel(&key, &prepared, 870));
 
     /* 1. Slow press: nothing before act point (750), pressed right at it. */
     setup(true);
