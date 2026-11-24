@@ -62,19 +62,18 @@ __attribute__((noinline)) static uint32_t legacy_hash(volatile const uint32_t *p
     for (unsigned i = 0; i < payload_words; i++) h = hash_word(h, p[4 + i]);
     return h;
 }
-static uint32_t slot_hash(volatile const uint32_t *p) { return legacy_hash(p, PAYLOAD_WORDS); }
-static uint32_t slot_v1_hash(volatile const uint32_t *p) { return legacy_hash(p, V1_KEYMAP_WORDS); }
-static bool valid(unsigned n) {
-    volatile const uint32_t *p = slot(n);
-    return p[0] == SLOT_MAGIC && p[3] == SLOT_COMMIT && p[2] == slot_hash(p);
+static inline uint32_t slot_hash(volatile const uint32_t *p) { return legacy_hash(p, PAYLOAD_WORDS); }
+static inline uint32_t slot_v1_hash(volatile const uint32_t *p) { return legacy_hash(p, V1_KEYMAP_WORDS); }
+__attribute__((noinline)) static bool legacy_valid(volatile const uint32_t *p, uint32_t magic, unsigned payload_words) {
+    return p[0] == magic && p[3] == SLOT_COMMIT && p[2] == legacy_hash(p, payload_words);
 }
+static bool valid(unsigned n) { return legacy_valid(slot(n), SLOT_MAGIC, PAYLOAD_WORDS); }
 static bool valid_v1(unsigned n) {
 #ifdef HHKB_JIS
     (void)n;
     return false; // DMK1 contained exactly 240 ANSI keys; no JIS geometry.
 #else
-    volatile const uint32_t *p = slot_v1(n);
-    return p[0] == SLOT_MAGIC_V1 && p[3] == SLOT_COMMIT && p[2] == slot_v1_hash(p);
+    return legacy_valid(slot_v1(n), SLOT_MAGIC_V1, V1_KEYMAP_WORDS);
 #endif
 }
 static bool has_valid_v1(void) {

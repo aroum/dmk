@@ -190,6 +190,8 @@ void matrix_task(void *pvParameters) {
     TickType_t sleep_started = last_activity;
 #endif
     for (;;) {
+        // Also reached while sleeping/powered off/power saving.
+        hhkb_calibration_apply_pending();
         bool battery = false;
 #ifdef HHKB_HYBRID
         hhkb_hybrid_critical_battery_poll(xTaskGetTickCount());
@@ -381,6 +383,7 @@ void matrix_task(void *pvParameters) {
         }
         previous_scan_start = scan_start;
 #endif
+        hhkb_calibration_apply_pending();
         hhkb_matrix_scan_raw(s_matrix_state);
 #ifdef HHKB_SCAN_DIAGNOSTICS
         uint32_t scan_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;

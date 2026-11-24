@@ -15,6 +15,9 @@
 #include "task.h"
 #include <string.h>
 #include <stdio.h>
+#define CAL_REQ_ENTER() taskENTER_CRITICAL()
+#define CAL_REQ_EXIT() taskEXIT_CRITICAL()
+#include "cal_request.h"
 
 #define TOPRE_TYPICAL_TRAVEL_COUNTS 2370U
 #define CAL_BASELINE_SAMPLES 16U
@@ -225,6 +228,8 @@ void hhkb_calibration_save_to_eeprom(void) {
     hhkb_eeprom_cal_t cal = {0};
     cal.magic = USER_EEPROM_MAGIC;
     cal.version = USER_EEPROM_VERSION;
+    // The matrix task owns calibration updates; snapshot them atomically.
+    taskENTER_CRITICAL();
     cal.actuation_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
     cal.rt = s_rt_cfg;
     memcpy(cal.curve, ec_curve_settings, sizeof(cal.curve));
@@ -256,12 +261,9 @@ void hhkb_calibration_save_to_eeprom(void) {
                 ((s_system & 1) << 5) |
                 ((s_led_mode[0] & 3) << 6);
 
-    for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-        for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-            cal.baseline[c][r] = s_cal_baseline[c][r];
-            cal.peak[c][r] = s_cal_peak[c][r];
-        }
-    }
+    memcpy(cal.baseline, s_cal_baseline, sizeof(cal.baseline));
+    memcpy(cal.peak, s_cal_peak, sizeof(cal.peak));
+    taskEXIT_CRITICAL();
     cal.crc16 = compute_crc16((const uint8_t *)&cal.baseline, sizeof(cal) - offsetof(hhkb_eeprom_cal_t, baseline));
 
 #ifdef HHKB_COMPACT_STORAGE
@@ -448,6 +450,18 @@ void vial_keyboard_eeprom_task(void) {
     }
 }
 
+static volatile uint8_t s_cal_request;
+
+void hhkb_calibration_request_start(void) { cal_request_post(&s_cal_request, CAL_REQ_START); }
+void hhkb_calibration_request_finish(void) { cal_request_post(&s_cal_request, CAL_REQ_FINISH); }
+
+// Matrix task only, outside a scan.
+void hhkb_calibration_apply_pending(void) {
+    cal_request_t req = cal_request_take(&s_cal_request);
+    if (req == CAL_REQ_START) hhkb_calibration_start();
+    else if (req == CAL_REQ_FINISH) hhkb_calibration_finish();
+}
+
 void hhkb_calibration_start(void) {
     memset(s_capture_base, 0, sizeof(s_capture_base));
     s_cal_baseline_samples = CAL_BASELINE_SAMPLES;
@@ -456,7 +470,7 @@ void hhkb_calibration_start(void) {
     s_capture_baseline = true;
     s_calibration_mode = true;
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-        debug_console_printf("\r\n[CAL] Calibration started: capturing baseline (16 samples)...\r\n");
+        debug_console_printf("[CAL] Capturing baseline (16 samples).\r\n");
     }
 }
 
@@ -696,6 +710,10 @@ void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
 }
 
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
+    if (s_cal_request == CAL_REQ_START) {
+        snprintf(buf, max_len, "In progress: 0/%u keys", NUM_KEYS);
+        return;
+    }
     if (s_calibration_mode) {
         uint8_t count = calibrated_key_count();
         snprintf(buf, max_len, "In progress: %u/%u keys", count, NUM_KEYS);
@@ -778,10 +796,10 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
             uint8_t filled = (uint8_t)((count * 20U) / NUM_KEYS);
             for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
             bar[20] = '\0';
-            debug_console_printf("[CAL] [%s] %u%% (%u/%u) | Key R%u C%u peak: %u (base: %u)\r\n",
+            debug_console_printf("[CAL] [%s] %u%% %u/%u R%u C%u peak=%u base=%u\r\n",
                                  bar, pct, count, NUM_KEYS, row, col, s_capture_peak[col][row], s_capture_base[col][row]);
             if (count >= NUM_KEYS) {
-                debug_console_printf("[CAL] >>> All %u keys calibrated! Click 'Save calibration' in VIA. <<<\r\n", (unsigned)NUM_KEYS);
+                debug_console_printf("[CAL] All %u keys calibrated. Finish and save in VIA.\r\n", (unsigned)NUM_KEYS);
             }
         }
     } else if (is_down && val < release_thresh) {
@@ -791,7 +809,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
         uint16_t old_peak = s_cal_press_start_peak[col][row];
         uint16_t new_peak = s_capture_peak[col][row];
         if (old_peak > press_thresh && new_peak > old_peak + 20 && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            debug_console_printf("[CAL] Key R%u C%u peak updated: %u -> %u\r\n", row, col, old_peak, new_peak);
+            debug_console_printf("[CAL] R%u C%u peak: %u -> %u\r\n", row, col, old_peak, new_peak);
         }
     }
 }
@@ -807,7 +825,7 @@ void hhkb_cal_decrement_samples(void) {
         }
         s_capture_baseline = false;
         if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            debug_console_printf("[CAL] Baseline captured! Press every key firmly to record peak travel.\r\n");
+            debug_console_printf("[CAL] Baseline captured. Press each key firmly.\r\n");
         }
     }
 }

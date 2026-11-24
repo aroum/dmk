@@ -311,8 +311,7 @@ bool hhkb_storage_erase_early(void) {
     unsigned mask = 0;
     for (unsigned n = 0; n < sizeof(old)/sizeof(old[0]); ++n) {
         volatile const uint32_t *p = c_phys(old[n].offset);
-        if (p[0] == old[n].magic && p[3] == SLOT_COMMIT &&
-            p[2] == legacy_hash(p, old[n].words-4)) mask |= 1U << n;
+        if (legacy_valid(p, old[n].magic, old[n].words-4)) mask |= 1U << n;
     }
     uint32_t owner = *c_phys(0x1700), flags = *c_phys(0x1704);
     bool compact = (owner == 0x33484b3cU || owner == 0x33484b45U) &&

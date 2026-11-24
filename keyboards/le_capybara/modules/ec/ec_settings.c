@@ -8,6 +8,9 @@
 #include "task.h"
 #include <string.h>
 #include <stdio.h>
+#define CAL_REQ_ENTER() taskENTER_CRITICAL()
+#define CAL_REQ_EXIT() taskEXIT_CRITICAL()
+#include "cal_request.h"
 
 #define TOPRE_TYPICAL_TRAVEL_COUNTS 1500U
 #define CAL_BASELINE_SAMPLES 16U
@@ -119,6 +122,8 @@ void hhkb_calibration_save_to_eeprom(void) {
     memset(&cal, 0, sizeof(cal));
     cal.magic = USER_EEPROM_MAGIC;
     cal.version = USER_EEPROM_VERSION;
+    // The matrix task owns calibration updates; snapshot them atomically.
+    taskENTER_CRITICAL();
     cal.actuation_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
     cal.rt = s_rt_cfg;
     memcpy(cal.curve, ec_curve_settings, sizeof(cal.curve));
@@ -137,12 +142,9 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.led_mode[0] = s_led_mode[0];
     cal.led_mode[1] = s_led_mode[1];
 
-    for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-        for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
-            cal.baseline[c][r] = s_cal_baseline[c][r];
-            cal.peak[c][r] = s_cal_peak[c][r];
-        }
-    }
+    memcpy(cal.baseline, s_cal_baseline, sizeof(cal.baseline));
+    memcpy(cal.peak, s_cal_peak, sizeof(cal.peak));
+    taskEXIT_CRITICAL();
     cal.crc16 = compute_crc16((const uint8_t *)&cal.baseline, sizeof(cal) - offsetof(hhkb_eeprom_cal_t, baseline));
 
     // Flash page erase & program on STM32F072
@@ -275,6 +277,24 @@ bool vial_keyboard_settings_reset(void) {
     return vial_stm32f072_erase_settings_page(USER_EEPROM_ADDR);
 }
 
+static volatile uint8_t s_cal_request;
+static volatile uint8_t s_cal_enable_request;
+
+void hhkb_calibration_request_start(void) { cal_request_post(&s_cal_request, CAL_REQ_START); }
+void hhkb_calibration_request_finish(void) { cal_request_post(&s_cal_request, CAL_REQ_FINISH); }
+void hhkb_calibration_request_set_enabled(bool enabled) {
+    cal_request_post(&s_cal_enable_request, enabled ? CAL_REQ_ENABLE : CAL_REQ_DISABLE);
+}
+
+// Matrix task only, outside a scan.
+void hhkb_calibration_apply_pending(void) {
+    cal_request_t req = cal_request_take(&s_cal_request);
+    if (req == CAL_REQ_START) hhkb_calibration_start();
+    else if (req == CAL_REQ_FINISH) hhkb_calibration_finish();
+    req = cal_request_take(&s_cal_enable_request);
+    if (req != CAL_REQ_NONE) hhkb_calibration_set_enabled(req == CAL_REQ_ENABLE);
+}
+
 void hhkb_calibration_start(void) {
     taskENTER_CRITICAL();
     s_cal_baseline_samples = 0;
@@ -332,7 +352,9 @@ void hhkb_calibration_finish(void) {
         debug_console_printf("[CAL] Finished. Updated %u keys.\r\n", updated);
 }
 
+// Applied state; a pending set_enabled request is not reflected until applied.
 bool hhkb_calibration_enabled(void) { return s_custom_calibration; }
+// Matrix task only (rewrites rt key ranges); other tasks use request_set_enabled.
 void hhkb_calibration_set_enabled(bool enabled) {
     taskENTER_CRITICAL();
     s_custom_calibration = enabled;
@@ -481,7 +503,7 @@ void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
 }
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
     unsigned count = __builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]);
-    if (s_capture_baseline) snprintf(buf, max_len, "Capturing baseline");
+    if (s_cal_request == CAL_REQ_START || s_capture_baseline) snprintf(buf, max_len, "Capturing baseline");
     else if (s_calibration_mode) snprintf(buf, max_len, "Measured: %u keys", count);
     else snprintf(buf, max_len, "Idle");
 }
