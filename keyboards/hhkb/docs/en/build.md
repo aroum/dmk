@@ -137,19 +137,19 @@ Model ID (6), version (4), trailing 0xFF (6)
 
 ## 3. Flash and RAM usage
 
-The [HHKB linker layout](../../../../platforms/stm32l072/stm32l072_bank2.ld) provides **65,536 bytes of Bank 2 Flash** at `0x08010000–0x0801FFFF` and **20,480 bytes of SRAM**. The measurements below are fresh builds of code commit `67ba4d90`, made on 2026-11-23 with **Arm GNU Toolchain 15.3.Rel2 / GCC 15.3.1**, `-Os`, no LTO, and the default configuration including compressed EEPROM storage and SW5+SW6 recovery. All sizes are bytes.
+The [HHKB linker layout](../../../../platforms/stm32l072/stm32l072_bank2.ld) provides **65,536 bytes of Bank 2 Flash** at `0x08010000–0x0801FFFF` and **20,480 bytes of SRAM**. These measurements use code commit `fc0694da`, built on 2026-11-24 with **Arm GNU Toolchain 15.3.Rel2 / GCC 15.3.1**, `-Os`, no LTO, and the default configuration including compressed EEPROM storage and SW5+SW6 recovery. All sizes are bytes.
 
 ### HHKB Classic
 
 | Variant | Flash used / 65,536 B | Flash free | RAM allocated / 20,480 B | RAM unallocated |
 | --- | ---: | ---: | ---: | ---: |
-| ANSI: Classic / Classic Type-S | 54,052 (82.48%) | 11,484 | 19,160 (93.55%) | 1,320 |
-| JIS: Classic Type-S | 53,856 (82.18%) | 11,680 | 19,696 (96.17%) | 784 |
+| ANSI: Classic / Classic Type-S | 49,984 (76.27%) | 15,552 | 16,824 (82.15%) | 3,656 |
+| JIS: Classic Type-S | 49,808 (76.00%) | 15,728 | 17,344 (84.69%) | 3,136 |
 
 RAM section breakdown:
 
-- **ANSI:** `.data` 1,664 + `.bss` 15,448 + `._user_heap_stack` 2,048 = **19,160**.
-- **JIS:** `.data` 1,688 + `.bss` 15,956 + `._user_heap_stack` 2,052 = **19,696**.
+- **ANSI:** `.data` 1,664 + `.bss` 13,112 + `._user_heap_stack` 2,048 = **16,824**.
+- **JIS:** `.data` 1,688 + `.bss` 13,604 + `._user_heap_stack` 2,052 = **17,344**.
 
 Classic and Classic Type-S ANSI were built separately and have identical memory usage.
 
@@ -159,19 +159,27 @@ Includes the Nordic SPI transport, battery telemetry, and sleep/OFF state machin
 
 | Variant | Flash used / 65,536 B | Flash free | RAM allocated / 20,480 B | RAM unallocated |
 | --- | ---: | ---: | ---: | ---: |
-| ANSI: Hybrid / Type-S | 65,468 (99.90%) | 68 | 19,416 (94.80%) | 1,064 |
-| JIS: Hybrid / Type-S | 65,296 (99.63%) | 240 | 19,952 (97.42%) | 528 |
+| ANSI: Hybrid / Type-S | 61,424 (93.73%) | 4,112 | 17,080 (83.40%) | 3,400 |
+| JIS: Hybrid / Type-S | 61,280 (93.51%) | 4,256 | 17,600 (85.94%) | 2,880 |
 
 RAM section breakdown:
 
-- **ANSI:** `.data` 1,720 + `.bss` 15,644 + `._user_heap_stack` 2,052 = **19,416**.
-- **JIS:** `.data` 1,744 + `.bss` 16,156 + `._user_heap_stack` 2,052 = **19,952**.
+- **ANSI:** `.data` 1,720 + `.bss` 13,308 + `._user_heap_stack` 2,052 = **17,080**.
+- **JIS:** `.data` 1,744 + `.bss` 13,804 + `._user_heap_stack` 2,052 = **17,600**.
 
-Hybrid ANSI has **68 bytes** of Bank 2 Flash remaining in this reference build; JIS has **240 bytes**. Compiler, feature flags and firmware-version string changes can change these values.
+Hybrid ANSI now has **4,112 bytes** of Bank 2 Flash remaining; JIS has **4,256 bytes**. Compiler, feature flags and firmware-version strings can change these values.
+
+### Memory and idle-work optimizations
+
+The EC curve LUT is built with Q20 integer arithmetic at startup or after a settings change. Its 252-byte RAM table and integer scan-path interpolation remain unchanged. Rebuilding occurs after the calibration loader returns, to avoid nesting their large stack frames on the matrix task.
+
+HHKB uses its statically created matrix queue. Removing the unreachable dynamic-queue fallback lets the linker discard the 2 KiB FreeRTOS heap in these default builds. Vial also omits unused encoder storage and Flash-page padding from HHKB RAM; the compact EEPROM serialization format remains unchanged.
+
+When USB power saving suspends matrix scanning, scan timer interrupts are disabled and rearmed on resume. An idle HHKB USB task waits for USB/producer notifications, with a one-second background heartbeat; pending EEPROM operations retain frequent service. Keyboard reports still wake the task immediately. Other platforms retain their existing USB fallback cadence.
 
 ### How to interpret the numbers
 
-Flash usage is the raw `.bin` length, including the Flash initialization image for `.data` and RAM functions. The fixed-size, padded HFB container is not a measure of occupied Flash. RAM allocation is `.data + .bss + ._user_heap_stack`; `.data` includes RAM functions, `.bss` includes static task stacks and the **2 KiB FreeRTOS heap**, and `._user_heap_stack` reserves the main/interrupt stack with alignment (the linker reserves no separate libc heap). Do not add the FreeRTOS heap a second time. Unallocated RAM is not the runtime free heap or unused stack capacity; those require runtime measurements.
+Flash usage is the raw `.bin` length, including the Flash initialization image for `.data` and RAM functions. The fixed-size, padded HFB container is not a measure of occupied Flash. RAM allocation is `.data + .bss + ._user_heap_stack`; `.data` includes RAM functions, `.bss` includes static task stacks, and `._user_heap_stack` reserves the main/interrupt stack with alignment. The FreeRTOS dynamic heap is absent from these default HHKB builds; optional modules using dynamic allocation can bring it back. Unallocated RAM is not a runtime stack high-water mark or free-heap measurement.
 
 Inspect the sections after any build:
 
