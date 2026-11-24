@@ -246,6 +246,18 @@ Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key
 
 The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Only arithmetic for the preceding key overlaps the next ADC conversion; calibration callbacks and console output run after interrupts are restored. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
 
+### Known 1000 Hz scan limitation
+
+[Issue #8](https://github.com/aroum/dmk/issues/8) reports approximately 500–660 full matrix scans/s on Hybrid ANSI over USB with release `2026.11.22` and `dev` at `6ef2a5e`, despite selecting 1000 Hz. A scan exceeding 1 ms can miss timer deadlines. USB HID polling and matrix scanning are separate: a 1 ms USB interval does not guarantee 1000 fresh matrix scans/s.
+
+The report identifies RT scan functions remaining in flash because `rapid_trigger.c` does not include the configuration defining `HHKB_SCAN_1KHZ`. It also proposes processing the previous sample during discharge. The author's fork reaches about 850 µs per scan on their Hybrid ANSI; this is not a measurement of the current DMK branch or confirmation for Classic/JIS. These proposed changes are not included merely by enabling diagnostics. Until verified fixes are available, select 500 Hz if 1000 Hz misses deadlines, and include the firmware commit, model, RT/curve settings and `[RATE]` / `[SCAN]` output in reports.
+
+### Hold-Tap configuration compatibility (dev)
+
+DMK uses one `HT(hold, tap)` action internally; VIA/Vial Mod-Tap and Layer-Tap are converted to this format. Legacy source forms `HT(1, K_A)`, `HT(FN1, K_A)` and `HT(MOD_LSHIFT, K_A)` remain supported. New configs can use explicit `HT(MO(1), K_A)` or `HT(K_RSFT, K_RGUI)`. Use `KEY(...)` for custom HID aliases or numeric HID usages. See [Universal Hold-Tap](../../../../docs/en/keycodes.md#universal-hold-tap) for supported actions and encoding limits.
+
+The dev fixes preserve readable legacy EEPROM records; no factory reset is required. Reassign keys that were already saved incorrectly. VIA cannot represent every native HT pair: ordinary key/key and tap-layer pairs read as unassigned, so configure those in source. These dev changes are not part of release `2026.11.22`.
+
 ### Reset all DMK settings (Factory reset)
 
 In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debug**:
