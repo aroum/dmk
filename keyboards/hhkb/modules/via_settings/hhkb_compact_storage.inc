@@ -249,6 +249,12 @@ bool hhkb_compact_reset(void) {
     return true; /* tombstone remains until the first default snapshot commits */
 }
 bool vial_keyboard_keymap_reset(void) { return hhkb_compact_reset(); }
+bool hhkb_compact_busy(void) {
+    if (c_blocked || !c_keymap_ready || !c_cal_ready) return false;
+    return c_pending || c_target >= 0 ||
+        (c_active >= 0 && (*c_phys(0x1708) == 0 || *c_phys(0x1708) == C_RESET));
+}
+
 void vial_keyboard_keymap_poll(void) {
     c_init();
     if(c_blocked || !c_keymap_ready || !c_cal_ready) return;

@@ -33,9 +33,13 @@ bool ec_curve_set(uint8_t id, uint8_t value) {
     return true;
 }
 
-static float edge(float h0, float h1, float d0, float d1) {
-    float slope = ((2.0f * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
-    return slope > 0.0f ? slope : 0.0f;
+/* Q20 is used only while constructing the table. All products fit int64_t:
+ * x<=1000, y<=1125 and point spacing>=20. No math runs in the scan path. */
+#define CURVE_Q 20
+#define CURVE_ONE (INT64_C(1) << CURVE_Q)
+static int64_t edge(int32_t h0, int32_t h1, int64_t d0, int64_t d1) {
+    int64_t slope = ((2*h0+h1)*d0-h0*d1)/(h0+h1);
+    return slope > 0 ? slope : 0;
 }
 
 void ec_curve_rebuild(void) {
@@ -48,43 +52,41 @@ void ec_curve_rebuild(void) {
         return;
     }
 
-    const float x[] = {0, ec_curve_settings[1] * 10, ec_curve_settings[2] * 10,
-                       ec_curve_settings[3] * 10, 1000};
-    const float y[] = {0, 250, 500, 750, ec_curve_settings[4] * 25};
-    const float smooth = ec_curve_settings[5] / 10.0f;
-    float h[4], d[4], m[5];
-    for (unsigned i = 0; i < 4; ++i) {
-        h[i] = x[i + 1] - x[i];
-        if (h[i] < 20) {
-            disable_curve("Points need 2% spacing");
-            return;
-        }
-        d[i] = (y[i + 1] - y[i]) / h[i];
+    const int32_t x[] = {0, ec_curve_settings[1]*10, ec_curve_settings[2]*10,
+                         ec_curve_settings[3]*10, 1000};
+    const int32_t y[] = {0, 250, 500, 750, ec_curve_settings[4]*25};
+    const unsigned smooth = ec_curve_settings[5];
+    int32_t h[4];
+    int64_t d[4], m[5];
+    for (unsigned i=0; i<4; ++i) {
+        h[i]=x[i+1]-x[i];
+        if (h[i]<20) { disable_curve("Points need 2% spacing"); return; }
+        d[i]=(y[i+1]-y[i])*CURVE_ONE/h[i];
     }
-    for (unsigned i = 1; i < 4; ++i) {
-        float left = 2.0f * h[i] + h[i - 1];
-        float right = h[i] + 2.0f * h[i - 1];
-        m[i] = (left + right) / (left / d[i - 1] + right / d[i]);
+    for (unsigned i=1; i<4; ++i) {
+        int32_t left=2*h[i]+h[i-1], right=h[i]+2*h[i-1];
+        m[i]=(left+right)*d[i-1]*d[i]/(left*d[i]+right*d[i-1]);
     }
-    m[0] = edge(h[0], h[1], d[0], d[1]);
-    m[4] = edge(h[3], h[2], d[3], d[2]);
-
+    m[0]=edge(h[0],h[1],d[0],d[1]);
+    m[4]=edge(h[3],h[2],d[3],d[2]);
     uint16_t candidate[126];
-    unsigned segment = 0;
-    for (unsigned i = 0; i < 126; ++i) {
-        float signal = i * 8;
-        if (segment < 3 && signal >= x[segment + 1]) ++segment;
-        float u = (signal - x[segment]) / h[segment];
-        float a = y[segment], b = y[segment + 1];
-        float linear = a + u * (b - a);
-        float cubic = a + u * u * (3.0f - 2.0f * u) * (b - a) +
-            h[segment] * u * (1.0f - u) *
-            ((1.0f - u) * m[segment] - u * m[segment + 1]);
-        candidate[i] = (uint16_t)(linear + smooth * (cubic - linear) + 0.5f);
-        if (i && candidate[i] < candidate[i - 1]) candidate[i] = candidate[i - 1];
-        if (i >= 8 && candidate[i] - candidate[i - 1] > 32) {
-            disable_curve("Curve too steep (max 4x)");
-            return;
+    unsigned segment=0;
+    for (unsigned i=0; i<126; ++i) {
+        int32_t signal=i*8;
+        if (segment<3 && signal>=x[segment+1]) ++segment;
+        int64_t u=(signal-x[segment])*CURVE_ONE/h[segment];
+        int64_t delta=(y[segment+1]-y[segment])*CURVE_ONE;
+        int64_t c=h[segment]*m[segment];
+        int64_t a=-2*delta+c+h[segment]*m[segment+1];
+        int64_t b=3*delta-2*c-h[segment]*m[segment+1];
+        int64_t linear=y[segment]*CURVE_ONE+(u*delta)/CURVE_ONE;
+        int64_t cubic=y[segment]*CURVE_ONE+
+            u*(c+u*(b+u*a/CURVE_ONE)/CURVE_ONE)/CURVE_ONE;
+        int64_t value=linear+(cubic-linear)*smooth/10;
+        candidate[i]=(uint16_t)((value+CURVE_ONE/2)/CURVE_ONE);
+        if (i && candidate[i]<candidate[i-1]) candidate[i]=candidate[i-1];
+        if (i>=8 && candidate[i]-candidate[i-1]>32) {
+            disable_curve("Curve too steep (max 4x)"); return;
         }
     }
     // Called at startup or from the USB task, below matrix task priority.

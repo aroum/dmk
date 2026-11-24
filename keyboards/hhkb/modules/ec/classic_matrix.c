@@ -101,6 +101,7 @@ void hhkb_matrix_hardware_init(void) {
 
     // Initialize calibration, thresholds and rapid-trigger state before scanning.
     hhkb_calibration_load();
+    ec_curve_rebuild();
 }
 
 // Keep peripheral power sequencing out of the scarce scanner SRAM section.

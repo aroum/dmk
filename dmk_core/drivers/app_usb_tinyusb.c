@@ -211,8 +211,13 @@ static void usb_device_task(void *param) {
         debug_console_flush();
 #endif
         // TinyUSB events wake this task immediately, including during enumeration.
-        // Keep the short fallback for reports and deferred work on a mounted host.
+        // Endpoint completions and producers notify us; an idle HHKB needs only
+        // the diagnostic/host-presence heartbeat. Keep servicing EEPROM writes.
         TickType_t wait = pdMS_TO_TICKS(tud_mounted() ? 2 : 1000);
+#if defined(VIAL) && defined(HHKB_COMPACT_STORAGE)
+        extern TickType_t vial_eeprom_poll_interval(void);
+        wait = vial_eeprom_poll_interval();
+#endif
 #ifdef HHKB_HYBRID
         if (battery_usb_off) wait = pdMS_TO_TICKS(100);
 #endif

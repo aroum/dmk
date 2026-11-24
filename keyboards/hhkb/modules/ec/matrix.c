@@ -148,9 +148,8 @@ static void publish_released_matrix(matrix_row_t published_state[MATRIX_ROWS]) {
 void matrix_task(void *pvParameters) {
     (void)pvParameters;
 
-    if (!matrix_queue) {
-        matrix_queue = xQueueCreate(QUEUE_DEF_SIZE, sizeof(matrix_event_t));
-    }
+    // main creates and checks this queue before starting the scheduler.
+    configASSERT(matrix_queue != NULL);
 
 #if defined(HHKB_SCAN_DIAGNOSTICS) || defined(HHKB_SCAN_1KHZ)
     // The platform sets APB1 to HCLK with no prescaling.
@@ -347,6 +346,11 @@ void matrix_task(void *pvParameters) {
 #endif
         if (usb_power_saving) {
             if (!sensor_power_down) {
+                // Stop scan interrupts as well as the analog hardware.
+                TIM2->DIER &= ~TIM_DIER_CC1IE;
+                TIM2->SR = 0;
+                NVIC_ClearPendingIRQ(TIM2_IRQn);
+                (void)ulTaskNotifyTake(pdTRUE, 0);
                 // Disable power for capacitive sensor board and OpAmp
                 GPIOC->BRR = (1U << 14) | (1U << 7);
                 sensor_power_down = true;
@@ -358,6 +362,11 @@ void matrix_task(void *pvParameters) {
             GPIOC->BSRR = (1U << 14) | (1U << 7);
             vTaskDelay(pdMS_TO_TICKS(10)); // Settle analog power
             sensor_power_down = false;
+            update_scan_period();
+            TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
+            TIM2->SR = 0;
+            NVIC_ClearPendingIRQ(TIM2_IRQn);
+            TIM2->DIER |= TIM_DIER_CC1IE;
         }
 
 #ifdef HHKB_SCAN_1KHZ

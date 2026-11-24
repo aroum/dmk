@@ -345,6 +345,7 @@ static void vial_storage_init_default(void) {
             dynamic_keymap[l][k] = keymap[l][k];
         }
     }
+#if !defined(HHKB_COMPACT_STORAGE) || (defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B))
     for (size_t l = 0; l < DYNAMIC_KEYMAP_MAX_LAYERS; l++) {
         for (size_t e = 0; e < 4; e++) {
             for (size_t d = 0; d < 2; d++) {
@@ -357,6 +358,7 @@ static void vial_storage_init_default(void) {
             }
         }
     }
+#endif
 }
 
 #if defined(MCU_milandr) || defined(MCU_rp2040) || defined(MCU_rp2350) || defined(MCU_baikal) || defined(MCU_nrf52840) || defined(MCU_stm32f072)
@@ -694,6 +696,16 @@ void vial_eeprom_task(void) {
             vial_eeprom_save_now();
         }
     }
+}
+
+// Boards with incremental EEPROM writers can request their own service cadence.
+// The conservative default preserves third-party hooks that need frequent polls.
+__attribute__((weak)) bool vial_keyboard_eeprom_busy(void) { return true; }
+TickType_t vial_eeprom_poll_interval(void) {
+#ifdef VIA_FULL_SETTINGS_RESET
+    if (s_reset_pending) return pdMS_TO_TICKS(2);
+#endif
+    return pdMS_TO_TICKS(s_eeprom_dirty || vial_keyboard_eeprom_busy() ? 2 : 1000);
 }
 
 void vial_init(void) {

@@ -35,7 +35,9 @@ typedef struct {
 typedef struct {
     uint32_t magic;
     uint32_t keymap[DYNAMIC_KEYMAP_MAX_LAYERS][NUM_KEYS];
+#if !defined(HHKB_COMPACT_STORAGE) || (defined(ENCODER_PINS_A) && defined(ENCODER_PINS_B))
     uint32_t encoder_keymap[DYNAMIC_KEYMAP_MAX_LAYERS][4][2];
+#endif
     uint8_t rgb_cfg[8];
     uint8_t macro_buffer[DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE];
     vial_combo_entry_t combos[VIAL_COMBO_ENTRIES];
@@ -53,7 +55,9 @@ bool vial_stm32f072_erase_settings_page(uint32_t address);
 
 typedef union {
     vial_storage_data_t data;
+#ifndef HHKB_COMPACT_STORAGE
     uint8_t padding[((sizeof(vial_storage_data_t) + 255) / 256) * 256];
+#endif
 } vial_storage_t;
 
 extern vial_storage_t vial_storage;
@@ -79,6 +83,7 @@ void vial_init(void);
  */
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 void vial_eeprom_task(void);
+TickType_t vial_eeprom_poll_interval(void);
 void vial_eeprom_save(void);
 bool vial_platform_storage_load(void);
 void vial_platform_storage_save_now(void);

@@ -432,10 +432,15 @@ void hhkb_calibration_load(void) {
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
-    ec_curve_rebuild();
+    // The hardware initializer rebuilds the LUT after this loader returns.
 #ifdef HHKB_COMPACT_STORAGE
     hhkb_calibration_save_to_eeprom();
 #endif
+}
+
+extern bool hhkb_compact_busy(void);
+bool vial_keyboard_eeprom_busy(void) {
+    return s_settings_dirty || hhkb_compact_busy();
 }
 
 void vial_keyboard_eeprom_task(void) {
