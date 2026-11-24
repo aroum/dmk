@@ -154,6 +154,10 @@ if [[ -f "${SCRIPT_DIR}/keyboards/hhkb/modules/ec/rapid_trigger.c" ]]; then
         "${HHKB_TEST_DIR}/test_settings_storage_guard.c" -o "${HHKB_TEST_DIR}/test_settings_storage_guard"
     "${HHKB_TEST_DIR}/test_settings_storage_guard"
     rm -f "${HHKB_TEST_DIR}/test_settings_storage_guard"
+    clang -std=c11 -Wall -Wextra -Werror -I "${HHKB_MODULES_DIR}/ec" \
+        "${HHKB_TEST_DIR}/test_cal_request.c" -o "${HHKB_TEST_DIR}/test_cal_request"
+    "${HHKB_TEST_DIR}/test_cal_request"
+    rm -f "${HHKB_TEST_DIR}/test_cal_request"
     for hhkb_test in test_keymap_storage test_indicators_system; do
         clang -std=c11 -Wall -Wextra -Werror -I "${HHKB_TEST_DIR}/mocks" \
             "${HHKB_TEST_DIR}/${hhkb_test}.c" -o "${HHKB_TEST_DIR}/${hhkb_test}"
@@ -163,6 +167,15 @@ if [[ -f "${SCRIPT_DIR}/keyboards/hhkb/modules/ec/rapid_trigger.c" ]]; then
 
 else
     echo "HHKB Classic sources absent; skipping HHKB firmware tests."
+fi
+
+if [[ -f "${SCRIPT_DIR}/keyboards/le_capybara/modules/ec/cal_request.h" ]]; then
+    # le_capybara cross-task calibration request slot
+    CAPYBARA_TEST_DIR="${SCRIPT_DIR}/tests/le_capybara"
+    clang -std=c11 -Wall -Wextra -Werror -I "${SCRIPT_DIR}/keyboards/le_capybara/modules/ec" \
+        "${CAPYBARA_TEST_DIR}/test_cal_request.c" -o "${CAPYBARA_TEST_DIR}/test_cal_request"
+    "${CAPYBARA_TEST_DIR}/test_cal_request"
+    rm -f "${CAPYBARA_TEST_DIR}/test_cal_request"
 fi
 
 # 2. Python Tool Tests

@@ -46,6 +46,15 @@ static uint8_t s_debug_flags;
 uint8_t ec_curve_settings[EC_CURVE_FIELDS];
 static unsigned dirty;
 static bool s_settings_dirty;
+static unsigned snapshot_depth;
+#define taskENTER_CRITICAL() (++snapshot_depth)
+#define taskEXIT_CRITICAL() (--snapshot_depth)
+static void *checked_memcpy(void *dst,const void *src,size_t n){
+ if(src==s_cal_baseline || src==s_cal_peak) assert(snapshot_depth==1);
+ return memcpy(dst,src,n);
+}
+#define memcpy checked_memcpy
+
 static bool hhkb_eeprom_clear_words(volatile uint32_t *dst,size_t n){while(n--)dst[n]=0;return true;}
 static void hhkb_settings_mark_dirty(void){++dirty;}
 bool hhkb_settings_storage_writable(void);
@@ -77,7 +86,7 @@ int main(void){
     s_cal_baseline[c][r]=300+c;s_cal_peak[c][r]=2800+r;
    }
    assert(hhkb_settings_storage_writable());
-   flash.PECR=0;hhkb_calibration_save_to_eeprom();
+   flash.PECR=0;hhkb_calibration_save_to_eeprom();assert(snapshot_depth==0);
    assert(hhkb_settings_storage_writable());
    s_bt_sleep_hz=1;s_bt_matrix_wake=false;s_bt_sleep_minutes=0;
    s_bt_deep_index=0;s_bt_short_action=0;s_bt_long_action=0;s_bt_last_slot=0;

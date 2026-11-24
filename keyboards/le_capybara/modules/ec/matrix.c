@@ -31,6 +31,8 @@ void matrix_task(void *pvParameters) {
     static const TickType_t scan_periods_ms[] = {20, 8, 4, 2, 1};
 
     for (;;) {
+        // Also reached while power saving.
+        hhkb_calibration_apply_pending();
         // Check power saving condition: host disconnected (not mounted) or USB suspended
         if (keyboard_power_saving_enabled() && (!tud_mounted() || tud_suspended())) {
             // Disable both MUXes to minimize current draw
@@ -41,6 +43,7 @@ void matrix_task(void *pvParameters) {
         }
 
         // 2. Scan EC capacitive and discrete key matrix
+        hhkb_calibration_apply_pending();
         capybara_matrix_scan_raw(s_matrix_state);
 
         // Keep VIA's matrix tester live, but suppress EC key reports during calibration.
