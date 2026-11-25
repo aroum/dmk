@@ -21,3 +21,5 @@ Runtime coverage includes shared 6KRO key ownership, slot reuse, HT behavior, in
 The separate **Core and HHKB Tests** workflow runs the full suite on Linux and the sanitizer tests on Linux and macOS. It runs for relevant pushes and pull requests, and can be started from **Actions → Core and HHKB Tests → Run workflow**, selecting `dev`. Each job uploads its log, including on failure.
 
 These are host tests with simulated peripheral inputs. They do not establish ADC settling, USB/Bluetooth latency, physical wake behavior, or current consumption. Firmware builds and hardware measurements remain separate checks.
+
+Physical validation is tracked separately in the [hardware checklist](../docs/en/tests.md).
