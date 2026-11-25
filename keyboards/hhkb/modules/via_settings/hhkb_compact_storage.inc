@@ -208,7 +208,15 @@ static bool c_build(void) {
         if(c_cal.baseline[c][r]>4095 || c_cal.peak[c][r]>4095) { c_status="Invalid ADC: not saved"; return false; }
     }
     memset(c_image,0,sizeof(c_image));
+#ifdef HHKB_SCAN_DIAGNOSTICS
+    TickType_t pack_start = xTaskGetTickCount();
+#endif
     size_t size=hhkb_pack_stream(c_input,NULL,C_RAW_BYTES,(uint8_t *)&c_image[5],C_CAPACITY);
+#ifdef HHKB_SCAN_DIAGNOSTICS
+    extern void debug_console_printf(const char *, ...);
+    debug_console_printf("[CFG] EEPROM pack=%lu ms\r\n",
+        (unsigned long)((xTaskGetTickCount() - pack_start) * portTICK_PERIOD_MS));
+#endif
     if(!size) { c_status="Full: not saved"; return false; }
     if(c_active>=0 && *c_word((unsigned)c_active,2)==size) {
         bool equal=true;

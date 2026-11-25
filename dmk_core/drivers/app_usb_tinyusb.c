@@ -188,6 +188,9 @@ static void usb_device_task(void *param) {
     bool battery_usb_off = false;
 #endif
     while (1) {
+#ifdef HHKB_SCAN_DIAGNOSTICS
+        TickType_t work_start = xTaskGetTickCount();
+#endif
 #ifdef HHKB_HYBRID
         // Only the USB owner task may tear down/recreate the TinyUSB stack.
         if (hhkb_hybrid_on_battery() && !battery_usb_off) {
@@ -263,6 +266,14 @@ static void usb_device_task(void *param) {
         extern void debug_console_flush(void);
         debug_console_flush();
 #endif
+#ifdef HHKB_SCAN_DIAGNOSTICS
+        TickType_t work_ticks = xTaskGetTickCount() - work_start;
+        if (work_ticks >= pdMS_TO_TICKS(20)) {
+            extern void debug_console_printf(const char *, ...);
+            debug_console_printf("[CFG] USB work=%lu ms\r\n",
+                (unsigned long)(work_ticks * portTICK_PERIOD_MS));
+        }
+#endif
         // TinyUSB events wake this task immediately, including during enumeration.
         // Endpoint completions and producers notify us; an idle HHKB needs only
         // the diagnostic/host-presence heartbeat. Keep servicing EEPROM writes.
@@ -278,6 +289,7 @@ static void usb_device_task(void *param) {
         // Enumeration control transfers must keep progressing even if an
         // event notification was coalesced with other task work.
         if (!tud_mounted()) wait = pdMS_TO_TICKS(1);
+        else if (wait > pdMS_TO_TICKS(2)) wait = pdMS_TO_TICKS(2);
 #endif
         ulTaskNotifyTake(pdTRUE, wait);
     }
