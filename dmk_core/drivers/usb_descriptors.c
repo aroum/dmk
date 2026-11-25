@@ -601,6 +601,10 @@ void debug_console_printf(const char *fmt, ...) {
     }
 }
 
+// Keyboards with matrix-task-produced [CAL] events format them here, in the
+// USB task; the matrix task stack cannot carry the printf chain.
+__attribute__((weak)) void hhkb_cal_log_flush(void) {}
+
 void debug_console_flush(void) {
 #ifdef DEBUG_CONSOLE_ENABLE
     if (!tud_mounted() || tud_suspended()) return;
@@ -610,6 +614,7 @@ void debug_console_flush(void) {
     extern void hhkb_debug_flush_sample(void);
     if (s_console_head == s_console_tail) hhkb_debug_flush_sample();
 #endif
+    if (s_console_head == s_console_tail) hhkb_cal_log_flush();
     if (s_console_head == s_console_tail) return;
 
     uint8_t packet[32];
