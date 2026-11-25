@@ -96,7 +96,11 @@ void sof_lock_note_work(void) {
     s_work_peak = pk;
     uint32_t lead = (uint32_t)pk + HHKB_SOF_MARGIN_US * 4U;
     if (lead < 200U) lead = 200U;
-    if (lead > 3800U) lead = 3800U;
+    // The scan takes most of a frame, so work+margin exceeds one frame and the
+    // lock must fire before the *preceding* IN poll for the publish to beat the
+    // next one. sof_lock_target() wraps modulo the frame period; cap just under
+    // two frames so a work spike cannot push the target a whole frame away.
+    if (lead > 7800U) lead = 7800U;
     s_lead = (uint16_t)lead;
 }
 
