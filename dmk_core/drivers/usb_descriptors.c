@@ -435,7 +435,8 @@ void vial_diag_task(void) {
 
         uint32_t usb_diff = s_usb_loop_total - s_usb_loop_prev;
         s_usb_loop_prev = s_usb_loop_total;
-        uint32_t usb_rate_hz = (uint32_t)(((uint64_t)usb_diff * 1000ULL + (elapsed_ms / 2)) / elapsed_ms);
+        // 32-bit is exact here: usb_diff would need > 4.29M USB loops/s to overflow.
+        uint32_t usb_rate_hz = (usb_diff * 1000U + (elapsed_ms / 2)) / elapsed_ms;
 
         hhkb_calc_rates(elapsed_ms);
 #ifdef HHKB_USB_REPORT_DIAGNOSTICS
