@@ -384,6 +384,14 @@ void matrix_task(void *pvParameters) {
             NVIC_ClearPendingIRQ(TIM2_IRQn);
             NVIC_EnableIRQ(TIM2_IRQn);
         }
+#if defined(HHKB_BOOT_TRACE) && !defined(HHKB_HYBRID)
+        // Isolate USB enumeration from the acquisition IRQ mask.
+        if (!tud_mounted()) {
+            (void)ulTaskNotifyTake(pdTRUE, 0);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+#endif
         uint32_t notifications = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 #ifdef HHKB_SCAN_DIAGNOSTICS
         if (notifications > 1) s_matrix_scan_deadline_misses += notifications - 1;
