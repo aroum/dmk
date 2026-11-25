@@ -167,7 +167,7 @@ Outside an explicit calibration session, baseline and peak remain fixed: runtime
 - **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
 - **Polling Rate Monitor:** Telemetry for matrix scan and USB report frequency.
 - **Calibration Monitor:** Live tracking of sensor baseline values and capacitance drift.
-- **Reset and stock recovery:** reset DMK data or return to Bank 1, with optional DMK EEPROM cleanup.
+- **Reset and stock recovery:** two independent buttons: erase DMK EEPROM and restart DMK, or return to Bank 1 while preserving DMK settings.
 
 ### Small readings near the released position
 
@@ -309,15 +309,12 @@ In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debu
 
 Set SW6 to OFF and enable **Arm reset / stock recovery**. Choose one of the following actions.
 
-| Scenario | VIA action | DMK EEPROM | Firmware after reboot |
-| --- | --- | --- | --- |
-| Return to stock, retain DMK data | Leave **Erase DMK EEPROM when returning to stock** off, click **Return to stock Bank 1** | Preserved | Stock Bank 1 |
-| Return to stock and clear DMK data | Enable **Erase DMK EEPROM when returning to stock**, click **Return to stock Bank 1** | Recognized DMK records cleared | Stock Bank 1 |
-| Reset DMK data | Click **Reset DMK data and restart** | Recognized DMK records cleared, regardless of the recovery checkbox | DMK with compiled defaults |
+- **Erase DMK EEPROM and restart** clears recognized DMK calibration, curves, settings, Grave Escape flags, keymaps, macros and combos, then restarts DMK with compiled defaults. Bank 2 firmware and PFU boot metadata are retained. Default settings may be saved again after restart.
+- **Return to stock Bank 1** preserves DMK EEPROM, updates PFU boot metadata and erases the first 128-byte vector page of DMK in Bank 2, as SW6 recovery does. Reinstall DMK through HHKB Keymap Tool to run it again.
 
-Returning to Bank 1 uses the SW6 recovery procedure. It updates PFU boot metadata and erases the first 128-byte vector page of DMK in Bank 2. Reinstall DMK through the PFU updater to run it again. The checkbox defaults off each session and applies to the Bank 1 button. EEPROM cleanup uses the SW5+SW6 routine and clears recognized DMK calibration, curves, settings, Grave Escape flags, keymaps, macros and combos. Factory PFU calibration is preserved. Previously overwritten PFU bytes require a same-board backup or the stock Keymap Tool recovery described in [backup and restore](backup-restore.md).
+To clear settings and then return to stock, click **Erase DMK EEPROM and restart**, reconnect VIA after DMK restarts, arm the controls again and click **Return to stock Bank 1**. There is no combined erase/recovery checkbox. Both buttons require arming and consume the armed state. Requests execute after a 150 ms acknowledgement delay; EEPROM cleanup failure prevents the standalone reset and can be retried after rearming.
 
-Both buttons require arming and consume the armed state. Commands are executed after a 150 ms acknowledgement delay. EEPROM erase failure prevents the return to Bank 1 and can be retried after rearming. Keep power connected until the operation completes.
+EEPROM cleanup uses the SW5+SW6 routine and preserves factory PFU calibration. Previously overwritten PFU bytes require a same-board backup or the stock Keymap Tool recovery described in [backup and restore](backup-restore.md). Keep power connected until the operation completes. Reload the updated `via.json`: the old combined control is rejected, and Bottom dead zone now uses a separate command ID.
 
 **Reset status** describes the current session's last command. `Ready` means no action is queued, `Armed` means the buttons are enabled, `Resetting DMK...` or `Returning to Bank 1...` means an action is queued, and `Restarting...` means its pre-reboot work succeeded. `Set SW6 to OFF` blocks the request, and `Reset failed; retry` reports an EEPROM cleanup failure. USB disconnects during reboot, so the final status may disappear before VIA displays it. Verify the resulting PFU or DMK USB device after reconnecting. EEPROM save status is shown separately under **Settings EEPROM**.
 

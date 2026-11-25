@@ -78,8 +78,8 @@ void ec_curve_rebuild(void){}
             code += function(source, signature) + '\n'
         code += r'''
 int main(void){
- for(unsigned zone=0;zone<=10;zone++){hhkb_rt_set(63,zone);assert(hhkb_rt_get(63)==zone && !snapshot_depth);}
- hhkb_rt_set(63,11);assert(hhkb_rt_get(63)==10);
+ for(unsigned zone=0;zone<=10;zone++){hhkb_rt_set(65,zone);assert(hhkb_rt_get(65)==zone && !snapshot_depth);}
+ hhkb_rt_set(65,11);assert(hhkb_rt_get(65)==10);
  for(unsigned hz=1;hz<=10;hz++){
   assert(hhkb_bt_set_sleep_hz(hz));
   for(unsigned led=0;led<=4;led++)for(unsigned enabled=0;enabled<=1;enabled++){

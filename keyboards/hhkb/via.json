@@ -2506,7 +2506,7 @@
               "content": [
                 "id_hhkb_bottom_dz",
                 0,
-                63
+                65
               ],
               "showIf": "{id_hhkb_rapid_trigger} == 1"
             },
@@ -2937,7 +2937,7 @@
               "label": "Reset and stock recovery",
               "type": "label",
               "content": [
-                "Reset DMK data, or return to stock Bank 1 with optional DMK EEPROM erase."
+                "Two independent actions: erase DMK settings and restart DMK, or return to stock Bank 1 while keeping settings."
               ]
             },
             {
@@ -2950,7 +2950,7 @@
               ]
             },
             {
-              "label": "Reset DMK data and restart",
+              "label": "Erase DMK EEPROM and restart",
               "type": "button",
               "options": [
                 1
@@ -2963,11 +2963,6 @@
               "showIf": "{id_dmk_reset_arm} == 1"
             },
             {
-              "label": "Erase DMK EEPROM when returning to stock",
-              "type": "toggle",
-              "content": ["id_hhkb_recovery_erase", 0, 63]
-            },
-            {
               "label": "Return to stock Bank 1",
               "type": "button",
               "options": [1],
@@ -2977,7 +2972,7 @@
             {
               "label": "Recovery notice",
               "type": "label",
-              "content": ["Bank 1 return disables DMK in Bank 2. Reflash DMK to use it again. EEPROM erase clears DMK data."]
+              "content": ["EEPROM erase keeps DMK in Bank 2. Bank 1 return keeps EEPROM but disables DMK until it is reflashed."]
             },
             {
               "label": "Reset status",

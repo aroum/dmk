@@ -333,8 +333,8 @@ static bool s_reset_armed, s_reset_pending, s_reset_erased;
 static TickType_t s_reset_requested_at;
 static const char *s_reset_status = "Ready";
 #ifdef HHKB_COMPACT_STORAGE
-enum { VIA_RECOVERY_ERASE = 63, VIA_RECOVERY_EXECUTE = 64 };
-static bool s_recovery_erase, s_reset_recovery;
+enum { VIA_RECOVERY_RETIRED = 63, VIA_RECOVERY_EXECUTE = 64 };
+static bool s_reset_recovery;
 extern void hhkb_enter_bank1(void);
 #endif
 
@@ -344,21 +344,16 @@ static bool vial_platform_settings_reset(void);
 static bool vial_settings_reset_command(const uint8_t *request, uint8_t *response) {
     bool recovery_command = false;
 #ifdef HHKB_COMPACT_STORAGE
-    recovery_command = request[2] == VIA_RECOVERY_ERASE || request[2] == VIA_RECOVERY_EXECUTE;
+    recovery_command = request[2] == VIA_RECOVERY_EXECUTE;
+    if(request[1] == 0 && request[2] == VIA_RECOVERY_RETIRED) {
+        response[0] = 0xFF; // Reload via.json: the combined erase checkbox was removed.
+        return true;
+    }
 #endif
     if (request[1] != 0 || (!recovery_command &&
         (request[2] < VIA_RESET_ARM || request[2] > VIA_RESET_STATUS)))
         return false;
 
-#ifdef HHKB_COMPACT_STORAGE
-    if (request[2] == VIA_RECOVERY_ERASE) {
-        if (request[0] == VIA_CUSTOM_GET_VALUE) response[3] = s_recovery_erase;
-        else if (request[0] == VIA_CUSTOM_SET_VALUE && request[3] <= 1 &&
-                 !s_reset_pending && !s_reset_erased) s_recovery_erase = request[3] != 0;
-        else response[0] = 0xFF;
-        return true;
-    }
-#endif
     if (request[0] == VIA_CUSTOM_GET_VALUE) {
         response[3] = request[2] == VIA_RESET_ARM && s_reset_armed;
         if (request[2] == VIA_RESET_STATUS) strcpy((char *)&response[3], s_reset_status);
@@ -758,7 +753,7 @@ void vial_eeprom_task(void) {
         }
         bool clear_settings = true;
 #ifdef HHKB_COMPACT_STORAGE
-        clear_settings = !s_reset_recovery || s_recovery_erase;
+        clear_settings = !s_reset_recovery;
 #endif
         s_reset_erased = !clear_settings ||
             (vial_keyboard_settings_reset() && vial_platform_settings_reset());

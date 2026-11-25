@@ -45,34 +45,74 @@ static bool command(unsigned op,unsigned id,unsigned value){
  return response[0]!=255;
 }
 static void fresh(void){
- s_reset_armed=s_reset_pending=s_reset_erased=s_reset_recovery=s_recovery_erase=false;
+ s_reset_armed=s_reset_pending=s_reset_erased=s_reset_recovery=false;
  settings_erases=keymap_erases=resets=recoveries=ticks=0;
  s_reset_status="Ready";allowed=erase_ok=s_eeprom_dirty=true;
 }
 int main(void){
- for(unsigned scenario=0;scenario<3;scenario++){
+ uint8_t bottom_request[32]={7,0,65,5},bottom_response[32]={7};
+ assert(!vial_settings_reset_command(bottom_request,bottom_response));
+ for(unsigned scenario=0;scenario<2;scenario++){
   fresh();unsigned action=scenario?64:38;
   assert(!command(7,action,1)); // Both actions require arming.
-  assert(command(7,63,scenario==2));assert(command(7,37,1));
+  assert(!command(7,63,1));assert(!command(8,63,0)); // Retired combined action.
+  assert(command(7,37,1));
   assert(command(7,action,1));assert(!s_reset_armed && s_reset_pending);
-  assert(!command(7,63,scenario!=2)); // Pending action cannot be changed.
+  assert(!command(7,action==38?64:38,1)); // Pending action cannot be replaced.
   poll();ticks=149;poll();assert(!settings_erases && !keymap_erases && !resets && !recoveries);
   ticks=150;if(!setjmp(rebooted))poll();
   assert(!s_eeprom_dirty);
-  assert(settings_erases==(scenario!=1) && keymap_erases==(scenario!=1));
+  assert(settings_erases==(scenario==0) && keymap_erases==(scenario==0));
   assert(resets==(scenario==0) && recoveries==(scenario!=0));
  }
  fresh();allowed=false;assert(command(7,37,1));assert(!command(7,64,1));
  assert(!s_reset_pending && !strcmp(s_reset_status,"Set SW6 to OFF"));
  fresh();assert(command(7,37,1));assert(command(7,64,1));allowed=false;ticks=150;poll();
  assert(!recoveries && !settings_erases);
- fresh();erase_ok=false;assert(command(7,63,1));assert(command(7,37,1));
- assert(command(7,64,1));ticks=150;poll();
+ fresh();erase_ok=false;assert(command(7,37,1));
+ assert(command(7,38,1));ticks=150;poll();
  assert(!recoveries && !resets && !s_reset_erased && !strcmp(s_reset_status,"Reset failed; retry"));
  assert(command(7,37,1)); // Failure can be retried.
+ // Recovery never calls EEPROM cleanup, even if cleanup would fail.
+ fresh();erase_ok=false;assert(command(7,37,1));assert(command(7,64,1));ticks=150;
+ if(!setjmp(rebooted))poll();assert(recoveries==1 && !settings_erases && !keymap_erases);
+ // After a standalone reset/reboot the user can arm recovery independently.
+ fresh();assert(command(7,37,1));assert(command(7,38,1));ticks=150;
+ if(!setjmp(rebooted))poll();assert(resets==1 && !recoveries);
+ s_reset_erased=false;s_reset_pending=false;s_reset_recovery=false;
+ assert(command(7,37,1));assert(command(7,64,1));ticks+=150;
+ if(!setjmp(rebooted))poll();assert(recoveries==1 && settings_erases==1 && keymap_erases==1);
 }
 '''
         self.run_c(code)
+
+    def test_via_control_ids_and_independent_buttons(self):
+        import json
+        controls = {}
+        ids = {}
+        def visit(node):
+            if isinstance(node, dict):
+                content = node.get('content')
+                if (isinstance(content, list) and len(content) == 3
+                        and isinstance(content[0], str) and content[1] == 0
+                        and isinstance(content[2], int)):
+                    name, _, value_id = content
+                    self.assertNotIn(value_id, {63})
+                    self.assertEqual(ids.setdefault(value_id, name), name)
+                    controls[name] = node
+                for value in node.values():
+                    visit(value)
+            elif isinstance(node, list):
+                for value in node:
+                    visit(value)
+        visit(json.loads((ROOT / 'keyboards/hhkb/via.json').read_text()))
+        self.assertEqual(controls['id_dmk_reset_execute']['content'][2], 38)
+        self.assertEqual(controls['id_hhkb_recovery_execute']['content'][2], 64)
+        self.assertEqual(controls['id_hhkb_bottom_dz']['content'][2], 65)
+        self.assertNotIn('id_hhkb_recovery_erase', controls)
+        for name in ('id_dmk_reset_execute', 'id_hhkb_recovery_execute'):
+            self.assertEqual(controls[name]['type'], 'button')
+            self.assertEqual(controls[name]['showIf'], '{id_dmk_reset_arm} == 1')
 
     def test_bank1_entry_matches_classic_and_hybrid_recovery(self):
         source = (ROOT / 'keyboards/hhkb/modules/dip_switch/dip_switch.c').read_text()

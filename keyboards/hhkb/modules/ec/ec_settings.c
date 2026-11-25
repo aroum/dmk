@@ -631,7 +631,7 @@ uint8_t hhkb_rt_get(uint8_t id) {
     switch (id) {
     case 1: return s_rt_cfg.act_pm / 25;
     case 3: return s_rt_cfg.rt_enabled;
-    case 63: return s_rt_cfg.bottom_dz;
+    case 65: return s_rt_cfg.bottom_dz;
     case 4: return s_rt_cfg.press_pm / 25;
     case 5: return s_classic_release_pm / 25;
     case 11: return s_rt_cfg.release_pm / 25;
@@ -642,7 +642,7 @@ uint8_t hhkb_rt_get(uint8_t id) {
 
 void hhkb_rt_set(uint8_t id, uint8_t value) {
     taskENTER_CRITICAL();
-    if (id == 63 && value <= 10) {
+    if (id == 65 && value <= 10) {
         s_rt_cfg.bottom_dz = value;
     } else if (id == 3) {
         s_rt_cfg.rt_enabled = value != 0;
