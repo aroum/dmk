@@ -36,7 +36,7 @@ void usb_keyboard_report_armed(void) {
 
 #if HHKB_SOF_LOCK
 static volatile uint16_t s_sof_cnt;
-static volatile uint16_t s_sof_p_q4 = 4000U * 16U;
+static volatile uint32_t s_sof_p_q4 = 4000U * 16U;
 static volatile uint8_t s_sof_good;
 static volatile uint16_t s_lead = 600U * 4U;
 static volatile int16_t s_in_off;
@@ -50,7 +50,7 @@ void RCC_CRS_IRQHandler(void) {
     CRS->ICR = CRS_ICR_SYNCOKC | CRS_ICR_SYNCWARNC;
     uint16_t d = (uint16_t)(now - s_sof_cnt);
     if (d > 3800 && d < 4200) {
-        if (s_sof_good) s_sof_p_q4 = (uint16_t)(s_sof_p_q4 + ((((int32_t)d << 4) - (int32_t)s_sof_p_q4) >> 3));
+        if (s_sof_good) s_sof_p_q4 = (uint32_t)(s_sof_p_q4 + ((((int32_t)d << 4) - (int32_t)s_sof_p_q4) >> 3));
         if (s_sof_good < 255) s_sof_good++;
     } else {
         s_sof_good = 0;
@@ -74,7 +74,7 @@ static bool fresh(uint16_t now) {
 uint16_t sof_lock_step(uint16_t fired, uint16_t nominal) {
     s_last_compare = fired;
     if (!fresh(fired)) return nominal;
-    uint16_t pq = s_sof_p_q4;
+    uint32_t pq = s_sof_p_q4;
     uint16_t p = (uint16_t)((pq + 8) >> 4);
     uint16_t ms = (uint16_t)((nominal + 2000U) / 4000U);
     if (!ms) ms = 1;
@@ -98,6 +98,7 @@ void sof_lock_note_work(void) {
 }
 
 void sof_lock_reset(void) {
+    s_report_pending = false;
     s_sof_good = 0;
     s_in_n = 0;
 }

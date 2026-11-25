@@ -6,3 +6,10 @@ target_sources(${TARGET_NAME} PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/rapid_trigger.c"
     "${CMAKE_CURRENT_LIST_DIR}/sof_lock.c"
 )
+# Optimize cold configuration/storage together without changing scan/ISR codegen.
+set_property(SOURCE
+    "${CMAKE_CURRENT_LIST_DIR}/ec_settings.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_keymap_storage.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_via_controls.c"
+    APPEND PROPERTY COMPILE_OPTIONS -flto)
+target_link_options(${TARGET_NAME} PRIVATE -flto)

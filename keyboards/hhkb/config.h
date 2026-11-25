@@ -46,7 +46,9 @@
 #ifndef HHKB_SOF_LOCK
 #define HHKB_SOF_LOCK 1
 #endif
+#ifndef HHKB_SOF_MARGIN_US
 #define HHKB_SOF_MARGIN_US 150
+#endif
 // #define HHKB_SCAN_DIAGNOSTICS 1
 
 /* --- Matrix Geometry --- */

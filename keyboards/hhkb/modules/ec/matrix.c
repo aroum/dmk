@@ -193,6 +193,9 @@ void matrix_task(void *pvParameters) {
     TickType_t sleep_started = last_activity;
 #endif
     for (;;) {
+#if HHKB_SOF_LOCK
+        if (!tud_mounted() || tud_suspended()) sof_lock_reset();
+#endif
         // Also reached while sleeping/powered off/power saving.
         hhkb_calibration_apply_pending();
         bool battery = false;
