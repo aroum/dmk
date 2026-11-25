@@ -248,9 +248,9 @@ The scanner caches exact raw ADC press/release thresholds in classic mode, compu
 
 ### Grave Escape
 
-Assign VIA's **QK_GESC** (`QK_GRAVE_ESCAPE`, `0x7C16`) to a key. It sends Escape normally, or Grave with Shift or GUI held. Modifiers are preserved: Shift + Grave normally produces `~` on a US layout; GUI + Grave remains a GUI shortcut. The OS layout determines the character. Ctrl and Alt alone keep Escape.
+In VIA → Any, assign `KC_GESC` or `0x7C16` to a key. VIA protocol 12 uses this name for QMK `QK_GESC` / `QK_GRAVE_ESCAPE`. DMK configures the output separately for each modifier. With no modifiers, the key sends Escape. With Alt, Ctrl, GUI or Shift held, that modifier's toggle selects Grave when off and Escape when on. Modifiers are preserved, so Shift + Grave normally produces `~` on a US layout, and Ctrl/Alt/GUI + Grave are sent as shortcuts. The OS layout and application settings determine the resulting character or action.
 
-The separate **HHKB Settings → Grave Escape** tab has four toggles: **Always Escape with Alt / Ctrl / GUI / Shift**. All default off. An enabled toggle forces Escape whenever either the left or right version of that modifier is active, even with other modifiers held. It does not suppress the modifiers themselves. Overrides take precedence over the normal Shift/GUI rule.
+The separate **HHKB Settings → Grave Escape** tab has four toggles, **Always Escape with Alt / Ctrl / GUI / Shift**. All default off. Each toggle applies to both sides of the modifier. When multiple modifiers are held, Escape takes priority if any active modifier's toggle is on. For example, with Ctrl off and Shift on, Ctrl + GESC sends Ctrl + Grave, while Ctrl + Shift + GESC sends Ctrl + Shift + Escape.
 
 Physical modifiers, held HT modifiers, One-Shot modifiers and active `MK(...)` modifiers are considered. Choose the output on press and release that same output even if modifiers or settings change while held. Multiple GESC bindings share one held action until all are released. The overrides persist in EEPROM without increasing the record size or erasing existing calibration/keymaps. Reload the updated `via.json` to see the tab. The behavior is supplied by the HHKB module on Classic/Hybrid, ANSI/JIS, over USB or Hybrid Bluetooth.
 
@@ -279,7 +279,7 @@ Enable **Debug → USB Report Diagnostics** for one `[USB]` line per second whil
 
 ### Session-only USB phase control
 
-In **HHKB Settings → Scan Rate**, toggle **USB SOF phase lock (this session)** to compare synchronized and independent timer scheduling without reflashing. Disabling preserves the VIA-selected nominal scan rate; enabling clears stale lock state and reacquires SOF. This flag is not stored in EEPROM and returns to the build default (enabled) after restart. A build compiled with `HHKB_SOF_LOCK=0` cannot enable it at runtime. Load the updated `via.json` first.
+USB SOF phase lock is enabled by default through `HHKB_SOF_LOCK=1`. For timing comparisons, build with `HHKB_SOF_LOCK=0`. See the [Classic ANSI measurements and JIS timing headroom](config.md#usb-sof-measurements-on-classic-ansi). VIA debug controls, including USB diagnostics, remain available.
 
 For comparisons, use a scan-diagnostic build and **Debug → Polling Rate Monitor**. `[SCAN] actual` is matrix throughput, `work_max` is worst scan/publication duration, `miss` counts missed scan deadlines, and `q_full` counts failed matrix-queue submissions. The `usb`/`usb_loop` value is USB task-loop frequency, not USB polling/report rate. `[LAT] lock=0` means phase lock is disabled or not acquired; its age/error estimates still require USB-trace validation. `[VIA_DIAG] tx_fail` concerns VIA responses, not keyboard reports. These counters do not measure lost USB packets or prove end-to-end delivery; use a USB trace for bus-level failures. Keep console settings identical in A/B runs and discard the initial reacquisition interval.
 

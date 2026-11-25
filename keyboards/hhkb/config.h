@@ -43,6 +43,7 @@
 #define PERMISSIVE_HOLD 1
 #define HOLD_TAP_TAP_PREFERRED 0
 #define QUICK_TAP_TERM 150
+// USB scans follow SOF by default. Override at build time for timing comparisons.
 #ifndef HHKB_SOF_LOCK
 #define HHKB_SOF_LOCK 1
 #endif

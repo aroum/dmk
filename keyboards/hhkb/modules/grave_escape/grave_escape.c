@@ -23,7 +23,7 @@ static bool grave_escape_process(uint32_t key, bool pressed) {
                                 ((overrides & 2) && (mods & (MOD_LCTRL | MOD_RCTRL))) ||
                                 ((overrides & 4) && (mods & (MOD_LGUI | MOD_RGUI))) ||
                                 ((overrides & 8) && (mods & (MOD_LSHIFT | MOD_RSHIFT)));
-            selected = !force_escape && (mods & (MOD_LSHIFT | MOD_RSHIFT | MOD_LGUI | MOD_RGUI))
+            selected = !force_escape && mods
                      ? K_GRAV : K_ESC;
             keyboard_send_key(selected, true);
         }

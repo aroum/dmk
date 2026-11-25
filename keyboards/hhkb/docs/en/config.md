@@ -20,7 +20,31 @@
 
 DMK selects the multiplexer column, pulses `PC8` to discharge measurement capacitor `C57`, pulls the target row active `LOW`, waits for analog settling, performs ADC conversion, restores the row to `HIGH`, and proceeds to the next key. `PC14` powers the analog matrix circuit, `PC7` enables the op-amp, and `PA1` serves as `ADC1_IN1`.
 
-The timer-driven scanner is enabled by default. [VIA](https://www.usevia.app/) selects 50, 125, 250, 500, or 1000 Hz (1000 Hz targets a 950 µs loop period). The scanner runs directly from SRAM, with TIM2 providing precision analog delays.
+The timer-driven scanner is enabled by default. VIA selects 50, 125, 250, 500, or 1000 Hz. At 1000 Hz the nominal period is 1000 µs, with SOF synchronization adjusting scan phase relative to the USB frame. The scanner runs from SRAM, with TIM2 providing analog delays.
+
+### USB SOF measurements on Classic ANSI
+
+SOF synchronization is enabled by default through `HHKB_SOF_LOCK=1`. Its VIA control has been removed. Build with `HHKB_SOF_LOCK=0` for an A/B comparison. USB diagnostics, Polling Rate Monitor and the other VIA debug controls remain available. The implementation is described in [PR #10](https://github.com/aroum/dmk/pull/10).
+
+On November 25, 2026, the user tested HHKB Classic ANSI on Linux/Chromium with debug firmware `6af27377` from [Actions #45550849676](https://github.com/aroum/dmk/actions/runs/45550849676). That firmware allowed switching SOF through VIA. The user waited 10 seconds before each recording, then pressed keys. Logs `hid-console-2026-11-25T06-49-12.743Z.txt` and `hid-console-2026-11-25T06-49-44.669Z.txt` correspond to SOF On and Off. The logs do not record the remaining settings or USB topology.
+
+| HID Console metric | SOF On | SOF Off |
+| --- | --- | --- |
+| Nonzero per-interval `age_avg` | 948–984 µs, usually 948–949 | 988–1217 µs |
+| Typical per-interval `age_max` | 950–952 µs | 2265–2347 µs |
+| Largest recorded `age_max` | 2942 µs | 2906 µs |
+| Diagnostic phase error `err` | −5…+3 µs | lock disabled |
+| New drops/resynchronizations | 0 / 0 | 0 / 0 |
+
+`age` starts at the timer compare associated with a scan that publishes key changes and ends at the keyboard USB report completion callback. Reading the diagnostics resets `age_avg` and `age_max` for the next interval. Zero values indicate no completed measurements in that interval. These values include scanning, processing and USB delivery up to the callback. Physical key movement to application latency requires a separate measurement. `err` estimates the controller's phase correction. The cumulative `drop=97` and `resync=1` values predate both recordings and do not increase during them; the queue stays at `q=0`.
+
+SOF On stabilized typical `age` values, but one of 12 active intervals still contains a 2942 µs peak after the 10-second wait. The log does not establish its cause or the number of individual high-latency events.
+
+### JIS timing headroom
+
+JIS scans 69 populated positions instead of ANSI's 60, a 15% increase in measurements. The scanner skips six unpopulated positions in the 5×15 matrix. Processing time also depends on RT, curves, calibration and diagnostic streaming. An ANSI `age` near 949 µs does not specify the scan duration or establish JIS headroom.
+
+At 1000 Hz the SOF controller estimates scan-and-publication time, adds `HHKB_SOF_MARGIN_US` (150 µs by default), and clamps the lead to 50–950 µs. Both logs show `lead=950`, the upper limit. Physical JIS validation must check `[SCAN] work_max`, `miss` and `q_full`. Preserving the full 150 µs margin at the maximum 950 µs lead requires work to fit within 800 µs. Increasing `miss` or work exceeding the 1000 µs period indicates insufficient time for the selected settings. These Classic ANSI measurements leave JIS operation at 1000 Hz unverified.
 
 ## Matrix and Peripheral Pinout
 

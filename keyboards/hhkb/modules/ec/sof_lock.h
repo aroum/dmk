@@ -37,8 +37,6 @@ static inline uint16_t sof_lock_target(uint16_t p, int32_t in_offset, uint16_t l
 #ifndef SOF_LOCK_HOST_TEST
 uint16_t sof_lock_step(uint16_t fired, uint16_t nominal);
 void sof_lock_init(void);
-bool sof_lock_enabled(void);
-bool sof_lock_set_enabled(bool enabled);
 void sof_lock_reset(void);
 void sof_lock_note_work(void);
 void sof_lock_note_publish(void);

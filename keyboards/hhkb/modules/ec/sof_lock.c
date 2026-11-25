@@ -35,7 +35,6 @@ void usb_keyboard_report_armed(void) {
 #endif
 
 #if HHKB_SOF_LOCK
-static volatile bool s_enabled = true;
 static volatile uint16_t s_sof_cnt;
 static volatile uint32_t s_sof_p_q4 = 4000U * 16U;
 static volatile uint8_t s_sof_good;
@@ -49,7 +48,6 @@ void RCC_CRS_IRQHandler(void) {
     if (!f) return;
     uint16_t now = (uint16_t)TIM2->CNT;
     CRS->ICR = CRS_ICR_SYNCOKC | CRS_ICR_SYNCWARNC;
-    if (!s_enabled) return;
     uint16_t d = (uint16_t)(now - s_sof_cnt);
     if (d > 3800 && d < 4200) {
         if (s_sof_good) s_sof_p_q4 = (uint32_t)(s_sof_p_q4 + ((((int32_t)d << 4) - (int32_t)s_sof_p_q4) >> 3));
@@ -70,12 +68,12 @@ void sof_lock_init(void) {
 }
 
 static bool fresh(uint16_t now) {
-    return s_enabled && s_sof_good >= 8 && (uint16_t)(now - s_sof_cnt) < 12000;
+    return s_sof_good >= 8 && (uint16_t)(now - s_sof_cnt) < 12000;
 }
 
 uint16_t sof_lock_step(uint16_t fired, uint16_t nominal) {
     s_last_compare = fired;
-    if (!s_enabled || !fresh(fired)) return nominal;
+    if (!fresh(fired)) return nominal;
     uint32_t pq = s_sof_p_q4;
     uint16_t p = (uint16_t)((pq + 8) >> 4);
     uint16_t ms = (uint16_t)((nominal + 2000U) / 4000U);
@@ -89,7 +87,6 @@ uint16_t sof_lock_step(uint16_t fired, uint16_t nominal) {
 }
 
 void sof_lock_note_work(void) {
-    if (!s_enabled) return;
     uint16_t w = (uint16_t)(TIM2->CNT - s_last_compare);
     uint16_t pk = s_work_peak;
     pk = w > pk ? w : (uint16_t)(pk - ((pk - w) >> 6));
@@ -159,28 +156,3 @@ void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *e
 #endif
 }
 #endif
-
-// Session-only control: no settings snapshot/EEPROM writes.
-bool sof_lock_enabled(void) {
-#if HHKB_SOF_LOCK
-    return s_enabled;
-#else
-    return false;
-#endif
-}
-bool sof_lock_set_enabled(bool enabled) {
-#if HHKB_SOF_LOCK
-    taskENTER_CRITICAL();
-    if (s_enabled != enabled) {
-        s_enabled = enabled;
-        sof_lock_reset();
-#ifdef HHKB_SCAN_DIAGNOSTICS
-        s_last_err = 0;
-#endif
-    }
-    taskEXIT_CRITICAL();
-    return true;
-#else
-    return !enabled;
-#endif
-}

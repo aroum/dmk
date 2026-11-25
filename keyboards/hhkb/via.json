@@ -101,11 +101,6 @@
           "label": "Scan Rate",
           "content": [
             {
-              "label": "USB SOF phase lock (this session)",
-              "type": "toggle",
-              "content": ["id_hhkb_sof_lock", 0, 61]
-            },
-            {
               "label": "Target scan rate",
               "type": "dropdown",
               "options": [

@@ -19,6 +19,7 @@ class GraveEscapeTest(unittest.TestCase):
 #include "keys.h"
 #include "oneshot.h"
 #include "hold_tap.h"
+#define KEY_CONSUMER_FLAG 0x8000u
 #define HHKB_GESC 0x7c16u
 TickType_t g_mock_ticks;
 static uint8_t s_real_mods,s_weak_mods,overrides;
@@ -38,7 +39,8 @@ static bool sync_report_modifiers(void){return true;}
 static bool add_key_to_report(uint8_t k){(void)k;return false;}
 static bool del_key_from_report(uint8_t k){(void)k;return false;}
 static bool USB_HID_SendReport(const int *r){(void)r;return true;}
-''' + function(usb,'void usb_process_modifiers(') + function(usb,'void usb_process_key_with_modifiers(') + r'''
+static void USB_HID_SendConsumerReport(uint16_t usage){(void)usage;}
+''' + function(usb,'void usb_process_key(') + function(usb,'void usb_process_modifiers(') + function(usb,'void usb_process_key_with_modifiers(') + r'''
 void keyboard_send_key(uint16_t key,bool pressed){
  assert(key==K_ESC || key==K_GRAV);
  if(pressed){last_down=key;++downs;at_press=usb_get_effective_modifiers();}
@@ -50,7 +52,7 @@ static void release(void){assert(grave_escape_process(HHKB_GESC,false));oneshot_
 static uint16_t expected(uint8_t mods,unsigned flags){
  unsigned groups[4]={0x44,0x11,0x88,0x22};
  for(unsigned i=0;i<4;i++)if((flags&(1u<<i)) && (mods&groups[i]))return K_ESC;
- return mods&0xaa ? K_GRAV : K_ESC;
+ return mods ? K_GRAV : K_ESC;
 }
 int main(void){
  // Every left/right modifier combination and override mask, real and weak sources.
@@ -70,6 +72,12 @@ int main(void){
  // Exercise the actual USB physical and MK weak-modifier update paths.
  for(unsigned bit=0;bit<8;bit++){
   s_real_mods=s_weak_mods=0;
+  // Physical KC_LCTL..KC_RGUI use HID usages, not modifier masks.
+  usb_process_key(0xe0u+bit,true);
+  assert(usb_get_effective_modifiers()==(1u<<bit));
+  press();assert(last_down==expected(1u<<bit,0) && at_press==(1u<<bit));
+  release();usb_process_key(0xe0u+bit,false);
+  assert(!usb_get_effective_modifiers());
   usb_process_modifiers(1u<<bit,true);press();assert(last_down==expected(1u<<bit,0));
   usb_process_modifiers(1u<<bit,false);release();
   usb_process_key_with_modifiers(1u<<bit,0,true);press();assert(last_down==expected(1u<<bit,0));

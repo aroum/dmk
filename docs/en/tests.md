@@ -6,7 +6,9 @@ CI covers encoding, state-machine logic, bounds, serialization and simulated fai
 
 ## USB SOF scheduling — PR #10
 
-Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HHKB_SOF_LOCK=1`. The default build also allows switching phase lock for the current session in **VIA → HHKB Settings → Scan Rate**; use identical firmware/settings for that A/B comparison. Keep `HHKB_SOF_MARGIN_US=150` initially; this is a starting value, not a validated margin. Use an HHKB scan-diagnostic build and enable Polling Rate Monitor in VIA.
+Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HHKB_SOF_LOCK=1` (the default). Use an HHKB scan-diagnostic build and enable Polling Rate Monitor in VIA. The SOF VIA toggle was removed after the initial A/B test. Keep `HHKB_SOF_MARGIN_US=150` initially and measure actual headroom for each model.
+
+- [x] Record a HID Console SOF On/Off comparison during key presses on physical Classic ANSI. Tested on Linux/Chromium with debug commit `6af27377`, waiting 10 seconds before each recording. On gives typical `age_avg` 948–949 µs and `age_max` 950–952 µs, with one interval peaking at 2942 µs. Off gives `age_avg` 988–1217 µs and a maximum of 2906 µs. No new drops or resynchronizations occur. The logs do not record other settings or USB topology. See [measurements and metric definitions](../../keyboards/hhkb/docs/en/config.md#usb-sof-measurements-on-classic-ansi) and [PR #10](https://github.com/aroum/dmk/pull/10).
 
 - [ ] Capture USB SOF, keyboard IN transactions and scan timing with a USB analyzer and/or synchronized logic-analyzer trace. Establish a reproducible measurement method before interpreting `[LAT]` as end-to-end latency.
 - [ ] At 1000 Hz, compare locked/unlocked scan-to-IN delay, jitter, worst case and missed polls under idle, ordinary typing, rapid repeated presses and chords. Report distributions, not just the best value.
@@ -36,7 +38,7 @@ Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HH
 - [ ] Verify actual OS shortcuts with right Ctrl/Shift/Alt/GUI, HT modifiers, One-Shot and `MK(...)`, over USB and Hybrid Bluetooth. Include AltGr in a host layout that uses it.
 - [ ] Hold the same ordinary key or modifier through two physical assignments/HT/macro sources; release them in both orders. Confirm the host keeps the surviving hold and receives the final release.
 - [ ] Hold a layer through two assignments, switch a persistent TG layer while held and release in both orders. Verify the effective physical layout and HHKB system indication stay correct.
-- [ ] Assign QK_GESC and test both sides of Shift/GUI plus Ctrl/Alt combinations. Confirm actual host output/shortcuts, including each override, and release modifiers before GESC. Repeat over Bluetooth on Hybrid.
+- [ ] Assign `KC_GESC` through VIA Any and test left/right Alt, Ctrl, GUI and Shift. With the corresponding toggle off, each modifier selects Grave; with it on, Escape. Verify Escape priority for mixed modifiers, preserved modifier shortcuts, and release of modifiers before GESC. With no modifier, expect Escape. Repeat over Bluetooth on Hybrid.
 
 ## Hybrid power, wake and Nordic transport
 
@@ -49,6 +51,7 @@ Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HH
 
 ## Update, recovery and persistence on physical boards
 
+- [x] Flash Classic ANSI model PD-KB401B through PFU Bank 1 using the Linux HID flasher and confirm the new DMK device enumerates. On November 25, 2026, debug commit `6af27377` completed the transfer and final acknowledgement; the device returned as `CAFE:4014`, and VIA/HID Console worked after updating the Linux udev rule. Calibration/layout persistence and stock restoration were not checked in this run.
 - [ ] Upgrade an already-configured keyboard through Bank 1 recovery and return to DMK. Verify custom calibration, layout and settings remain usable without reconfiguration.
 - [ ] Test SW6 recovery alone and SW5+SW6 DMK wipe on Classic and Hybrid units with complete backups available. Confirm ordinary recovery preserves DMK data and the wipe does not alter factory-owned data or prevent stock operation.
 - [ ] On a disposable/test setup with SWD recovery and full backups, interrupt power during settings saves and verify a usable previous/new configuration returns. Compare factory-owned EEPROM regions before/after; do not perform destructive experiments on an unbacked-up daily-use board.
