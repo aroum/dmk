@@ -297,7 +297,12 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             settle_start = (uint16_t)TIM2->CNT;
 
             if (is_calibrating) s_cal_samples[col][row] = val;
-            pending = (scan_pending_t){.raw = val, .col = col, .row = row, .valid = true};
+            // travel and pressed are assigned when this sample is processed.
+            // Avoid aggregate zeroing here: GCC can emit a memset per key.
+            pending.raw = val;
+            pending.col = col;
+            pending.row = row;
+            pending.valid = true;
         }
     }
 
