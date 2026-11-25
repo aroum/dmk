@@ -14,6 +14,10 @@ set_property(SOURCE
     "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_keymap_storage.c"
     "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_via_controls.c"
     APPEND PROPERTY COMPILE_OPTIONS -flto)
+# Keep VIA command dispatch within the Hybrid flash budget. Acquisition code
+# retains its explicit O2 setting and is compiled separately.
+set_property(SOURCE "${DMK_ROOT}/dmk_core/features/vial.c"
+    APPEND PROPERTY COMPILE_OPTIONS -Oz)
 target_link_options(${TARGET_NAME} PRIVATE -flto)
 
 target_compile_definitions(${TARGET_NAME} PRIVATE HHKB_USB_REPORT_DIAGNOSTICS=1)
