@@ -274,6 +274,11 @@ static void usb_device_task(void *param) {
 #ifdef HHKB_HYBRID
         if (battery_usb_off) wait = pdMS_TO_TICKS(100);
 #endif
+#if defined(MCU_stm32l072)
+        // Enumeration control transfers must keep progressing even if an
+        // event notification was coalesced with other task work.
+        if (!tud_mounted()) wait = pdMS_TO_TICKS(1);
+#endif
         ulTaskNotifyTake(pdTRUE, wait);
     }
 }

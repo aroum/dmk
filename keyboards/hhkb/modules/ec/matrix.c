@@ -167,6 +167,10 @@ void matrix_task(void *pvParameters) {
 #ifdef HHKB_SCAN_DIAGNOSTICS
     uint16_t previous_scan_start = (uint16_t)TIM2->CNT;
 #endif
+#if defined(HHKB_BOOT_TRACE) && !defined(HHKB_HYBRID)
+    // Test USB with both acquisition interrupt sources still disabled.
+    while (!tud_mounted()) vTaskDelay(pdMS_TO_TICKS(10));
+#endif
     s_matrix_task = xTaskGetCurrentTaskHandle();
     update_scan_period();
     TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
