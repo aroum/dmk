@@ -399,6 +399,13 @@ void matrix_task(void *pvParameters) {
 #endif
         hhkb_calibration_apply_pending();
         hhkb_matrix_scan_raw(s_matrix_state);
+#ifdef HHKB_BOOT_TRACE
+        static bool first_scan_complete;
+        if (!first_scan_complete) {
+            GPIOA->BSRR = 1U << 8;
+            first_scan_complete = true;
+        }
+#endif
 #ifdef HHKB_SCAN_DIAGNOSTICS
         uint32_t scan_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         s_matrix_scan_us = scan_us;

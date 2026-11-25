@@ -11,6 +11,9 @@
 #include "tusb.h"
 #include "device/dcd.h"
 #include "usb_report_diag.h"
+#ifdef HHKB_BOOT_TRACE
+#include "stm32l0xx.h"
+#endif
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #include "stm32l072xx.h"
@@ -172,6 +175,9 @@ void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr) {
 
 static void usb_device_task(void *param) {
     (void)param;
+#ifdef HHKB_BOOT_TRACE
+    GPIOA->BSRR = 1U << 9;
+#endif
     s_usb_task_handle = xTaskGetCurrentTaskHandle();
 #ifndef USB_NO_HOST_SUSPEND_MS
 #define USB_NO_HOST_SUSPEND_MS 0

@@ -39,6 +39,10 @@ TickType_t keyboard_platform_timeout(void) {
 void keyboard_platform_tick(TickType_t now) {
     bool heartbeat = ((now / pdMS_TO_TICKS(500)) & 1U) != 0;
     bool mounted = tud_mounted();
+#ifdef HHKB_BOOT_TRACE
+    // Keep the independent task landmarks visible until USB configures us.
+    if (!mounted) return;
+#endif
     bool suspended = tud_suspended();
     bool power_saving_active = keyboard_power_saving_enabled() && (!mounted || suspended);
 #ifdef HHKB_HYBRID

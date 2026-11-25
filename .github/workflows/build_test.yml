@@ -13,6 +13,11 @@ on:
         type: boolean
         default: false
 
+      hhkb_boot_trace:
+        description: Add boot LED landmarks to the Classic ANSI scan-debug build
+        type: boolean
+        default: false
+
 jobs:
   build-keyboards:
     if: ${{ !inputs.hhkb_scan_diagnostics }}
@@ -117,7 +122,7 @@ jobs:
       - name: Build HFB
         run: |
           chmod +x build_all.sh
-          ./build_all.sh -b hhkb --mcu stm32l072 -d "${{ matrix.defines }}${{ inputs.hhkb_scan_diagnostics && ',HHKB_SCAN_DIAGNOSTICS=1' || '' }}" -c
+          ./build_all.sh -b hhkb --mcu stm32l072 -d "${{ matrix.defines }}${{ inputs.hhkb_scan_diagnostics && ',HHKB_SCAN_DIAGNOSTICS=1' || '' }}${{ inputs.hhkb_scan_diagnostics && inputs.hhkb_boot_trace && ',HHKB_BOOT_TRACE=1' || '' }}" -c
 
       - name: Package HFB and VIA layout
         run: |

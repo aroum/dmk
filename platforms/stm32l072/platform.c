@@ -40,6 +40,20 @@ static void hhkb_hybrid_startup_pd2(void) {
 }
 #endif
 
+#ifdef HHKB_BOOT_TRACE
+// Pre-scheduler landmarks only. Orange pulse groups are readable on video
+// even if neither USB nor the RTOS starts.
+void hhkb_boot_pulses(unsigned count) {
+    for (unsigned i = 0; i < count; ++i) {
+        GPIOA->BSRR = 1U << 9;
+        for (volatile unsigned d = 0; d < 320000; ++d) __NOP();
+        GPIOA->BRR = 1U << 9;
+        for (volatile unsigned d = 0; d < 320000; ++d) __NOP();
+    }
+    for (volatile unsigned d = 0; d < 1000000; ++d) __NOP();
+}
+#endif
+
 void platform_init(void) {
     __asm__ volatile("" : : "r"(hhkb_image_identity) : "memory");
     // 0. Early check: If SW6 is ON, branch immediately to Bank 1 (stock factory firmware)
@@ -117,6 +131,9 @@ void platform_init(void) {
     SystemCoreClock = 32000000;
 
     // Initialize HHKB matrix hardware (ADC, OpAmp, demuxers)
+#ifdef HHKB_BOOT_TRACE
+    hhkb_boot_pulses(1);
+#endif
     hhkb_matrix_hardware_init();
 }
 

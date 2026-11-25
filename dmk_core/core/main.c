@@ -56,6 +56,10 @@ int main(void) {
 #endif
 
     // Initialize USB HID / MIDI hardware and endpoints
+#ifdef HHKB_BOOT_TRACE
+    extern void hhkb_boot_pulses(unsigned count);
+    hhkb_boot_pulses(2);
+#endif
     usb_init();
 
     // Create FreeRTOS matrix event queue
@@ -131,6 +135,10 @@ int main(void) {
     hooks_dispatch_early_init();
 
     // Start FreeRTOS preemptive multitasking scheduler
+#ifdef HHKB_BOOT_TRACE
+    hhkb_boot_pulses(3);
+    GPIOA->BRR = (1U << 8) | (1U << 9);
+#endif
     vTaskStartScheduler();
 
     // Should never reach here unless heap memory was exhausted
