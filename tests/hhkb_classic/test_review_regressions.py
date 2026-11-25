@@ -98,6 +98,7 @@ static void erase_bank2_vector_page_ram(void){++pages;longjmp(done,1);}
         code += function(source, 'static bool recovery_switches_stable_on(')
         code += function(source, 'static bool sw6_stable_on(')
         code += function(source, 'static bool sw5_stable_on(')
+        code += function(source, 'void hhkb_enter_bank1(')
         code += function(source, 'void hhkb_early_dip_check(')
         code += r'''
 int main(void){
