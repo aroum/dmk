@@ -97,7 +97,17 @@
 #define configUSE_COUNTING_SEMAPHORES 0
 #define configQUEUE_REGISTRY_SIZE 8
 #define configUSE_QUEUE_SETS 0
+#if defined(MCU_stm32l072)
+// The HHKB scan fills most of its 1 ms period at the same priority as the USB
+// and key tasks (task_internal.h). With time slicing, the tick that lands
+// mid-scan round-robins the matrix task out whenever a peer is ready, which
+// stretches the scan past its deadline (observed: work_max ~2x raw scan and
+// a missed scan whenever the once-per-second diagnostics print). The matrix
+// task already yields at the end of every loop, so peers still run each scan.
+#define configUSE_TIME_SLICING 0
+#else
 #define configUSE_TIME_SLICING 1
+#endif
 #ifndef configUSE_NEWLIB_REENTRANT
 #define configUSE_NEWLIB_REENTRANT 0
 #endif
