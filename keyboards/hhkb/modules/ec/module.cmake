@@ -8,6 +8,8 @@ target_sources(${TARGET_NAME} PRIVATE
 )
 # Optimize cold configuration/storage together without changing scan/ISR codegen.
 set_property(SOURCE
+    "${DMK_ROOT}/dmk_core/features/vial.c"
+    "${DMK_ROOT}/dmk_core/drivers/usb_descriptors.c"
     "${CMAKE_CURRENT_LIST_DIR}/ec_settings.c"
     "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_keymap_storage.c"
     "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_via_controls.c"
