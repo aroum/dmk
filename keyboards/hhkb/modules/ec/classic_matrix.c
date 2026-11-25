@@ -59,7 +59,7 @@ typedef struct {
 // Normalize once while C57 discharges, with IRQs enabled.
 static inline __attribute__((always_inline))
 void scan_prepare_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan, bool debug) {
-    if (pending->valid && pending->raw != UINT16_MAX && (!scan->cfg.rt_enabled && debug))
+    if (pending->valid && pending->raw != UINT16_MAX && debug)
         pending->travel = rt_scan_normalize(&s_rt_keys[pending->col][pending->row], pending->raw, scan);
 }
 
@@ -67,15 +67,14 @@ void scan_prepare_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan, bo
 // Logging and calibration callbacks must stay outside the acquisition IRQ mask.
 static inline __attribute__((always_inline))
 bool scan_process_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan,
-                          matrix_row_t matrix[], bool debug) {
+                          matrix_row_t matrix[]) {
     if (!pending->valid) return false;
     rt_key_t *key = &s_rt_keys[pending->col][pending->row];
     matrix_row_t previous = matrix[pending->row];
     if (pending->raw == UINT16_MAX) {
         pending->pressed = key->down;
     } else if (scan->cfg.rt_enabled) {
-        pending->pressed = rt_update_scan_cached(key, &s_scan_cache.key[pending->col][pending->row], scan, pending->raw,
-            debug ? &pending->travel : NULL);
+        pending->pressed = rt_update_scan_cached(key, &s_scan_cache.key[pending->col][pending->row], scan, pending->raw, NULL);
     } else {
         pending->pressed = rt_update_raw_cached(key, &s_scan_cache.key[pending->col][pending->row], pending->raw);
     }
@@ -274,7 +273,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             GPIOC->BSRR = (1U << 8);
             uint16_t discharge_start = (uint16_t)TIM2->CNT;
             scan_prepare_pending(&pending, &prepared, debug_topre);
-            changed |= scan_process_pending(&pending, &prepared, current_matrix, debug_topre);
+            changed |= scan_process_pending(&pending, &prepared, current_matrix);
             scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
             scan_wait_since(discharge_start, 2);
             scan_wait_since(settle_start, 4);
@@ -308,7 +307,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
     // Flush the last key in this pass; no sample is deferred to the next scan.
     scan_prepare_pending(&pending, &prepared, debug_topre);
-    changed |= scan_process_pending(&pending, &prepared, current_matrix, debug_topre);
+    changed |= scan_process_pending(&pending, &prepared, current_matrix);
     scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
 
     // Disable OpAmp
