@@ -20,6 +20,8 @@ USB_FLASH=false
 KEYBOARD="corne"
 MCU=""
 MCU_EXPLICIT=false
+EXTERNAL_PLATFORM=""
+BUILD_OUTPUT_DIR=""
 PROBE="j-link"
 MEMORY=""
 NRF_PORT=""
@@ -175,7 +177,9 @@ show_help() {
         echo ""
         echo "Main parameters:"
         echo "  -b, --keyboard [NAME]    Keyboard selection (default: corne)"
-        echo "  --mcu [MCU]              MCU selection (milandr/rp2040/rp2350/nrf52840/baikal, default: from config.h or milandr)"
+        echo "  --build-dir [PATH]       Separate build directory / Отдельный каталог сборки"
+        echo "  --platform-dir [PATH]    External MCU platform package / Внешняя платформа MCU"
+        echo "  --mcu [MCU]              MCU identifier: built-in or external (default: config.h or milandr)"
         echo "  -d, --define [DEF]       Define custom macro during compilation (e.g. SPLIT_LEFT)"
         echo "  -m, --modules [MODS]     Include user modules (semicolon-separated paths)"
         echo "  --memory [SIZE]          Override flash size for usage table (e.g. 512KB, 2MB, 4MB, 16MB)"
@@ -200,7 +204,9 @@ show_help() {
         echo ""
         echo "Основные параметры:"
         echo "  -b, --keyboard [NAME]    Выбор клавиатуры (по умолчанию: corne)"
-        echo "  --mcu [MCU]              Выбор микроконтроллера (milandr/rp2040/rp2350/nrf52840/baikal, по умолчанию: из config.h или milandr)"
+        echo "  --build-dir [PATH]       Separate build directory / Отдельный каталог сборки"
+        echo "  --platform-dir [PATH]    External MCU platform package / Внешняя платформа MCU"
+        echo "  --mcu [MCU]              Идентификатор встроенного или внешнего MCU (по умолчанию: config.h или milandr)"
         echo "  -d, --define [DEF]       Определить пользовательский макрос при сборке (напр. SPLIT_LEFT)"
         echo "  -m, --modules [MODS]     Подключить модули (пути, разделенные точкой с запятой)"
         echo "  --memory [SIZE]          Переопределить размер flash в таблице памяти (напр. 512KB, 2MB, 4MB, 16MB)"
@@ -274,6 +280,17 @@ while [[ $# -gt 0 ]]; do
             ;;
         -b|--keyboard)
             KEYBOARD="$2"
+            shift 2
+            ;;
+        --build-dir)
+            [[ $# -ge 2 ]] || { echo "--build-dir requires a directory" >&2; exit 1; }
+            mkdir -p "$2"
+            BUILD_OUTPUT_DIR="$(cd "$2" && pwd)"
+            shift 2
+            ;;
+        --platform-dir)
+            [[ $# -ge 2 ]] || { echo "--platform-dir requires a directory" >&2; exit 1; }
+            EXTERNAL_PLATFORM="$(cd "$2" && pwd)"
             shift 2
             ;;
         --mcu)
@@ -365,6 +382,7 @@ BUILD_DIR="${SCRIPT_DIR}/build"
 if [[ "$KBD_BASE" == "hhkb" && "$MCU" == "stm32l072" ]]; then
     BUILD_DIR="${SCRIPT_DIR}/build/hhkb-script"
 fi
+[[ -n "$BUILD_OUTPUT_DIR" ]] && BUILD_DIR="$BUILD_OUTPUT_DIR"
 HRD_PROBE="${SCRIPT_DIR}/platforms/milandr/dep/probe/jlink4swd.cfg"
 
 if [[ "$CLEAN" == true ]]; then
@@ -381,6 +399,7 @@ CMAKE_ARGS=(-G "Unix Makefiles" -S "$SCRIPT_DIR" -B "$BUILD_DIR")
 CMAKE_ARGS+=(-DKEYBOARD="${KBD_BASE}")
 CMAKE_ARGS+=(-DKEYBOARD_DIR="${KEYBOARD_DIR}")
 CMAKE_ARGS+=(-DMCU="${MCU}")
+CMAKE_ARGS+=(-DDMK_PLATFORM_DIR="${EXTERNAL_PLATFORM}")
 CMAKE_ARGS+=(-DCMAKE_BUILD_TYPE="MinSizeRel")
 if [[ "$MCU" == "rp2350" ]]; then
     CMAKE_ARGS+=(-DPICO_PLATFORM=rp2350)
@@ -447,7 +466,9 @@ case "$MCU" in
         fi
         ;;
     *)
-        if [[ "$UF2" == true ]]; then
+        if [[ -f "$UF2_FILE" ]]; then
+            echo -e "${GREEN}${MSG_UF2_READY_CMAKE} ${UF2_FILE}${NC}"
+        elif [[ "$UF2" == true ]]; then
             echo -e "${YELLOW}${MSG_UF2_UNSUPPORTED} ${MCU}.${NC}"
         fi
         ;;

@@ -323,3 +323,145 @@ DMK предоставляет полную поддержку стандарт�
 Пользовательские модули не обязательно хранить внутри дерева исходных кодов DMK. Вы можете расположить их в своем отдельном репозитории конфигурации (например, в папке `modules/my_module`) и передавать относительный или абсолютный путь в CMake через аргумент `-DDMK_MODULES`.
 
 Полный пример организации репозитория конфигурации и готовый шаблон автоматической матричной сборки через **GitHub Actions CI/CD** описан в [Руководстве по сборке (build.md)](build.md#автоматическая-сборка-в-своем-репозитории-github-actions).
+
+## Внешние платформы MCU
+
+Новый микроконтроллер можно поддерживать вне DMK, в том числе в отдельном репозитории конфигов. **Платформенный пакет** загружается до CMake `project()` и выбирает компилятор, SDK, startup и порт FreeRTOS. Обычный `module.cmake` подключается позже, когда цель прошивки уже создана, и предназначен для функций клавиатуры.
+
+### Что положить в репозиторий
+
+```text
+my-configs/
+├── keyboards/my_keyboard/
+│   ├── config.h
+│   ├── matrix_custom.c                 # при необходимости
+│   └── modules/my_feature/module.cmake # обычные модули
+└── platforms/my_mcu/
+    ├── platform.cmake                  # обязательный манифест платформы
+    ├── platform.c                      # тактирование/init/reset/bootloader
+    ├── startup.S
+    ├── memory.ld
+    ├── freertos_port/                  # порт для выбранного CPU/компилятора
+    ├── include/
+    │   ├── pin_defs.h                  # pin_t и имена пинов
+    │   ├── FreeRTOSConfig.h
+    │   └── tusb_config.h               # если используется TinyUSB
+    ├── drivers/
+    │   ├── gpio.c
+    │   ├── adc.c                       # если нужен АЦП
+    │   ├── i2c.c                       # если используется I2C
+    │   └── spi.c                       # если используется SPI
+    └── sdk/                            # SDK или подмодуль
+```
+
+В `keyboards/my_keyboard/config.h`:
+
+```c
+#define DEFAULT_MCU my_mcu
+#define DMK_PLATFORM_DIR "../../platforms/my_mcu"
+```
+
+Для выбора MCU/платформы используйте одно безусловное литеральное определение: этот этап поиска не вычисляет условные ветки препроцессора. Путь в кавычках считается от каталога этого `config.h`, а не от DMK или каталога сборки. Его читает CMake; загрузчика платформ во время работы нет. Идентификатор MCU должен быть допустимым идентификатором C, например `my_mcu`.
+
+Приоритет выбора:
+
+1. Явный `DMK_PLATFORM_DIR` в CMake или `--platform-dir` в CLI.
+2. Литеральная строка `#define DMK_PLATFORM_DIR "..."` в выбранном конфиге.
+3. `<каталог клавиатуры>/platforms/<MCU>`, затем `<каталог клавиатуры>/platform`.
+4. `<корень Git-репозитория конфигов>/platforms/<MCU>`.
+5. Встроенная платформа DMK.
+
+Если явно выбранный пакет не содержит `platform.cmake`, конфигурация завершается ошибкой, без незаметного перехода на другую платформу. Поиск от корня Git работает в checkout; для архива без `.git` задайте путь в конфиге или явно. Если клавиатур несколько, указывайте каталог нужной клавиатуры.
+
+### Контракт `platform.cmake`
+
+Файл выполняется **до** `project()`: здесь задаются toolchain/компилятор и SDK. Используйте абсолютные пути от `${PLATFORM_DIR}`, `${DMK_ROOT}` или `${CMAKE_CURRENT_LIST_DIR}`. Вторую цель прошивки создавать не нужно.
+
+Основные переменные:
+
+- `PLATFORM_SRC` — startup, инициализация, SDK, порт FreeRTOS, USB-стек/DCD и транспорт. `${FREERTOS_COMMON_SRC}` содержит общие исходники FreeRTOS из DMK; добавляйте их один раз, если используете это ядро.
+- `PLATFORM_INC` — каталоги заголовков SDK, порта и конфигурации. Они идут перед общими include-путями DMK, позволяя предоставить `pin_defs.h`, `FreeRTOSConfig.h` и настройки USB-стека.
+- `PLATFORM_DEFS` — определения препроцессора цели.
+- `PLATFORM_LIBS` — библиотеки SDK и параметры линковки, включая linker script при необходимости.
+
+Одного манифеста недостаточно: порт реализует API выбранных функций. GPIO и точки входа платформы объявлены в `dmk_core/include/hal_gpio.h`: `platform_init`, reset/bootloader, GPIO, задержки и snapshot. Контракты шин находятся в `hal_adc.h`, `hal_i2c.h`, `hal_spi.h`. Сигнатуры и типы общего API должны совпадать. Платформа предоставляет векторы/обработчики прерываний, тактирование и USB DCD. Конфигурация FreeRTOS должна соответствовать порту CPU, частоте, приоритетам IRQ, памяти и используемым DMK hooks/способам выделения памяти; встроенные настройки известных MCU не заменяют конфигурацию нового порта.
+
+При использовании транспорта TinyUSB из DMK включите в `PLATFORM_SRC` файлы `dmk_core/drivers/app_usb_tinyusb.c`, `usb_descriptors.c` и необходимые исходники TinyUSB/MCU. При замене транспорта реализуйте API `app_usb_hid.h` и поддержку включённых VIA/консоли самостоятельно.
+
+Дополнительные функции манифеста:
+
+```cmake
+# Вызывается после настройки цели и обычных модулей.
+function(platform_configure_target target)
+    target_compile_definitions(${target} PRIVATE MY_PORT_OPTION=1)
+endfunction()
+
+# Формирование артефактов остаётся задачей платформы.
+function(platform_post_build target)
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary
+                $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/${target}.bin)
+endfunction()
+```
+
+### Замена аппаратных драйверов
+
+У внешней платформы автоматически используется каталог `drivers/`. Файл с совпадающим именем заменяет выбранный исходник из `dmk_core/drivers/` как в списке ядра, так и в `PLATFORM_SRC`. Например, `drivers/gpio.c` заменяет общий файл с MCU-ветвлениями, а `drivers/app_usb_tinyusb.c` может заменить транспорт. Программные функции вроде слоёв и HT таким способом не заменяются. Опциональные драйверы шин выбираются только при их использовании конфигом/модулями.
+
+Другой каталог задаётся переменной `DMK_PLATFORM_DRIVER_DIR` в манифесте: путь абсолютный или относительно платформы. Если несколько реализаций объединены в одном файле/библиотеке, исключите стандартные драйверы по именам и добавьте свои реализации:
+
+```cmake
+set(DMK_PLATFORM_EXCLUDE_DRIVERS gpio.c adc.c)
+list(APPEND PLATFORM_SRC "${PLATFORM_DIR}/hal_combined.c")
+```
+
+Исключение файла не отключает функцию: её API всё равно должен быть реализован. Хранение настроек, RGB и split также требуют поддержки платформой, если они включены. Зависимости SDK и функций выбирает платформенный пакет. Сохраняйте лицензии SDK, RTOS и заимствованных частей порта.
+
+### Локальная сборка и удалённые репозитории конфигов
+
+Копировать файлы в `dmk/keyboards/` и `dmk/platforms/` не требуется:
+
+```bash
+./build_all.sh -b /path/to/my-configs/keyboards/my_keyboard \
+  --build-dir /path/to/build-my-mcu
+
+./build_all.sh -b /path/to/my-configs/keyboards/my_keyboard \
+  --platform-dir /path/to/my-platform --build-dir /path/to/build-my-mcu
+
+cmake -S /path/to/dmk -B /path/to/build-my-mcu \
+  -DKEYBOARD_DIR=/path/to/my-configs/keyboards/my_keyboard -DMCU=my_mcu
+cmake --build /path/to/build-my-mcu --parallel
+```
+
+При смене toolchain используйте отдельный или чистый каталог сборки. Форматы выходных файлов определяет `platform_post_build`. Встроенные команды прошивки через USB/программатор в `build_all.sh` не получают поддержку нового MCU автоматически: используйте процедуру своего порта.
+
+В workflow репозитория конфигов достаточно checkout двух репозиториев и сборки непосредственно из конфигурационного дерева:
+
+```yaml
+- uses: actions/checkout@v7
+  with:
+    path: configs
+    submodules: recursive
+- uses: actions/checkout@v7
+  with:
+    repository: aroum/dmk
+    ref: dev # для воспроизводимости закрепите проверенный коммит
+    path: dmk
+    submodules: recursive
+# Установите необходимые вашему порту toolchain/SDK.
+- uses: astral-sh/setup-uv@v10.3.3
+- run: |
+    bash dmk/build_all.sh \
+      -b "$GITHUB_WORKSPACE/configs/keyboards/my_keyboard" \
+      --build-dir "$GITHUB_WORKSPACE/build-my-mcu"
+```
+
+Саму платформу также можно checkout отдельно или подключить подмодулем и выбрать через `--platform-dir`. DMK не скачивает SDK и не выполняет удалённые манифесты по URL автоматически.
+
+Пример `tests/platform_repo_example/` использует новый идентификатор `external_demo`, но переиспользует STM32 SDK только для интеграционного теста сборки. Не прошивайте его в реальную клавиатуру. CI клонирует пример как независимый репозиторий и собирает ARM ELF, `.bin` и `.hex`, проверяя замену HAL и обычный модуль. Локальный запуск:
+
+```bash
+DMK_TEST_EXTERNAL_ARM=1 uv run python3 -m unittest tests.test_external_platform
+```
+
+Нужны Arm GCC/newlib и инициализированные SDK-подмодули DMK. Без ARM-компилятора host-тесты проверяют выбор путей, приоритет, замену драйверов и ошибки отсутствующего манифеста. Успешная сборка не подтверждает электрическую совместимость нового MCU или тайминги USB/Flash/тактирования.

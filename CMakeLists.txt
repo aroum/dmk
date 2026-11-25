@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/dmk_paths.cmake")
+
 # Default options
 set(KEYBOARD "corne" CACHE STRING "Keyboard name")
 set(SIDE "" CACHE STRING "Split keyboard side (left/right)")
@@ -17,6 +19,22 @@ if(NOT KEYBOARD_DIR)
 else()
     set(ACTUAL_KBD_DIR "${KEYBOARD_DIR}")
 endif()
+if(NOT KEYBOARD_DIR AND EXISTS "${KEYBOARD}")
+    set(ACTUAL_KBD_DIR "${KEYBOARD}")
+endif()
+get_filename_component(ACTUAL_KBD_DIR "${ACTUAL_KBD_DIR}" ABSOLUTE)
+# Resolve repository roots before MCU/platform detection, just as the target does.
+if(NOT EXISTS "${ACTUAL_KBD_DIR}/config.h" AND IS_DIRECTORY "${ACTUAL_KBD_DIR}/keyboards")
+    dmk_literal_glob_path(_dmk_kbd_glob "${ACTUAL_KBD_DIR}")
+    file(GLOB _dmk_keyboard_candidates LIST_DIRECTORIES true "${_dmk_kbd_glob}/keyboards/*")
+    foreach(_candidate IN LISTS _dmk_keyboard_candidates)
+        if(EXISTS "${_candidate}/config.h")
+            set(ACTUAL_KBD_DIR "${_candidate}")
+            break()
+        endif()
+    endforeach()
+endif()
+set(KEYBOARD_DIR "${ACTUAL_KBD_DIR}")
 
 # Detect default MCU from config.h if not explicitly specified
 set(DEFAULT_MCU_VALUE "milandr")
@@ -29,7 +47,7 @@ if(EXISTS "${ACTUAL_KBD_DIR}/config.h")
     endif()
 endif()
 
-set(MCU "${DEFAULT_MCU_VALUE}" CACHE STRING "Target MCU (milandr/rp2040/rp2350/nrf52840/baikal)")
+set(MCU "${DEFAULT_MCU_VALUE}" CACHE STRING "Target MCU identifier (built-in or external platform)")
 
 # Add global compile definitions from DEFINE variable
 if(DEFINE)
@@ -121,16 +139,7 @@ if(KEYBOARD STREQUAL "hhkb")
 endif()
 
 # Map MCU to platform directory
-if(MCU STREQUAL "rp2040" OR MCU STREQUAL "rp2350")
-    set(PLATFORM_DIR "${DMK_ROOT}/platforms/raspberrypi")
-else()
-    set(PLATFORM_DIR "${DMK_ROOT}/platforms/${MCU}")
-endif()
-
-# Validate platform
-if(NOT EXISTS "${PLATFORM_DIR}")
-    message(FATAL_ERROR "Platform ${MCU} not found. Available platforms: milandr, rp2040, rp2350, nrf52840, baikal, stm32l072, stm32f072")
-endif()
+include("${DMK_ROOT}/cmake/dmk_platform.cmake")
 
 set(CMAKE_PROJECT_NAME dmk_firmware)
 
@@ -143,7 +152,13 @@ set(FREERTOS_COMMON_SRC
 )
 
 # Platform-specific CMake configuration
-include("${PLATFORM_DIR}/platform.cmake" OPTIONAL)
+include("${PLATFORM_DIR}/platform.cmake")
+if(DMK_EXTERNAL_PLATFORM AND NOT DEFINED DMK_PLATFORM_DRIVER_DIR AND EXISTS "${PLATFORM_DIR}/drivers")
+    set(DMK_PLATFORM_DRIVER_DIR "${PLATFORM_DIR}/drivers")
+endif()
+if(DMK_PLATFORM_DRIVER_DIR)
+    get_filename_component(DMK_PLATFORM_DRIVER_DIR "${DMK_PLATFORM_DRIVER_DIR}" ABSOLUTE BASE_DIR "${PLATFORM_DIR}")
+endif()
 
 project(${CMAKE_PROJECT_NAME} ASM C CXX)
 

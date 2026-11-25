@@ -323,3 +323,148 @@ The repository includes tested reference implementations in `tests/modules/`:
 Custom external modules do not need to reside inside the DMK core source tree. You can place them in your standalone user configuration repository (e.g. inside a `modules/my_module` directory) and pass their paths to CMake using the `-DDMK_MODULES` flag.
 
 For complete repository layout instructions and a ready-to-use **GitHub Actions CI/CD** workflow matrix template, see the [Build Guide (build.md)](build.md#automated-build-in-custom-repository-github-actions).
+
+## External MCU platform packages
+
+A new MCU can live outside DMK, including in a separate keyboard-configuration repository. A **platform package** is loaded before CMake `project()` so it can select the compiler, SDK, startup and FreeRTOS port. An ordinary `module.cmake` runs after the firmware target exists and is still the right place for optional keyboard features.
+
+### Repository layout
+
+```text
+my-configs/
+├── keyboards/my_keyboard/
+│   ├── config.h
+│   ├── matrix_custom.c                 # optional custom matrix
+│   └── modules/my_feature/module.cmake # ordinary modules still work
+└── platforms/my_mcu/
+    ├── platform.cmake                  # required, early platform manifest
+    ├── platform.c                      # clock/init/reset/bootloader functions
+    ├── startup.S
+    ├── memory.ld
+    ├── freertos_port/                  # matching FreeRTOS CPU/compiler port
+    ├── include/
+    │   ├── pin_defs.h                  # pin_t and board pin names
+    │   ├── FreeRTOSConfig.h            # port-specific scheduler configuration
+    │   └── tusb_config.h               # when using TinyUSB
+    ├── drivers/
+    │   ├── gpio.c                      # implements DMK's hal_gpio.h API
+    │   ├── adc.c                       # optional, if ADC is used
+    │   ├── i2c.c                       # optional, if I2C is used
+    │   └── spi.c                       # optional, if SPI is used
+    └── sdk/                            # SDK/submodule or other dependency
+```
+
+In `keyboards/my_keyboard/config.h`, select an MCU identifier and optionally the platform path:
+
+```c
+#define DEFAULT_MCU my_mcu
+#define DMK_PLATFORM_DIR "../../platforms/my_mcu"
+```
+
+Use a single unconditional literal define for MCU/platform selection; conditional preprocessor branches are not evaluated by this discovery step. The quoted path is relative to that `config.h` directory, not to the DMK checkout or build directory. It is used by CMake; there is no runtime platform loader. Keep the MCU identifier a C identifier, such as `my_mcu`.
+
+Selection order is:
+
+1. Explicit CMake `DMK_PLATFORM_DIR` / CLI `--platform-dir`.
+2. The literal `#define DMK_PLATFORM_DIR "..."` line in the selected config.
+3. `<keyboard>/platforms/<MCU>`, then `<keyboard>/platform`.
+4. `<configuration Git repository root>/platforms/<MCU>`.
+5. DMK's built-in platform directory.
+
+An explicitly selected package without `platform.cmake` fails early; it does not silently fall back. Auto-discovery at the Git root works for checked-out repositories. For archives without Git metadata, use the config-relative define or explicit path. A repository containing several keyboards should select the desired keyboard directory explicitly.
+
+### Platform manifest contract
+
+`platform.cmake` runs **before** `project()`. Set the toolchain/compiler and all platform source paths here; use absolute paths based on `${PLATFORM_DIR}`, `${DMK_ROOT}` or `${CMAKE_CURRENT_LIST_DIR}`. Do not create a second firmware executable.
+
+Provide these variables:
+
+- `PLATFORM_SRC`: startup, clock/init code, SDK drivers, FreeRTOS port, USB stack/DCD and transport sources. `${FREERTOS_COMMON_SRC}` supplies DMK's common FreeRTOS kernel files; add it exactly once if using that kernel.
+- `PLATFORM_INC`: SDK, port and configuration include directories. They precede DMK's common include paths, so the package can supply `pin_defs.h`, `FreeRTOSConfig.h` and USB-stack configuration.
+- `PLATFORM_DEFS`: target compiler definitions, if needed.
+- `PLATFORM_LIBS`: SDK libraries and linker requirements, including the linker script where appropriate.
+
+A real port must implement the interfaces used by the selected features, not just provide a manifest. GPIO and platform entry points are declared in `dmk_core/include/hal_gpio.h` (`platform_init`, reset/bootloader, GPIO, delays and snapshots). ADC/I2C/SPI contracts are in the corresponding `hal_*.h` headers. Keep those shared API signatures and types consistent. Supply correct interrupt handlers, startup/vector table, clocks and USB DCD. The FreeRTOS configuration must match the selected port, CPU clock, interrupt priorities, memory budget and DMK allocation/hooks; the built-in MCU-specific defaults are not a substitute for a new port.
+
+If using DMK's TinyUSB transport, include `dmk_core/drivers/app_usb_tinyusb.c`, `usb_descriptors.c` and the required TinyUSB/MCU sources in `PLATFORM_SRC`. If replacing that transport, provide its `app_usb_hid.h` API and any enabled VIA/console functionality yourself.
+
+Optional hooks:
+
+```cmake
+# After the firmware target and its normal modules are configured:
+function(platform_configure_target target)
+    target_compile_definitions(${target} PRIVATE MY_PORT_OPTION=1)
+    # target_link_libraries(${target} PRIVATE my_sdk)
+endfunction()
+
+# Attach your artifact generation (objcopy, UF2, etc.):
+function(platform_post_build target)
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary
+                $<TARGET_FILE:${target}> ${CMAKE_BINARY_DIR}/${target}.bin)
+endfunction()
+```
+
+### Replacing hardware drivers
+
+For an external package, `drivers/` is used automatically. A file with the same name replaces a selected source under `dmk_core/drivers/`, in both core and platform source lists. For example, `drivers/gpio.c` replaces DMK's MCU-dispatching `gpio.c`; `drivers/app_usb_tinyusb.c` can replace the default transport. Features such as layers and HT are not replaced by this mechanism. Optional bus drivers are selected only when the keyboard/modules use them.
+
+To use another directory, set `DMK_PLATFORM_DRIVER_DIR` in the manifest (relative to the platform package, or absolute). To supply several implementations in one source/library, set `DMK_PLATFORM_EXCLUDE_DRIVERS` to a list of default driver filenames and include your replacement code in `PLATFORM_SRC`/`PLATFORM_LIBS`:
+
+```cmake
+set(DMK_PLATFORM_EXCLUDE_DRIVERS gpio.c adc.c)
+list(APPEND PLATFORM_SRC "${PLATFORM_DIR}/hal_combined.c")
+```
+
+Excluding a driver does not disable the feature: its API must still be implemented. Implement storage, RGB and split support if the configuration enables them; they are not supplied automatically for arbitrary silicon. Driver selection, SDK initialization and feature dependencies belong to the platform package. Preserve the licenses of SDK/RTOS/borrowed port sources.
+
+### Local and remote-config builds
+
+No copying into DMK's `keyboards/` or `platforms/` is required:
+
+```bash
+./build_all.sh -b /path/to/my-configs/keyboards/my_keyboard \
+  --build-dir /path/to/build-my-mcu
+
+# Explicit package override:
+./build_all.sh -b /path/to/my-configs/keyboards/my_keyboard \
+  --platform-dir /path/to/my-platform --build-dir /path/to/build-my-mcu
+
+# Direct CMake works too:
+cmake -S /path/to/dmk -B /path/to/build-my-mcu \
+  -DKEYBOARD_DIR=/path/to/my-configs/keyboards/my_keyboard -DMCU=my_mcu
+cmake --build /path/to/build-my-mcu --parallel
+```
+
+Use a fresh/separate build directory when changing toolchains. The platform's post-build hook controls output formats. Built-in USB-flash/programmer commands in `build_all.sh` do not automatically support a new MCU; use the port's own flashing procedure.
+
+In a remote configuration repository, check out both repositories and build directly from the config checkout. For example, the core steps of its GitHub Actions job are:
+
+```yaml
+- uses: actions/checkout@v7
+  with:
+    path: configs
+    submodules: recursive
+- uses: actions/checkout@v7
+  with:
+    repository: aroum/dmk
+    ref: dev # pin a tested commit for reproducible builds
+    path: dmk
+    submodules: recursive
+# Install the toolchain/SDK dependencies required by your platform, plus uv.
+- uses: astral-sh/setup-uv@v10.3.3
+- run: |
+    bash dmk/build_all.sh \
+      -b "$GITHUB_WORKSPACE/configs/keyboards/my_keyboard" \
+      --build-dir "$GITHUB_WORKSPACE/build-my-mcu"
+```
+
+A separately maintained platform repository can also be checked out/submoduled and selected with `--platform-dir`; DMK does not implicitly download SDKs or execute remote manifests by URL.
+
+The tested example in `tests/platform_repo_example/` uses the new identifier `external_demo` and a reused STM32 SDK only as a build fixture. Do not flash it to a real keyboard. CI clones it as an independent config repository and builds an ARM ELF, `.bin` and `.hex`, including a replacement HAL and an ordinary module. Run that integration test locally with:
+
+```bash
+DMK_TEST_EXTERNAL_ARM=1 uv run python3 -m unittest tests.test_external_platform
+```
+
+Install Arm GCC/newlib and initialize DMK's SDK submodules first. Host tests cover selection, path precedence, driver replacement and missing-manifest errors without requiring an ARM compiler. A successful build does not verify a new MCU electrically or validate its USB/clock/flash timing.

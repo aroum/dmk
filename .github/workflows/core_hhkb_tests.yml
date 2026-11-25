@@ -6,6 +6,9 @@ on:
     branches: [main, master, dev]
     paths:
       - 'dmk_core/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'build_all.sh'
       - 'keyboards/**'
       - 'tests/**'
       - 'tools/**'
@@ -16,6 +19,9 @@ on:
     branches: [main, master, dev]
     paths:
       - 'dmk_core/**'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'build_all.sh'
       - 'keyboards/**'
       - 'tests/**'
       - 'tools/**'
@@ -81,5 +87,33 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: runtime-sanitizers-${{ matrix.os }}
+          path: reports/*.log
+          if-no-files-found: ignore
+
+  external-platform:
+    name: External config repository ARM build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake make gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Clone fixture config repo and build through external platform
+        shell: bash
+        env:
+          DMK_TEST_EXTERNAL_ARM: '1'
+        run: |
+          mkdir -p reports
+          uv run python3 -m unittest tests.test_external_platform 2>&1 | tee reports/external-platform.log
+      - name: Preserve external platform test output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: external-platform-arm-test-log
           path: reports/*.log
           if-no-files-found: ignore

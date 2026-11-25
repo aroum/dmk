@@ -23,3 +23,5 @@ The separate **Core and HHKB Tests** workflow runs the full suite on Linux and t
 These are host tests with simulated peripheral inputs. They do not establish ADC settling, USB/Bluetooth latency, physical wake behavior, or current consumption. Firmware builds and hardware measurements remain separate checks.
 
 Physical validation is tracked separately in the [hardware checklist](../docs/en/tests.md).
+
+External-platform selection tests are included in the host suite. To also clone the fixture config repository and compile its ARM firmware, run `DMK_TEST_EXTERNAL_ARM=1 uv run python3 -m unittest tests.test_external_platform` with Arm GCC/newlib and initialized SDK submodules. The dedicated CI external-platform job performs this build.

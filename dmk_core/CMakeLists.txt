@@ -37,7 +37,8 @@ function(build_keyboard KEYBOARD_NAME)
     endif()
     
     if(NOT EXISTS "${ACTUAL_KEYBOARD_DIR}/config.h" AND EXISTS "${ACTUAL_KEYBOARD_DIR}/keyboards")
-        file(GLOB SUB_KBD_DIRS "${ACTUAL_KEYBOARD_DIR}/keyboards/*")
+        dmk_literal_glob_path(_kbd_root_glob "${ACTUAL_KEYBOARD_DIR}")
+        file(GLOB SUB_KBD_DIRS "${_kbd_root_glob}/keyboards/*")
         foreach(SUB_DIR ${SUB_KBD_DIRS})
             if(IS_DIRECTORY "${SUB_DIR}" AND EXISTS "${SUB_DIR}/config.h")
                 set(ACTUAL_KEYBOARD_DIR "${SUB_DIR}")
@@ -51,6 +52,7 @@ function(build_keyboard KEYBOARD_NAME)
         message(FATAL_ERROR "Keyboard configuration not found in ${ACTUAL_KEYBOARD_DIR}")
     endif()
     
+    dmk_literal_glob_path(KBD_GLOB_DIR "${ACTUAL_KEYBOARD_DIR}")
     set(SUFFIX "")
     if(DEFINE AND NOT (KBD_BASE STREQUAL "hhkb" AND MCU STREQUAL "stm32l072"))
         string(TOLOWER "${DEFINE}" DEFINE_LOWER)
@@ -197,7 +199,7 @@ function(build_keyboard KEYBOARD_NAME)
     # Auto-discover keyboard-specific modules (e.g. keyboards/<kbd>/modules/*)
     set(ALL_ACTIVE_MODULES "")
     if(EXISTS "${ACTUAL_KEYBOARD_DIR}/modules")
-        file(GLOB KBD_MODULE_DIRS LIST_DIRECTORIES true "${ACTUAL_KEYBOARD_DIR}/modules/*")
+        file(GLOB KBD_MODULE_DIRS LIST_DIRECTORIES true "${KBD_GLOB_DIR}/modules/*")
         foreach(MOD_DIR ${KBD_MODULE_DIRS})
             if(IS_DIRECTORY "${MOD_DIR}")
                 list(APPEND ALL_ACTIVE_MODULES "${MOD_DIR}")
@@ -229,7 +231,7 @@ function(build_keyboard KEYBOARD_NAME)
     endif()
 
     # Collect any local keyboard-specific sources (e.g. matrix_magneteno.c)
-    file(GLOB KEYBOARD_LOCAL_SRC "${ACTUAL_KEYBOARD_DIR}/*.c")
+    file(GLOB KEYBOARD_LOCAL_SRC "${KBD_GLOB_DIR}/*.c")
     # Exclude host-only test files (test_*.c) from the firmware build
     list(FILTER KEYBOARD_LOCAL_SRC EXCLUDE REGEX ".*/test_[^/]*\\.c$")
 
@@ -350,7 +352,8 @@ function(build_keyboard KEYBOARD_NAME)
     # Scan keyboard local sources and modules for HAL bus driver usage
     set(ALL_FILES_TO_SCAN ${KEYBOARD_LOCAL_SRC})
     foreach(MOD_PATH ${ALL_ACTIVE_MODULES})
-        file(GLOB_RECURSE MOD_SRCS "${MOD_PATH}/*.[ch]" "${MOD_PATH}/*.cpp")
+        dmk_literal_glob_path(_mod_glob "${MOD_PATH}")
+        file(GLOB_RECURSE MOD_SRCS "${_mod_glob}/*.[ch]" "${_mod_glob}/*.cpp")
         list(APPEND ALL_FILES_TO_SCAN ${MOD_SRCS})
     endforeach()
     foreach(F ${ALL_FILES_TO_SCAN})
@@ -399,10 +402,11 @@ function(build_keyboard KEYBOARD_NAME)
         endif()
     endif()
 
+    dmk_platform_resolve_sources(DMK_FIRMWARE_SRC
+        ${DMK_CORE_SRC} ${PLATFORM_SRC} ${PLATFORM_EXTRA_SRC})
+
     target_sources(${TARGET_NAME} PRIVATE
-        ${DMK_CORE_SRC}
-        ${PLATFORM_SRC}
-        ${PLATFORM_EXTRA_SRC}
+        ${DMK_FIRMWARE_SRC}
         ${VIAL_SRC}
         ${KEYBOARD_LOCAL_SRC}
     )
@@ -411,6 +415,7 @@ function(build_keyboard KEYBOARD_NAME)
         list(REMOVE_DUPLICATES ALL_ACTIVE_MODULES)
         foreach(ABS_MODULE_PATH ${ALL_ACTIVE_MODULES})
             if(EXISTS "${ABS_MODULE_PATH}")
+                dmk_literal_glob_path(_abs_module_glob "${ABS_MODULE_PATH}")
                 message(STATUS "Loading module: ${ABS_MODULE_PATH}")
                 target_include_directories(${TARGET_NAME} PRIVATE "${ABS_MODULE_PATH}")
                 if(EXISTS "${ABS_MODULE_PATH}/include")
@@ -420,7 +425,7 @@ function(build_keyboard KEYBOARD_NAME)
                     include("${ABS_MODULE_PATH}/module.cmake")
                 else()
                     # Auto-add any .c source files if module.cmake is omitted
-                    file(GLOB MOD_C_FILES "${ABS_MODULE_PATH}/*.c")
+                    file(GLOB MOD_C_FILES "${_abs_module_glob}/*.c")
                     if(MOD_C_FILES)
                         target_sources(${TARGET_NAME} PRIVATE ${MOD_C_FILES})
                     endif()
@@ -428,7 +433,7 @@ function(build_keyboard KEYBOARD_NAME)
 
                 # Automatically compile any .pio assembly files found in the module
                 if(COMMAND pico_generate_pio_header)
-                    file(GLOB_RECURSE MODULE_PIO_FILES "${ABS_MODULE_PATH}/*.pio")
+                    file(GLOB_RECURSE MODULE_PIO_FILES "${_abs_module_glob}/*.pio")
                     foreach(PIO_FILE ${MODULE_PIO_FILES})
                         message(STATUS "Generating PIO header for module: ${PIO_FILE}")
                         pico_generate_pio_header(${TARGET_NAME} "${PIO_FILE}")
@@ -442,7 +447,7 @@ function(build_keyboard KEYBOARD_NAME)
 
     # Automatically compile any .pio assembly files found in keyboard directory
     if(COMMAND pico_generate_pio_header)
-        file(GLOB KEYBOARD_PIO_FILES "${ACTUAL_KEYBOARD_DIR}/*.pio")
+        file(GLOB KEYBOARD_PIO_FILES "${KBD_GLOB_DIR}/*.pio")
         foreach(PIO_FILE ${KEYBOARD_PIO_FILES})
             message(STATUS "Generating PIO header for keyboard: ${PIO_FILE}")
             pico_generate_pio_header(${TARGET_NAME} "${PIO_FILE}")
@@ -481,6 +486,11 @@ function(build_keyboard KEYBOARD_NAME)
         target_compile_definitions(${TARGET_NAME} PRIVATE ${PLATFORM_DEFS})
     endif()
     
+    # Feature-aware customization from an external platform package.
+    if(COMMAND platform_configure_target)
+        platform_configure_target(${TARGET_NAME})
+    endif()
+
     # Platform-specific binary generation
     if(COMMAND platform_post_build)
         platform_post_build(${TARGET_NAME})

@@ -1,0 +1,6 @@
+#ifndef EXTERNAL_PLATFORM_TARGET
+#error Missing external platform target hook
+#endif
+// Reuse the existing GPIO implementation locally; no global MCU alias is needed.
+#define MCU_stm32f072 1
+#include "@DMK_ROOT@/dmk_core/drivers/gpio.c"
