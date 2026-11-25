@@ -105,6 +105,7 @@ static volatile uint8_t s_dbg_col = 0;
 static volatile uint8_t s_dbg_row = 0;
 static volatile uint16_t s_dbg_raw = 0;
 static volatile uint16_t s_dbg_norm = 0;
+static volatile bool s_dbg_pending;
 static volatile bool s_dbg_down = false;
 static uint16_t s_last_reported_raw[MATRIX_COLS][MATRIX_ROWS];
 static uint32_t s_last_reported_down_mask[MATRIX_MASK_WORDS];
@@ -690,36 +691,39 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
 
     if (!hhkb_get_debug_flag(DEBUG_FLAG_TOPRE)) return;
 
-    // 1. Immediate notification on state transitions (Press / Release)
-    if (is_pressed != was_pressed) {
-        set_reported_down(col, row, is_pressed);
-        s_last_reported_raw[col][row] = raw;
-        s_dbg_col = col;
-        s_dbg_row = row;
-        s_dbg_raw = raw;
-        s_dbg_norm = norm;
-        s_dbg_down = is_pressed;
-        debug_console_printf("[EC] R%u C%u : raw=%u base=%u peak=%u travel=%u%% %s\r\n",
-            row, col, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
-        return;
-    }
-
-    // 2. Continuous travel updates while key is pressed or significantly actuated (travel >= 5%)
-    if (is_pressed || norm >= 50) {
-        int16_t diff = (int16_t)(raw - s_last_reported_raw[col][row]);
-        if (diff > 40 || diff < -40) {
-            s_last_reported_raw[col][row] = raw;
-            s_dbg_col = col;
-            s_dbg_row = row;
-            s_dbg_raw = raw;
-            s_dbg_norm = norm;
-            s_dbg_down = is_pressed;
-            debug_console_printf("[EC] R%u C%u : raw=%u base=%u peak=%u travel=%u%% %s\r\n",
-                row, col, raw, base, s_cal_peak[col][row], norm / 10, is_pressed ? "DN" : "UP");
+    if (is_pressed == was_pressed) {
+        if (!is_pressed && norm < 50) {
+            if (s_last_reported_raw[col][row] != base) s_last_reported_raw[col][row] = base;
+            return;
         }
-    } else if (norm < 50 && !is_pressed && s_last_reported_raw[col][row] != base) {
-        s_last_reported_raw[col][row] = base;
+        int diff = (int)raw - s_last_reported_raw[col][row];
+        if (diff >= -40 && diff <= 40) return;
+    } else {
+        set_reported_down(col, row, is_pressed);
     }
+    s_last_reported_raw[col][row] = raw;
+    taskENTER_CRITICAL();
+    s_dbg_col = col;
+    s_dbg_row = row;
+    s_dbg_raw = raw;
+    s_dbg_norm = norm;
+    s_dbg_down = is_pressed;
+    s_dbg_pending = true;
+    taskEXIT_CRITICAL();
+}
+
+// USB consumes the latest travel update when the console endpoint is available.
+void hhkb_debug_flush_sample(void) {
+    if (!s_dbg_pending) return;
+    taskENTER_CRITICAL();
+    uint8_t row = s_dbg_row, col = s_dbg_col;
+    uint16_t raw = s_dbg_raw, norm = s_dbg_norm;
+    bool down = s_dbg_down;
+    s_dbg_pending = false;
+    taskEXIT_CRITICAL();
+    if (hhkb_get_debug_enabled())
+        debug_console_printf("[EC] R%u C%u : raw=%u base=%u peak=%u travel=%u%% %s\r\n",
+            row, col, raw, s_cal_baseline[col][row], s_cal_peak[col][row], norm / 10, down ? "DN" : "UP");
 }
 
 void hhkb_get_debug_key_str(char *buf, size_t max_len) {

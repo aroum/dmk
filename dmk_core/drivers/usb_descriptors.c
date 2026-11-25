@@ -556,16 +556,17 @@ void debug_console_write(const char *buf, size_t len) {
     size_t free_space = (tail > head) ? (tail - head - 1) : (CONSOLE_BUF_SIZE - 1 - (head - tail));
 
     if (len <= free_space) {
-        for (size_t i = 0; i < len; i++) {
-            s_console_buf[s_console_head] = buf[i];
-            s_console_head = (s_console_head + 1) % CONSOLE_BUF_SIZE;
-        }
+        size_t first = CONSOLE_BUF_SIZE - head;
+        if (first > len) first = len;
+        memcpy(s_console_buf + head, buf, first);
+        if (len > first) memcpy(s_console_buf, buf + first, len - first);
+        s_console_head = (head + len) % CONSOLE_BUF_SIZE;
     }
     // Drop entire message if buffer is full to prevent tearing and corrupted lines
 
     if (running) {
         taskEXIT_CRITICAL();
-        usb_notify_task();
+        if (head == tail && len <= free_space) usb_notify_task();
     }
 }
 
@@ -586,6 +587,10 @@ void debug_console_flush(void) {
     if (!tud_mounted() || tud_suspended()) return;
     if (!tud_hid_n_ready(ITF_NUM_CONSOLE)) return;
 
+#ifdef HHKB_COMPACT_STORAGE
+    extern void hhkb_debug_flush_sample(void);
+    if (s_console_head == s_console_tail) hhkb_debug_flush_sample();
+#endif
     if (s_console_head == s_console_tail) return;
 
     uint8_t packet[32];

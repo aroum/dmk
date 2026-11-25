@@ -6,7 +6,7 @@ CI covers encoding, state-machine logic, bounds, serialization and simulated fai
 
 ## USB SOF scheduling — PR #10
 
-Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HHKB_SOF_LOCK=1` (the default). Use an HHKB scan-diagnostic build and enable Polling Rate Monitor in VIA. The SOF VIA toggle was removed after the initial A/B test. Keep `HHKB_SOF_MARGIN_US=150` initially and measure actual headroom for each model.
+Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HHKB_SOF_LOCK=1` (the default). Use an HHKB scan-diagnostic build and enable Polling Rate Monitor in VIA. A SOF-enabled build also supports switching modes for this session in VIA under Scan Rate. Keep `HHKB_SOF_MARGIN_US=150` initially and measure actual headroom for each model.
 
 - [x] Record a HID Console SOF On/Off comparison during key presses on physical Classic ANSI. Tested on Linux/Chromium with debug commit `6af27377`, waiting 10 seconds before each recording. On gives typical `age_avg` 948–949 µs and `age_max` 950–952 µs, with one interval peaking at 2942 µs. Off gives `age_avg` 988–1217 µs and a maximum of 2906 µs. No new drops or resynchronizations occur. The logs do not record other settings or USB topology. See [measurements and metric definitions](../../keyboards/hhkb/docs/en/config.md#usb-sof-measurements-on-classic-ansi) and [PR #10](https://github.com/aroum/dmk/pull/10).
 

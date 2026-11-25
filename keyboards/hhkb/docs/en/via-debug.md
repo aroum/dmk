@@ -279,7 +279,7 @@ Enable **Debug → USB Report Diagnostics** for one `[USB]` line per second whil
 
 ### Session-only USB phase control
 
-USB SOF phase lock is enabled by default through `HHKB_SOF_LOCK=1`. For timing comparisons, build with `HHKB_SOF_LOCK=0`. See the [Classic ANSI measurements and JIS timing headroom](config.md#usb-sof-measurements-on-classic-ansi). VIA debug controls, including USB diagnostics, remain available.
+USB SOF phase lock is enabled by default through `HHKB_SOF_LOCK=1`. Switch it under Scan Rate for this session. EC console output shows the latest changed sample when USB can send it. See the [Classic ANSI measurements and JIS timing headroom](config.md#usb-sof-measurements-on-classic-ansi). VIA debug controls, including USB diagnostics, remain available.
 
 For comparisons, use a scan-diagnostic build and **Debug → Polling Rate Monitor**. `[SCAN] actual` is matrix throughput, `work_max` is worst scan/publication duration, `miss` counts missed scan deadlines, and `q_full` counts failed matrix-queue submissions. The `usb`/`usb_loop` value is USB task-loop frequency, not USB polling/report rate. `[LAT] lock=0` means phase lock is disabled or not acquired; its age/error estimates still require USB-trace validation. `[VIA_DIAG] tx_fail` concerns VIA responses, not keyboard reports. These counters do not measure lost USB packets or prove end-to-end delivery; use a USB trace for bus-level failures. Keep console settings identical in A/B runs and discard the initial reacquisition interval.
 

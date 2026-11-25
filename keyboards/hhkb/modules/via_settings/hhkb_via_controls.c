@@ -1,4 +1,5 @@
 #include "classic_matrix.h"
+#include "sof_lock.h"
 #ifdef HHKB_COMPACT_STORAGE
 #include "hhkb_compact_storage.h"
 #endif
@@ -20,6 +21,11 @@ bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
         if (request[0] == 0x08) response[3] = hhkb_get_debug_flag(DEBUG_FLAG_USB);
         else if (request[0] == 0x07 && request[3] <= 1) hhkb_set_debug_flag(DEBUG_FLAG_USB, request[3] != 0);
         else return false;
+        return true;
+    }
+    if (id == 61) {
+        if (request[0] == 0x08) response[3] = sof_lock_enabled();
+        else if (request[0] != 0x07 || request[3] > 1 || !sof_lock_set_enabled(request[3] != 0)) return false;
         return true;
     }
     if (request[0] == 0x09) { hhkb_settings_mark_dirty(); return true; }
