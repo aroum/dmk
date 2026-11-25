@@ -140,6 +140,7 @@ void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val);
 void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val);
 bool hhkb_cal_is_capturing_baseline(void);
 void hhkb_cal_decrement_samples(void);
+void hhkb_cal_log_flush(void);
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row);
 
 #ifdef __cplusplus

@@ -295,6 +295,60 @@ void hhkb_calibration_apply_pending(void) {
     if (req != CAL_REQ_NONE) hhkb_calibration_set_enabled(req == CAL_REQ_ENABLE);
 }
 
+// [CAL] lines are produced in the matrix task, whose 1 KB stack cannot carry
+// the vsnprintf chain (~1 KB). Latch compact events here and let the USB task
+// format them in hhkb_cal_log_flush(). Single producer (matrix task), single
+// consumer (USB task); the barriers order the entry stores against the index.
+enum { CAL_LOG_START = 1, CAL_LOG_BASE_INCOMPLETE, CAL_LOG_BASE_READY, CAL_LOG_KEY, CAL_LOG_FINISH };
+typedef struct { uint8_t kind, row, col, count; uint16_t a, b; } cal_log_evt_t;
+static cal_log_evt_t s_cal_log[8];
+static volatile uint8_t s_cal_log_head, s_cal_log_tail;
+
+static void cal_log_push(uint8_t kind, uint8_t row, uint8_t col, uint8_t count, uint16_t a, uint16_t b) {
+    uint8_t head = s_cal_log_head;
+    if ((uint8_t)(head - s_cal_log_tail) >= 8) return; // full: drop the event
+    cal_log_evt_t *evt = &s_cal_log[head % 8];
+    evt->kind = kind; evt->row = row; evt->col = col; evt->count = count;
+    evt->a = a; evt->b = b;
+    __asm volatile("" ::: "memory");
+    s_cal_log_head = (uint8_t)(head + 1);
+}
+
+void hhkb_cal_log_flush(void) {
+    while (s_cal_log_tail != s_cal_log_head) {
+        __asm volatile("" ::: "memory");
+        const cal_log_evt_t *evt = &s_cal_log[s_cal_log_tail % 8];
+        switch (evt->kind) {
+        case CAL_LOG_START:
+            debug_console_printf("[CAL] Started. Release all keys.\r\n");
+            break;
+        case CAL_LOG_BASE_INCOMPLETE:
+            debug_console_printf("[CAL] Baseline incomplete. Start again.\r\n");
+            break;
+        case CAL_LOG_BASE_READY:
+            debug_console_printf("[CAL] Baseline ready. Press keys fully.\r\n");
+            break;
+        case CAL_LOG_KEY: {
+            char bar[21];
+            uint8_t pct = (uint8_t)((evt->count * 100U) / 36U);
+            uint8_t filled = (uint8_t)((evt->count * 20U) / 36U);
+            for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
+            bar[20] = '\0';
+            debug_console_printf("[CAL] [%s] %u%% (%u/36) | Key R%u C%u peak: %u (base: %u)\r\n",
+                                 bar, pct, evt->count, evt->row, evt->col, evt->a, evt->b);
+            if (evt->count >= 36) {
+                debug_console_printf("[CAL] >>> All 36 keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
+            }
+            break;
+        }
+        case CAL_LOG_FINISH:
+            debug_console_printf("[CAL] Finished. Updated %u keys.\r\n", evt->count);
+            break;
+        }
+        s_cal_log_tail = (uint8_t)(s_cal_log_tail + 1);
+    }
+}
+
 void hhkb_calibration_start(void) {
     taskENTER_CRITICAL();
     s_cal_baseline_samples = 0;
@@ -311,7 +365,7 @@ void hhkb_calibration_start(void) {
     s_calibration_mode = true;
     taskEXIT_CRITICAL();
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
-        debug_console_printf("[CAL] Started. Release all keys.\r\n");
+        cal_log_push(CAL_LOG_START, 0, 0, 0, 0, 0);
 }
 
 void hhkb_calibration_finish(void) {
@@ -326,7 +380,7 @@ void hhkb_calibration_finish(void) {
         s_calibration_mode = false;
         taskEXIT_CRITICAL();
         if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
-            debug_console_printf("[CAL] Baseline incomplete. Start again.\r\n");
+            cal_log_push(CAL_LOG_BASE_INCOMPLETE, 0, 0, 0, 0, 0);
         return;
     }
 
@@ -349,7 +403,7 @@ void hhkb_calibration_finish(void) {
     taskEXIT_CRITICAL();
     if (updated) hhkb_settings_mark_dirty();
     if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
-        debug_console_printf("[CAL] Finished. Updated %u keys.\r\n", updated);
+        cal_log_push(CAL_LOG_FINISH, 0, 0, (uint8_t)updated, 0, 0);
 }
 
 // Applied state; a pending set_enabled request is not reflected until applied.
@@ -540,7 +594,7 @@ void hhkb_cal_accumulate_baseline(uint8_t col, uint8_t row, uint16_t val) {
                 }
             }
             if (hhkb_get_debug_flag(DEBUG_FLAG_CAL))
-                debug_console_printf("[CAL] Baseline ready. Press keys fully.\r\n");
+                cal_log_push(CAL_LOG_BASE_READY, 0, 0, 0, 0, 0);
         }
     }
 }
@@ -557,16 +611,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
             s_calibrated_mask[idx / 32] |= bit;
             if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
                 uint8_t count = (uint8_t)(__builtin_popcount(s_calibrated_mask[0]) + __builtin_popcount(s_calibrated_mask[1]));
-                uint8_t pct = (uint8_t)((count * 100U) / 36U);
-                char bar[21];
-                uint8_t filled = (uint8_t)((count * 20U) / 36U);
-                for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
-                bar[20] = '\0';
-                debug_console_printf("[CAL] [%s] %u%% (%u/36) | Key R%u C%u peak: %u (base: %u)\r\n",
-                                     bar, pct, count, row, col, val, s_capture_base[col][row]);
-                if (count >= 36) {
-                    debug_console_printf("[CAL] >>> All 36 keys calibrated! Click 'Save calibration' in VIA. <<<\r\n");
-                }
+                cal_log_push(CAL_LOG_KEY, row, col, count, val, s_capture_base[col][row]);
             }
         }
     }

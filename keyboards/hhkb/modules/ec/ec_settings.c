@@ -442,32 +442,58 @@ void hhkb_calibration_apply_pending(void) {
     else if (req == CAL_REQ_FINISH) hhkb_calibration_finish();
 }
 
-/* Matrix task publishes small events; only USB formats monitor messages.
- * Coalesce updates if the host cannot drain the console. */
-enum { CAL_LOG_START=1, CAL_LOG_BASE, CAL_LOG_KEY, CAL_LOG_FINISH };
-static volatile uint8_t s_cal_log_event;
-static uint8_t s_cal_log_key;
-static void cal_log(uint8_t event, uint8_t key) {
-    if(!hhkb_get_debug_flag(DEBUG_FLAG_CAL)) return;
-    taskENTER_CRITICAL();
-    s_cal_log_key=key; s_cal_log_event=event;
-    taskEXIT_CRITICAL();
+// [CAL] lines are produced in the matrix task, whose 1 KB stack cannot carry
+// the vsnprintf chain (~1 KB). Latch compact events here and let the USB task
+// format them in hhkb_cal_log_flush(). Single producer (matrix task), single
+// consumer (USB task); the barriers order the entry stores against the index.
+enum { CAL_LOG_START = 1, CAL_LOG_BASELINE, CAL_LOG_KEY, CAL_LOG_PEAK, CAL_LOG_FINISH };
+typedef struct { uint8_t kind, row, col, count; uint16_t a, b; } cal_log_evt_t;
+static cal_log_evt_t s_cal_log[8];
+static volatile uint8_t s_cal_log_head, s_cal_log_tail;
+
+static void cal_log_push(uint8_t kind, uint8_t row, uint8_t col, uint8_t count, uint16_t a, uint16_t b) {
+    uint8_t head = s_cal_log_head;
+    if ((uint8_t)(head - s_cal_log_tail) >= 8) return; // full: drop the event
+    cal_log_evt_t *evt = &s_cal_log[head % 8];
+    evt->kind = kind; evt->row = row; evt->col = col; evt->count = count;
+    evt->a = a; evt->b = b;
+    __asm volatile("" ::: "memory");
+    s_cal_log_head = (uint8_t)(head + 1);
 }
-static void cal_flush_log(void) {
-    if(!s_cal_log_event) return;
-    taskENTER_CRITICAL();
-    uint8_t event=s_cal_log_event, key=s_cal_log_key;
-    s_cal_log_event=0;
-    uint8_t count=event ? calibrated_key_count() : 0;
-    uint8_t col=key/MATRIX_ROWS, row=key%MATRIX_ROWS;
-    uint16_t base=s_capture_base[col][row], peak=s_capture_peak[col][row];
-    taskEXIT_CRITICAL();
-    if(!hhkb_get_debug_flag(DEBUG_FLAG_CAL)) return;
-    switch(event) {
-    case CAL_LOG_START: debug_console_printf("[CAL] Capturing baseline (16 samples).\r\n"); break;
-    case CAL_LOG_BASE: debug_console_printf("[CAL] Baseline captured. Press each key firmly.\r\n"); break;
-    case CAL_LOG_KEY: debug_console_printf("[CAL] %u/%u R%u C%u peak=%u base=%u\r\n", count,NUM_KEYS,row,col,peak,base); break;
-    case CAL_LOG_FINISH: debug_console_printf("[CAL] Finished. Updated %u/%u keys.\r\n",count,NUM_KEYS); break;
+
+void hhkb_cal_log_flush(void) {
+    while (s_cal_log_tail != s_cal_log_head) {
+        __asm volatile("" ::: "memory");
+        const cal_log_evt_t *evt = &s_cal_log[s_cal_log_tail % 8];
+        switch (evt->kind) {
+        case CAL_LOG_START:
+            debug_console_printf("[CAL] Capturing baseline (16 samples).\r\n");
+            break;
+        case CAL_LOG_BASELINE:
+            debug_console_printf("[CAL] Baseline captured. Press each key firmly.\r\n");
+            break;
+        case CAL_LOG_KEY: {
+            char bar[21];
+            uint8_t pct = (uint8_t)((evt->count * 100U) / NUM_KEYS);
+            uint8_t filled = (uint8_t)((evt->count * 20U) / NUM_KEYS);
+            for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
+            bar[20] = '\0';
+            debug_console_printf("[CAL] [%s] %u%% %u/%u R%u C%u peak=%u base=%u\r\n",
+                                 bar, pct, evt->count, NUM_KEYS, evt->row, evt->col, evt->a, evt->b);
+            if (evt->count >= NUM_KEYS) {
+                debug_console_printf("[CAL] All %u keys calibrated. Finish and save in VIA.\r\n",
+                                     (unsigned)NUM_KEYS);
+            }
+            break;
+        }
+        case CAL_LOG_PEAK:
+            debug_console_printf("[CAL] R%u C%u peak: %u -> %u\r\n", evt->row, evt->col, evt->a, evt->b);
+            break;
+        case CAL_LOG_FINISH:
+            debug_console_printf("[CAL] Finished. Updated %u/%u keys.\r\n", evt->count, NUM_KEYS);
+            break;
+        }
+        s_cal_log_tail = (uint8_t)(s_cal_log_tail + 1);
     }
 }
 
@@ -478,7 +504,9 @@ void hhkb_calibration_start(void) {
     memset(s_cal_down_mask, 0, sizeof(s_cal_down_mask));
     s_capture_baseline = true;
     s_calibration_mode = true;
-    cal_log(CAL_LOG_START,0);
+    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+        cal_log_push(CAL_LOG_START, 0, 0, 0, 0, 0);
+    }
 }
 
 void hhkb_calibration_finish(void) {
@@ -502,7 +530,9 @@ void hhkb_calibration_finish(void) {
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
-    cal_log(CAL_LOG_FINISH,0);
+    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+        cal_log_push(CAL_LOG_FINISH, 0, 0, calibrated_key_count(), 0, 0);
+    }
     s_calibration_mode = false;
     s_custom_calibration = true;
     hhkb_settings_mark_dirty();
@@ -836,7 +866,10 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
 
         bool newly_calibrated = !(s_calibrated_mask[k_idx / 32] & (1U << (k_idx % 32)));
         s_calibrated_mask[k_idx / 32] |= 1U << (k_idx % 32);
-        if (newly_calibrated) cal_log(CAL_LOG_KEY,k_idx);
+        if (newly_calibrated && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+            cal_log_push(CAL_LOG_KEY, row, col, calibrated_key_count(),
+                         s_capture_peak[col][row], s_capture_base[col][row]);
+        }
     } else if (is_down && val < release_thresh) {
         // Transition: key released
         s_cal_down_mask[k_idx / 32] &= ~(1U << (k_idx % 32));
@@ -844,7 +877,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
         uint16_t old_peak = s_cal_press_start_peak[col][row];
         uint16_t new_peak = s_capture_peak[col][row];
         if (old_peak > press_thresh && new_peak > old_peak + 20 && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            cal_log(CAL_LOG_KEY,k_idx);
+            cal_log_push(CAL_LOG_PEAK, row, col, 0, old_peak, new_peak);
         }
     }
 }
@@ -859,7 +892,9 @@ void hhkb_cal_decrement_samples(void) {
             }
         }
         s_capture_baseline = false;
-        cal_log(CAL_LOG_BASE,0);
+        if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
+            cal_log_push(CAL_LOG_BASELINE, 0, 0, 0, 0, 0);
+        }
     }
 }
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row) { return &s_rt_keys[col][row]; }

@@ -35,6 +35,12 @@ static char output[2048];
 static void debug_console_printf(const char *format,...){
  va_list args;va_start(args,format);vsnprintf(output+strlen(output),sizeof(output)-strlen(output),format,args);va_end(args);
 }
+static bool hhkb_get_debug_flag(unsigned flag){(void)flag;return false;}
+static unsigned calibrated_key_count(void){return 0;}
+enum { CAL_LOG_FINISH = 5 };
+static void cal_log_push(uint8_t kind,uint8_t row,uint8_t col,uint8_t count,uint16_t a,uint16_t b){
+ (void)kind;(void)row;(void)col;(void)count;(void)a;(void)b;
+}
 static void hhkb_settings_mark_dirty(void){++dirty;}
 void rt_key_set_range(rt_key_t *k,uint16_t b,uint16_t p){k->base=b;(void)p;}
 void rt_key_reset(rt_key_t *k){k->down=false;}
