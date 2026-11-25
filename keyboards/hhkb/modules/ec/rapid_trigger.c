@@ -67,7 +67,7 @@ static uint16_t raw_threshold(const rt_key_t *key, const rt_scan_cfg_t *scan, ui
 void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_scan_cfg_t *scan) {
     uint16_t press = scan->cfg.act_pm > scan->cfg.reset_pm ? scan->cfg.act_pm : scan->cfg.reset_pm + 1;
     cache->press_raw = raw_threshold(key, scan, press);
-    cache->release_raw = raw_threshold(key, scan, scan->classic_release + 1);
+    cache->release_raw = raw_threshold(key, scan, (scan->cfg.rt_enabled ? scan->cfg.reset_pm : scan->classic_release) + 1);
 }
 
 #ifdef __arm__
@@ -153,9 +153,25 @@ RT_SCAN_CODE bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan
     return update_travel(key, scan, (int16_t)travel);
 }
 
-bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
+RT_SCAN_CODE bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
     *travel = rt_scan_normalize(key, raw, scan);
     return rt_update_scan_travel(key, scan, *travel);
+}
+
+// In the reset zone no previous RT anchor survives. Zero is a canonical
+// anchor until actuation arms the key again; telemetry still gets exact travel.
+RT_SCAN_CODE bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache,
+        const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
+    if (raw < cache->release_raw) {
+        key->down = false;
+        key->latched = false;
+        key->ext = 0;
+        if (travel) *travel = scan_normalize(key, raw, scan);
+        return false;
+    }
+    uint16_t value = scan_normalize(key, raw, scan);
+    if (travel) *travel = value;
+    return update_travel(key, scan, (int16_t)value);
 }
 
 bool rt_update_curve(rt_key_t *key, const rt_cfg_t *cfg, uint16_t raw, const uint16_t *curve) {

@@ -23,8 +23,8 @@ static __attribute__((noinline)) void hhkb_scan_cache_prepare(hhkb_scan_cache_t 
                 keys[col][row].ext = rt_scan_normalize(&keys[col][row], cache->key[col][row].last_raw, scan);
     }
     bool fast = !scan->cfg.rt_enabled;
-    if (fast && (!cache->fast_active || !same_ranges || cache->act_pm != scan->cfg.act_pm ||
-                 cache->release_pm != scan->classic_release || cache->reset_pm != scan->cfg.reset_pm)) {
+    if (fast != cache->fast_active || !same_ranges || cache->act_pm != scan->cfg.act_pm ||
+                 cache->release_pm != scan->classic_release || cache->reset_pm != scan->cfg.reset_pm) {
         for (unsigned col = 0; col < MATRIX_COLS; ++col) {
             for (unsigned row = 0; row < MATRIX_ROWS; ++row) {
                 rt_prepare_raw_cache(&cache->key[col][row], &keys[col][row], scan);

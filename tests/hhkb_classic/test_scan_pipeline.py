@@ -55,6 +55,10 @@ static unsigned primask,starts,finishes,reports,captures,peaks,restarts,decremen
 static unsigned next_index,reported_index,debug_index,fault=1000;
 static bool converting,debug,calibrating,capture;
 static rt_cfg_t cfg;
+typedef unsigned TickType_t;
+static unsigned mock_tick;
+#define pdMS_TO_TICKS(ms) (ms)
+static unsigned xTaskGetTickCount(void){return mock_tick;}
 const uint16_t *ec_curve_lut;
 uint32_t ec_curve_revision;
 static int keyboard_get_flat_key_index(unsigned row,unsigned col){
@@ -125,6 +129,7 @@ int main(void){
  matrix_row_t matrix[MATRIX_ROWS]={0},expected[MATRIX_ROWS]={0};
  uint16_t lut[126];for(unsigned i=0;i<126;++i)lut[i]=i*8;
  for(unsigned pass=0;pass<36;++pass){
+  mock_tick += 20;
   cfg=(rt_cfg_t){.rt_enabled=(pass/3)%2,.act_pm=750,.release_pm=100,.reset_pm=50,.press_pm=25};
   if(pass%9==0){
    for(unsigned col=0;col<MATRIX_COLS;++col)for(unsigned row=0;row<MATRIX_ROWS;++row){
@@ -156,6 +161,11 @@ int main(void){
   assert(decrements-before_decrement==(capture && fault>=KEYS));
   assert(!memcmp(matrix,expected,sizeof(matrix)));
   assert(!primask && !converting);
+  // A second full acquisition at the same tick keeps key processing live
+  // while the 20-ms telemetry gate suppresses all per-key debug callbacks.
+  starts=finishes=reports=captures=peaks=0;reported_index=debug_index=0;
+  assert(!hhkb_matrix_scan_raw(matrix));
+  assert(starts==KEYS && reports==0);
  }
  printf("%u-key pipeline passed order, same-frame flush, RT, calibration, debug and timeout checks\n",KEYS);
 }

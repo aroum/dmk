@@ -38,11 +38,13 @@ int main(void){
   // Restoring the lazy classic extreme makes RT transitions bit-for-bit equivalent.
   key.ext=rt_scan_normalize(&key,cache.last_raw,&scan);equal_state(&key,&ref,true);
   cfg.rt_enabled=true;rt_prepare_scan(&scan,&cfg,curve);
+  rt_prepare_raw_cache(&cache,&key,&scan);
   for(unsigned i=0;i<1000;++i){
    uint16_t raw=random32()%4096,travel;
    bool expected=reference_rt_update_curve(&ref,&cfg,raw,curve);
-   assert(rt_update_scan_sample(&key,&scan,raw,&travel)==expected);equal_state(&key,&ref,true);
-   assert(travel==reference_rt_normalize_curve(&ref,raw,curve));
+   assert(rt_update_scan_cached(&key,&cache,&scan,raw,i%2?&travel:NULL)==expected);
+   equal_state(&key,&ref,key.latched);
+   if(i%2)assert(travel==reference_rt_normalize_curve(&ref,raw,curve));
   }
   // Keep the public 16-bit API correct beyond the scanner's 12-bit fast path.
   generic=ref;
@@ -71,11 +73,11 @@ int main(void){
   rt_scan_cfg_t scan;rt_prepare_scan(&scan,&cfg,(pass/211)%2?lut:NULL);
   hhkb_scan_cache_prepare(&cache,keys,&scan,rt_range_revision,curve_revision);
   for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
-   if(cfg.rt_enabled)equal_state(&keys[c][r],&ref[c][r],true);
+   if(cfg.rt_enabled)equal_state(&keys[c][r],&ref[c][r],keys[c][r].latched);
    uint16_t raw=random32()%4096,travel;
    bool expected=reference_rt_update_curve(&ref[c][r],&cfg,raw,scan.curve);
-   bool actual=cfg.rt_enabled?rt_update_scan_sample(&keys[c][r],&scan,raw,&travel):rt_update_raw_cached(&keys[c][r],&cache.key[c][r],raw);
-   assert(actual==expected);equal_state(&keys[c][r],&ref[c][r],cfg.rt_enabled);
+   bool actual=cfg.rt_enabled?rt_update_scan_cached(&keys[c][r],&cache.key[c][r],&scan,raw,&travel):rt_update_raw_cached(&keys[c][r],&cache.key[c][r],raw);
+   assert(actual==expected);equal_state(&keys[c][r],&ref[c][r],cfg.rt_enabled && keys[c][r].latched);
   }
  }
  puts("Scan thresholds, prepared RT, LUT rounding and 16-bit compatibility tests passed");
