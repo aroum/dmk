@@ -250,16 +250,15 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.reserved[2] = 0x80 | bt_power_encode(s_bt_deep_index, s_bt_long_action) |
                       (s_bt_last_slot << 5);
 #endif
-    cal.debug_flags |= (s_gesc_ignore & 2) << 4;
     cal.debug_flags |= 0x40; // rt.bottom_dz occupies the former RT padding byte.
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
-    cal.led_mode[1] |= (s_gesc_overrides << 4) | ((s_gesc_ignore & 1) << 3);
+    cal.led_mode[1] |= s_gesc_overrides << 4;
 #ifdef HHKB_HYBRID
     // Spare high nibble; zero in older records means the default 1 Hz.
     cal.led_mode[0] |= s_bt_sleep_hz << 4;
 #endif
     cal.classic_release_pm = s_classic_release_pm;
-    cal.scan_rate = (s_scan_rate & 0x7F) | (s_power_saving ? 0x80 : 0);
+    cal.scan_rate = (s_scan_rate & 0x07) | ((s_gesc_ignore & 3) << 3) | (s_power_saving ? 0x80 : 0);
     cal.tapping_term_10ms = s_tapping_term_10ms;
     cal.quick_tap_10ms = s_quick_tap_10ms;
     cal.flags = (s_permissive_hold ? 1 : 0) |
@@ -354,7 +353,7 @@ void hhkb_calibration_load(void) {
                 for (unsigned i = 0; i < EC_CURVE_FIELDS; ++i)
                     ec_curve_set(EC_CURVE_ENABLE + i, cal->curve[i]);
             }
-            uint8_t raw_rate = cal->scan_rate & 0x7F;
+            uint8_t raw_rate = cal->scan_rate & 0x07;
             if (raw_rate <= 4) s_scan_rate = raw_rate;
             s_power_saving = (cal->scan_rate & 0x80) != 0;
             if (cal->tapping_term_10ms >= 5 && cal->tapping_term_10ms <= 50) s_tapping_term_10ms = cal->tapping_term_10ms;
@@ -373,7 +372,7 @@ void hhkb_calibration_load(void) {
             if (current) {
                 for (unsigned i = 0; i < 2; ++i) {
                     uint8_t led = cal->led_mode[i];
-                    if (i == 1) led &= 7;
+                    if (i == 1) led &= 0x0f;
 #ifdef HHKB_HYBRID
                     if (i == 0) led &= 0x0f; // High nibble stores sleep scan rate.
 #endif
@@ -385,7 +384,7 @@ void hhkb_calibration_load(void) {
 #endif
                 s_debug_flags = cal->debug_flags & 0x1f;
                 s_gesc_overrides = cal->led_mode[1] >> 4;
-                s_gesc_ignore = ((cal->led_mode[1] >> 3) & 1) | ((cal->debug_flags >> 4) & 2);
+                s_gesc_ignore = (cal->scan_rate >> 3) & 3;
             }
 
             if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= (current ? 1125 : 1000)) s_rt_cfg.act_pm = cal->rt.act_pm;

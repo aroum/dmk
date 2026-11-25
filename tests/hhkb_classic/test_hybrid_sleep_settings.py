@@ -125,7 +125,7 @@ int main(void){
  cal->crc16=compute_crc16((const uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
  hhkb_calibration_load();assert(s_rt_cfg.bottom_dz==5);
  // Old record: no rate stored. Recalculate its real CRC before loading.
- cal->led_mode[0]&=15;cal->led_mode[1]&=7;cal->debug_flags&=~0x20;
+ cal->led_mode[0]&=15;cal->led_mode[1]&=15;cal->scan_rate&=0x87;
  cal->crc16=compute_crc16((const uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
  s_bt_sleep_hz=1;hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && s_led_mode[0]==4 && s_gesc_overrides==0 && !s_gesc_ignore);
  // Reject ANSI legacy data instead of reading it as a five-row record.

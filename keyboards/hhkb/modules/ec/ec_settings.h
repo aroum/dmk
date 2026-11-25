@@ -32,7 +32,7 @@ typedef struct __attribute__((aligned(4))) {
     uint16_t baseline[MATRIX_COLS][MATRIX_ROWS]; // 120 bytes
     uint16_t peak[MATRIX_COLS][MATRIX_ROWS];     // 120 bytes
     rt_cfg_t rt;                                 // 10 bytes
-    uint8_t  scan_rate;                          // 0..4
+    uint8_t  scan_rate;                          // bits 0..2: 0..4, bits 3..4: Grave Escape ignore, bit 7: power saving
     uint8_t  tapping_term_10ms;                  // 5..50
     uint8_t  quick_tap_10ms;                     // 0..50
     uint8_t  flags;                              // bit 0: permissive_hold, bit 1: tap_pref, bit 2: oversampling, bit 3: custom_cal, bit 4: debug, bit 5: system, bit 6..7: led0
