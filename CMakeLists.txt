@@ -148,8 +148,10 @@ set(FREERTOS_COMMON_SRC
     "${DMK_ROOT}/lib/freertos/list.c"
     "${DMK_ROOT}/lib/freertos/queue.c"
     "${DMK_ROOT}/lib/freertos/tasks.c"
-    "${DMK_ROOT}/lib/freertos/heap_4.c"
 )
+if(NOT MCU STREQUAL "stm32l072")
+    list(APPEND FREERTOS_COMMON_SRC "${DMK_ROOT}/lib/freertos/heap_4.c")
+endif()
 
 # Platform-specific CMake configuration
 include("${PLATFORM_DIR}/platform.cmake")

@@ -52,7 +52,11 @@
 #define configUSE_TICK_HOOK 0
 #define configTICK_RATE_HZ ((TickType_t)1000)
 #define configMAX_PRIORITIES 4
+#if defined(MCU_stm32l072)
+#define configMINIMAL_STACK_SIZE (configSTACK_DEPTH_TYPE)80
+#else
 #define configMINIMAL_STACK_SIZE (configSTACK_DEPTH_TYPE)128
+#endif
 #ifndef configTICK_TYPE_WIDTH_IN_BITS
 #define configTICK_TYPE_WIDTH_IN_BITS TICK_TYPE_WIDTH_32_BITS
 #endif
@@ -110,7 +114,13 @@
 
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION 1
+#ifndef configSUPPORT_DYNAMIC_ALLOCATION
+#if defined(MCU_stm32l072)
+#define configSUPPORT_DYNAMIC_ALLOCATION 0
+#else
 #define configSUPPORT_DYNAMIC_ALLOCATION 1
+#endif
+#endif
 /* Dynamic module tasks need room for their stacks and FreeRTOS metadata.
  * Override at build time for boards with different RAM budgets. */
 #ifndef configTOTAL_HEAP_SIZE
