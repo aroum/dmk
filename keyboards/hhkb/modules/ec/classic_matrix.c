@@ -19,15 +19,15 @@ static inline void delay_us_nop(uint32_t us) {
     }
 }
 
-// Both the periodic scanner and the Hybrid wake probe start TIM2 before acquisition.
 static inline void scan_wait_since(uint16_t start, uint16_t us) {
+    if (!(RCC->APB1ENR & RCC_APB1ENR_TIM2EN)) {
+        delay_us_nop(us);
+        return;
+    }
     uint16_t ticks = us * HHKB_SCAN_TIMER_TICKS_PER_US;
     while ((uint16_t)(TIM2->CNT - start) < ticks) {}
 }
-
-static inline void scan_delay_us(uint16_t us) {
-    scan_wait_since((uint16_t)TIM2->CNT, us);
-}
+#define scan_delay_us(us) ((RCC->APB1ENR & RCC_APB1ENR_TIM2EN) ? scan_wait_since((uint16_t)TIM2->CNT, (us)) : delay_us_nop(us))
 
 static bool s_oversampling_applied = false;
 
@@ -283,7 +283,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             bool started = adc_start_sample();
             // Preserve the existing analog IRQ policy. Battery AUTOFF already
             // allows Nordic SPI after triggering; USB stays masked until EOC.
-            if (row_settle_us == 25) __set_PRIMASK(saved_primask);
+            if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
             uint16_t val = started ? adc_finish_sample() : UINT16_MAX;
             GPIOB->BSRR = row_pins[row];
             __set_PRIMASK(saved_primask);
