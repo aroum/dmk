@@ -290,7 +290,12 @@
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
+#if defined(MCU_stm32l072)
+// The HHKB matrix task raises itself around the scan (see hhkb matrix.c).
+#define INCLUDE_vTaskPrioritySet 1
+#else
 #define INCLUDE_vTaskPrioritySet 0
+#endif
 #define INCLUDE_uxTaskPriorityGet 0
 #define INCLUDE_vTaskDelete 0
 #define INCLUDE_vTaskSuspend 1
