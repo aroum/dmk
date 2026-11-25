@@ -704,7 +704,8 @@ void hhkb_calc_rates(uint32_t elapsed_ms) {
     uint32_t total = s_matrix_scans_total;
     uint32_t diff = total - s_matrix_scans_prev;
     s_matrix_scans_prev = total;
-    s_matrix_rate_hz = (uint32_t)(((uint64_t)diff * 1000ULL + (elapsed_ms / 2)) / elapsed_ms);
+    // 32-bit is exact here: diff would need > 4.29M scans per interval to overflow.
+    s_matrix_rate_hz = (diff * 1000U + (elapsed_ms / 2)) / elapsed_ms;
 }
 
 bool hhkb_get_debug_enabled(void) { return hhkb_get_debug_flag(DEBUG_FLAG_TOPRE); }

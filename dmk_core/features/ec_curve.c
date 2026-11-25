@@ -37,8 +37,27 @@ bool ec_curve_set(uint8_t id, uint8_t value) {
  * x<=1000, y<=1125 and point spacing>=20. No math runs in the scan path. */
 #define CURVE_Q 20
 #define CURVE_ONE (INT64_C(1) << CURVE_Q)
+/* Truncating int64 division (same results as C '/'; divisors here are never 0).
+ * Avoids linking libgcc's __divdi3/__udivmoddi4 (~1 KiB) for this cold path. */
+__attribute__((noinline)) static int64_t sdiv(int64_t n, int64_t d) {
+    bool neg = (n < 0) != (d < 0);
+    uint64_t un = n < 0 ? 0 - (uint64_t)n : (uint64_t)n;
+    uint64_t ud = d < 0 ? 0 - (uint64_t)d : (uint64_t)d;
+    uint64_t q = 0;
+    if (ud && un >= ud) {
+        int shift = __builtin_clzll(ud) - __builtin_clzll(un);
+        ud <<= shift;
+        for (int i = shift; i >= 0; --i) {
+            q <<= 1;
+            if (un >= ud) { un -= ud; q |= 1; }
+            ud >>= 1;
+        }
+    }
+    return neg ? (int64_t)(0 - q) : (int64_t)q;
+}
+
 static int64_t edge(int32_t h0, int32_t h1, int64_t d0, int64_t d1) {
-    int64_t slope = ((2*h0+h1)*d0-h0*d1)/(h0+h1);
+    int64_t slope = sdiv((2*h0+h1)*d0-h0*d1, h0+h1);
     return slope > 0 ? slope : 0;
 }
 
@@ -61,11 +80,11 @@ void ec_curve_rebuild(void) {
     for (unsigned i=0; i<4; ++i) {
         h[i]=x[i+1]-x[i];
         if (h[i]<20) { disable_curve("Points need 2% spacing"); return; }
-        d[i]=(y[i+1]-y[i])*CURVE_ONE/h[i];
+        d[i]=sdiv((y[i+1]-y[i])*CURVE_ONE, h[i]);
     }
     for (unsigned i=1; i<4; ++i) {
         int32_t left=2*h[i]+h[i-1], right=h[i]+2*h[i-1];
-        m[i]=(left+right)*d[i-1]*d[i]/(left*d[i]+right*d[i-1]);
+        m[i]=sdiv((left+right)*d[i-1]*d[i], left*d[i]+right*d[i-1]);
     }
     m[0]=edge(h[0],h[1],d[0],d[1]);
     m[4]=edge(h[3],h[2],d[3],d[2]);
@@ -74,16 +93,16 @@ void ec_curve_rebuild(void) {
     for (unsigned i=0; i<126; ++i) {
         int32_t signal=i*8;
         if (segment<3 && signal>=x[segment+1]) ++segment;
-        int64_t u=(signal-x[segment])*CURVE_ONE/h[segment];
+        int64_t u=sdiv((signal-x[segment])*CURVE_ONE, h[segment]);
         int64_t delta=(y[segment+1]-y[segment])*CURVE_ONE;
         int64_t c=h[segment]*m[segment];
         int64_t a=-2*delta+c+h[segment]*m[segment+1];
         int64_t b=3*delta-2*c-h[segment]*m[segment+1];
-        int64_t linear=y[segment]*CURVE_ONE+(u*delta)/CURVE_ONE;
+        int64_t linear=y[segment]*CURVE_ONE+sdiv(u*delta, CURVE_ONE);
         int64_t cubic=y[segment]*CURVE_ONE+
-            u*(c+u*(b+u*a/CURVE_ONE)/CURVE_ONE)/CURVE_ONE;
-        int64_t value=linear+(cubic-linear)*smooth/10;
-        candidate[i]=(uint16_t)((value+CURVE_ONE/2)/CURVE_ONE);
+            sdiv(u*(c+sdiv(u*(b+sdiv(u*a, CURVE_ONE)), CURVE_ONE)), CURVE_ONE);
+        int64_t value=linear+sdiv((cubic-linear)*smooth, 10);
+        candidate[i]=(uint16_t)sdiv(value+CURVE_ONE/2, CURVE_ONE);
         if (i && candidate[i]<candidate[i-1]) candidate[i]=candidate[i-1];
         if (i>=8 && candidate[i]-candidate[i-1]>32) {
             disable_curve("Curve too steep (max 4x)"); return;
