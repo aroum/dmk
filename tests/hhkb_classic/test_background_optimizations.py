@@ -29,7 +29,7 @@ typedef unsigned TickType_t;
 #define pdMS_TO_TICKS(x) (x)
 #define VIA_FULL_SETTINGS_RESET
 #define C_RESET 42
-static bool s_reset_pending,s_eeprom_dirty,s_settings_dirty,c_pending;
+static bool s_reset_pending,s_eeprom_dirty,s_settings_dirty,c_pending,c_packing;
 static int c_target=-1,c_active=-1;
 static bool c_blocked,c_keymap_ready=true,c_cal_ready=true;
 static uint32_t owner=1;
@@ -45,6 +45,7 @@ int main(void){
  s_eeprom_dirty=true;assert(vial_eeprom_poll_interval()==2);s_eeprom_dirty=false;
  s_reset_pending=true;assert(vial_eeprom_poll_interval()==2);s_reset_pending=false;
  c_pending=true;assert(vial_eeprom_poll_interval()==2);c_pending=false;
+ c_packing=true;assert(vial_eeprom_poll_interval()==2);c_packing=false;
  c_target=1;assert(vial_eeprom_poll_interval()==2);c_target=-1;
  c_active=0;owner=0;assert(vial_eeprom_poll_interval()==2);
  owner=C_RESET;assert(vial_eeprom_poll_interval()==2);

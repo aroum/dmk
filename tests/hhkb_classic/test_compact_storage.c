@@ -27,6 +27,8 @@ static bool inject_write(volatile uint32_t *p,uint32_t v) {
 #define SLOT_ADDRESS ((uintptr_t)&memory[0x600/4])
 #include "../../keyboards/hhkb/modules/via_settings/hhkb_keymap_storage.c"
 static hhkb_eeprom_cal_t cal;
+static unsigned reader_calls;
+static uint8_t counted_read(size_t i,void *ctx) { ++reader_calls; return ((uint8_t *)ctx)[i]; }
 static void defaults(void) {
     memset(dynamic_keymap,0,sizeof(dynamic_keymap));
     memset(&vial_storage,0,sizeof(vial_storage));
@@ -41,7 +43,7 @@ static void defaults(void) {
     cal.crc16=hhkb_storage_crc16((uint8_t *)&cal.baseline,sizeof(cal)-8);
 }
 static void reboot(void) {
-    c_initialized=c_keymap_ready=c_cal_ready=c_pending=c_blocked=false;
+    c_initialized=c_keymap_ready=c_cal_ready=c_pending=c_blocked=c_packing=false;
     c_active=c_target=c_copy=-1; c_stage=c_copy_stage=c_cleanup=0;
     c_generation=c_flags=0; c_status="Not saved";
     active_slot=target_slot=-1; generation=stage=0; pending=false;
@@ -78,6 +80,16 @@ int main(int argc, char **argv) {
         for(unsigned i=0;i<sizeof(input);++i) { seed^=seed<<13;seed^=seed>>17;seed^=seed<<5;input[i]=mode==0?0:mode==1?i%251:mode==2?(seed&3):seed; }
         size_t n=hhkb_pack(input,sizeof(input),encoded,sizeof(encoded));assert(n);
         assert(hhkb_unpack(encoded,n,decoded,sizeof(decoded)) && !memcmp(input,decoded,sizeof(input)));
+        uint8_t stepped[2100];
+        for(unsigned slice=262;slice<=1048;slice*=2) {
+            hhkb_pack_state state={0}; int done;
+            do {
+                reader_calls=0;
+                done=hhkb_pack_step(&state,counted_read,input,sizeof(input),stepped,sizeof(stepped),slice);
+                assert(reader_calls<=slice);
+            } while(!done);
+            assert(done==1 && state.o==n && !memcmp(stepped,encoded,n));
+        }
         assert(hhkb_pack(input,sizeof(input),encoded,1)==0);
     }
     defaults();
@@ -100,9 +112,20 @@ int main(int argc, char **argv) {
     assert(c_active==0);assert(!strcmp(c_status,"Saved (compressed)"));
     unsigned packed=*c_word(0,2);printf("%u keys: %u/%u compressed bytes\n",NUM_KEYS,packed,(unsigned)C_RAW_BYTES);
     assert(packed<=C_CAPACITY);
-    unsigned before=writes;reboot();poll();assert(writes==before); /* no boot wear */
+    unsigned before=writes;reboot();assert(!c_pending && !c_packing);poll();assert(writes==before); /* no boot wear */
     assert(cal.led_mode[0]==0xa1 && cal.led_mode[1]==0xf4 && cal.reserved[1]==0xf3);
     for(unsigned i=0;i<NUM_KEYS;++i) assert(cal.baseline[c_positions[i][1]][c_positions[i][0]]==300+i);
+    /* Empty matrix cells and the reconstructed CRC must not cause a boot save. */
+    bool used[MATRIX_COLS][MATRIX_ROWS]={0};
+    for(unsigned i=0;i<NUM_KEYS;++i) used[c_positions[i][1]][c_positions[i][0]]=true;
+    for(unsigned c=0;c<MATRIX_COLS;++c) for(unsigned r=0;r<MATRIX_ROWS;++r)
+        if(!used[c][r]) { cal.baseline[c][r]=800;cal.peak[c][r]=3200; }
+    cal.crc16^=1;hhkb_compact_save_cal(&cal);assert(!c_pending);
+    /* Calibration edits abort an in-progress search before committing it. */
+    vial_keyboard_keymap_save();vial_keyboard_keymap_poll();assert(c_packing);
+    cal.rt.act_pm=725;hhkb_compact_save_cal(&cal);assert(!c_packing && c_pending);
+    poll();reboot();assert(cal.rt.act_pm==725);
+    cal.rt.act_pm=750;hhkb_compact_save_cal(&cal);poll();
     /* Every single write boundary of a replacement snapshot. */
     uint32_t saved[1536];memcpy(saved,memory,sizeof(saved));
     for(unsigned cut=0;cut<240;++cut) {
@@ -119,7 +142,9 @@ int main(int argc, char **argv) {
     /* Pending edits during a write are eventually persisted as a new snapshot. */
     memcpy(memory,saved,sizeof(saved));budget=-1;reboot();poll();
     dynamic_keymap[0][0]=77;vial_keyboard_keymap_save();vial_keyboard_keymap_poll();
-    dynamic_keymap[0][0]=88;vial_keyboard_keymap_save();poll();reboot();assert(dynamic_keymap[0][0]==88);
+    assert(c_packing && hhkb_compact_busy());
+    dynamic_keymap[0][0]=88;vial_keyboard_storage_changed();assert(!c_packing && c_pending);
+    vial_keyboard_keymap_save();poll();reboot();assert(dynamic_keymap[0][0]==88);
     /* Incompressible data must fail explicitly, without destroying the old record. */
     unsigned rng=123;
     for(unsigned l=0;l<4;++l)for(unsigned k=0;k<NUM_KEYS;++k) {rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;dynamic_keymap[l][k]=rng;}

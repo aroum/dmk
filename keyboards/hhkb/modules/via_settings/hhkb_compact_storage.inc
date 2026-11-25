@@ -35,6 +35,9 @@ static bool c_initialized, c_keymap_ready, c_cal_ready, c_pending, c_blocked;
 static int c_active = -1, c_target = -1, c_copy = -1;
 static unsigned c_stage, c_copy_stage, c_cleanup;
 static uint32_t c_generation, c_flags;
+static hhkb_pack_state c_pack;
+static bool c_packing;
+_Static_assert(C_RAW_BYTES <= UINT16_MAX, "Compact codec indices must fit");
 static const char *c_status = "Not saved";
 static volatile uint32_t *c_phys(unsigned offset) {
     return (volatile uint32_t *)(HHKB_EEPROM_BASE + offset);
@@ -158,7 +161,11 @@ static void c_extract(size_t i, uint8_t value, void *ctx) {
     c_range *range=ctx;
     if(i>=range->start && i-range->start<range->size) {
         size_t offset=i-range->start;
-        if(range->start==0 && range->size==sizeof(dynamic_keymap)) offset=(offset%KEYMAP_WORDS)*4+offset/KEYMAP_WORDS;
+        if(range->start==0 && range->size==sizeof(dynamic_keymap)) {
+            unsigned plane=0;
+            while(offset>=KEYMAP_WORDS) { offset-=KEYMAP_WORDS; ++plane; }
+            offset=offset*4+plane;
+        }
         range->dest[offset]=value;
     }
 }
@@ -174,7 +181,29 @@ bool hhkb_compact_load_cal(hhkb_eeprom_cal_t *cal) {
     c_decode_range(C_RAW_BYTES-C_CAL_BYTES,C_CAL_BYTES,packed);
     c_cal_unpack(packed,cal); c_cal=*cal; c_cal_ready=true; return true;
 }
-void hhkb_compact_save_cal(const hhkb_eeprom_cal_t *cal) { c_cal=*cal; c_cal_ready=true; c_pending=true; if(!c_blocked) c_status="Pending"; }
+static bool c_cal_equal(const hhkb_eeprom_cal_t *cal) {
+    /* CRC and empty cells are reconstructed, not calibration content. */
+    if(memcmp(&c_cal,cal,6) || memcmp(&c_cal.rt,&cal->rt,
+        sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,rt))) return false;
+    for(unsigned i=0;i<NUM_KEYS;++i) {
+        unsigned r=c_positions[i][0], c=c_positions[i][1];
+        if(c_cal.baseline[c][r]!=cal->baseline[c][r] ||
+           c_cal.peak[c][r]!=cal->peak[c][r]) return false;
+    }
+    return true;
+}
+void hhkb_compact_save_cal(const hhkb_eeprom_cal_t *cal) {
+    HHKB_STORAGE_LOCK();
+    if(!c_cal_ready || !c_cal_equal(cal)) {
+        c_cal=*cal; c_cal_ready=true; c_packing=false; c_pending=true;
+        if(!c_blocked) c_status="Pending";
+    }
+    HHKB_STORAGE_UNLOCK();
+}
+/* Called at the mutation, not only after VIA's deferred save debounce. */
+void vial_keyboard_storage_changed(void) {
+    if(c_packing) { c_packing=false; c_pending=true; }
+}
 void vial_keyboard_keymap_load(void) {
     c_init();
     if(c_active>=0) {
@@ -182,12 +211,16 @@ void vial_keyboard_keymap_load(void) {
         c_decode_range(sizeof(dynamic_keymap),sizeof(vial_storage.data.combos),vial_storage.data.combos);
         c_decode_range(sizeof(dynamic_keymap)+sizeof(vial_storage.data.combos),sizeof(vial_storage.data.macro_buffer),vial_storage.data.macro_buffer);
     } else if(hhkb_compact_legacy_allowed()) legacy_keymap_load();
-    c_keymap_ready=true; c_pending=true;
+    c_keymap_ready=true; if(c_active<0) c_pending=true;
 }
-void vial_keyboard_keymap_save(void) { c_pending=true; if(!c_blocked) c_status="Pending"; }
+void vial_keyboard_keymap_save(void) { c_packing=false; c_pending=true; if(!c_blocked) c_status="Pending"; }
 static uint8_t c_input(size_t i, void *ctx) {
     (void)ctx;
-    if(i<sizeof(dynamic_keymap)) return ((uint8_t *)dynamic_keymap)[(i%KEYMAP_WORDS)*4+i/KEYMAP_WORDS];
+    if(i<sizeof(dynamic_keymap)) {
+        unsigned plane=0;
+        while(i>=KEYMAP_WORDS) { i-=KEYMAP_WORDS; ++plane; }
+        return ((uint8_t *)dynamic_keymap)[i*4+plane];
+    }
     i-=sizeof(dynamic_keymap);
     if(i<sizeof(vial_storage.data.combos)) return ((uint8_t *)vial_storage.data.combos)[i];
     i-=sizeof(vial_storage.data.combos);
@@ -196,27 +229,31 @@ static uint8_t c_input(size_t i, void *ctx) {
     if(i<8) return ((uint8_t *)&c_cal)[i];
     i-=8;
     if(i<3*NUM_KEYS) {
-        unsigned r=c_positions[i/3][0], c=c_positions[i/3][1];
+        unsigned key=(i*0xaaabU)>>17, byte=i-3*key;
+        unsigned r=c_positions[key][0], c=c_positions[key][1];
         unsigned b=c_cal.baseline[c][r], k=c_cal.peak[c][r];
-        return i%3==0 ? b : i%3==1 ? (b>>8)|(k<<4) : k>>4;
+        return byte==0 ? b : byte==1 ? (b>>8)|(k<<4) : k>>4;
     }
     return ((uint8_t *)&c_cal.rt)[i-3*NUM_KEYS];
 }
 static bool c_build(void) {
-    for(unsigned i=0;i<NUM_KEYS;++i) {
-        unsigned r=c_positions[i][0], c=c_positions[i][1];
-        if(c_cal.baseline[c][r]>4095 || c_cal.peak[c][r]>4095) { c_status="Invalid ADC: not saved"; return false; }
+    if(!c_packing) {
+        for(unsigned i=0;i<NUM_KEYS;++i) {
+            unsigned r=c_positions[i][0], c=c_positions[i][1];
+            if(c_cal.baseline[c][r]>4095 || c_cal.peak[c][r]>4095) { c_status="Invalid ADC: not saved"; return false; }
+        }
+        memset(c_image,0,sizeof(c_image)); memset(&c_pack,0,sizeof(c_pack));
+        c_packing=true;
     }
-    memset(c_image,0,sizeof(c_image));
-#ifdef HHKB_SCAN_DIAGNOSTICS
-    TickType_t pack_start = xTaskGetTickCount();
-#endif
-    size_t size=hhkb_pack_stream(c_input,NULL,C_RAW_BYTES,(uint8_t *)&c_image[5],C_CAPACITY);
-#ifdef HHKB_SCAN_DIAGNOSTICS
-    extern void debug_console_printf(const char *, ...);
-    debug_console_printf("[CFG] EEPROM pack=%lu ms\r\n",
-        (unsigned long)((xTaskGetTickCount() - pack_start) * portTICK_PERIOD_MS));
-#endif
+    /* No task can change calibration while this bounded slice reads it.
+     * IRQs stay enabled; USB gets control back after at most 512 reads. */
+    HHKB_STORAGE_LOCK();
+    int result=hhkb_pack_step(&c_pack,c_input,NULL,C_RAW_BYTES,
+                            (uint8_t *)&c_image[5],C_CAPACITY,512);
+    HHKB_STORAGE_UNLOCK();
+    if(!result) return false;
+    c_packing=false;
+    size_t size=result>0 ? c_pack.o : 0;
     if(!size) { c_status="Full: not saved"; return false; }
     if(c_active>=0 && *c_word((unsigned)c_active,2)==size) {
         bool equal=true;
@@ -249,11 +286,12 @@ bool hhkb_compact_reset(void) {
     if(!c_owner_valid()) {
         /* Preserve unknown factory data and let normal enrollment handle blank EEPROM. */
         if(c_flags) return false;
+        c_pending=c_packing=false;
         return true;
     }
     if(!write_word(c_phys(0x1708),C_RESET)) return false;
     if(!write_word(c_word(0,4),0) || !write_word(c_word(1,4),0)) return false;
-    c_active=c_target=-1; c_pending=false; c_status="Defaults (compressed)";
+    c_active=c_target=-1; c_pending=c_packing=false; c_status="Defaults (compressed)";
     return true; /* tombstone remains until the first default snapshot commits */
 }
 bool vial_keyboard_keymap_reset(void) {
@@ -263,7 +301,7 @@ bool vial_keyboard_keymap_reset(void) {
 }
 bool hhkb_compact_busy(void) {
     if (c_blocked || !c_keymap_ready || !c_cal_ready) return false;
-    return c_pending || c_target >= 0 ||
+    return c_pending || c_packing || c_target >= 0 ||
         (c_active >= 0 && (*c_phys(0x1708) == 0 || *c_phys(0x1708) == C_RESET));
 }
 
@@ -276,7 +314,7 @@ void vial_keyboard_keymap_poll(void) {
     }
     if(c_active>=0 && !c_cleanup_poll()) return;
     if(c_target<0) {
-        if(!c_pending) return;
+        if(!c_pending && !c_packing) return;
         if(c_active<0 && c_owner_valid() && *c_phys(0x1708)==C_RESET) {
             /* Complete a reset interrupted before either invalidation. Never
              * let a high-generation pre-reset slot become visible again. */
@@ -291,7 +329,7 @@ void vial_keyboard_keymap_poll(void) {
         if(!c_owner_valid()) {
             if(valid(1) && (!valid(0) || (int32_t)(slot(1)[1]-slot(0)[1])>0)) c_copy=1;
         }
-        c_target=c_active<0?0:1-c_active; c_stage=0; c_status="Saving (compressed)";
+        c_target=c_active<0?0:1-c_active; c_stage=0; c_status="Saving";
     }
     if(c_copy>=0) {
         unsigned off; uint32_t value;

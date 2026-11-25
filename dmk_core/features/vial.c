@@ -729,7 +729,10 @@ static inline void vial_eeprom_save_now(void) {
     vial_platform_storage_save_now();
 }
 
+__attribute__((weak)) void vial_keyboard_storage_changed(void) {}
+
 void vial_eeprom_save(void) {
+    vial_keyboard_storage_changed();
     s_eeprom_dirty_time = xTaskGetTickCount();
     s_eeprom_dirty = true;
 }

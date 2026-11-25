@@ -32,6 +32,43 @@ static inline size_t hhkb_pack_stream(hhkb_byte_reader read, void *ctx, size_t s
     if (literal) out[start] = (uint8_t)(literal - 1);
     return o;
 }
+/* Resumable greedy search. Reserve the worst-case reader cost before each
+ * candidate, then charge its actual comparisons (plus at most one spare pair).
+ * A candidate is at most 130 comparisons; pass a budget >= 262 to make
+ * progress. Returns 0 to yield, 1 on completion, -1 if capacity is exceeded. */
+typedef struct { unsigned i, o, literal, best, distance, d; } hhkb_pack_state;
+static inline int hhkb_pack_step(hhkb_pack_state *s, hhkb_byte_reader read,
+        void *ctx, size_t size, uint8_t *out, size_t capacity, unsigned budget) {
+    while (s->i < size) {
+        if (!s->d) s->d = 1;
+        while (s->d <= s->i && s->d <= 256) {
+            if (budget < 262) return 0;
+            unsigned n=0;
+            while (n < 130 && s->i+n < size &&
+                   read(s->i+n,ctx)==read(s->i+n-s->d,ctx)) ++n;
+            budget-=2*(n+1);
+            if (n > s->best) { s->best=n; s->distance=s->d; }
+            ++s->d;
+            if (s->best == 130) break;
+        }
+        if (s->best >= 3) {
+            if (s->literal) { out[s->o-s->literal-1]=s->literal-1; s->literal=0; }
+            if (s->o+2 > capacity) return -1;
+            out[s->o++]=0x80|(s->best-3); out[s->o++]=s->distance-1;
+            s->i+=s->best;
+        } else {
+            if (!budget) return 0;
+            --budget;
+            if (!s->literal) { if (s->o == capacity) return -1; ++s->o; }
+            if (s->o == capacity) return -1;
+            out[s->o++]=read(s->i++,ctx);
+            if (++s->literal == 128) { out[s->o-129]=127; s->literal=0; }
+        }
+        s->d=s->best=s->distance=0;
+    }
+    if (s->literal) out[s->o-s->literal-1]=s->literal-1;
+    return 1;
+}
 static inline bool hhkb_unpack_stream(const uint8_t *in, size_t size, size_t expected,
                                       hhkb_byte_writer write, void *ctx) {
     uint8_t history[256];
