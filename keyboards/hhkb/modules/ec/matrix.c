@@ -461,7 +461,10 @@ void matrix_task(void *pvParameters) {
         if (!first_event) sof_lock_note_publish();
 #endif
 #if HHKB_SOF_LOCK
-        sof_lock_note_work();
+        // A coalesced notification means the timer refired before this scan
+        // ran: s_last_compare belongs to the newest fire, so the measured work
+        // would understate and shrink the lead exactly when scans overrun.
+        if (notifications == 1) sof_lock_note_work();
 #endif
         // Keep the next timer notification. Discarding it here forces a
         // nearly-1-ms scan to wait for the following tick, halving throughput.
