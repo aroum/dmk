@@ -43,7 +43,12 @@ static struct {uint32_t BSRR,BRR;} b,c,d;
 #define GPIOD (&d)
 static struct {uint32_t CFGR1;} adc;
 #define ADC1 (&adc)
-static struct {uint16_t CNT;} timer;
+static struct {uint32_t APB1ENR;} rcc={1};
+#define RCC (&rcc)
+#define RCC_APB1ENR_TIM2EN 1
+#define TIM_CR1_CEN 1
+#define configASSERT(x) assert(x)
+static struct {uint16_t CNT;uint32_t CR1;} timer={.CR1=1};
 #define TIM2 (&timer)
 static rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
 static rt_key_t reference[MATRIX_COLS][MATRIX_ROWS];

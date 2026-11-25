@@ -20,14 +20,12 @@ static inline void delay_us_nop(uint32_t us) {
 }
 
 static inline void scan_wait_since(uint16_t start, uint16_t us) {
-    if (!(RCC->APB1ENR & RCC_APB1ENR_TIM2EN)) {
-        delay_us_nop(us);
-        return;
-    }
     uint16_t ticks = us * HHKB_SCAN_TIMER_TICKS_PER_US;
     while ((uint16_t)(TIM2->CNT - start) < ticks) {}
 }
-#define scan_delay_us(us) ((RCC->APB1ENR & RCC_APB1ENR_TIM2EN) ? scan_wait_since((uint16_t)TIM2->CNT, (us)) : delay_us_nop(us))
+static inline void scan_delay_us(uint16_t us) {
+    scan_wait_since((uint16_t)TIM2->CNT, us);
+}
 
 static bool s_oversampling_applied = false;
 
@@ -207,11 +205,14 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     GPIOC->BSRR = 1U << 14;
     GPIOD->BRR = 1U << 2;
 #endif
+    // The periodic scanner and Hybrid wake probes both start TIM2 first.
+    configASSERT((RCC->APB1ENR & RCC_APB1ENR_TIM2EN) && (TIM2->CR1 & TIM_CR1_CEN));
     hhkb_record_matrix_scan();
     scan_adc_prepare();
 
     bool changed = false;
-    uint16_t row_settle_us = (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) ? 25 : 3;
+    bool adc_autoff = (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) != 0;
+    uint16_t row_settle_us = adc_autoff ? 25 : 3;
     static const uint16_t row_pins[MATRIX_ROWS] = HHKB_ROW_BITS;
     static const uint32_t col_mux_bsrr[MATRIX_COLS] = {
         0x70000000, 0x60001000, 0x50002000, 0x40003000,
@@ -289,7 +290,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             bool started = adc_start_sample();
             // Preserve the existing analog IRQ policy. Battery AUTOFF already
             // allows Nordic SPI after triggering; USB stays masked until EOC.
-            if (ADC1->CFGR1 & ADC_CFGR1_AUTOFF) __set_PRIMASK(saved_primask);
+            if (adc_autoff) __set_PRIMASK(saved_primask);
             uint16_t val = started ? adc_finish_sample() : UINT16_MAX;
             GPIOB->BSRR = row_pins[row];
             __set_PRIMASK(saved_primask);

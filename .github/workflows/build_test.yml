@@ -148,6 +148,16 @@ jobs:
             done
           done
           git checkout --detach "${{ github.sha }}"
+          ./build_all.sh -b hhkb --mcu stm32l072 -d HHKB_CLASSIC_TYPE_S,HHKB_JIS,HHKB_SCAN_DIAGNOSTICS=1,HHKB_BOOT_TRACE=1 -c
+          cp build/hhkb-script/dmk_hhkb_stm32l072 /tmp/hhkb-scan-compare/current-jis.elf
+          for version in current current-jis; do
+            for rt in off on; do
+              for offset in -3 500 2000; do
+                uv run --with unicorn --with pyelftools python3 /tmp/hhkb-scan-compare/scan_emu.py time /tmp/hhkb-scan-compare/$version.elf --rt "$rt" --offset "$offset" > /tmp/hhkb-scan-compare/$version-rt-$rt-offset-$offset.txt
+                cat /tmp/hhkb-scan-compare/$version-rt-$rt-offset-$offset.txt
+              done
+            done
+          done
           ./build_all.sh -b hhkb --mcu stm32l072 -d HHKB_CLASSIC,HHKB_SCAN_DIAGNOSTICS=1,HHKB_BOOT_TRACE=1 -c
 
       - name: Upload scan comparison

@@ -67,7 +67,9 @@ static uint16_t raw_threshold(const rt_key_t *key, const rt_scan_cfg_t *scan, ui
 void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_scan_cfg_t *scan) {
     uint16_t press = scan->cfg.act_pm > scan->cfg.reset_pm ? scan->cfg.act_pm : scan->cfg.reset_pm + 1;
     cache->press_raw = raw_threshold(key, scan, press);
-    cache->release_raw = raw_threshold(key, scan, (scan->cfg.rt_enabled ? scan->cfg.reset_pm : scan->classic_release) + 1);
+    uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
+    cache->release_raw = scan->cfg.rt_enabled && scan->cfg.reset_pm >= bottom ? 4096 :
+        raw_threshold(key, scan, (scan->cfg.rt_enabled ? scan->cfg.reset_pm : scan->classic_release) + 1);
 }
 
 #ifdef __arm__
@@ -88,35 +90,7 @@ RT_SCAN_CODE uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const
 }
 
 static inline __attribute__((always_inline))
-bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
-    const rt_cfg_t *c = &scan->cfg;
-    // Pressure beyond calibrated bottom-out must not deepen the RT release anchor.
-    // Keep EEPROM/config layout unchanged: this is a zero-width bottom dead zone.
-    uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
-    if (c->rt_enabled && v > (int16_t)bottom) v = (int16_t)bottom;
-    /* Top dead zone: key is definitely up, RT disarmed until act_pm is crossed again. */
-    if (v <= (int16_t)c->reset_pm) {
-        k->down    = false;
-        k->latched = false;
-        k->ext     = v;
-        return false;
-    }
-
-    /* Classic mode: fixed actuation point with release hysteresis. */
-    if (!c->rt_enabled) {
-        int16_t rel = (int16_t)scan->classic_release;
-        if (k->down) {
-            if (v <= rel) {
-                k->down = false;
-            }
-        } else if (v >= (int16_t)c->act_pm) {
-            k->down = true;
-        }
-        k->latched = k->down;
-        k->ext     = v;
-        return k->down;
-    }
-
+bool update_rt_travel(rt_key_t *k, const rt_cfg_t *c, int16_t v) {
     /* Rapid Trigger, not armed yet: needs the normal actuation point once. */
     if (!k->latched) {
         if (v >= (int16_t)c->act_pm) {
@@ -148,6 +122,38 @@ bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
     }
     return k->down;
 }
+static inline __attribute__((always_inline))
+bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
+    const rt_cfg_t *c = &scan->cfg;
+    // Pressure beyond calibrated bottom-out must not deepen the RT release anchor.
+    // Keep EEPROM/config layout unchanged: this is a zero-width bottom dead zone.
+    uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
+    if (c->rt_enabled && v > (int16_t)bottom) v = (int16_t)bottom;
+    /* Top dead zone: key is definitely up, RT disarmed until act_pm is crossed again. */
+    if (v <= (int16_t)c->reset_pm) {
+        k->down    = false;
+        k->latched = false;
+        k->ext     = v;
+        return false;
+    }
+
+    /* Classic mode: fixed actuation point with release hysteresis. */
+    if (!c->rt_enabled) {
+        int16_t rel = (int16_t)scan->classic_release;
+        if (k->down) {
+            if (v <= rel) {
+                k->down = false;
+            }
+        } else if (v >= (int16_t)c->act_pm) {
+            k->down = true;
+        }
+        k->latched = k->down;
+        k->ext     = v;
+        return k->down;
+    }
+
+    return update_rt_travel(k, c, v);
+}
 
 RT_SCAN_CODE bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t travel) {
     return update_travel(key, scan, (int16_t)travel);
@@ -171,7 +177,9 @@ RT_SCAN_CODE bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cac
     }
     uint16_t value = scan_normalize(key, raw, scan);
     if (travel) *travel = value;
-    return update_travel(key, scan, (int16_t)value);
+    uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
+    if (value > bottom) value = bottom;
+    return update_rt_travel(key, &scan->cfg, (int16_t)value);
 }
 
 bool rt_update_curve(rt_key_t *key, const rt_cfg_t *cfg, uint16_t raw, const uint16_t *curve) {

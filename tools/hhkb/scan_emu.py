@@ -42,7 +42,7 @@ class ScanEmulator:
         self.cycles = 0.0
         self.adc_start = -1e9
         self.reading = 0
-        self.registers = {}
+        self.registers = {0x40000000: 1}  # TIM2 CR1.CEN, as set by the matrix task
         self.events = []
         self.record_events = False
         self.counting = None

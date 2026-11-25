@@ -21,7 +21,7 @@ int main(void){
   rt_key_t key={0},ref={0},generic={0};
   uint16_t base=random32()%4096,peak=random32()%65536;
   rt_key_set_range(&key,base,peak);reference_rt_key_set_range(&ref,base,peak);generic=key;
-  unsigned depth=775+random32()%351;
+  unsigned depth=trial%17==0 ? 100 : 775+random32()%351;
   for(unsigned i=0;i<126;++i)lut[i]=depth*i*i/(125*125);
   const uint16_t *curve=trial%2?lut:NULL;
   rt_cfg_t cfg={.act_pm=random32()%1126,.release_pm=random32()%1126,.reset_pm=random32()%201,
