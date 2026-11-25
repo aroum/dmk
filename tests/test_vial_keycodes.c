@@ -19,6 +19,7 @@ bool vial_keyboard_reset_allowed(void) { return reset_allowed; }
 bool vial_keyboard_settings_reset(void) { ++settings_erases; return true; }
 bool vial_keyboard_keymap_reset(void) { ++keymap_erases; return true; }
 void platform_system_reset(void) { ++resets; }
+void hhkb_enter_bank1(void) { assert(0 && "settings reset must stay in DMK"); }
 int16_t keyboard_get_flat_key_index(uint8_t row, uint8_t col) { (void)row; (void)col; return 0; }
 void keyboard_send_key(uint16_t key, bool pressed) { (void)key; (void)pressed; }
 static bool s_mock_matrix[16][32] = {{0}};

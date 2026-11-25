@@ -137,6 +137,17 @@ static bool sw6_stable_on(void) { return recovery_switches_stable_on(0); }
 static bool sw5_stable_on(void) { return recovery_switches_stable_on(1U << 7); }
 #endif
 
+void hhkb_enter_bank1(void) {
+#ifdef HHKB_HYBRID
+    write_eeprom_byte(0x08080360UL, 0x00);
+#else
+    write_eeprom_byte(HHKB_EEPROM_BANK2_STATUS_ADDR, 0x01);
+    write_eeprom_byte(HHKB_EEPROM_BANK2_CRC_ADDR, 0x00);
+    write_eeprom_byte(HHKB_EEPROM_BANK2_CRC_ADDR + 1, 0x00);
+#endif
+    erase_bank2_vector_page_ram();
+}
+
 void hhkb_early_dip_check(void) {
     // Enable GPIOA and GPIOC peripheral clocks
     RCC->IOPENR |= RCC_IOPENR_GPIOAEN | RCC_IOPENR_GPIOCEN;
@@ -165,20 +176,7 @@ void hhkb_early_dip_check(void) {
             __disable_irq();
             while (1) __WFI();
         }
-        // SW6 is ON: User requests failsafe stock recovery in Bank 1!
-#ifdef HHKB_HYBRID
-        // The Hybrid loader uses a separate Bank 2 boot-enable byte.
-        write_eeprom_byte(0x08080360UL, 0x00);
-#else
-        // Combine all recovery mechanisms:
-        // 1. Mark status byte as broken in EEPROM (0x01)
-        write_eeprom_byte(HHKB_EEPROM_BANK2_STATUS_ADDR, 0x01);
-        // 2. Corrupt Bank 2 CRC tag in EEPROM
-        write_eeprom_byte(HHKB_EEPROM_BANK2_CRC_ADDR, 0x00);
-        write_eeprom_byte(HHKB_EEPROM_BANK2_CRC_ADDR + 1, 0x00);
-#endif
-        // 3. Erase the first page of Bank 2 (vector table) and reset into Bank 1
-        erase_bank2_vector_page_ram();
+        hhkb_enter_bank1();
     }
 #endif
 }

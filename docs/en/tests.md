@@ -51,6 +51,7 @@ Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HH
 
 ## Update, recovery and persistence on physical boards
 
+- [ ] Exercise all three VIA scenarios on Classic and Hybrid with SW6 OFF. Return to stock with DMK EEPROM retained, return with DMK EEPROM erased, and reset DMK data while staying in DMK. Confirm PFU/DMK enumeration after reboot and the intended EEPROM contents. Check failure statuses and rearming. Automated dispatch and storage tests cover these paths; physical validation is pending.
 - [x] Flash Classic ANSI model PD-KB401B through PFU Bank 1 using the Linux HID flasher and confirm the new DMK device enumerates. On November 25, 2026, debug commit `6af27377` completed the transfer and final acknowledgement; the device returned as `CAFE:4014`, and VIA/HID Console worked after updating the Linux udev rule. Calibration/layout persistence and stock restoration were not checked in this run.
 - [ ] Upgrade an already-configured keyboard through Bank 1 recovery and return to DMK. Verify custom calibration, layout and settings remain usable without reconfiguration.
 - [ ] Test SW6 recovery alone and SW5+SW6 DMK wipe on Classic and Hybrid units with complete backups available. Confirm ordinary recovery preserves DMK data and the wipe does not alter factory-owned data or prevent stock operation.

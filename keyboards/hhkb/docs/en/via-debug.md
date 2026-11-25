@@ -167,7 +167,7 @@ Outside an explicit calibration session, baseline and peak remain fixed: runtime
 - **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
 - **Polling Rate Monitor:** Telemetry for matrix scan and USB report frequency.
 - **Calibration Monitor:** Live tracking of sensor baseline values and capacitance drift.
-- **Factory reset (Arm settings reset & Erase all DMK settings):** Safe complete reset of all DMK custom settings, calibrations, and keymaps.
+- **Reset and stock recovery:** reset DMK data or return to Bank 1, with optional DMK EEPROM cleanup.
 
 ### Small readings near the released position
 
@@ -301,22 +301,23 @@ DMK uses one `HT(hold, tap)` action internally; VIA/Vial Mod-Tap and Layer-Tap a
 
 The dev fixes preserve readable legacy EEPROM records; no factory reset is required. Reassign keys that were already saved incorrectly. VIA cannot represent every native HT pair: ordinary key/key and tap-layer pairs read as unassigned, so configure those in source. These dev changes are not part of release `2026.11.22`.
 
-### Reset all DMK settings (Factory reset)
+### Reset DMK data or return to stock Bank 1
 
 In the [VIA web app](https://www.usevia.app/), open **HHKB Settings** → **Debug**:
 
-1. Enable the safety switch **Arm settings reset**.
-2. Click the button **Erase all DMK settings** that appears.
-3. Observe the operational state in **Reset status** (`Ready` → `Armed` → `Resetting...`).
+Set SW6 to OFF and enable **Arm reset / stock recovery**. Choose one of the following actions.
 
-**How reset works and what it erases:**
+| Scenario | VIA action | DMK EEPROM | Firmware after reboot |
+| --- | --- | --- | --- |
+| Return to stock, retain DMK data | Leave **Erase DMK EEPROM when returning to stock** off, click **Return to stock Bank 1** | Preserved | Stock Bank 1 |
+| Return to stock and clear DMK data | Enable **Erase DMK EEPROM when returning to stock**, click **Return to stock Bank 1** | Recognized DMK records cleared | Stock Bank 1 |
+| Reset DMK data | Click **Reset DMK data and restart** | Recognized DMK records cleared, regardless of the recovery checkbox | DMK with compiled defaults |
 
-- **Accidental trigger protection:** The erase button is hidden and disarmed until the _Arm settings reset_ toggle is engaged.
-- **EEPROM configuration & calibration erase:** Firmware writes a persistent reset marker, then runs the physical DMK EEPROM cleanup used by SW5+SW6. This clears recognized DMK snapshots, calibration, keymaps, macros and settings, including Grave Escape toggles. After successful cleanup, DMK restarts with defaults. An interrupted reset cannot reload an older DMK snapshot after its reset marker has been written. SW5+SW6 additionally enters Bank 1 recovery; the VIA action restarts DMK.
-- **Dynamic VIA/Vial keymap reset:** All dynamic keymap layers, macros, combos, and key overrides stored in EEPROM are erased, reverting the keyboard to its default compiled-in ROM keymap.
-- **Bootloader & factory calibration safety:** The reset operation affects **only** DMK runtime settings. The original PFU Topre factory calibration data (stored at `0x08081100`/`0x08081200`) and both firmware banks (Bank 1 recovery bootloader and Bank 2) remain untouched.
-- **Automatic reboot:** Once the EEPROM regions are cleared, the microcontroller automatically executes a software system reset (`platform_system_reset()`) and boots up cleanly with default parameters.
-- **DIP SW6 safety check:** DIP switch **SW6** on the rear of the keyboard must be in the **OFF** position to allow settings reset. If SW6 is ON, the reset status will show `Set SW6 to OFF` and the operation will be aborted.
+Returning to Bank 1 uses the SW6 recovery procedure. It updates PFU boot metadata and erases the first 128-byte vector page of DMK in Bank 2. Reinstall DMK through the PFU updater to run it again. The checkbox defaults off each session and applies to the Bank 1 button. EEPROM cleanup uses the SW5+SW6 routine and clears recognized DMK calibration, curves, settings, Grave Escape flags, keymaps, macros and combos. Factory PFU calibration is preserved. Previously overwritten PFU bytes require a same-board backup or the stock Keymap Tool recovery described in [backup and restore](backup-restore.md).
+
+Both buttons require arming and consume the armed state. Commands are executed after a 150 ms acknowledgement delay. EEPROM erase failure prevents the return to Bank 1 and can be retried after rearming. Keep power connected until the operation completes.
+
+**Reset status** describes the current session's last command. `Ready` means no action is queued, `Armed` means the buttons are enabled, `Resetting DMK...` or `Returning to Bank 1...` means an action is queued, and `Restarting...` means its pre-reboot work succeeded. `Set SW6 to OFF` blocks the request, and `Reset failed; retry` reports an EEPROM cleanup failure. USB disconnects during reboot, so the final status may disappear before VIA displays it. Verify the resulting PFU or DMK USB device after reconnecting. EEPROM save status is shown separately under **Settings EEPROM**.
 
 ## Hybrid only: Bluetooth controls and keycodes
 

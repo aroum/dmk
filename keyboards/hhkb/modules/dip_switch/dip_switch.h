@@ -41,6 +41,8 @@ typedef enum {
  * - If SW6 is OFF: boots DMK normally in Bank 2.
  */
 void hhkb_early_dip_check(void);
+/* Invalidates Bank 2 and resets into stock Bank 1. Preserves DMK EEPROM. */
+void hhkb_enter_bank1(void);
 
 /**
  * @brief Initialize all 6 DIP switch pins with internal pull-ups.

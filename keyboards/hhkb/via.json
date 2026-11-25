@@ -2873,14 +2873,14 @@
               ]
             },
             {
-              "label": "Factory reset",
+              "label": "Reset and stock recovery",
               "type": "label",
               "content": [
-                "Clears DMK EEPROM like SW5+SW6, then restarts DMK."
+                "Reset DMK data, or return to stock Bank 1 with optional DMK EEPROM erase."
               ]
             },
             {
-              "label": "Arm settings reset",
+              "label": "Arm reset / stock recovery",
               "type": "toggle",
               "content": [
                 "id_dmk_reset_arm",
@@ -2889,7 +2889,7 @@
               ]
             },
             {
-              "label": "Erase all DMK settings",
+              "label": "Reset DMK data and restart",
               "type": "button",
               "options": [
                 1
@@ -2902,6 +2902,23 @@
               "showIf": "{id_dmk_reset_arm} == 1"
             },
             {
+              "label": "Erase DMK EEPROM when returning to stock",
+              "type": "toggle",
+              "content": ["id_hhkb_recovery_erase", 0, 63]
+            },
+            {
+              "label": "Return to stock Bank 1",
+              "type": "button",
+              "options": [1],
+              "content": ["id_hhkb_recovery_execute", 0, 64],
+              "showIf": "{id_dmk_reset_arm} == 1"
+            },
+            {
+              "label": "Recovery notice",
+              "type": "label",
+              "content": ["Bank 1 return disables DMK in Bank 2. Reflash DMK to use it again. EEPROM erase clears DMK data."]
+            },
+            {
               "label": "Reset status",
               "type": "label",
               "content": [
@@ -2909,6 +2926,11 @@
                 0,
                 39
               ]
+            },
+            {
+              "label": "Status help",
+              "type": "label",
+              "content": ["Ready: no action queued. Armed: buttons enabled. Status describes the last request, not EEPROM health."]
             }
           ]
         }

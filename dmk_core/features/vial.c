@@ -332,14 +332,33 @@ enum {
 static bool s_reset_armed, s_reset_pending, s_reset_erased;
 static TickType_t s_reset_requested_at;
 static const char *s_reset_status = "Ready";
+#ifdef HHKB_COMPACT_STORAGE
+enum { VIA_RECOVERY_ERASE = 63, VIA_RECOVERY_EXECUTE = 64 };
+static bool s_recovery_erase, s_reset_recovery;
+extern void hhkb_enter_bank1(void);
+#endif
 
 __attribute__((weak)) bool vial_keyboard_reset_allowed(void) { return true; }
 static bool vial_platform_settings_reset(void);
 
 static bool vial_settings_reset_command(const uint8_t *request, uint8_t *response) {
-    if (request[1] != 0 || request[2] < VIA_RESET_ARM || request[2] > VIA_RESET_STATUS)
+    bool recovery_command = false;
+#ifdef HHKB_COMPACT_STORAGE
+    recovery_command = request[2] == VIA_RECOVERY_ERASE || request[2] == VIA_RECOVERY_EXECUTE;
+#endif
+    if (request[1] != 0 || (!recovery_command &&
+        (request[2] < VIA_RESET_ARM || request[2] > VIA_RESET_STATUS)))
         return false;
 
+#ifdef HHKB_COMPACT_STORAGE
+    if (request[2] == VIA_RECOVERY_ERASE) {
+        if (request[0] == VIA_CUSTOM_GET_VALUE) response[3] = s_recovery_erase;
+        else if (request[0] == VIA_CUSTOM_SET_VALUE && request[3] <= 1 &&
+                 !s_reset_pending && !s_reset_erased) s_recovery_erase = request[3] != 0;
+        else response[0] = 0xFF;
+        return true;
+    }
+#endif
     if (request[0] == VIA_CUSTOM_GET_VALUE) {
         response[3] = request[2] == VIA_RESET_ARM && s_reset_armed;
         if (request[2] == VIA_RESET_STATUS) strcpy((char *)&response[3], s_reset_status);
@@ -347,13 +366,17 @@ static bool vial_settings_reset_command(const uint8_t *request, uint8_t *respons
                request[3] <= 1 && !s_reset_pending && !s_reset_erased) {
         s_reset_armed = request[3] != 0;
         s_reset_status = s_reset_armed ? "Armed" : "Ready";
-    } else if (request[0] == VIA_CUSTOM_SET_VALUE && request[2] == VIA_RESET_EXECUTE &&
+    } else if (request[0] == VIA_CUSTOM_SET_VALUE &&
+               (request[2] == VIA_RESET_EXECUTE || recovery_command) &&
                request[3] == 1 && s_reset_armed && !s_reset_pending && !s_reset_erased) {
         s_reset_armed = false;
         if (vial_keyboard_reset_allowed()) {
             s_reset_pending = true;
+#ifdef HHKB_COMPACT_STORAGE
+            s_reset_recovery = recovery_command;
+#endif
             s_reset_requested_at = xTaskGetTickCount();
-            s_reset_status = "Resetting...";
+            s_reset_status = recovery_command ? "Returning to Bank 1..." : "Resetting DMK...";
         } else {
             s_reset_status = "Set SW6 to OFF";
             response[0] = 0xFF;
@@ -730,10 +753,20 @@ void vial_eeprom_task(void) {
             s_reset_status = "Set SW6 to OFF";
             return;
         }
-        s_reset_erased = vial_keyboard_settings_reset() && vial_platform_settings_reset();
+        bool clear_settings = true;
+#ifdef HHKB_COMPACT_STORAGE
+        clear_settings = !s_reset_recovery || s_recovery_erase;
+#endif
+        s_reset_erased = !clear_settings ||
+            (vial_keyboard_settings_reset() && vial_platform_settings_reset());
         s_eeprom_dirty = false;
-        s_reset_status = s_reset_erased ? "Set SW6 OFF and reconnect" : "Reset failed; retry";
-        if (s_reset_erased && vial_keyboard_reset_allowed()) platform_system_reset();
+        s_reset_status = s_reset_erased ? "Restarting..." : "Reset failed; retry";
+        if (s_reset_erased && vial_keyboard_reset_allowed()) {
+#ifdef HHKB_COMPACT_STORAGE
+            if (s_reset_recovery) hhkb_enter_bank1();
+#endif
+            platform_system_reset();
+        }
         return;
     }
     if (s_reset_erased) return;
