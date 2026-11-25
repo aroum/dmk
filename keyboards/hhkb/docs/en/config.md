@@ -161,3 +161,14 @@ The SPI protocol handling is adapted from the MIT reference with its attribution
 PD2 is observed HIGH after GPIO initialization and LOW after peripheral setup in the supplied stock analysis, including reset-based boots. DMK experiments indicate that HIGH stops the stock Nordic, but the dump alone does not establish whether this pin controls reset or power. A Nordic restart after a pulse is an inference, not a verified pin function.
 
 DMK reproduces this PD2 sequence for Hybrid: after the early SW6 check, Bank 2 enables the GPIOD clock, preloads HIGH and selects push-pull output without pull resistors. PD2 stays HIGH through platform and peripheral initialization, then goes LOW after the SPI slave and its IRQ are ready. Each matrix scan reasserts PC14 HIGH and PD2 LOW. Sleep and OFF do not raise PD2, and ordinary OFF resumes without a new startup pulse. Reset-based boots execute the startup sequence again. No fixed pulse duration is assumed; the HIGH interval follows initialization time and needs measurement on hardware. Classic builds do not execute this PD2 sequence; Bank 1 is not modified.
+
+
+### Scan overruns
+
+The HHKB scanner shares task priority with USB and key processing and yields after
+each complete scan. A timer notification received during acquisition remains
+pending for the next scan. This avoids waiting an additional full period after
+a small overrun. With detailed diagnostics, `miss` counts notifications coalesced
+beyond the one used to start a scan. Earlier builds also discarded notifications
+at the end of acquisition, so their `miss` values are not directly comparable.
+Acquisition time above 1000 µs still prevents a sustained 1000 Hz scan rate.

@@ -13,7 +13,12 @@
 #define TASK_PRIO_RGB 1
 #define TASK_PRIO_KEYBOARD 2
 #define TASK_PRIO_USBD 2
+#if defined(MCU_stm32l072)
+// A late HHKB scan must be able to yield to USB and key processing.
+#define TASK_PRIO_MATRIX 2
+#else
 #define TASK_PRIO_MATRIX 3
+#endif
 
 // Tailored task stack sizes (in words, 1 word = 4 bytes on 32-bit Cortex-M)
 #define TASK_STACK_MATRIX 256

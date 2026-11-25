@@ -465,14 +465,11 @@ void matrix_task(void *pvParameters) {
 #if HHKB_SOF_LOCK
         sof_lock_note_work();
 #endif
-        // Drop overdue timer notifications to prevent
-        // starvation of USB and keyboard tasks.
-        uint32_t missed = ulTaskNotifyTake(pdTRUE, 0);
-#ifdef HHKB_SCAN_DIAGNOSTICS
-        s_matrix_scan_deadline_misses += missed;
-#else
-        (void)missed;
-#endif
+        // Keep the next timer notification. Discarding it here forces a
+        // nearly-1-ms scan to wait for the following tick, halving throughput.
+        // HHKB shares priority with USB/key processing, so this yield gives
+        // ready consumers time even when acquisition overruns its period.
+        taskYIELD();
     }
 }
 
