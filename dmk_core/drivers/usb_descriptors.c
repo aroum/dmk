@@ -1,3 +1,4 @@
+#include "usb_report_diag.h"
 #include "config.h"
 #include "led.h"
 #include "tusb.h"
@@ -373,6 +374,9 @@ void vial_flush_pending_report(void) {
 }
 
 void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_t len) {
+#ifdef HHKB_USB_REPORT_DIAGNOSTICS
+    usb_report_diag_complete(instance, report, len);
+#endif
     (void)report;
     (void)len;
 #ifdef VIAL
@@ -434,6 +438,16 @@ void vial_diag_task(void) {
         uint32_t usb_rate_hz = (uint32_t)(((uint64_t)usb_diff * 1000ULL + (elapsed_ms / 2)) / elapsed_ms);
 
         hhkb_calc_rates(elapsed_ms);
+#ifdef HHKB_USB_REPORT_DIAGNOSTICS
+        if (hhkb_get_debug_flag(1U << 4) && tud_mounted() && !tud_suspended()) {
+            usb_report_diag_t d;
+            usb_report_diag_snapshot(&d);
+            debug_console_printf("[USB] sub=%lu done=%lu busy=%lu drop=%lu resync=%lu q=%lu\r\n",
+                (unsigned long)d.submitted, (unsigned long)d.completed, (unsigned long)d.busy,
+                (unsigned long)d.dropped, (unsigned long)d.resync, (unsigned long)d.queued);
+        }
+#endif
+
 
         if (hhkb_get_debug_flag(1U << 1)) { // DEBUG_FLAG_VIA
             debug_console_printf("[VIA_DIAG] rx=%lu tx_sub=%lu tx_cpl=%lu tx_fail=%lu pend=%d\r\n",

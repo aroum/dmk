@@ -378,7 +378,7 @@ void hhkb_calibration_load(void) {
                 uint8_t sleep_hz = cal->led_mode[0] >> 4;
                 if (sleep_hz >= 1 && sleep_hz <= 10) s_bt_sleep_hz = sleep_hz;
 #endif
-                s_debug_flags = cal->debug_flags & 0x0f;
+                s_debug_flags = cal->debug_flags & 0x1f;
                 s_gesc_overrides = cal->led_mode[1] >> 4;
             }
 

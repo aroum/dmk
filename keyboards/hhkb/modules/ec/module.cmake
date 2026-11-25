@@ -13,3 +13,5 @@ set_property(SOURCE
     "${CMAKE_CURRENT_LIST_DIR}/../via_settings/hhkb_via_controls.c"
     APPEND PROPERTY COMPILE_OPTIONS -flto)
 target_link_options(${TARGET_NAME} PRIVATE -flto)
+
+target_compile_definitions(${TARGET_NAME} PRIVATE HHKB_USB_REPORT_DIAGNOSTICS=1)

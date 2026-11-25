@@ -39,7 +39,7 @@ typedef struct __attribute__((aligned(4))) {
     uint16_t classic_release_pm;
     uint8_t curve[EC_CURVE_FIELDS];
     uint8_t led_mode[2]; // led_mode[1] high nibble: Grave Escape overrides; Hybrid: led_mode[0] high nibble stores sleep Hz (0 = legacy 1 Hz)
-    uint8_t debug_flags; // bits 0..3: debug; bit 7: packed Hybrid deep-timer format
+    uint8_t debug_flags; // bits 0..4: debug; bit 7: packed Hybrid deep-timer format
     uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
 _Static_assert(offsetof(hhkb_eeprom_cal_t, curve) == 24 + 4 * MATRIX_ROWS * MATRIX_COLS, "Preserve the v1 settings record");
@@ -102,6 +102,7 @@ uint8_t hhkb_get_actuation_point_pct(void);
 
 // Debug Console & Monitoring API
 enum {
+    DEBUG_FLAG_USB   = 1U << 4,
     DEBUG_FLAG_EC    = 1U << 0, // 0x01: EC matrix debug [EC]
     DEBUG_FLAG_TOPRE = 1U << 0, // Backward-compatible alias
     DEBUG_FLAG_VIA   = 1U << 1, // 0x02: VIA telemetry diag [VIA_DIAG]

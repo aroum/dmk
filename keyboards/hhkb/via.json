@@ -2841,6 +2841,11 @@
               ]
             },
             {
+              "label": "USB Report Diagnostics",
+              "type": "toggle",
+              "content": ["id_hhkb_debug_usb", 0, 62]
+            },
+            {
               "label": "VIA Telemetry Diag",
               "type": "toggle",
               "content": [

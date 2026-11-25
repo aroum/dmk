@@ -264,6 +264,19 @@ Use **Print status to HID Console** to list `[CAL] missing:` positions during ca
 
 RT release tracking is capped at the calibrated bottom (or the travel curve's endpoint), so extra pressure above peak does not deepen the release anchor. This is a zero-width bottom dead zone, not a configurable 0.5 mm zone. Per-key RT profiles, per-key actuation and an adjustable bottom zone from [issue #11](https://github.com/aroum/dmk/issues/11) are not included. The calibration follow-up is tracked in [issue #12](https://github.com/aroum/dmk/issues/12).
 
+### USB report diagnostics
+
+Enable **Debug → USB Report Diagnostics** for one `[USB]` line per second while USB is connected and active. This toggle defaults off and is saved with the other debug flags. Counters run from boot independently of logging and are cumulative (uint32 rollover); compare their differences over the same A/B capture duration. Keyboard and consumer reports on the main HID interface are included; VIA and console traffic are excluded.
+
+- `sub`: reports accepted for transmission by TinyUSB.
+- `done`: HID IN transfer completions reported by TinyUSB. A completion does not prove the application processed the event.
+- `busy`: a send was rejected despite the endpoint initially appearing ready; the report remains queued for retry. This is not a dropped report or a USB NAK count.
+- `drop`: reports abandoned after the bounded enqueue retries while USB was mounted and active. This can lose a short tap even though a later state resync succeeds.
+- `resync`: overflow-recovery snapshots scheduled after the report queue drained. Ordinary reconnect resends are not counted here.
+- `q`: current report queue depth when sampled.
+
+`sub` and `done` may differ while a transfer is in flight or after disconnect. No suspend/disconnect event lines are printed, and these events are not counted as enqueue drops. The counters are firmware report diagnostics, not bus packet-loss measurements. Recording HID Console traffic itself can affect timing; compare runs with identical logging enabled.
+
 ### Session-only USB phase control
 
 In **HHKB Settings → Scan Rate**, toggle **USB SOF phase lock (this session)** to compare synchronized and independent timer scheduling without reflashing. Disabling preserves the VIA-selected nominal scan rate; enabling clears stale lock state and reacquires SOF. This flag is not stored in EEPROM and returns to the build default (enabled) after restart. A build compiled with `HHKB_SOF_LOCK=0` cannot enable it at runtime. Load the updated `via.json` first.

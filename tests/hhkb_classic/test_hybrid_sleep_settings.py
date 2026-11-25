@@ -87,6 +87,7 @@ int main(void){
    for(unsigned c=0;c<MATRIX_COLS;c++)for(unsigned r=0;r<MATRIX_ROWS;r++){
     s_cal_baseline[c][r]=c==0 ? 99 : 300+c;s_cal_peak[c][r]=2800+r;
    }
+   s_debug_flags=16;
    s_gesc_overrides=(hz+led+enabled)&15;
    unsigned saved_overrides=s_gesc_overrides;
    assert(hhkb_settings_storage_writable());
@@ -97,7 +98,7 @@ int main(void){
    s_led_mode[0]=0;s_led_mode[1]=0;
    s_gesc_overrides=0;
    hhkb_calibration_load();
-   assert(s_gesc_overrides==saved_overrides);
+   assert(s_gesc_overrides==saved_overrides && s_debug_flags==16);
    assert(hhkb_bt_sleep_hz()==hz && s_bt_matrix_wake==enabled && s_bt_sleep_minutes==23);
    assert(s_bt_deep_index==7 && s_bt_short_action==5 && s_bt_long_action==2 && s_bt_last_slot==3);
    assert(s_led_mode[0]==led && s_led_mode[1]==4);

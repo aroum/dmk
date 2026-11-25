@@ -157,7 +157,7 @@ static unsigned dirty;
 static void hhkb_settings_mark_dirty(void){++dirty;}
 ''' + function(source, 'void hhkb_set_debug_flag(') + r'''
 int main(void){
- for(unsigned flag=1;flag<=8;flag<<=1){
+ for(unsigned flag=1;flag<=16;flag<<=1){
   unsigned before=dirty;
   hhkb_set_debug_flag(flag,true);assert(dirty==before+1);
   hhkb_set_debug_flag(flag,true);assert(dirty==before+1);

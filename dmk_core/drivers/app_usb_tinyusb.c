@@ -10,6 +10,7 @@
 #include "task_internal.h"
 #include "tusb.h"
 #include "device/dcd.h"
+#include "usb_report_diag.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
 #include "stm32l072xx.h"
@@ -58,6 +59,20 @@ static volatile uint32_t s_usb_keyboard_queue_full;
 #define KEYBOARD_REPORT_ENQUEUE_TRIES 8
 #endif
 static volatile bool s_resync_pending;
+#ifdef HHKB_USB_REPORT_DIAGNOSTICS
+static usb_report_diag_t s_report_diag;
+void usb_report_diag_snapshot(usb_report_diag_t *out) {
+    taskENTER_CRITICAL();
+    *out = s_report_diag;
+    out->queued = s_keyboard_queue ? uxQueueMessagesWaiting(s_keyboard_queue) : 0;
+    taskEXIT_CRITICAL();
+}
+// TinyUSB calls this after a HID IN report completes, not for arbitrary endpoints.
+void usb_report_diag_complete(uint8_t instance, uint8_t const *report, uint16_t len) {
+    if (instance == 0 && len && (report[0] == 1 || report[0] == 2)) ++s_report_diag.completed;
+}
+#endif
+
 
 // Optional hooks (HHKB SOF-locked scan overrides these).
 __attribute__((weak)) void usb_keyboard_report_armed(void) {}
@@ -80,6 +95,9 @@ static void usb_keyboard_flush(void) {
     queued_key_report_t report;
     if (s_resync_pending && s_keyboard_queue && uxQueueMessagesWaiting(s_keyboard_queue) == 0) {
         s_resync_pending = false;
+#ifdef HHKB_USB_REPORT_DIAGNOSTICS
+        ++s_report_diag.resync;
+#endif
         USB_HID_ResyncKeyboard();
     }
     if (!s_keyboard_queue || !tud_mounted() || tud_suspended() || !tud_hid_ready() ||
@@ -87,6 +105,9 @@ static void usb_keyboard_flush(void) {
     bool sent = report.report_id == 1
         ? tud_hid_keyboard_report(1, report.keyboard.Modifier, report.keyboard.Keycodes)
         : tud_hid_report(2, &report.consumer, sizeof(report.consumer));
+#ifdef HHKB_USB_REPORT_DIAGNOSTICS
+    if (sent) ++s_report_diag.submitted; else ++s_report_diag.busy;
+#endif
     if (sent) {
         if (report.report_id == 1) usb_keyboard_report_armed();
         xQueueReceive(s_keyboard_queue, &report, 0);
@@ -116,6 +137,9 @@ static bool usb_enqueue_key_report(const queued_key_report_t *report) {
     }
     if (tud_mounted() && !tud_suspended()) {
         // Host stopped polling: drop and resend the latest full state later.
+#ifdef HHKB_USB_REPORT_DIAGNOSTICS
+        ++s_report_diag.dropped;
+#endif
         s_resync_pending = true;
         if (s_usb_task_handle) xTaskNotifyGive(s_usb_task_handle);
         return false;
