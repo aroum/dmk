@@ -82,8 +82,83 @@ int main(void){
    if(cfg.rt_enabled)equal_state(&keys[c][r],&ref[c][r],keys[c][r].latched);
    uint16_t raw=random32()%4096,travel;
    bool expected=reference_rt_update_curve(&ref[c][r],&cfg,raw,scan.curve);
-   bool actual=cfg.rt_enabled?rt_update_scan_cached(&keys[c][r],&cache.key[c][r],&scan,raw,&travel):rt_update_raw_cached(&keys[c][r],&cache.key[c][r],raw);
+   // Mirror scan_process_pending: cells the incremental sweep has not reached
+   // take the uncached reference path; classic fallback maintains last_raw.
+   bool actual;
+   if(!hhkb_scan_cache_entry_valid(&cache,(uint8_t)c,(uint8_t)r)){
+    actual=rt_update_scan_sample(&keys[c][r],&scan,raw,&travel);
+    if(!cfg.rt_enabled)cache.key[c][r].last_raw=raw;
+   }else if(cfg.rt_enabled)actual=rt_update_scan_cached(&keys[c][r],&cache.key[c][r],&scan,raw,&travel);
+   else actual=rt_update_raw_cached(&keys[c][r],&cache.key[c][r],raw);
    assert(actual==expected);equal_state(&keys[c][r],&ref[c][r],cfg.rt_enabled && keys[c][r].latched);
+  }
+ }
+ // A completed incremental sweep must be byte-identical to a direct rebuild,
+ // and every partially swept cache may only expose cells matching the current cfg.
+ {
+  rt_cfg_t cfg={.rt_enabled=true,.act_pm=300,.release_pm=40,.reset_pm=50,.press_pm=25};
+  for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+   rt_key_set_range(&keys[c][r],(uint16_t)(400+37*(c*MATRIX_ROWS+r)),2900);rt_key_reset(&keys[c][r]);
+  }
+  for(unsigned phase=0;phase<=MATRIX_COLS*MATRIX_ROWS+1;++phase){
+   cfg.act_pm=(uint16_t)(300+(phase%2)*50);
+   rt_scan_cfg_t scan;rt_prepare_scan(&scan,&cfg,lut);
+   for(unsigned k=0;k<=phase;++k)
+    hhkb_scan_cache_prepare(&cache,keys,&scan,rt_range_revision,curve_revision);
+   for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+    if(!hhkb_scan_cache_entry_valid(&cache,(uint8_t)c,(uint8_t)r))continue;
+    rt_raw_cache_t fresh;fresh.last_raw=cache.key[c][r].last_raw;
+    rt_prepare_raw_cache(&fresh,&keys[c][r],&scan);
+    assert(fresh.press_raw==cache.key[c][r].press_raw);
+    assert(fresh.release_raw==cache.key[c][r].release_raw);
+   }
+  }
+  rt_scan_cfg_t scan;rt_prepare_scan(&scan,&cfg,lut);
+  while(cache.rebuild_cursor<MATRIX_COLS*MATRIX_ROWS)
+   hhkb_scan_cache_prepare(&cache,keys,&scan,rt_range_revision,curve_revision);
+  for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+   rt_raw_cache_t fresh;fresh.last_raw=cache.key[c][r].last_raw;
+   rt_prepare_raw_cache(&fresh,&keys[c][r],&scan);
+   assert(fresh.press_raw==cache.key[c][r].press_raw);
+   assert(fresh.release_raw==cache.key[c][r].release_raw);
+  }
+ }
+ // Classic->RT ext restore must hold even when the sweep never completes:
+ // the classic fallback's last_raw writes feed the restore.
+ {
+  for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+   uint16_t base=(uint16_t)(500+29*(c*MATRIX_ROWS+r));
+   rt_key_set_range(&keys[c][r],base,(uint16_t)(base+2400));
+   reference_rt_key_set_range(&ref[c][r],base,(uint16_t)(base+2400));
+   rt_key_reset(&keys[c][r]);rt_key_reset(&ref[c][r]);
+  }
+  rt_cfg_t cfg={.rt_enabled=false,.act_pm=400,.release_pm=100,.reset_pm=50,.press_pm=25};
+  for(unsigned pass=0;pass<40;++pass){
+   cfg.act_pm=(uint16_t)(400+pass%2); // invalidate every pass: sweep never completes
+   rt_scan_cfg_t scan;rt_prepare_scan(&scan,&cfg,NULL);
+   hhkb_scan_cache_prepare(&cache,keys,&scan,rt_range_revision,curve_revision);
+   for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+    uint16_t raw=random32()%4096,travel;
+    bool expected=reference_rt_update_curve(&ref[c][r],&cfg,raw,NULL);
+    bool actual;
+    if(!hhkb_scan_cache_entry_valid(&cache,(uint8_t)c,(uint8_t)r)){
+     actual=rt_update_scan_sample(&keys[c][r],&scan,raw,&travel);
+     cache.key[c][r].last_raw=raw;
+    }else actual=rt_update_raw_cached(&keys[c][r],&cache.key[c][r],raw);
+    assert(actual==expected);
+   }
+  }
+  cfg.rt_enabled=true; // same ranges: prepare runs the ext restore from last_raw
+  rt_scan_cfg_t scan;rt_prepare_scan(&scan,&cfg,NULL);
+  hhkb_scan_cache_prepare(&cache,keys,&scan,rt_range_revision,curve_revision);
+  for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+   uint16_t raw=random32()%4096,travel;
+   bool expected=reference_rt_update_curve(&ref[c][r],&cfg,raw,NULL);
+   bool actual;
+   if(!hhkb_scan_cache_entry_valid(&cache,(uint8_t)c,(uint8_t)r))
+    actual=rt_update_scan_sample(&keys[c][r],&scan,raw,&travel);
+   else actual=rt_update_scan_cached(&keys[c][r],&cache.key[c][r],&scan,raw,&travel);
+   assert(actual==expected);equal_state(&keys[c][r],&ref[c][r],keys[c][r].latched);
   }
  }
  puts("Scan thresholds, prepared RT, LUT rounding and 16-bit compatibility tests passed");
