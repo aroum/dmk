@@ -397,6 +397,11 @@ void matrix_task(void *pvParameters) {
         }
 #endif
         uint32_t notifications = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+#if HHKB_SOF_LOCK
+        // Latch the fire that started this scan before the next one can
+        // rewrite it mid-scan; includes the fire-to-wake latency in the work.
+        uint16_t sof_fire = sof_lock_last_fire();
+#endif
 #ifdef HHKB_SCAN_DIAGNOSTICS
         if (notifications > 1) s_matrix_scan_deadline_misses += notifications - 1;
 #else
@@ -463,10 +468,7 @@ void matrix_task(void *pvParameters) {
         if (!first_event) sof_lock_note_publish();
 #endif
 #if HHKB_SOF_LOCK
-        // A coalesced notification means the timer refired before this scan
-        // ran: s_last_compare belongs to the newest fire, so the measured work
-        // would understate and shrink the lead exactly when scans overrun.
-        if (notifications == 1) sof_lock_note_work();
+        sof_lock_note_work(sof_fire);
 #endif
         // Keep the next timer notification. Discarding it here forces a
         // nearly-1-ms scan to wait for the following tick, halving throughput.

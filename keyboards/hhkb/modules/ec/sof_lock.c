@@ -88,9 +88,14 @@ uint16_t sof_lock_step(uint16_t fired, uint16_t nominal) {
     return (uint16_t)(base + corr);
 }
 
-void sof_lock_note_work(void) {
+// The caller latches the fire at scan start: s_last_compare itself is
+// rewritten by the next timer fire, which lands mid-scan whenever the scan
+// overruns — measuring from it would understate the work exactly then.
+uint16_t sof_lock_last_fire(void) { return s_last_compare; }
+
+void sof_lock_note_work(uint16_t fire) {
     if (!s_enabled) return;
-    uint16_t w = (uint16_t)(TIM2->CNT - s_last_compare);
+    uint16_t w = (uint16_t)(TIM2->CNT - fire);
     uint16_t pk = s_work_peak;
     pk = w > pk ? w : (uint16_t)(pk - ((pk - w) >> 6));
     s_work_peak = pk;
