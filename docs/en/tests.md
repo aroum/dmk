@@ -6,7 +6,7 @@ CI covers encoding, state-machine logic, bounds, serialization and simulated fai
 
 ## USB SOF scheduling — PR #10
 
-Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HHKB_SOF_LOCK=1`. Keep `HHKB_SOF_MARGIN_US=150` initially; this is a starting value, not a validated margin. Use an HHKB scan-diagnostic build and enable Polling Rate Monitor in VIA.
+Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HHKB_SOF_LOCK=1`. The default build also allows switching phase lock for the current session in **VIA → HHKB Settings → Scan Rate**; use identical firmware/settings for that A/B comparison. Keep `HHKB_SOF_MARGIN_US=150` initially; this is a starting value, not a validated margin. Use an HHKB scan-diagnostic build and enable Polling Rate Monitor in VIA.
 
 - [ ] Capture USB SOF, keyboard IN transactions and scan timing with a USB analyzer and/or synchronized logic-analyzer trace. Establish a reproducible measurement method before interpreting `[LAT]` as end-to-end latency.
 - [ ] At 1000 Hz, compare locked/unlocked scan-to-IN delay, jitter, worst case and missed polls under idle, ordinary typing, rapid repeated presses and chords. Report distributions, not just the best value.

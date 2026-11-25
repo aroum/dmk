@@ -264,6 +264,12 @@ Use **Print status to HID Console** to list `[CAL] missing:` positions during ca
 
 RT release tracking is capped at the calibrated bottom (or the travel curve's endpoint), so extra pressure above peak does not deepen the release anchor. This is a zero-width bottom dead zone, not a configurable 0.5 mm zone. Per-key RT profiles, per-key actuation and an adjustable bottom zone from [issue #11](https://github.com/aroum/dmk/issues/11) are not included. The calibration follow-up is tracked in [issue #12](https://github.com/aroum/dmk/issues/12).
 
+### Session-only USB phase control
+
+In **HHKB Settings → Scan Rate**, toggle **USB SOF phase lock (this session)** to compare synchronized and independent timer scheduling without reflashing. Disabling preserves the VIA-selected nominal scan rate; enabling clears stale lock state and reacquires SOF. This flag is not stored in EEPROM and returns to the build default (enabled) after restart. A build compiled with `HHKB_SOF_LOCK=0` cannot enable it at runtime. Load the updated `via.json` first.
+
+For comparisons, use a scan-diagnostic build and **Debug → Polling Rate Monitor**. `[SCAN] actual` is matrix throughput, `work_max` is worst scan/publication duration, `miss` counts missed scan deadlines, and `q_full` counts failed matrix-queue submissions. The `usb`/`usb_loop` value is USB task-loop frequency, not USB polling/report rate. `[LAT] lock=0` means phase lock is disabled or not acquired; its age/error estimates still require USB-trace validation. `[VIA_DIAG] tx_fail` concerns VIA responses, not keyboard reports. These counters do not measure lost USB packets or prove end-to-end delivery; use a USB trace for bus-level failures. Keep console settings identical in A/B runs and discard the initial reacquisition interval.
+
 ### 1000 Hz scan timing
 
 [Issue #8](https://github.com/aroum/dmk/issues/8) reports scan overruns on Hybrid ANSI in release `2026.11.22` and dev at `6ef2a5e`. Dev now places RT scan functions in RAM on ARM and processes the previous key during C57 discharge, preserving cached classic thresholds, ADC timeout handling and same-pass final-key processing. Discharge lasts at least 2 µs; release/mux selection to the next strobe lasts at least 4 µs. This extends the discharge interval; it needs hardware validation on Classic and JIS. `HHKB_SCAN_1KHZ` has been removed: timer scheduling is always available and VIA selects the USB rate up to 1000 Hz. Battery scan settings are unchanged.
