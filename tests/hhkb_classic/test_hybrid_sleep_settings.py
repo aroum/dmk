@@ -43,6 +43,7 @@ static uint32_t storage[256];
 static uint16_t s_cal_baseline[MATRIX_COLS][MATRIX_ROWS],s_cal_peak[MATRIX_COLS][MATRIX_ROWS];
 static rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
 static bool s_custom_calibration=true;
+static bool s_calibration_mode;
 static uint8_t s_debug_flags;
 static uint8_t s_gesc_overrides;
 uint8_t ec_curve_settings[EC_CURVE_FIELDS];

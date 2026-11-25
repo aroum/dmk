@@ -347,10 +347,17 @@ void hhkb_hybrid_wake_radio(void) {
 }
 
 static void request_power_off(bool deep) {
-    if (!powered || poweroff_pending) return;
     bool battery = hhkb_hybrid_on_battery();
-    if (deep && !battery) return;
+    // Keyboard task (power key) and matrix task (sleep/critical battery) can
+    // race here; a non-atomic check-then-set runs the slow Nordic power-off
+    // handshake twice. Claim the pending flag atomically.
+    taskENTER_CRITICAL();
+    if (!powered || poweroff_pending || (deep && !battery)) {
+        taskEXIT_CRITICAL();
+        return;
+    }
     poweroff_pending = true;
+    taskEXIT_CRITICAL();
     hhkb_hybrid_refresh_indicators();
     release_current_output();
     if (hhkb_hybrid_output_bluetooth()) {
