@@ -401,6 +401,7 @@ bool USB_HID_SendMouseReport(uint8_t buttons, int8_t x, int8_t y, int8_t wheel, 
     return usb_hid_complete_send(tud_hid_mouse_report(3, buttons, x, y, wheel, pan));
 }
 
+#ifndef NO_GAMEPAD
 bool USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t rx, int8_t ry, uint8_t hat,
                                uint32_t buttons) {
     if (!usb_hid_wait_ready(5)) {
@@ -408,3 +409,4 @@ bool USB_HID_SendGamepadReport(int8_t x, int8_t y, int8_t z, int8_t rz, int8_t r
     }
     return usb_hid_complete_send(tud_hid_gamepad_report(4, x, y, z, rz, rx, ry, hat, buttons));
 }
+#endif

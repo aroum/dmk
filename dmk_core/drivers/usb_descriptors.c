@@ -3,8 +3,8 @@
 #include "led.h"
 #include "tusb.h"
 #include "vial.h"
+#include "dmk_fmt.h"
 #include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "FreeRTOS.h"
@@ -570,11 +570,110 @@ void debug_console_write(const char *buf, size_t len) {
     }
 }
 
+static void fmt_emit(char *buf, size_t size, size_t *pos, char c) {
+    if (*pos + 1 < size) buf[*pos] = c;
+    (*pos)++;
+}
+
+static void fmt_uint(char *buf, size_t size, size_t *pos, unsigned long val,
+                     unsigned base, bool upper, unsigned width, char pad, bool neg) {
+    char digits[12];
+    unsigned n = 0;
+    do {
+        unsigned d = (unsigned)(val % base);
+        digits[n++] = (char)(d < 10 ? '0' + d : (upper ? 'A' : 'a') + (d - 10));
+        val /= base;
+    } while (val != 0);
+
+    unsigned total = n + (neg ? 1u : 0u);
+    if (neg && pad == '0') fmt_emit(buf, size, pos, '-');
+    while (total < width) {
+        fmt_emit(buf, size, pos, pad);
+        total++;
+    }
+    if (neg && pad != '0') fmt_emit(buf, size, pos, '-');
+    while (n > 0) fmt_emit(buf, size, pos, digits[--n]);
+}
+
+int dmk_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
+    size_t pos = 0;
+    for (; *fmt; fmt++) {
+        if (*fmt != '%') {
+            fmt_emit(buf, size, &pos, *fmt);
+            continue;
+        }
+        fmt++;
+        if (*fmt == '%') {
+            fmt_emit(buf, size, &pos, '%');
+            continue;
+        }
+        char pad = ' ';
+        if (*fmt == '0') {
+            pad = '0';
+            fmt++;
+        }
+        unsigned width = 0;
+        while (*fmt >= '0' && *fmt <= '9') {
+            width = width * 10u + (unsigned)(*fmt - '0');
+            fmt++;
+        }
+        bool is_long = false;
+        if (*fmt == 'l') {
+            is_long = true;
+            fmt++;
+        }
+        if (!*fmt) break;
+        switch (*fmt) {
+            case 's': {
+                const char *s = va_arg(args, const char *);
+                if (!s) s = "(null)";
+                while (*s) fmt_emit(buf, size, &pos, *s++);
+                break;
+            }
+            case 'c':
+                fmt_emit(buf, size, &pos, (char)va_arg(args, int));
+                break;
+            case 'd': {
+                long v = is_long ? va_arg(args, long) : (long)va_arg(args, int);
+                bool neg = v < 0;
+                unsigned long u = neg ? (unsigned long)(-(v + 1)) + 1UL : (unsigned long)v;
+                fmt_uint(buf, size, &pos, u, 10u, false, width, pad, neg);
+                break;
+            }
+            case 'u': {
+                unsigned long u = is_long ? va_arg(args, unsigned long) : (unsigned long)va_arg(args, unsigned int);
+                fmt_uint(buf, size, &pos, u, 10u, false, width, pad, false);
+                break;
+            }
+            case 'x':
+            case 'X': {
+                unsigned long u = is_long ? va_arg(args, unsigned long) : (unsigned long)va_arg(args, unsigned int);
+                fmt_uint(buf, size, &pos, u, 16u, *fmt == 'X', width, pad, false);
+                break;
+            }
+            default:
+                fmt_emit(buf, size, &pos, '%');
+                fmt_emit(buf, size, &pos, *fmt);
+                break;
+        }
+    }
+    if (size > 0) buf[pos < size ? pos : size - 1] = '\0';
+    return (int)pos;
+}
+
+int dmk_snprintf(char *buf, size_t size, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int len = dmk_vsnprintf(buf, size, fmt, args);
+    va_end(args);
+    return len;
+}
+
 void debug_console_printf(const char *fmt, ...) {
     char tmp[128];
     va_list args;
     va_start(args, fmt);
-    int len = vsnprintf(tmp, sizeof(tmp), fmt, args);
+    int len = dmk_vsnprintf(tmp, sizeof(tmp), fmt, args);
     va_end(args);
     if (len > 0) {
         if ((size_t)len > sizeof(tmp) - 1) len = sizeof(tmp) - 1;

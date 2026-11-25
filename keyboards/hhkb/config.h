@@ -30,6 +30,12 @@
 #endif
 #define DEBUG_CONSOLE_ENABLE 1
 #define CONSOLE_BUF_SIZE 128
+#ifndef NO_GAMEPAD
+#define NO_GAMEPAD
+#endif
+#ifndef NO_MIDI
+#define NO_MIDI
+#endif
 #ifdef HHKB_JIS
 #define DYNAMIC_KEYMAP_MACRO_BUFFER_SIZE 64
 #else

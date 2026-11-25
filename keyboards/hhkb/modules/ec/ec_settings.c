@@ -13,8 +13,8 @@
 #include "stm32l0xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "dmk_fmt.h"
 #include <string.h>
-#include <stdio.h>
 #define CAL_REQ_ENTER() taskENTER_CRITICAL()
 #define CAL_REQ_EXIT() taskEXIT_CRITICAL()
 #include "cal_request.h"
@@ -764,19 +764,19 @@ void hhkb_debug_flush_sample(void) {
 }
 
 void hhkb_get_debug_key_str(char *buf, size_t max_len) {
-    snprintf(buf, max_len, "C%u R%u (%s)", s_dbg_col, s_dbg_row, s_dbg_down ? "Pressed" : "Released");
+    dmk_snprintf(buf, max_len, "C%u R%u (%s)", s_dbg_col, s_dbg_row, s_dbg_down ? "Pressed" : "Released");
 }
 
 void hhkb_get_debug_raw_str(char *buf, size_t max_len) {
-    snprintf(buf, max_len, "Raw:%u (B:%u P:%u)", s_dbg_raw, s_cal_baseline[s_dbg_col][s_dbg_row], s_cal_peak[s_dbg_col][s_dbg_row]);
+    dmk_snprintf(buf, max_len, "Raw:%u (B:%u P:%u)", s_dbg_raw, s_cal_baseline[s_dbg_col][s_dbg_row], s_cal_peak[s_dbg_col][s_dbg_row]);
 }
 
 void hhkb_get_debug_travel_str(char *buf, size_t max_len) {
     if (ec_curve_lut) {
         unsigned depth_um = s_dbg_norm * 4u;
-        snprintf(buf, max_len, "Travel: %u.%03u mm", depth_um / 1000, depth_um % 1000);
+        dmk_snprintf(buf, max_len, "Travel: %u.%03u mm", depth_um / 1000, depth_um % 1000);
     } else {
-        snprintf(buf, max_len, "Travel: %u.%u%%", s_dbg_norm / 10, s_dbg_norm % 10);
+        dmk_snprintf(buf, max_len, "Travel: %u.%u%%", s_dbg_norm / 10, s_dbg_norm % 10);
     }
 }
 
@@ -798,23 +798,23 @@ void hhkb_cal_print_keys(void) {
 
 void hhkb_get_cal_status_str(char *buf, size_t max_len) {
     if (s_cal_request == CAL_REQ_START) {
-        snprintf(buf, max_len, "In progress: 0/%u keys", NUM_KEYS);
+        dmk_snprintf(buf, max_len, "In progress: 0/%u keys", NUM_KEYS);
         return;
     }
     if (s_calibration_mode) {
         uint8_t count = calibrated_key_count();
-        snprintf(buf, max_len, "In progress: %u/%u keys", count, NUM_KEYS);
+        dmk_snprintf(buf, max_len, "In progress: %u/%u keys", count, NUM_KEYS);
         return;
     }
     if (!s_custom_calibration) {
-        snprintf(buf, max_len, "Using defaults");
+        dmk_snprintf(buf, max_len, "Using defaults");
         return;
     }
 
 #ifdef HHKB_COMPACT_STORAGE
     const char *status = hhkb_compact_status();
     if (strcmp(status, "Saved (compressed)") != 0 || s_settings_dirty) {
-        snprintf(buf, max_len, "%s", s_settings_dirty ? "Pending" : status);
+        dmk_snprintf(buf, max_len, "%s", s_settings_dirty ? "Pending" : status);
         return;
     }
     const volatile uint16_t (*saved_base)[MATRIX_ROWS] = s_cal_baseline;
@@ -826,7 +826,7 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
         (cal->version != USER_EEPROM_VERSION && cal->version != 1) ||
         cal->crc16 != compute_crc16((const uint8_t *)&cal->baseline,
                                     size - offsetof(hhkb_eeprom_cal_t, baseline))) {
-        snprintf(buf, max_len, "No verified EEPROM record");
+        dmk_snprintf(buf, max_len, "No verified EEPROM record");
         return;
     }
     const volatile uint16_t (*saved_base)[MATRIX_ROWS] = cal->baseline;
@@ -844,7 +844,7 @@ void hhkb_get_cal_status_str(char *buf, size_t max_len) {
             }
         }
     }
-    snprintf(buf, max_len, "%u/%u saved custom ranges", custom_count, NUM_KEYS);
+    dmk_snprintf(buf, max_len, "%u/%u saved custom ranges", custom_count, NUM_KEYS);
 }
 
 rt_cfg_t hhkb_get_scan_cfg(void) {
