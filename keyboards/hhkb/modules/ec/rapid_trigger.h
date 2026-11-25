@@ -23,6 +23,7 @@ extern "C" {
 
 typedef struct {
     bool     rt_enabled;  /* false: fixed actuation point with hysteresis    */
+    uint8_t  bottom_dz;   /* 0..10, steps of 25 permille (0.1 mm at 4 mm) */
     uint16_t act_pm;      /* initial actuation point (from rest)             */
     uint16_t press_pm;    /* RT: rise from the local minimum that re-presses */
     uint16_t release_pm;  /* RT: drop from the local maximum that releases   */

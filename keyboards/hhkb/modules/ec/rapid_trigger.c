@@ -5,6 +5,7 @@ uint32_t rt_range_revision;
 
 void rt_cfg_defaults(rt_cfg_t *c) {
     c->rt_enabled = false;
+    c->bottom_dz  = 5;
     c->act_pm     = 750;  /* 75 % of range                   */
     c->press_pm   = 30;   /* 3 %                             */
     c->release_pm = 30;   /* 3 %                             */
@@ -73,9 +74,9 @@ void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_s
 }
 
 #ifdef __arm__
-#define RT_SCAN_CODE __attribute__((section(".RamFunc"), optimize("O2")))
+#define RT_SCAN_CODE(name) __attribute__((section(".RamFunc." #name), optimize("O2")))
 #else
-#define RT_SCAN_CODE
+#define RT_SCAN_CODE(name)
 #endif
 static inline __attribute__((always_inline)) uint16_t scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan) {
     uint32_t delta = raw > key->base ? (uint32_t)(raw - key->base) : 0;
@@ -85,18 +86,21 @@ static inline __attribute__((always_inline)) uint16_t scan_normalize(const rt_ke
     return pm > RT_MAX_PM ? RT_MAX_PM : (uint16_t)pm;
 }
 
-RT_SCAN_CODE uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan) {
+RT_SCAN_CODE(rt_scan_normalize) uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan) {
     return scan_normalize(key, raw, scan);
 }
 
 static inline __attribute__((always_inline))
-bool update_rt_travel(rt_key_t *k, const rt_cfg_t *c, int16_t v) {
+bool update_rt_travel(rt_key_t *k, const rt_cfg_t *c, int16_t v, uint16_t bottom) {
+    unsigned zone=c->bottom_dz*25U;
+    int16_t edge=bottom>zone ? bottom-zone : 0;
+    int16_t anchor=v>edge ? edge : v;
     /* Rapid Trigger, not armed yet: needs the normal actuation point once. */
     if (!k->latched) {
         if (v >= (int16_t)c->act_pm) {
             k->latched = true;
             k->down    = true;
-            k->ext     = v;
+            k->ext     = anchor;
             return true;
         }
         k->down = false;
@@ -106,8 +110,9 @@ bool update_rt_travel(rt_key_t *k, const rt_cfg_t *c, int16_t v) {
 
     /* Armed: follow the direction of motion. */
     if (k->down) {
-        if (v > k->ext) {
-            k->ext = v;                                   /* deepest point so far  */
+        if(k->ext>edge) k->ext=edge;
+        if (anchor > k->ext) {
+            k->ext = anchor;                                   /* deepest point so far  */
         } else if ((int16_t)(k->ext - v) >= (int16_t)c->release_pm) {
             k->down = false;                              /* moved up enough       */
             k->ext  = v;
@@ -117,7 +122,7 @@ bool update_rt_travel(rt_key_t *k, const rt_cfg_t *c, int16_t v) {
             k->ext = v;                                   /* highest point so far  */
         } else if ((int16_t)(v - k->ext) >= (int16_t)c->press_pm) {
             k->down = true;                               /* moved down enough     */
-            k->ext  = v;
+            k->ext  = anchor;
         }
     }
     return k->down;
@@ -126,7 +131,7 @@ static inline __attribute__((always_inline))
 bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
     const rt_cfg_t *c = &scan->cfg;
     // Pressure beyond calibrated bottom-out must not deepen the RT release anchor.
-    // Keep EEPROM/config layout unchanged: this is a zero-width bottom dead zone.
+    // The configurable bottom zone caps the release anchor below this endpoint.
     uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
     if (c->rt_enabled && v > (int16_t)bottom) v = (int16_t)bottom;
     /* Top dead zone: key is definitely up, RT disarmed until act_pm is crossed again. */
@@ -152,21 +157,21 @@ bool update_travel(rt_key_t *k, const rt_scan_cfg_t *scan, int16_t v) {
         return k->down;
     }
 
-    return update_rt_travel(k, c, v);
+    return update_rt_travel(k, c, v, bottom);
 }
 
-RT_SCAN_CODE bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t travel) {
+RT_SCAN_CODE(rt_update_scan_travel) bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t travel) {
     return update_travel(key, scan, (int16_t)travel);
 }
 
-RT_SCAN_CODE bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
+RT_SCAN_CODE(rt_update_scan_sample) bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
     *travel = rt_scan_normalize(key, raw, scan);
     return rt_update_scan_travel(key, scan, *travel);
 }
 
 // In the reset zone no previous RT anchor survives. Zero is a canonical
 // anchor until actuation arms the key again; telemetry still gets exact travel.
-RT_SCAN_CODE bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache,
+RT_SCAN_CODE(rt_update_scan_cached) bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache,
         const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
     if (raw < cache->release_raw) {
         key->down = false;
@@ -179,7 +184,7 @@ RT_SCAN_CODE bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cac
     if (travel) *travel = value;
     uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;
     if (value > bottom) value = bottom;
-    return update_rt_travel(key, &scan->cfg, (int16_t)value);
+    return update_rt_travel(key, &scan->cfg, (int16_t)value, bottom);
 }
 
 bool rt_update_curve(rt_key_t *key, const rt_cfg_t *cfg, uint16_t raw, const uint16_t *curve) {

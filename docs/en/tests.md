@@ -62,3 +62,9 @@ Use the same hardware and settings for A/B builds with `HHKB_SOF_LOCK=0` and `HH
 
 - [ ] On a real RP2040/RP2350 keyboard, save settings across normal power cycles and an interrupted save. Confirm USB input remains responsive during writes.
 - [ ] On a real Milandr RGB board, inspect WS2812 frame/reset timing and exercise USB typing during animated SSP/DMA output. Check for corrupt frames and delayed/stuck input under load.
+
+### Hybrid calibration and held-key regression
+
+- [ ] Hybrid ANSI/JIS: calibrate every key with Calibration Monitor enabled at both 500 and 1000 Hz targets. VIA must remain connected through Finish and save/replug. A 1000 Hz target uses 500 Hz during calibration and resumes afterwards. Repeat with the monitor disabled.
+- [ ] RT on: hold one key for 30 seconds with normal changes in finger pressure; compare OS repeat with RT off. With Bottom dead zone at 0.5 mm there should be no unintended UP/DOWN events near bottom-out. Confirm deliberate upward motion still releases, and repeat after save/replug.
+- [ ] Repeat the hold test with a calibrated travel curve, and test toggling RT while a key is already held beyond its calibrated peak.

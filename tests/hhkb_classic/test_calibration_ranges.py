@@ -24,6 +24,8 @@ class CalibrationRangesTest(unittest.TestCase):
 #define DEBUG_FLAG_CAL 8
 static bool s_calibration_mode=true,s_custom_calibration;
 static unsigned dirty;
+#define CAL_LOG_FINISH 4
+static void cal_log(unsigned e,unsigned k){(void)e;(void)k;}
 static uint32_t s_calibrated_mask[3];
 static uint16_t s_cal_baseline[15][ROWS],s_cal_peak[15][ROWS];
 static uint32_t s_capture_base[15][ROWS];
@@ -33,8 +35,6 @@ static char output[2048];
 static void debug_console_printf(const char *format,...){
  va_list args;va_start(args,format);vsnprintf(output+strlen(output),sizeof(output)-strlen(output),format,args);va_end(args);
 }
-static bool hhkb_get_debug_flag(unsigned flag){(void)flag;return false;}
-static unsigned calibrated_key_count(void){return 0;}
 static void hhkb_settings_mark_dirty(void){++dirty;}
 void rt_key_set_range(rt_key_t *k,uint16_t b,uint16_t p){k->base=b;(void)p;}
 void rt_key_reset(rt_key_t *k){k->down=false;}

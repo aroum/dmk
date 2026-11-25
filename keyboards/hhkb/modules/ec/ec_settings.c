@@ -51,6 +51,7 @@ static uint8_t s_gesc_overrides;
 
 static rt_cfg_t s_rt_cfg = {
     .rt_enabled = false,
+    .bottom_dz = 5,
     .act_pm = 750,
     .press_pm = 25,
     .release_pm = 25,
@@ -249,6 +250,7 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.reserved[2] = 0x80 | bt_power_encode(s_bt_deep_index, s_bt_long_action) |
                       (s_bt_last_slot << 5);
 #endif
+    cal.debug_flags |= 0x40; // rt.bottom_dz occupies the former RT padding byte.
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
     cal.led_mode[1] |= s_gesc_overrides << 4;
 #ifdef HHKB_HYBRID
@@ -389,6 +391,7 @@ void hhkb_calibration_load(void) {
             if (cal->rt.reset_pm <= 150) s_rt_cfg.reset_pm = cal->rt.reset_pm;
             if (s_rt_cfg.act_pm <= s_rt_cfg.reset_pm) s_rt_cfg.act_pm = s_rt_cfg.reset_pm + 25;
             s_rt_cfg.rt_enabled = cal->rt.rt_enabled;
+            if(current && (cal->debug_flags & 0x40) && cal->rt.bottom_dz <= 10) s_rt_cfg.bottom_dz = cal->rt.bottom_dz;
             s_actuation_offset_pct = (uint8_t)(s_rt_cfg.act_pm / 10);
             if (cal->classic_release_pm >= 25 && cal->classic_release_pm <= (current ? 1125 : 1000)) s_classic_release_pm = cal->classic_release_pm;
 
@@ -476,6 +479,35 @@ void hhkb_calibration_apply_pending(void) {
     else if (req == CAL_REQ_FINISH) hhkb_calibration_finish();
 }
 
+/* Matrix task publishes small events; only USB formats monitor messages.
+ * Coalesce updates if the host cannot drain the console. */
+enum { CAL_LOG_START=1, CAL_LOG_BASE, CAL_LOG_KEY, CAL_LOG_FINISH };
+static volatile uint8_t s_cal_log_event;
+static uint8_t s_cal_log_key;
+static void cal_log(uint8_t event, uint8_t key) {
+    if(!hhkb_get_debug_flag(DEBUG_FLAG_CAL)) return;
+    taskENTER_CRITICAL();
+    s_cal_log_key=key; s_cal_log_event=event;
+    taskEXIT_CRITICAL();
+}
+static void cal_flush_log(void) {
+    if(!s_cal_log_event) return;
+    taskENTER_CRITICAL();
+    uint8_t event=s_cal_log_event, key=s_cal_log_key;
+    s_cal_log_event=0;
+    uint8_t count=event ? calibrated_key_count() : 0;
+    uint8_t col=key/MATRIX_ROWS, row=key%MATRIX_ROWS;
+    uint16_t base=s_capture_base[col][row], peak=s_capture_peak[col][row];
+    taskEXIT_CRITICAL();
+    if(!hhkb_get_debug_flag(DEBUG_FLAG_CAL)) return;
+    switch(event) {
+    case CAL_LOG_START: debug_console_printf("[CAL] Capturing baseline (16 samples).\r\n"); break;
+    case CAL_LOG_BASE: debug_console_printf("[CAL] Baseline captured. Press each key firmly.\r\n"); break;
+    case CAL_LOG_KEY: debug_console_printf("[CAL] %u/%u R%u C%u peak=%u base=%u\r\n", count,NUM_KEYS,row,col,peak,base); break;
+    case CAL_LOG_FINISH: debug_console_printf("[CAL] Finished. Updated %u/%u keys.\r\n",count,NUM_KEYS); break;
+    }
+}
+
 void hhkb_calibration_start(void) {
     memset(s_capture_base, 0, sizeof(s_capture_base));
     s_cal_baseline_samples = CAL_BASELINE_SAMPLES;
@@ -483,9 +515,7 @@ void hhkb_calibration_start(void) {
     memset(s_cal_down_mask, 0, sizeof(s_cal_down_mask));
     s_capture_baseline = true;
     s_calibration_mode = true;
-    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-        debug_console_printf("[CAL] Capturing baseline (16 samples).\r\n");
-    }
+    cal_log(CAL_LOG_START,0);
 }
 
 void hhkb_calibration_finish(void) {
@@ -509,10 +539,7 @@ void hhkb_calibration_finish(void) {
             rt_key_reset(&s_rt_keys[c][r]);
         }
     }
-    if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-        uint8_t count = calibrated_key_count();
-        debug_console_printf("[CAL] Finished. Updated %u/%u keys.\r\n", count, NUM_KEYS);
-    }
+    cal_log(CAL_LOG_FINISH,0);
     s_calibration_mode = false;
     s_custom_calibration = true;
     hhkb_settings_mark_dirty();
@@ -604,6 +631,7 @@ uint8_t hhkb_rt_get(uint8_t id) {
     switch (id) {
     case 1: return s_rt_cfg.act_pm / 25;
     case 3: return s_rt_cfg.rt_enabled;
+    case 63: return s_rt_cfg.bottom_dz;
     case 4: return s_rt_cfg.press_pm / 25;
     case 5: return s_classic_release_pm / 25;
     case 11: return s_rt_cfg.release_pm / 25;
@@ -614,7 +642,9 @@ uint8_t hhkb_rt_get(uint8_t id) {
 
 void hhkb_rt_set(uint8_t id, uint8_t value) {
     taskENTER_CRITICAL();
-    if (id == 3) {
+    if (id == 63 && value <= 10) {
+        s_rt_cfg.bottom_dz = value;
+    } else if (id == 3) {
         s_rt_cfg.rt_enabled = value != 0;
     } else if (id == 6) {
         if (value <= 6) {
@@ -714,6 +744,7 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
 
 // USB consumes the latest travel update when the console endpoint is available.
 void hhkb_debug_flush_sample(void) {
+    cal_flush_log();
     if (!s_dbg_pending) return;
     taskENTER_CRITICAL();
     uint8_t row = s_dbg_row, col = s_dbg_col;
@@ -839,19 +870,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
 
         bool newly_calibrated = !(s_calibrated_mask[k_idx / 32] & (1U << (k_idx % 32)));
         s_calibrated_mask[k_idx / 32] |= 1U << (k_idx % 32);
-        if (newly_calibrated && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            uint8_t count = calibrated_key_count();
-            uint8_t pct = (uint8_t)((count * 100U) / NUM_KEYS);
-            char bar[21];
-            uint8_t filled = (uint8_t)((count * 20U) / NUM_KEYS);
-            for (uint8_t b = 0; b < 20; b++) bar[b] = (b < filled) ? '=' : ' ';
-            bar[20] = '\0';
-            debug_console_printf("[CAL] [%s] %u%% %u/%u R%u C%u peak=%u base=%u\r\n",
-                                 bar, pct, count, NUM_KEYS, row, col, s_capture_peak[col][row], s_capture_base[col][row]);
-            if (count >= NUM_KEYS) {
-                debug_console_printf("[CAL] All %u keys calibrated. Finish and save in VIA.\r\n", (unsigned)NUM_KEYS);
-            }
-        }
+        if (newly_calibrated) cal_log(CAL_LOG_KEY,k_idx);
     } else if (is_down && val < release_thresh) {
         // Transition: key released
         s_cal_down_mask[k_idx / 32] &= ~(1U << (k_idx % 32));
@@ -859,7 +878,7 @@ void hhkb_cal_record_peak(uint8_t col, uint8_t row, uint16_t val) {
         uint16_t old_peak = s_cal_press_start_peak[col][row];
         uint16_t new_peak = s_capture_peak[col][row];
         if (old_peak > press_thresh && new_peak > old_peak + 20 && hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            debug_console_printf("[CAL] R%u C%u peak: %u -> %u\r\n", row, col, old_peak, new_peak);
+            cal_log(CAL_LOG_KEY,k_idx);
         }
     }
 }
@@ -874,9 +893,7 @@ void hhkb_cal_decrement_samples(void) {
             }
         }
         s_capture_baseline = false;
-        if (hhkb_get_debug_flag(DEBUG_FLAG_CAL)) {
-            debug_console_printf("[CAL] Baseline captured. Press each key firmly.\r\n");
-        }
+        cal_log(CAL_LOG_BASE,0);
     }
 }
 rt_key_t *hhkb_get_rt_key(uint8_t col, uint8_t row) { return &s_rt_keys[col][row]; }

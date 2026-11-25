@@ -178,7 +178,7 @@ Check with both hands completely removed from the keyboard. If the readings stop
 ### Key Calibration Process
 
 1. Toggle on **Use custom calibration** and ensure all keys are released.
-2. Click **Start calibration** to record baseline resting capacitance levels. The baseline capture takes exactly **16 consecutive matrix scan cycles** (taking only 16 ms at a 1000 Hz scan rate; with 4x oversampling enabled, each sample hardware-averages 4 ADC conversions). The accumulated sums are divided by 16 and saved as the zero-travel reference for each individual switch.
+2. Click **Start calibration** to record baseline resting capacitance levels. The baseline capture takes exactly **16 consecutive matrix scan cycles** (taking about 32 ms because calibration is capped at 500 Hz for a 1000 Hz target; with 4x oversampling enabled, each sample hardware-averages 4 ADC conversions). The accumulated sums are divided by 16 and saved as the zero-travel reference for each individual switch.
 3. Fully press all keys you want to calibrate to record peak travel.
 4. Click **Finish and save** to write calibration to EEPROM (only positions with valid travel range are updated).
 
@@ -258,11 +258,13 @@ Physical modifiers, held HT modifiers, One-Shot modifiers and active `MK(...)` m
 
 Calibration accepts resting baselines from 20 to 2000 ADC counts, including switches below 100 counts. Finish validates the same baseline and peak bounds used at load time; an invalid capture leaves that key's previous range unchanged. The ADC peak must be at most 4095 and exceed baseline by more than 150 counts. The EEPROM format is unchanged.
 
-During calibration, acquisition stores one frame (120 bytes for ANSI, 150 for JIS). Baseline/peak bookkeeping runs after acquisition with the OpAmp off, instead of extending each inter-key interval. This does not guarantee calibration meets a 1 ms deadline: check diagnostics on hardware. Calibration-rate changes and the fork's special inter-scan OpAmp policy are not included.
+During calibration, acquisition stores one frame (120 bytes for ANSI, 150 for JIS). Baseline/peak bookkeeping runs after acquisition with the OpAmp off, instead of extending each inter-key interval. This does not guarantee calibration meets a 1 ms deadline: check diagnostics on hardware. At a 1000 Hz target, calibration runs at 500 Hz to leave USB/VIA a service window; lower targets and battery scanning are unchanged. Finish restores the normal rate. Calibration Monitor messages are formatted in the USB task instead of the 1 KiB matrix-task stack. Pending monitor messages may coalesce; Print status still lists all missing keys. The special inter-scan OpAmp policy from the fork is not included.
 
 Use **Print status to HID Console** to list `[CAL] missing:` positions during calibration or `[CAL] unchanged:` positions afterwards. These lists use physical keys only, including on JIS. Release every key before starting; press each to bottom-out with normal force, rather than squeezing harder after it stops moving. Check the missing list before Finish. Coordinates refer to matrix positions, not the current layer's keycodes.
 
-RT release tracking is capped at the calibrated bottom (or the travel curve's endpoint), so extra pressure above peak does not deepen the release anchor. This is a zero-width bottom dead zone, not a configurable 0.5 mm zone. Per-key RT profiles, per-key actuation and an adjustable bottom zone from [issue #11](https://github.com/aroum/dmk/issues/11) are not included. The calibration follow-up is tracked in [issue #12](https://github.com/aroum/dmk/issues/12).
+**Bottom dead zone** in Rapid Trigger controls how far above bottom-out the release anchor stops following pressure. Range: 0.0–1.0 mm, default **0.5 mm**, in 0.1 mm steps. Relaxing finger pressure inside this zone no longer causes a release/re-press that restarts the OS repeat delay. A real upward movement beyond the zone plus release sensitivity still releases the key; the initial actuation point is unchanged. Zero restores the previous zero-width safeguard. Without a travel curve, millimetres are nominal values for 4 mm travel, as for the other RT settings.
+
+The setting is saved in the former RT padding byte, guarded by a validity bit; record sizes and the compact format stay unchanged. Older records use the 0.5 mm default. Per-key profiles and actuation remain outside this integration. Hardware confirmation of long holds is still required; see [issue #11](https://github.com/aroum/dmk/issues/11).
 
 ### USB report diagnostics
 

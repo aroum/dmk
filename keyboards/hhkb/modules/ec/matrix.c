@@ -18,6 +18,7 @@ static volatile uint16_t s_scan_period_ticks;
 static volatile uint8_t s_scan_divider;
 static uint8_t s_scan_phase;
 static uint8_t s_scan_rate_applied;
+static bool s_scan_calibrating;
 
 static void update_scan_period(void) {
     static const uint16_t period_us[] = {10000, 8000, 4000, 2000, 1000, 5000, 11000};
@@ -25,7 +26,9 @@ static void update_scan_period(void) {
     if (rate >= sizeof(period_us) / sizeof(period_us[0])) rate = 4;
     s_scan_rate_applied = rate;
     s_scan_period_ticks = period_us[rate] * HHKB_SCAN_TIMER_TICKS_PER_US;
-    s_scan_divider = rate == 0 ? 2 : 1;
+    s_scan_calibrating = hhkb_is_calibrating();
+    // Leave a complete USB service window during calibration at 1 kHz.
+    s_scan_divider = rate == 0 || (rate == 4 && s_scan_calibrating) ? 2 : 1;
     s_scan_phase = 0;
 }
 
@@ -376,7 +379,8 @@ void matrix_task(void *pvParameters) {
             TIM2->DIER |= TIM_DIER_CC1IE;
         }
 
-        if (s_scan_rate_applied != hhkb_get_effective_scan_rate()) {
+        if (s_scan_rate_applied != hhkb_get_effective_scan_rate() ||
+            s_scan_calibrating != hhkb_is_calibrating()) {
             NVIC_DisableIRQ(TIM2_IRQn);
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);

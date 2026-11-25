@@ -16,12 +16,31 @@ static bool feed(int pm) { return rt_update(&key, &cfg, raw(pm)); }
 static void setup(bool rt) {
     rt_cfg_defaults(&cfg);
     cfg.rt_enabled = rt;
+    cfg.bottom_dz = 0;
     rt_key_set_range(&key, BASE, PEAK);
     rt_key_reset(&key);
 }
 
 int main(void) {
     int events;
+    // 30 seconds of bottom-out pressure variation must preserve the HID hold.
+    setup(true);cfg.bottom_dz=5;
+    rt_scan_cfg_t held_scan;rt_prepare_scan(&held_scan,&cfg,NULL);
+    rt_raw_cache_t held_cache;rt_prepare_raw_cache(&held_cache,&key,&held_scan);
+    rt_key_t generic=key,prepared_key=key;
+    assert(rt_update_scan_cached(&key,&held_cache,&held_scan,raw(1000),NULL));
+    assert(rt_update(&generic,&cfg,raw(1000)));
+    assert(rt_update_scan_travel(&prepared_key,&held_scan,1000));
+    for(unsigned i=0;i<30000;++i){
+        unsigned pm=900+i%201;
+        assert(rt_update_scan_cached(&key,&held_cache,&held_scan,raw(pm),NULL));
+        assert(rt_update(&generic,&cfg,raw(pm)));
+        assert(rt_update_scan_travel(&prepared_key,&held_scan,pm));
+    }
+    assert(!rt_update_scan_cached(&key,&held_cache,&held_scan,raw(845),NULL));
+    assert(!rt_update(&generic,&cfg,raw(845)));
+    assert(!rt_update_scan_travel(&prepared_key,&held_scan,845));
+
     // Bottom-out pressure above peak must not create a false upward movement.
     setup(true);
     assert(feed(1000));
@@ -43,6 +62,13 @@ int main(void) {
     assert(key.ext == 900);
     assert(rt_update_scan_travel(&key, &prepared, 900));
     assert(!rt_update_scan_travel(&key, &prepared, 870));
+
+    // Non-default travel endpoint: zone width stays in normalized travel units.
+    setup(true);cfg.bottom_dz=5;
+    rt_prepare_scan(&held_scan,&cfg,endpoint_curve);
+    assert(rt_update_scan_travel(&key,&held_scan,900));
+    assert(rt_update_scan_travel(&key,&held_scan,800));
+    assert(!rt_update_scan_travel(&key,&held_scan,745));
 
     /* 1. Slow press: nothing before act point (750), pressed right at it. */
     setup(true);

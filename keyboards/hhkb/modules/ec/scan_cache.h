@@ -23,8 +23,11 @@ static __attribute__((noinline)) void hhkb_scan_cache_prepare(hhkb_scan_cache_t 
                        cache->curve_revision == curve_revision;
     if (cache->fast_active && scan->cfg.rt_enabled && same_ranges) {
         for (unsigned col = 0; col < MATRIX_COLS; ++col)
-            for (unsigned row = 0; row < MATRIX_ROWS; ++row)
-                keys[col][row].ext = rt_scan_normalize(&keys[col][row], cache->key[col][row].last_raw, scan);
+            for (unsigned row = 0; row < MATRIX_ROWS; ++row) {
+                uint16_t v=rt_scan_normalize(&keys[col][row],cache->key[col][row].last_raw,scan);
+                uint16_t bottom=scan->curve ? scan->curve[125] : RT_FULL_SCALE;
+                keys[col][row].ext=v>bottom ? bottom : v;
+            }
     }
     bool fast = !scan->cfg.rt_enabled;
     if (fast != cache->fast_active || !same_ranges || cache->act_pm != scan->cfg.act_pm ||

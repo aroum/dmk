@@ -71,6 +71,12 @@ int main(void){
   rt_cfg_t cfg={.rt_enabled=(pass/41)%2,.act_pm=100+((pass/97)*53)%901,
                 .release_pm=(pass/73)%400,.reset_pm=50,.press_pm=25};
   rt_scan_cfg_t scan;rt_prepare_scan(&scan,&cfg,(pass/211)%2?lut:NULL);
+  // Enabling RT while held beyond peak canonicalizes the former classic anchor.
+  if(cache.fast_active && cfg.rt_enabled && cache.range_revision==rt_range_revision && cache.curve_revision==curve_revision)
+   for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
+    unsigned bottom=scan.curve?scan.curve[125]:RT_FULL_SCALE;
+    if(ref[c][r].ext>(int)bottom)ref[c][r].ext=bottom;
+   }
   hhkb_scan_cache_prepare(&cache,keys,&scan,rt_range_revision,curve_revision);
   for(unsigned c=0;c<MATRIX_COLS;++c)for(unsigned r=0;r<MATRIX_ROWS;++r){
    if(cfg.rt_enabled)equal_state(&keys[c][r],&ref[c][r],keys[c][r].latched);
