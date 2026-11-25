@@ -219,6 +219,15 @@ void hhkb_settings_mark_dirty(void) {
 // Called by vial_eeprom_task in the USB task, before the keymap writer.
 // Do not call this EEPROM transaction concurrently from another task.
 void hhkb_calibration_save_to_eeprom(void) {
+    if (s_calibration_mode) {
+        // hhkb_calibration_finish() rewrites the calibration tables in the
+        // matrix task with no lock; snapshotting mid-update could persist a
+        // torn half-old/half-new table under a valid CRC. The whole rewrite
+        // happens while s_calibration_mode is set, and finish marks the
+        // settings dirty again, so deferring here loses nothing.
+        hhkb_settings_mark_dirty();
+        return;
+    }
     if (!hhkb_settings_storage_writable()) return;
 #ifndef HHKB_COMPACT_STORAGE
     if (FLASH->PECR & FLASH_PECR_PELOCK) {

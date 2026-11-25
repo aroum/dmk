@@ -510,9 +510,9 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
     }
 #endif
     (void)instance;
-    (void)bufsize;
     if (report_type == HID_REPORT_TYPE_OUTPUT) {
-        led_set_hid_state(buffer[0]);
+        // A zero-length SET_REPORT(Output) would otherwise consume a stale byte.
+        if (bufsize >= 1) led_set_hid_state(buffer[0]);
     }
 }
 
