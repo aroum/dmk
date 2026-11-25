@@ -186,6 +186,16 @@ int main(int argc, char **argv) {
     bool ours[1536]={0};
     for(unsigned n=0;n<2;++n)for(unsigned w=0;w<C_SLOT_BYTES/4;++w) ours[c_word(n,w)-memory]=true;
     for(unsigned i=0x1700/4;i<0x170c/4;++i) ours[i]=true;
+    /* VIA reset must perform the same physical cleanup as SW5+SW6. */
+    assert(vial_keyboard_keymap_reset());
+    for(unsigned i=0;i<1536;++i) assert(memory[i]==(ours[i]?0:compact_base[i]));
+    reboot();assert(dynamic_keymap[0][0]==4);
+    /* Interrupt the runtime reset after its durable marker, including cleanup. */
+    for(unsigned cut=1;cut<450;++cut) {
+        memcpy(memory,reset_base,sizeof(memory));budget=-1;reboot();poll();
+        budget=cut;vial_keyboard_keymap_reset();budget=-1;reboot();
+        assert(dynamic_keymap[0][0]==4);
+    }
     for(unsigned cut=0;cut<450;++cut) {
         memcpy(memory,compact_base,sizeof(memory));c_initialized=false;
         budget=cut;hhkb_storage_erase_early();budget=-1;

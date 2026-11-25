@@ -197,6 +197,11 @@
           "label": "Grave Escape",
           "content": [
             {
+              "label": "Key assignment",
+              "type": "label",
+              "content": ["Assign KC_GESC in Keymap > Special > Any."]
+            },
+            {
               "label": "Always Escape with Alt",
               "type": "toggle",
               "content": [
@@ -2871,7 +2876,7 @@
               "label": "Factory reset",
               "type": "label",
               "content": [
-                "Erases DMK settings, calibration and keymaps."
+                "Clears DMK EEPROM like SW5+SW6, then restarts DMK."
               ]
             },
             {

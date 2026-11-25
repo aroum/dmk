@@ -248,7 +248,11 @@ bool hhkb_compact_reset(void) {
     c_active=c_target=-1; c_pending=false; c_status="Defaults (compressed)";
     return true; /* tombstone remains until the first default snapshot commits */
 }
-bool vial_keyboard_keymap_reset(void) { return hhkb_compact_reset(); }
+bool vial_keyboard_keymap_reset(void) {
+    // Commit the reset marker before the SW5+SW6 physical EEPROM cleanup.
+    // A power cut during cleanup must not resurrect an older snapshot.
+    return hhkb_compact_reset() && hhkb_storage_erase_early();
+}
 bool hhkb_compact_busy(void) {
     if (c_blocked || !c_keymap_ready || !c_cal_ready) return false;
     return c_pending || c_target >= 0 ||

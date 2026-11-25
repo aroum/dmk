@@ -126,8 +126,9 @@ int main(void){
     def test_via_menu_and_eeprom_nibble(self):
         definition=json.loads((ROOT/'keyboards/hhkb/via.json').read_text())
         tab=next(x for x in definition['menus'][0]['content'] if x['label']=='Grave Escape')
-        self.assertEqual([x['content'][2] for x in tab['content']],list(range(57,61)))
-        self.assertTrue(all(x['type']=='toggle' for x in tab['content']))
+        controls=[x for x in tab['content'] if x['type']=='toggle']
+        self.assertEqual([x['content'][2] for x in controls],list(range(57,61)))
+        self.assertTrue(any(x['type']=='label' and 'KC_GESC' in x['content'][0] for x in tab['content']))
 
     def test_via_override_commands(self):
         source=(ROOT/'keyboards/hhkb/modules/via_settings/hhkb_via_controls.c').read_text()
