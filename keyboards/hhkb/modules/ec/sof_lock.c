@@ -114,16 +114,10 @@ void sof_lock_reset(void) {
 #if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
 void usb_xfer_complete_from_isr(void) {
     if (!s_report_pending) return;
-    s_report_pending = false;
     uint16_t now = (uint16_t)TIM2->CNT;
-#ifdef HHKB_SCAN_DIAGNOSTICS
-    uint32_t age = (uint16_t)(now - s_age_from);
-    s_age_sum += age;
-    s_age_cnt++;
-    if (age > s_age_max) s_age_max = age;
-#endif
 #if HHKB_SOF_LOCK
     if (fresh(now)) {
+        static uint8_t s_in_rejects;
         int32_t p = (int32_t)((s_sof_p_q4 + 8) >> 4);
         int32_t dlt = sof_wrap((int32_t)sof_phase(now, s_sof_cnt, (uint16_t)p) - s_in_off, p);
         int32_t off = s_in_off;
@@ -132,11 +126,33 @@ void usb_xfer_complete_from_isr(void) {
             s_in_n++;
         } else if (dlt <= 400 && dlt >= -400) {
             off += dlt >> 3;
+        } else {
+            // This hook fires for every endpoint's completion. Once the IN
+            // phase is acquired, a completion this far off is a console/VIA/EP0
+            // transfer finishing while the keyboard report is still in flight:
+            // consuming it would clear the pending flag early and skew the age
+            // statistics. Leave the report pending for the keyboard completion,
+            // which lands near s_in_off by construction. If every completion is
+            // rejected the acquired offset itself is wrong (host phase moved
+            // without a reset); reacquire instead of staying deaf forever.
+            if (++s_in_rejects >= 8) {
+                s_in_rejects = 0;
+                s_in_n = 0;
+            }
+            return;
         }
+        s_in_rejects = 0;
         if (off >= p) off -= p;
         if (off < 0) off += p;
         s_in_off = (int16_t)off;
     }
+#endif
+    s_report_pending = false;
+#ifdef HHKB_SCAN_DIAGNOSTICS
+    uint32_t age = (uint16_t)(now - s_age_from);
+    s_age_sum += age;
+    s_age_cnt++;
+    if (age > s_age_max) s_age_max = age;
 #endif
 }
 #endif
