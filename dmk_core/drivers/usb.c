@@ -24,6 +24,9 @@
 static USB_HID_KeyboardReport_TypeDef current_report;
 static uint8_t s_real_mods = 0;
 static uint8_t s_weak_mods = 0;
+#ifdef HHKB_GRAVE_ESCAPE
+static uint8_t s_suppressed_mods;
+#endif
 // Only reported 6KRO slots need ownership counts.
 static uint8_t s_key_refs[KEY_REPORT_SIZE];
 
@@ -72,12 +75,33 @@ void usb_process_batched_key(uint16_t keycode, bool pressed) {
 
 static bool sync_report_modifiers(void) {
     uint8_t combined = s_real_mods | s_weak_mods;
+#ifdef HHKB_GRAVE_ESCAPE
+    combined &= ~s_suppressed_mods;
+#endif
     if (current_report.Modifier != combined) {
         current_report.Modifier = combined;
         return true;
     }
     return false;
 }
+
+#ifdef HHKB_GRAVE_ESCAPE
+// Suppression changes reports, never the physical/One-Shot ownership counters.
+void usb_press_key_suppressed(uint8_t keycode,uint8_t mask) {
+#ifdef MATRIX_REPORT_BATCH
+    usb_flush_batched_keys();
+#endif
+    s_suppressed_mods=mask;
+    usb_process_key(keycode,true);
+}
+void usb_set_suppressed_modifiers(uint8_t mask) {
+#ifdef MATRIX_REPORT_BATCH
+    usb_flush_batched_keys();
+#endif
+    s_suppressed_mods=mask;
+    if(sync_report_modifiers()) USB_HID_SendReport(&current_report);
+}
+#endif
 
 static bool add_key_to_report(uint8_t keycode) {
     int empty_idx = -1;
@@ -119,6 +143,9 @@ void usb_init(void) {
     for (unsigned i = 0; i < 8; ++i) s_real_refs[i] = s_weak_refs[i] = 0;
     s_real_mods = 0;
     s_weak_mods = 0;
+#ifdef HHKB_GRAVE_ESCAPE
+    s_suppressed_mods=0;
+#endif
     current_report.ReportID = 1;
     current_report.Modifier = 0;
     current_report.Reserved = 0;
@@ -154,6 +181,10 @@ void usb_process_key(uint16_t keycode, bool pressed) {
         report_changed = pressed ? add_key_to_report((uint8_t)keycode) : del_key_from_report((uint8_t)keycode);
     }
 
+#ifdef HHKB_GRAVE_ESCAPE
+    // Commit a newly selected suppression mask together with the key itself.
+    report_changed |= sync_report_modifiers();
+#endif
     // Only send over USB if report payload changed (saves bus bandwidth)
     if (report_changed) {
         USB_HID_SendReport(&current_report);

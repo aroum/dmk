@@ -79,6 +79,8 @@ void hhkb_bt_set_last_slot(uint8_t slot);
 
 // Grave Escape overrides: Alt, Ctrl, GUI, Shift (both sides).
 uint8_t hhkb_gesc_overrides(void);
+uint8_t hhkb_gesc_ignore(void);
+void hhkb_gesc_set_ignore(uint8_t value);
 void hhkb_gesc_set_override(uint8_t index, bool enabled);
 
 // Getters & Setters for VIA

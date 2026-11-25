@@ -207,6 +207,12 @@
               "content": ["Assign KC_GESC in Keymap > Special > Any."]
             },
             {
+              "label": "Ignore modifier in reports",
+              "type": "dropdown",
+              "options": [["None", 0], ["Alt", 1], ["Ctrl", 2], ["GUI", 3]],
+              "content": ["id_hhkb_gesc_ignore", 0, 66]
+            },
+            {
               "label": "Always Escape with Alt",
               "type": "toggle",
               "content": [

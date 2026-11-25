@@ -25,11 +25,14 @@ static bool grave_escape_process(uint32_t key, bool pressed) {
                                 ((overrides & 8) && (mods & (MOD_LSHIFT | MOD_RSHIFT)));
             selected = !force_escape && mods
                      ? K_GRAV : K_ESC;
-            keyboard_send_key(selected, true);
+            static const uint8_t ignored_masks[] = {0, MOD_LALT|MOD_RALT,
+                MOD_LCTRL|MOD_RCTRL, MOD_LGUI|MOD_RGUI};
+            usb_press_key_suppressed(selected,ignored_masks[hhkb_gesc_ignore()]);
         }
     } else if (held && --held == 0) {
         keyboard_send_key(selected, false);
         oneshot_on_tap_key();
+        usb_set_suppressed_modifiers(0);
     }
     return true;
 }

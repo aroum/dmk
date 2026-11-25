@@ -17,6 +17,12 @@
 bool via_custom_value_command_kb(uint8_t const *request, uint8_t *response) {
     if (request[1] != 0) return false;
     uint8_t id = request[2];
+    if (id == 66) {
+        if(request[0] == 0x08) response[3]=hhkb_gesc_ignore();
+        else if(request[0] == 0x07 && request[3]<=3) hhkb_gesc_set_ignore(request[3]);
+        else return false;
+        return true;
+    }
     if (id == 62) {
         if (request[0] == 0x08) response[3] = hhkb_get_debug_flag(DEBUG_FLAG_USB);
         else if (request[0] == 0x07 && request[3] <= 1) hhkb_set_debug_flag(DEBUG_FLAG_USB, request[3] != 0);

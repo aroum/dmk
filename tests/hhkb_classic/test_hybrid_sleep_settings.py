@@ -44,7 +44,7 @@ static uint16_t s_cal_baseline[MATRIX_COLS][MATRIX_ROWS],s_cal_peak[MATRIX_COLS]
 static rt_key_t s_rt_keys[MATRIX_COLS][MATRIX_ROWS];
 static bool s_custom_calibration=true;
 static uint8_t s_debug_flags;
-static uint8_t s_gesc_overrides;
+static uint8_t s_gesc_overrides,s_gesc_ignore;
 uint8_t ec_curve_settings[EC_CURVE_FIELDS];
 static unsigned dirty;
 static bool s_settings_dirty;
@@ -92,14 +92,16 @@ int main(void){
    s_debug_flags=16;s_rt_cfg.bottom_dz=hz;
    s_gesc_overrides=(hz+led+enabled)&15;
    unsigned saved_overrides=s_gesc_overrides;
+   unsigned saved_ignore=(hz+led+enabled)&3;s_gesc_ignore=saved_ignore;
    assert(hhkb_settings_storage_writable());
    flash.PECR=0;hhkb_calibration_save_to_eeprom();assert(snapshot_depth==0);
    assert(hhkb_settings_storage_writable());
    s_bt_sleep_hz=1;s_bt_matrix_wake=false;s_bt_sleep_minutes=0;
    s_bt_deep_index=0;s_bt_short_action=0;s_bt_long_action=0;s_bt_last_slot=0;
    s_led_mode[0]=0;s_led_mode[1]=0;
-   s_gesc_overrides=0;
+   s_gesc_overrides=0;s_gesc_ignore=0;
    hhkb_calibration_load();
+   assert(s_gesc_ignore==saved_ignore);
    assert(s_gesc_overrides==saved_overrides && s_debug_flags==16 && s_rt_cfg.bottom_dz==hz);
    assert(hhkb_bt_sleep_hz()==hz && s_bt_matrix_wake==enabled && s_bt_sleep_minutes==23);
    assert(s_bt_deep_index==7 && s_bt_short_action==5 && s_bt_long_action==2 && s_bt_last_slot==3);
@@ -123,9 +125,9 @@ int main(void){
  cal->crc16=compute_crc16((const uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
  hhkb_calibration_load();assert(s_rt_cfg.bottom_dz==5);
  // Old record: no rate stored. Recalculate its real CRC before loading.
- cal->led_mode[0]&=15;cal->led_mode[1]&=15;
+ cal->led_mode[0]&=15;cal->led_mode[1]&=7;cal->debug_flags&=~0x20;
  cal->crc16=compute_crc16((const uint8_t *)&cal->baseline,sizeof(*cal)-offsetof(hhkb_eeprom_cal_t,baseline));
- s_bt_sleep_hz=1;hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && s_led_mode[0]==4 && s_gesc_overrides==0);
+ s_bt_sleep_hz=1;hhkb_calibration_load();assert(hhkb_bt_sleep_hz()==1 && s_led_mode[0]==4 && s_gesc_overrides==0 && !s_gesc_ignore);
  // Reject ANSI legacy data instead of reading it as a five-row record.
 #ifdef HHKB_JIS
  cal->magic=USER_EEPROM_LEGACY_MAGIC;

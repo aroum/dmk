@@ -27,6 +27,9 @@ static uint16_t held,selected,last_down,last_up;
 static unsigned downs,ups;
 static uint8_t at_press;
 static uint8_t hhkb_gesc_overrides(void){return overrides;}
+static uint8_t hhkb_gesc_ignore(void){return 0;}
+static void usb_set_suppressed_modifiers(uint8_t mask){(void)mask;}
+static void usb_press_key_suppressed(uint8_t key,uint8_t mask);
 void layers_on(uint8_t l){(void)l;}
 void layers_off(uint8_t l){(void)l;}
 void layers_toggle(uint8_t l){(void)l;}
@@ -46,7 +49,7 @@ void keyboard_send_key(uint16_t key,bool pressed){
  if(pressed){last_down=key;++downs;at_press=usb_get_effective_modifiers();}
  else{last_up=key;++ups;}
 }
-''' + function(module,'static bool grave_escape_process(') + r'''
+''' + 'static void usb_press_key_suppressed(uint8_t key,uint8_t mask){(void)mask;keyboard_send_key(key,true);}' + function(module,'static bool grave_escape_process(') + r'''
 static void press(void){oneshot_on_key_press(HHKB_GESC);assert(grave_escape_process(HHKB_GESC,true));}
 static void release(void){assert(grave_escape_process(HHKB_GESC,false));oneshot_on_key_release();if(!held)assert(last_up==last_down);}
 static uint16_t expected(uint8_t mods,unsigned flags){
@@ -123,11 +126,33 @@ int main(void){
                 '-o',str(out)],check=True)
             subprocess.run([str(out)],check=True)
 
+    def test_real_usb_reports_with_ignored_modifiers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for batch in (False, True):
+                exe = Path(tmp) / ('gesc-batch' if batch else 'gesc')
+                command = ['clang', '-std=c11', '-Wall', '-Wextra', '-Werror',
+                           '-fsanitize=address,undefined', '-DHHKB_GRAVE_ESCAPE=1',
+                           '-DMATRIX_ROWS=4', '-DMATRIX_COLS=15']
+                if batch:
+                    command += ['-DMATRIX_REPORT_BATCH']
+                for directory in ('tests/mocks', 'dmk_core/include', 'dmk_core/drivers',
+                                  'dmk_core/features', 'dmk_core/config',
+                                  'keyboards/hhkb/modules/ec'):
+                    command += ['-I', str(ROOT / directory)]
+                command += [str(ROOT / path) for path in (
+                    'tests/hhkb_classic/test_gesc_reports.c', 'dmk_core/drivers/usb.c',
+                    'dmk_core/features/oneshot.c')]
+                subprocess.run(command + ['-o', str(exe)], check=True)
+                subprocess.run([str(exe)], check=True)
+
     def test_via_menu_and_eeprom_nibble(self):
         definition=json.loads((ROOT/'keyboards/hhkb/via.json').read_text())
         tab=next(x for x in definition['menus'][0]['content'] if x['label']=='Grave Escape')
         controls=[x for x in tab['content'] if x['type']=='toggle']
         self.assertEqual([x['content'][2] for x in controls],list(range(57,61)))
+        ignore=next(x for x in tab['content'] if x['type']=='dropdown')
+        self.assertEqual(ignore['options'],[['None',0],['Alt',1],['Ctrl',2],['GUI',3]])
+        self.assertEqual(ignore['content'][2],66)
         self.assertTrue(any(x['type']=='label' and 'KC_GESC' in x['content'][0] for x in tab['content']))
 
     def test_via_override_commands(self):
@@ -137,13 +162,13 @@ int main(void){
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
-static uint8_t s_gesc_overrides;
+static uint8_t s_gesc_overrides,s_gesc_ignore;
 static unsigned dirty;
 static void hhkb_settings_mark_dirty(void){++dirty;}
-''' + function(settings,'uint8_t hhkb_gesc_overrides(') + function(settings,'void hhkb_gesc_set_override(') + r'''
+''' + function(settings,'uint8_t hhkb_gesc_ignore(') + function(settings,'void hhkb_gesc_set_ignore(') + function(settings,'uint8_t hhkb_gesc_overrides(') + function(settings,'void hhkb_gesc_set_override(') + r'''
 static bool command(uint8_t op,uint8_t id,uint8_t value,uint8_t *response){
  uint8_t request[32]={op,0,id,value};
-''' + function(source,'if (id >= 57 && id <= 60)') + r'''
+''' + function(source,'if (id == 66)') + function(source,'if (id >= 57 && id <= 60)') + r'''
  return false;
 }
 int main(void){
@@ -156,6 +181,11 @@ int main(void){
  }
  assert(!s_gesc_overrides && dirty==8);
  hhkb_gesc_set_override(4,true);assert(dirty==8 && !s_gesc_overrides);
+ for(unsigned value=0;value<4;value++){
+  assert(command(7,66,value,response));assert(command(8,66,0,response));assert(response[3]==value);
+  unsigned before=dirty;assert(command(7,66,value,response));assert(dirty==before);
+ }
+ assert(!command(7,66,4,response));assert(hhkb_gesc_ignore()==3);
 }
 '''
         with tempfile.TemporaryDirectory() as tmp:

@@ -47,7 +47,7 @@ static uint16_t s_capture_peak[MATRIX_COLS][MATRIX_ROWS];
 
 #define HHKB_CAL_BASE_MIN 20u
 
-static uint8_t s_gesc_overrides;
+static uint8_t s_gesc_overrides, s_gesc_ignore;
 
 static rt_cfg_t s_rt_cfg = {
     .rt_enabled = false,
@@ -250,9 +250,10 @@ void hhkb_calibration_save_to_eeprom(void) {
     cal.reserved[2] = 0x80 | bt_power_encode(s_bt_deep_index, s_bt_long_action) |
                       (s_bt_last_slot << 5);
 #endif
+    cal.debug_flags |= (s_gesc_ignore & 2) << 4;
     cal.debug_flags |= 0x40; // rt.bottom_dz occupies the former RT padding byte.
     memcpy(cal.led_mode, s_led_mode, sizeof(cal.led_mode));
-    cal.led_mode[1] |= s_gesc_overrides << 4;
+    cal.led_mode[1] |= (s_gesc_overrides << 4) | ((s_gesc_ignore & 1) << 3);
 #ifdef HHKB_HYBRID
     // Spare high nibble; zero in older records means the default 1 Hz.
     cal.led_mode[0] |= s_bt_sleep_hz << 4;
@@ -320,6 +321,7 @@ void hhkb_calibration_load(void) {
     s_rt_cfg.rt_enabled = false;
     s_debug_flags = 0;
     s_gesc_overrides = 0;
+    s_gesc_ignore = 0;
 
     if (cal->magic == USER_EEPROM_MAGIC) {
         // Versioned format with CRC16
@@ -371,7 +373,7 @@ void hhkb_calibration_load(void) {
             if (current) {
                 for (unsigned i = 0; i < 2; ++i) {
                     uint8_t led = cal->led_mode[i];
-                    if (i == 1) led &= 0x0f;
+                    if (i == 1) led &= 7;
 #ifdef HHKB_HYBRID
                     if (i == 0) led &= 0x0f; // High nibble stores sleep scan rate.
 #endif
@@ -383,6 +385,7 @@ void hhkb_calibration_load(void) {
 #endif
                 s_debug_flags = cal->debug_flags & 0x1f;
                 s_gesc_overrides = cal->led_mode[1] >> 4;
+                s_gesc_ignore = ((cal->led_mode[1] >> 3) & 1) | ((cal->debug_flags >> 4) & 2);
             }
 
             if (cal->rt.act_pm >= 25 && cal->rt.act_pm <= (current ? 1125 : 1000)) s_rt_cfg.act_pm = cal->rt.act_pm;
@@ -553,6 +556,10 @@ void hhkb_calibration_set_enabled(bool enabled) {
 }
 bool hhkb_is_calibrating(void) { return s_calibration_mode; }
 
+uint8_t hhkb_gesc_ignore(void) { return s_gesc_ignore; }
+void hhkb_gesc_set_ignore(uint8_t value) {
+    if(value<=3 && value!=s_gesc_ignore) { s_gesc_ignore=value; hhkb_settings_mark_dirty(); }
+}
 uint8_t hhkb_gesc_overrides(void) { return s_gesc_overrides; }
 void hhkb_gesc_set_override(uint8_t index, bool enabled) {
     if (index >= 4) return;
