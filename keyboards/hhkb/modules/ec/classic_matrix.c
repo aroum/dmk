@@ -71,6 +71,15 @@ bool scan_process_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan,
     matrix_row_t previous = matrix[pending->row];
     if (pending->raw == UINT16_MAX) {
         pending->pressed = key->down;
+    } else if (!hhkb_scan_cache_entry_valid(&s_scan_cache, pending->col, pending->row)) {
+        // This cell's thresholds are not rebuilt for the current cfg yet: take
+        // the uncached reference path, which the cache reproduces bit-for-bit.
+        // Classic mode must keep last_raw current for the ext restore on a
+        // later RT enable; the cached RT path never writes the cache, so the
+        // RT fallback does not either.
+        uint16_t travel;
+        pending->pressed = rt_update_scan_sample(key, scan, pending->raw, &travel);
+        if (!scan->cfg.rt_enabled) s_scan_cache.key[pending->col][pending->row].last_raw = pending->raw;
     } else if (scan->cfg.rt_enabled) {
         pending->pressed = rt_update_scan_cached(key, &s_scan_cache.key[pending->col][pending->row], scan, pending->raw, NULL);
     } else {
