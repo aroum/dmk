@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       hhkb_scan_diagnostics:
-        description: Build only HHKB variants with detailed scan timing diagnostics
+        description: Build HHKB Classic ANSI with detailed scan timing diagnostics
         type: boolean
         default: false
 
@@ -95,13 +95,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - variant: classic
-            defines: HHKB_CLASSIC
-          - variant: type-s
-            defines: HHKB_CLASSIC_TYPE_S
-          - variant: type-s-jis
-            defines: HHKB_CLASSIC_TYPE_S,HHKB_JIS
+        include: ${{ fromJSON(inputs.hhkb_scan_diagnostics && '[{"variant":"classic","defines":"HHKB_CLASSIC"}]' || '[{"variant":"classic","defines":"HHKB_CLASSIC"},{"variant":"type-s","defines":"HHKB_CLASSIC_TYPE_S"},{"variant":"type-s-jis","defines":"HHKB_CLASSIC_TYPE_S,HHKB_JIS"}]') }}
 
     steps:
       - name: Checkout Code
@@ -141,6 +135,7 @@ jobs:
           if-no-files-found: error
 
   build-hhkb-hybrid:
+    if: ${{ !inputs.hhkb_scan_diagnostics }}
     name: Build HHKB Hybrid ${{ matrix.layout }}${{ inputs.hhkb_scan_diagnostics && ' (scan debug)' || '' }}
     runs-on: ubuntu-latest
     strategy:

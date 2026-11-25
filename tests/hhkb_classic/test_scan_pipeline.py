@@ -51,7 +51,7 @@ static hhkb_scan_cache_t s_scan_cache;
 static uint16_t s_cal_samples[MATRIX_COLS][MATRIX_ROWS];
 static uint16_t raw[KEYS];
 static uint8_t columns[KEYS],rows[KEYS];
-static unsigned primask,starts,finishes,reports,captures,peaks,frames,restarts,decrements;
+static unsigned primask,starts,finishes,reports,captures,peaks,restarts,decrements;
 static unsigned next_index,reported_index,debug_index,fault=1000;
 static bool converting,debug,calibrating,capture;
 static rt_cfg_t cfg;
@@ -67,7 +67,7 @@ static int keyboard_get_flat_key_index(unsigned row,unsigned col){
 static bool hhkb_hybrid_on_battery(void){return false;}
 static void scan_adc_prepare(void){}
 static void scan_adc_idle(void){assert(!primask && !converting);}
-static void hhkb_record_matrix_scan(void){++frames;}
+static void hhkb_record_matrix_scan(void){}
 static bool hhkb_cal_is_capturing_baseline(void){return capture;}
 static bool hhkb_is_calibrating(void){return calibrating;}
 static rt_cfg_t hhkb_get_scan_cfg(void){return cfg;}
