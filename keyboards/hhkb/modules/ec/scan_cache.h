@@ -39,9 +39,11 @@ static __attribute__((noinline)) void hhkb_scan_cache_prepare(hhkb_scan_cache_t 
             }
         }
 #ifdef HHKB_SCAN_DIAGNOSTICS
-        extern void debug_console_printf(const char *, ...);
-        debug_console_printf("[CFG] RT rebuild=%lu ms\r\n",
-            (unsigned long)((xTaskGetTickCount() - rebuild_start) * portTICK_PERIOD_MS));
+        // This runs in the matrix task, whose 1 KB stack cannot absorb the
+        // vsnprintf chain (~1 KB measured on Hybrid). Defer logging to the
+        // USB task instead of printing here.
+        extern void hhkb_note_rt_rebuild(uint32_t ms);
+        hhkb_note_rt_rebuild((uint32_t)((xTaskGetTickCount() - rebuild_start) * portTICK_PERIOD_MS));
 #endif
     }
     cache->range_revision = range_revision;

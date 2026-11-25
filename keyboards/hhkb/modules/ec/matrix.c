@@ -56,6 +56,19 @@ void TIM2_IRQHandler(void) {
     portYIELD_FROM_ISR(higher_priority_woken);
 }
 #ifdef HHKB_SCAN_DIAGNOSTICS
+static volatile uint32_t s_rt_rebuild_ms;
+static volatile uint32_t s_rt_rebuild_count;
+
+void hhkb_note_rt_rebuild(uint32_t ms) {
+    s_rt_rebuild_ms = ms;
+    s_rt_rebuild_count++;
+}
+
+void hhkb_get_rt_rebuild(uint32_t *ms, uint32_t *count) {
+    if (ms) *ms = s_rt_rebuild_ms;
+    if (count) *count = s_rt_rebuild_count;
+}
+
 static volatile uint32_t s_matrix_scan_count;
 static volatile uint32_t s_matrix_scan_us;
 static volatile uint32_t s_matrix_scan_max_us;

@@ -19,6 +19,8 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]);
 #ifdef HHKB_SCAN_DIAGNOSTICS
 void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full);
 void hhkb_reset_scan_diagnostics_peaks(void);
+void hhkb_note_rt_rebuild(uint32_t ms);
+void hhkb_get_rt_rebuild(uint32_t *ms, uint32_t *count);
 #endif
 
 #ifdef __cplusplus

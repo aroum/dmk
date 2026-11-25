@@ -410,6 +410,10 @@ __attribute__((weak)) void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t
     if (q_full) *q_full = 0;
 }
 __attribute__((weak)) void hhkb_reset_scan_diagnostics_peaks(void) {}
+__attribute__((weak)) void hhkb_get_rt_rebuild(uint32_t *ms, uint32_t *count) {
+    if (ms) *ms = 0;
+    if (count) *count = 0;
+}
 __attribute__((weak)) void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *err_us,
                                                        uint32_t *locked, uint32_t *lead_us, int32_t *in_us) {
     if (avg_us) *avg_us = 0;
@@ -438,6 +442,21 @@ void vial_diag_task(void) {
         uint32_t usb_rate_hz = (uint32_t)(((uint64_t)usb_diff * 1000ULL + (elapsed_ms / 2)) / elapsed_ms);
 
         hhkb_calc_rates(elapsed_ms);
+#ifdef HHKB_SCAN_DIAGNOSTICS
+        {
+            // RT cache rebuilds are recorded in the matrix task and logged
+            // here; its 1 KB stack cannot carry the printf chain itself.
+            static uint32_t s_rt_rebuild_logged;
+            uint32_t rebuild_ms = 0, rebuild_count = 0;
+            hhkb_get_rt_rebuild(&rebuild_ms, &rebuild_count);
+            if (rebuild_count != s_rt_rebuild_logged) {
+                debug_console_printf("[CFG] RT rebuild=%lu ms (x%lu)\r\n",
+                                     (unsigned long)rebuild_ms,
+                                     (unsigned long)(rebuild_count - s_rt_rebuild_logged));
+                s_rt_rebuild_logged = rebuild_count;
+            }
+        }
+#endif
 #ifdef HHKB_USB_REPORT_DIAGNOSTICS
         if (hhkb_get_debug_flag(1U << 4) && tud_mounted() && !tud_suspended()) {
             usb_report_diag_t d;
