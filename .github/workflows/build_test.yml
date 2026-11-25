@@ -13,6 +13,10 @@ on:
         type: boolean
         default: false
 
+      hhkb_scan_compare:
+        description: Compare scan instruction profiles against 6af2737
+        type: boolean
+        default: false
       hhkb_boot_trace:
         description: Add boot LED landmarks to the Classic ANSI scan-debug build
         type: boolean
@@ -123,6 +127,36 @@ jobs:
         run: |
           chmod +x build_all.sh
           ./build_all.sh -b hhkb --mcu stm32l072 -d "${{ matrix.defines }}${{ inputs.hhkb_scan_diagnostics && ',HHKB_SCAN_DIAGNOSTICS=1' || '' }}${{ inputs.hhkb_scan_diagnostics && inputs.hhkb_boot_trace && ',HHKB_BOOT_TRACE=1' || '' }}" -c
+
+      - name: Compare scan code against baseline
+        if: ${{ inputs.hhkb_scan_compare && inputs.hhkb_scan_diagnostics }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hhkb-scan-compare
+          cp build/hhkb-script/dmk_hhkb_stm32l072 /tmp/hhkb-scan-compare/current.elf
+          cp tools/hhkb/scan_emu.py /tmp/hhkb-scan-compare/scan_emu.py
+          git fetch origin 6af27377ab02569fa1733bff325582afee8155e9
+          git checkout --detach FETCH_HEAD
+          ./build_all.sh -b hhkb --mcu stm32l072 -d HHKB_CLASSIC,HHKB_SCAN_DIAGNOSTICS=1 -c
+          cp build/hhkb-script/dmk_hhkb_stm32l072 /tmp/hhkb-scan-compare/baseline.elf
+          for version in baseline current; do
+            arm-none-eabi-nm -S -n /tmp/hhkb-scan-compare/$version.elf > /tmp/hhkb-scan-compare/$version.symbols.txt
+            for rt in off on; do
+              uv run --with unicorn --with pyelftools python3 /tmp/hhkb-scan-compare/scan_emu.py profile /tmp/hhkb-scan-compare/$version.elf --rt "$rt" > /tmp/hhkb-scan-compare/$version-rt-$rt.txt
+              cat /tmp/hhkb-scan-compare/$version-rt-$rt.txt
+            done
+          done
+          git checkout --detach "${{ github.sha }}"
+          ./build_all.sh -b hhkb --mcu stm32l072 -d HHKB_CLASSIC,HHKB_SCAN_DIAGNOSTICS=1,HHKB_BOOT_TRACE=1 -c
+
+      - name: Upload scan comparison
+        if: ${{ inputs.hhkb_scan_compare && inputs.hhkb_scan_diagnostics }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: hhkb-scan-comparison
+          path: /tmp/hhkb-scan-compare/
+          retention-days: 3
 
       - name: Package HFB and VIA layout
         run: |
