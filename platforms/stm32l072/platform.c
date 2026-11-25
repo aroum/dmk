@@ -40,19 +40,6 @@ static void hhkb_hybrid_startup_pd2(void) {
 }
 #endif
 
-#ifdef HHKB_BOOT_TRACE
-// Pre-scheduler landmarks only. Orange pulse groups are readable on video
-// even if neither USB nor the RTOS starts.
-void hhkb_boot_pulses(unsigned count) {
-    for (unsigned i = 0; i < count; ++i) {
-        GPIOA->BSRR = 1U << 9;
-        for (volatile unsigned d = 0; d < 320000; ++d) __NOP();
-        GPIOA->BRR = 1U << 9;
-        for (volatile unsigned d = 0; d < 320000; ++d) __NOP();
-    }
-    for (volatile unsigned d = 0; d < 1000000; ++d) __NOP();
-}
-#endif
 
 void platform_init(void) {
     __asm__ volatile("" : : "r"(hhkb_image_identity) : "memory");
@@ -61,21 +48,6 @@ void platform_init(void) {
 #ifdef HHKB_HYBRID
     hhkb_hybrid_startup_pd2();
 #endif
-
-    // Debug LED: initialize PA8 & PA9 outputs
-    RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
-    GPIOA->MODER &= ~((3U << (8 * 2)) | (3U << (9 * 2)));
-    GPIOA->MODER |=  ((1U << (8 * 2)) | (1U << (9 * 2)));
-
-    // Flash both LEDs 3 times rapidly to show Bank 2 code execution started
-    for (int k = 0; k < 3; k++) {
-        GPIOA->BSRR = (1U << 8) | (1U << 9);
-        for (volatile uint32_t d = 0; d < 80000; d++) __NOP();
-        GPIOA->BRR = (1U << 8) | (1U << 9);
-        for (volatile uint32_t d = 0; d < 80000; d++) __NOP();
-    }
-    // Turn PA8 ON indicating platform init in progress
-    GPIOA->BSRR = (1U << 8);
 
     // Configure system clocks for STM32L072: HSI16 + PLL -> 32MHz SYSCLK, HSI48 for USB
     // Enable HSI16 and HSI48
@@ -131,9 +103,6 @@ void platform_init(void) {
     SystemCoreClock = 32000000;
 
     // Initialize HHKB matrix hardware (ADC, OpAmp, demuxers)
-#ifdef HHKB_BOOT_TRACE
-    hhkb_boot_pulses(1);
-#endif
     hhkb_matrix_hardware_init();
 }
 

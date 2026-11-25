@@ -167,10 +167,6 @@ void matrix_task(void *pvParameters) {
 #ifdef HHKB_SCAN_DIAGNOSTICS
     uint16_t previous_scan_start = (uint16_t)TIM2->CNT;
 #endif
-#if defined(HHKB_BOOT_TRACE) && !defined(HHKB_HYBRID)
-    // Test USB with both acquisition interrupt sources still disabled.
-    while (!tud_mounted()) vTaskDelay(pdMS_TO_TICKS(10));
-#endif
     s_matrix_task = xTaskGetCurrentTaskHandle();
     update_scan_period();
     TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
@@ -388,14 +384,6 @@ void matrix_task(void *pvParameters) {
             NVIC_ClearPendingIRQ(TIM2_IRQn);
             NVIC_EnableIRQ(TIM2_IRQn);
         }
-#if defined(HHKB_BOOT_TRACE) && !defined(HHKB_HYBRID)
-        // Isolate USB enumeration from the acquisition IRQ mask.
-        if (!tud_mounted()) {
-            (void)ulTaskNotifyTake(pdTRUE, 0);
-            vTaskDelay(pdMS_TO_TICKS(10));
-            continue;
-        }
-#endif
         uint32_t notifications = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 #ifdef HHKB_SCAN_DIAGNOSTICS
         if (notifications > 1) s_matrix_scan_deadline_misses += notifications - 1;
@@ -411,13 +399,6 @@ void matrix_task(void *pvParameters) {
 #endif
         hhkb_calibration_apply_pending();
         hhkb_matrix_scan_raw(s_matrix_state);
-#ifdef HHKB_BOOT_TRACE
-        static bool first_scan_complete;
-        if (!first_scan_complete) {
-            GPIOA->BSRR = 1U << 8;
-            first_scan_complete = true;
-        }
-#endif
 #ifdef HHKB_SCAN_DIAGNOSTICS
         uint32_t scan_us = (uint16_t)(TIM2->CNT - scan_start) / HHKB_SCAN_TIMER_TICKS_PER_US;
         s_matrix_scan_us = scan_us;

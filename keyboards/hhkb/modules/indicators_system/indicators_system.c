@@ -39,10 +39,6 @@ TickType_t keyboard_platform_timeout(void) {
 void keyboard_platform_tick(TickType_t now) {
     bool heartbeat = ((now / pdMS_TO_TICKS(500)) & 1U) != 0;
     bool mounted = tud_mounted();
-#ifdef HHKB_BOOT_TRACE
-    // Keep the independent task landmarks visible until USB configures us.
-    if (!mounted) return;
-#endif
     bool suspended = tud_suspended();
     bool power_saving_active = keyboard_power_saving_enabled() && (!mounted || suspended);
 #ifdef HHKB_HYBRID
@@ -60,14 +56,7 @@ void keyboard_platform_tick(TickType_t now) {
             // Hybrid status has priority over the configurable default mode.
         }
 #endif
-        else if (!mounted && i == 0
-#ifdef HHKB_HYBRID
-                 && !battery
-#endif
-                 ) {
-            // Debug LED: PA8 is solid ON while FreeRTOS is running and waiting for USB host enumeration
-            on = true;
-        } else {
+        else {
             switch (hhkb_get_led_mode(i)) {
             case 1: on = heartbeat; break;
             case 2: on = caps_lock; break;
