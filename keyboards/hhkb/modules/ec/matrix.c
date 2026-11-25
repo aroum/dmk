@@ -3,6 +3,7 @@
 #include "keyboard.h"
 #include "queue.h"
 #include "task.h"
+#include "task_internal.h"
 #include "config.h"
 #include "tusb.h"
 #include "sof_lock.h"
@@ -12,6 +13,15 @@
 #include "stm32l072xx.h"
 
 extern QueueHandle_t matrix_queue;
+
+// Acquisition runs one level above the shared task priority when a level is
+// available; the task drops back between scans (see the loop in matrix_task).
+#if TASK_PRIO_MATRIX + 1 < configMAX_PRIORITIES
+#define MATRIX_SCAN_PRIO (TASK_PRIO_MATRIX + 1)
+#else
+#define MATRIX_SCAN_PRIO TASK_PRIO_MATRIX
+#endif
+
 static matrix_row_t s_matrix_state[MATRIX_ROWS] = {0};
 static TaskHandle_t s_matrix_task;
 static volatile uint16_t s_scan_period_ticks;
@@ -401,6 +411,16 @@ void matrix_task(void *pvParameters) {
             NVIC_ClearPendingIRQ(TIM2_IRQn);
             NVIC_EnableIRQ(TIM2_IRQn);
         }
+        // Wait at elevated priority so the scan fire preempts same-priority
+        // USB/key work immediately: at equal priority the wake waits for the
+        // running peer to block, which measured up to ~0.9 ms of added
+        // fire-to-wake latency and a missed deadline whenever the remainder
+        // of the frame could not absorb it. The priority drops again after
+        // the scan publishes, so consumers run every loop - including during
+        // calibration overruns, where the task never blocks.
+#if MATRIX_SCAN_PRIO != TASK_PRIO_MATRIX
+        vTaskPrioritySet(NULL, MATRIX_SCAN_PRIO);
+#endif
         uint32_t notifications = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 #if HHKB_SOF_LOCK
         // Latch the fire that started this scan before the next one can
@@ -467,6 +487,9 @@ void matrix_task(void *pvParameters) {
 #endif
 #if HHKB_SOF_LOCK
         sof_lock_note_work(sof_fire);
+#endif
+#if MATRIX_SCAN_PRIO != TASK_PRIO_MATRIX
+        vTaskPrioritySet(NULL, TASK_PRIO_MATRIX);
 #endif
         // Keep the next timer notification. Discarding it here forces a
         // nearly-1-ms scan to wait for the following tick, halving throughput.
