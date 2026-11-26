@@ -62,13 +62,13 @@ void scan_prepare_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan, bo
 // Logging and calibration callbacks must stay outside the acquisition IRQ mask.
 static inline __attribute__((always_inline))
 bool scan_process_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan,
-                          matrix_row_t matrix[]) {
-    if (!pending->valid) return false;
+                          bool cache_all_valid, matrix_row_t matrix[]) {
+    if (__builtin_expect(!pending->valid, 0)) return false;
     rt_key_t *key = &s_rt_keys[pending->col][pending->row];
     matrix_row_t previous = matrix[pending->row];
-    if (pending->raw == UINT16_MAX) {
+    if (__builtin_expect(pending->raw == UINT16_MAX, 0)) {
         pending->pressed = key->down;
-    } else if (!hhkb_scan_cache_entry_valid(&s_scan_cache, pending->col, pending->row)) {
+    } else if (__builtin_expect(!cache_all_valid && !hhkb_scan_cache_entry_valid(&s_scan_cache, pending->col, pending->row), 0)) {
         // This cell's thresholds are not rebuilt for the current cfg yet: take
         // the uncached reference path, which the cache reproduces bit-for-bit.
         // Classic mode must keep last_raw current for the ext restore on a
@@ -77,14 +77,22 @@ bool scan_process_pending(scan_pending_t *pending, const rt_scan_cfg_t *scan,
         uint16_t travel;
         pending->pressed = rt_update_scan_sample(key, scan, pending->raw, &travel);
         if (!scan->cfg.rt_enabled) s_scan_cache.key[pending->col][pending->row].last_raw = pending->raw;
-    } else if (scan->cfg.rt_enabled) {
-        pending->pressed = rt_update_scan_cached(key, &s_scan_cache.key[pending->col][pending->row], scan, pending->raw, NULL);
-    } else {
+    } else if (!scan->cfg.rt_enabled) {
         pending->pressed = rt_update_raw_cached(key, &s_scan_cache.key[pending->col][pending->row], pending->raw);
+    } else {
+        pending->pressed = rt_update_scan_cached(key, &s_scan_cache.key[pending->col][pending->row], scan, pending->raw, NULL);
     }
-    if (pending->pressed) matrix[pending->row] |= 1U << pending->col;
-    else matrix[pending->row] &= ~(1U << pending->col);
-    return previous != matrix[pending->row];
+    matrix_row_t bit = (matrix_row_t)(1U << pending->col);
+    if (__builtin_expect(pending->pressed, 0)) {
+        if (!(previous & bit)) {
+            matrix[pending->row] = previous | bit;
+            return true;
+        }
+    } else if (__builtin_expect((previous & bit) != 0, 0)) {
+        matrix[pending->row] = previous & (matrix_row_t)~bit;
+        return true;
+    }
+    return false;
 }
 
 static inline __attribute__((always_inline))
@@ -259,6 +267,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     rt_scan_cfg_t prepared;
     rt_prepare_scan(&prepared, &scan_cfg, curve);
     hhkb_scan_cache_prepare(&s_scan_cache, s_rt_keys, &prepared, rt_range_revision, ec_curve_revision);
+    bool cache_all_valid = (s_scan_cache.rebuild_cursor == HHKB_SCAN_CACHE_CELLS);
     scan_pending_t pending = {0};
 
     for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -280,7 +289,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             // so waiting 4 us since settle_start guarantees >=2 us of discharge.
             GPIOC->BSRR = (1U << 8);
             if (__builtin_expect(debug_topre, 0)) scan_prepare_pending(&pending, &prepared, true);
-            changed |= scan_process_pending(&pending, &prepared, current_matrix);
+            changed |= scan_process_pending(&pending, &prepared, cache_all_valid, current_matrix);
             if (__builtin_expect(debug_topre, 0)) scan_report_pending(&pending, false, false, true, &capture_failed);
             scan_wait_since(settle_start, 4);
 
@@ -313,7 +322,7 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
 
     // Flush the last key in this pass; no sample is deferred to the next scan.
     scan_prepare_pending(&pending, &prepared, debug_topre);
-    changed |= scan_process_pending(&pending, &prepared, current_matrix);
+    changed |= scan_process_pending(&pending, &prepared, cache_all_valid, current_matrix);
     scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
 
     // Disable OpAmp

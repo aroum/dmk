@@ -71,10 +71,12 @@ bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache, const rt_
 static inline __attribute__((always_inline))
 bool rt_update_raw_cached(rt_key_t *key, rt_raw_cache_t *cache, uint16_t raw) {
     cache->last_raw = raw;
-    key->down = raw >= (key->down ? cache->release_raw : cache->press_raw);
-    key->latched = key->down;
+    uint16_t thresh = __builtin_expect(key->down, 0) ? cache->release_raw : cache->press_raw;
+    bool down = raw >= thresh;
+    key->down = down;
+    key->latched = down;
     // ext is unused in classic mode. Restore from last_raw before enabling RT.
-    return key->down;
+    return down;
 }
 
 void     rt_cfg_defaults(rt_cfg_t *c);
