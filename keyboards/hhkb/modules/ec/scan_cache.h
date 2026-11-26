@@ -65,7 +65,6 @@ static __attribute__((noinline)) void hhkb_scan_cache_prepare(hhkb_scan_cache_t 
                                  &keys[idx / MATRIX_ROWS][idx % MATRIX_ROWS], scan);
             cache->rebuild_cursor = (uint8_t)(idx + 1);
         } while (--budget && cache->rebuild_cursor < HHKB_SCAN_CACHE_CELLS);
->>>>>>> 68273e27 (perf(hhkb): spread the RT raw-cache rebuild across scans)
     }
     cache->range_revision = range_revision;
     cache->curve_revision = curve_revision;
