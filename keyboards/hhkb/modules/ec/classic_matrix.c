@@ -235,12 +235,14 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
         0x30004000, 0x20005000, 0x10006000
     };
 
-    // If a 500 Hz calibration peak-phase scan kept the OpAmp on across the
-    // skipped period, turn it off for ~130 us here so R0 C0 sees the same
-    // turn-on settle as in normal 1 kHz scans.
-    if (GPIOC->ODR & (1U << 7)) {
+    // If a calibration peak-phase scan kept the OpAmp on across the skipped
+    // period, turn it off for ~130 us here so R0 C0 sees the same turn-on
+    // settle as in normal 1 kHz scans.
+    static bool s_opamp_kept_on = false;
+    if (s_opamp_kept_on) {
         GPIOC->BRR = (1U << 7) | (1U << 8);
         scan_delay_us(130);
+        s_opamp_kept_on = false;
     }
 
     GPIOB->BSRR = HHKB_ROW_MASK;    // Deselect all rows
@@ -333,10 +335,11 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
     changed |= scan_process_pending(&pending, &prepared, cache_all_valid, current_matrix);
     scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
 
-    // During 1 kHz calibration peak phase (500 Hz divider), keep OpAmp on with
-    // C57 discharged across the skipped period to avoid shifting R0 C0.
-    if (is_calibrating && !capture && hhkb_get_effective_scan_rate() == 4) {
+    // During USB calibration peak phase, keep OpAmp on with C57 discharged
+    // across the skipped period to avoid shifting R0 C0.
+    if (is_calibrating && !capture && !adc_autoff) {
         GPIOC->BSRR = (1U << 8);
+        s_opamp_kept_on = true;
     } else {
         GPIOC->BRR = (1U << 7);
     }
