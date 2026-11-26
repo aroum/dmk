@@ -151,6 +151,12 @@
                 0,
                 18
               ]
+            },
+            {
+              "label": "Battery ADC oversampling 4x",
+              "type": "toggle",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": ["id_hhkb_bt_oversampling", 0, 54]
             }
           ]
         },
@@ -2624,11 +2630,51 @@
                 0,
                 10
               ]
+            },
+            {
+              "label": "Show battery level on orange LED",
+              "type": "toggle",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_battery_led",
+                0,
+                46
+              ]
+            },
+            {
+              "label": "Blink orange on low battery",
+              "type": "toggle",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_low_battery_led",
+                0,
+                47
+              ]
+            },
+            {
+              "label": "Blink blue while pairing",
+              "type": "toggle",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_pairing_led",
+                0,
+                48
+              ]
+            },
+            {
+              "label": "Blink blue for active profile",
+              "type": "toggle",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_profile_led",
+                0,
+                49
+              ]
             }
           ]
         },
         {
-          "label": "Power Saving",
+          "label": "Power",
           "content": [
             {
               "label": "Power Saving Mode",
@@ -2644,6 +2690,124 @@
               "type": "label",
               "content": [
                 "Powers down sensors, matrix scan, and LEDs when disconnected from USB host."
+              ]
+            },
+            {
+              "label": "Sleep after inactivity (min, 0 disables)",
+              "type": "range",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "options": [
+                0,
+                60
+              ],
+              "content": [
+                "id_hhkb_bt_sleep",
+                0,
+                40
+              ]
+            },
+            {
+              "label": "Wake with matrix",
+              "type": "toggle",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_matrix_wake",
+                0,
+                41
+              ]
+            },
+            {
+              "label": "Power off after sleep (minutes)",
+              "showIf": "{id_hhkb_hybrid} == 1 && {id_hhkb_bt_matrix_wake} == 1",
+              "type": "dropdown",
+              "options": [["Never",0],["1",1],["3",3],["5",5],["10",10],["20",20],["30",30],["40",40],["50",50],["60",60]],
+              "content": ["id_hhkb_bt_deep_minutes",0,55]
+            },
+            {
+              "label": "Sleep matrix scan rate (Hz)",
+              "type": "dropdown",
+              "showIf": "{id_hhkb_hybrid} == 1 && {id_hhkb_bt_matrix_wake} == 1",
+              "options": [["1",1],["2",2],["3",3],["4",4],["5",5],["6",6],["7",7],["8",8],["9",9],["10",10]],
+              "content": ["id_hhkb_bt_sleep_hz",0,56]
+            },
+            {
+              "label": "Battery level (%)",
+              "type": "label",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_battery_level",
+                0,
+                50
+              ]
+            },
+            {
+              "label": "Show battery now",
+              "type": "button",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "content": [
+                "id_hhkb_bt_show_battery",
+                0,
+                51
+              ]
+            },
+            {
+              "label": "PC5 short press (0–0.5 s)",
+              "type": "dropdown",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "options": [
+                [
+                  "No action",
+                  0
+                ],
+                [
+                  "Show connected profile",
+                  1
+                ],
+                [
+                  "Show battery level",
+                  2
+                ],
+                [
+                  "Sleep",
+                  3
+                ],
+                [
+                  "Next Bluetooth profile",
+                  4
+                ],
+                [
+                  "Last Bluetooth profile / USB",
+                  5
+                ]
+              ],
+              "content": [
+                "id_hhkb_bt_button_short",
+                0,
+                52
+              ]
+            },
+            {
+              "label": "PC5 long press (2 s)",
+              "type": "dropdown",
+              "showIf": "{id_hhkb_hybrid} == 1",
+              "options": [
+                [
+                  "Power off (stock)",
+                  0
+                ],
+                [
+                  "Sleep",
+                  1
+                ],
+                [
+                  "Pair last Bluetooth profile",
+                  2
+                ]
+              ],
+              "content": [
+                "id_hhkb_bt_button_long",
+                0,
+                53
               ]
             }
           ]
@@ -2661,47 +2825,6 @@
                 44
               ],
               "showIf": "{id_hhkb_hybrid} == 2"
-            },
-            {
-              "label": "Battery ADC oversampling 4x",
-              "type": "toggle",
-              "content": ["id_hhkb_bt_oversampling", 0, 54]
-            },
-            {
-              "label": "Sleep after inactivity (min, 0 disables)",
-              "type": "range",
-              "options": [
-                0,
-                60
-              ],
-              "content": [
-                "id_hhkb_bt_sleep",
-                0,
-                40
-              ]
-            },
-            {
-              "label": "Wake with matrix",
-              "type": "toggle",
-              "content": [
-                "id_hhkb_bt_matrix_wake",
-                0,
-                41
-              ]
-            },
-            {
-              "label": "Power off after sleep (minutes)",
-              "showIf": "{id_hhkb_bt_matrix_wake} == 1",
-              "type": "dropdown",
-              "options": [["Never",0],["1",1],["3",3],["5",5],["10",10],["20",20],["30",30],["40",40],["50",50],["60",60]],
-              "content": ["id_hhkb_bt_deep_minutes",0,55]
-            },
-            {
-              "label": "Sleep matrix scan rate (Hz)",
-              "type": "dropdown",
-              "showIf": "{id_hhkb_bt_matrix_wake} == 1",
-              "options": [["1",1],["2",2],["3",3],["4",4],["5",5],["6",6],["7",7],["8",8],["9",9],["10",10]],
-              "content": ["id_hhkb_bt_sleep_hz",0,56]
             },
             {
               "label": "Select paired profile",
@@ -2763,118 +2886,6 @@
                 "id_hhkb_bt_pair",
                 0,
                 43
-              ]
-            },
-            {
-              "label": "Show battery level on orange LED",
-              "type": "toggle",
-              "content": [
-                "id_hhkb_bt_battery_led",
-                0,
-                46
-              ]
-            },
-            {
-              "label": "Blink orange on low battery",
-              "type": "toggle",
-              "content": [
-                "id_hhkb_bt_low_battery_led",
-                0,
-                47
-              ]
-            },
-            {
-              "label": "Blink blue while pairing",
-              "type": "toggle",
-              "content": [
-                "id_hhkb_bt_pairing_led",
-                0,
-                48
-              ]
-            },
-            {
-              "label": "Blink blue for active profile",
-              "type": "toggle",
-              "content": [
-                "id_hhkb_bt_profile_led",
-                0,
-                49
-              ]
-            },
-            {
-              "label": "Battery level (%)",
-              "type": "label",
-              "content": [
-                "id_hhkb_bt_battery_level",
-                0,
-                50
-              ]
-            },
-            {
-              "label": "Show battery now",
-              "type": "button",
-              "content": [
-                "id_hhkb_bt_show_battery",
-                0,
-                51
-              ]
-            },
-            {
-              "label": "PC5 short press (0–0.5 s)",
-              "type": "dropdown",
-              "options": [
-                [
-                  "No action",
-                  0
-                ],
-                [
-                  "Show connected profile",
-                  1
-                ],
-                [
-                  "Show battery level",
-                  2
-                ],
-                [
-                  "Sleep",
-                  3
-                ],
-                [
-                  "Next Bluetooth profile",
-                  4
-                ],
-                [
-                  "Last Bluetooth profile / USB",
-                  5
-                ]
-              ],
-              "content": [
-                "id_hhkb_bt_button_short",
-                0,
-                52
-              ]
-            },
-            {
-              "label": "PC5 long press (2 s)",
-              "type": "dropdown",
-              "options": [
-                [
-                  "Power off (stock)",
-                  0
-                ],
-                [
-                  "Sleep",
-                  1
-                ],
-                [
-                  "Pair last Bluetooth profile",
-                  2
-                ]
-              ],
-              "content": [
-                "id_hhkb_bt_button_long",
-                0,
-                53
               ]
             }
           ]

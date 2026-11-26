@@ -207,7 +207,8 @@ int main(void){
                 for value in node: yield from walk(value)
         bluetooth = next(n for n in walk(definition) if n.get('label') == 'Bluetooth')
         self.assertEqual(bluetooth['showIf'], '{id_hhkb_hybrid} == 1')
-        controls = {n['label']: n for n in walk(bluetooth) if 'label' in n}
+        power = next(n for n in walk(definition) if n.get('label') == 'Power')
+        controls = {n['label']: n for n in walk(power) if 'label' in n}
         for label in ('Sleep matrix scan rate (Hz)', 'Power off after sleep (minutes)'):
-            self.assertEqual(controls[label]['showIf'], '{id_hhkb_bt_matrix_wake} == 1')
+            self.assertEqual(controls[label]['showIf'], '{id_hhkb_hybrid} == 1 && {id_hhkb_bt_matrix_wake} == 1')
         self.assertEqual([o[1] for o in controls['Sleep matrix scan rate (Hz)']['options']], list(range(1,11)))
