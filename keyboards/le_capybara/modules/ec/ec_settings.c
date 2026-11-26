@@ -301,13 +301,13 @@ void hhkb_calibration_apply_pending(void) {
 // consumer (USB task); the barriers order the entry stores against the index.
 enum { CAL_LOG_START = 1, CAL_LOG_BASE_INCOMPLETE, CAL_LOG_BASE_READY, CAL_LOG_KEY, CAL_LOG_FINISH };
 typedef struct { uint8_t kind, row, col, count; uint16_t a, b; } cal_log_evt_t;
-static cal_log_evt_t s_cal_log[8];
+static cal_log_evt_t s_cal_log[4];
 static volatile uint8_t s_cal_log_head, s_cal_log_tail;
 
 static void cal_log_push(uint8_t kind, uint8_t row, uint8_t col, uint8_t count, uint16_t a, uint16_t b) {
     uint8_t head = s_cal_log_head;
-    if ((uint8_t)(head - s_cal_log_tail) >= 8) return; // full: drop the event
-    cal_log_evt_t *evt = &s_cal_log[head % 8];
+    if ((uint8_t)(head - s_cal_log_tail) >= 4) return; // full: drop the event
+    cal_log_evt_t *evt = &s_cal_log[head % 4];
     evt->kind = kind; evt->row = row; evt->col = col; evt->count = count;
     evt->a = a; evt->b = b;
     __asm volatile("" ::: "memory");
@@ -317,7 +317,7 @@ static void cal_log_push(uint8_t kind, uint8_t row, uint8_t col, uint8_t count, 
 void hhkb_cal_log_flush(void) {
     while (s_cal_log_tail != s_cal_log_head) {
         __asm volatile("" ::: "memory");
-        const cal_log_evt_t *evt = &s_cal_log[s_cal_log_tail % 8];
+        const cal_log_evt_t *evt = &s_cal_log[s_cal_log_tail % 4];
         switch (evt->kind) {
         case CAL_LOG_START:
             debug_console_printf("[CAL] Started. Release all keys.\r\n");
