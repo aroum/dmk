@@ -178,4 +178,26 @@ class FlasherValidationTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'CRC'): flasher.main()
             self.assertFalse(Keyboard.started)
 
+    def test_verify_dmk_after_flash_checks_vid_pid_and_via(self):
+        written = []
+        closed = []
+        handle = types.SimpleNamespace(
+            open_path=lambda path: None,
+            set_nonblocking=lambda value: None,
+            write=lambda data: (written.append(bytes(data)), len(data))[1],
+            read=lambda size, timeout_ms=2000: b'\x01\x00\x0c' + b'\x00' * (size - 3),
+            close=lambda: closed.append(True),
+        )
+        dmk_dev = {'path': b'dmk-via', 'usage_page': 0xFF60, 'usage': 0x61}
+        with patch.object(flasher.hid, 'enumerate', side_effect=[[], [dmk_dev]], create=True), \
+             patch.object(flasher.hid, 'device', return_value=handle, create=True), \
+             patch.object(flasher.time, 'sleep'), \
+             patch.object(flasher.time, 'monotonic', side_effect=[0.0, 0.1, 0.2]):
+            dev_info, proto = flasher.verify_dmk_after_flash(timeout_sec=5.0)
+        self.assertEqual(dev_info, dmk_dev)
+        self.assertEqual(proto, 0x000C)
+        self.assertEqual(written[0][:2], b'\x00\x01')
+        self.assertEqual(len(written[0]), 33)
+        self.assertEqual(closed, [True])
+
 if __name__ == '__main__': unittest.main()

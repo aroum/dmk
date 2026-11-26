@@ -136,7 +136,7 @@ $("patchButton").onclick=async()=>{
  try {const result=await patchFirmware(selectedStock,selectedApp),link=document.createElement("a"),url=URL.createObjectURL(new Blob([result]));link.href=url;link.download="dmk-"+modelOf(result)+".hfb";link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);log("Patched "+modelNames[modelOf(result)]+". Both CRCs verified. Download requested.");}
  catch(e){log(e.message);}finally{busy=false;await inspectPatch();if(selectedFirmware)$("flashButton").disabled=false;}
 };
-function channel(device) {for(const c of device.collections)if(c.usagePage===0xff00&&c.usage===1&&c.inputReports?.[0]&&c.outputReports?.[0])return{input:c.inputReports[0].reportId,output:c.outputReports[0].reportId};throw Error("PFU vendor HID interface unavailable");}
+function channel(device,usagePage=0xff00,usage=1) {for(const c of device.collections)if(c.usagePage===usagePage&&c.usage===usage&&c.inputReports?.[0]&&c.outputReports?.[0])return{input:c.inputReports[0].reportId,output:c.outputReports[0].reportId};throw Error(usagePage===0xff60?"VIA Raw HID interface unavailable":"PFU vendor HID interface unavailable");}
 async function selectDevice() {const devices=await navigator.hid.requestDevice({filters:[{vendorId:0x04fe,usagePage:0xff00,usage:1}]});if(!devices.length)throw Error("No device selected");const d=devices[0];await d.open();return d;}
 function checkTarget(info,model) {
  if(info.length<26)throw Error("Incomplete device identity response");
@@ -169,11 +169,33 @@ async function flash(data) {
   await command([170,170,227,0,0,0]);log("Final command acknowledged. Reconnect and verify the keyboard.");
  } finally {device.removeEventListener("inputreport",onInput);if(device.opened)await device.close();}
 }
+async function verifyDmkDevice() {
+ log("Press Verify DMK & VIA after the keyboard reboots to check VID/PID and VIA.");
+ $("flashButton").textContent="Verify DMK & VIA";
+ await new Promise(resolve=>{$("flashButton").disabled=false;$("flashButton").onclick=()=>{$("flashButton").disabled=true;resolve();};});
+ const devices=await navigator.hid.requestDevice({filters:[{vendorId:0xcafe,productId:0x4014,usagePage:0xff60,usage:0x61}]});
+ if(!devices.length)throw Error("No DMK device selected");
+ const d=devices[0];
+ if(d.vendorId!==0xcafe||d.productId!==0x4014)throw Error("Unexpected VID/PID: 0x"+d.vendorId.toString(16)+":0x"+d.productId.toString(16));
+ await d.open();
+ const ids=channel(d,0xff60,0x61);let timer,waiting=null;
+ const onInput=e=>{if(waiting&&e.reportId===ids.input){const resolve=waiting;waiting=null;resolve(new Uint8Array(e.data.buffer,e.data.byteOffset,e.data.byteLength).slice());}};
+ try {
+  d.addEventListener("inputreport",onInput);
+  const response=new Promise((resolve,reject)=>{waiting=resolve;timer=setTimeout(()=>{waiting=null;reject(Error("Timeout waiting for VIA response"));},3000);});
+  await d.sendReport(ids.output,Uint8Array.from([1,...Array(31).fill(0)]));
+  const reply=await response;
+  if(reply.length<3||reply[0]!==1)throw Error("Unexpected VIA response");
+  const proto=((reply[1]<<8)|reply[2]).toString(16).padStart(4,"0");
+  $("targetInfo").textContent="DMK 0xCAFE:0x4014 · VIA 0x"+proto+" verified";
+  log("Verified DMK (0xCAFE:0x4014) · VIA protocol 0x"+proto);
+ } finally {clearTimeout(timer);waiting=null;d.removeEventListener("inputreport",onInput);if(d.opened)await d.close();}
+}
 async function startFlash() {
  if(busy||!selectedFirmware)return;
  if(!navigator.hid){log("WebHID unavailable. Use Chrome/Edge or serve this page from localhost.");return;}
  busy=true;$("patchButton").disabled=true;$("flashButton").disabled=true;$("firmware").disabled=true;
- try {await flash(selectedFirmware);}catch(e){log(e.message);}finally{busy=false;$("firmware").disabled=false;$("flashButton").textContent="Connect and flash";$("flashButton").onclick=startFlash;await inspectFirmware();await inspectPatch();}
+ try {await flash(selectedFirmware);if(identity(selectedFirmware.slice(4,65540)))await verifyDmkDevice();}catch(e){log(e.message);}finally{busy=false;$("firmware").disabled=false;$("flashButton").textContent="Connect and flash";$("flashButton").onclick=startFlash;await inspectFirmware();await inspectPatch();}
 }
 $("flashButton").onclick=startFlash;show(true);
 </script></html>

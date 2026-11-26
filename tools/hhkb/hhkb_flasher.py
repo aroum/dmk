@@ -39,6 +39,13 @@ PFU_VID = 0x04FE
 PFU_USAGE_PAGE = 0xFF00
 PFU_USAGE = 0x01
 
+DMK_VID = 0xCAFE
+DMK_PID = 0x4014
+VIA_USAGE_PAGE = 0xFF60
+VIA_USAGE = 0x61
+VIA_REPORT_SIZE = 32
+VIA_CMD_GET_PROTOCOL_VERSION = 0x01
+
 REPORT_SIZE = 64
 CLASSIC_HFB_SIZE = 65570
 HYBRID_HFB_SIZE = 282672
@@ -151,6 +158,55 @@ def find_hhkb_device(product_id=None):
         if d.get("usage_page") == 0 and d.get("interface_number") == 2:
             return d
     return None
+
+def find_dmk_via_device():
+    """Locate DMK keyboard (0xCAFE:0x4014) VIA Raw HID interface (0xFF60 / 0x61)."""
+    devices = hid.enumerate(DMK_VID, DMK_PID)
+    for d in devices:
+        if d.get("usage_page") == VIA_USAGE_PAGE and d.get("usage") == VIA_USAGE:
+            return d
+    for d in devices:
+        if d.get("usage_page", 0) == 0 and d.get("interface_number") == 1:
+            return d
+    return None
+
+def check_via_protocol(dev_info, timeout_ms=2000):
+    """Send VIA GET_PROTOCOL_VERSION (0x01) and return protocol version."""
+    handle = hid.device()
+    handle.open_path(dev_info["path"])
+    try:
+        handle.set_nonblocking(False)
+        packet = bytes([VIA_CMD_GET_PROTOCOL_VERSION]) + b"\x00" * (VIA_REPORT_SIZE - 1)
+        written = handle.write(b"\x00" + packet)
+        if written != len(packet) + 1:
+            raise IOError(f"VIA write failed (wrote {written} bytes)")
+        reply = bytes(handle.read(VIA_REPORT_SIZE, timeout_ms=timeout_ms))
+        if len(reply) < 3 or reply[0] != VIA_CMD_GET_PROTOCOL_VERSION:
+            raise IOError(f"Unexpected VIA response: {reply[:8]!r}")
+        return (reply[1] << 8) | reply[2]
+    finally:
+        try:
+            handle.close()
+        except Exception:
+            pass
+
+def verify_dmk_after_flash(timeout_sec=15.0):
+    """Wait for rebooted DMK device (0xCAFE:0x4014) and verify VIA Raw HID."""
+    deadline = time.monotonic() + timeout_sec
+    last_error = None
+    while time.monotonic() < deadline:
+        dev_info = find_dmk_via_device()
+        if dev_info is not None:
+            try:
+                proto = check_via_protocol(dev_info)
+                return dev_info, proto
+            except OSError as exc:
+                last_error = exc
+        time.sleep(0.2)
+    message = f"DMK device (0x{DMK_VID:04X}:0x{DMK_PID:04X}) with VIA HID did not appear"
+    if last_error is not None:
+        message += f": {last_error}"
+    raise TimeoutError(message) from last_error
 
 class HHKBDevice:
     def __init__(self, dev_info):
@@ -355,6 +411,7 @@ def main():
     parser.add_argument("--force", action="store_true", help="Bypass Bank 2 reset-vector check")
     parser.add_argument("--skip-crc", action="store_true", help="Skip both HFB CRC checks")
     parser.add_argument("--skip-model-check", action="store_true", help="Skip HFB/device model check")
+    parser.add_argument("--skip-verify", action="store_true", help="Skip post-flash DMK VID/PID and VIA check")
     parser.add_argument("--model", choices=CLASSIC_VERSIONS, help="Model ID to use when wrapping a raw .bin")
     args = parser.parse_args()
 
@@ -432,6 +489,15 @@ def main():
             print("Final command acknowledged; verify the device after reboot.")
         else:
             print("No final acknowledgement: update result is unconfirmed. Verify the device after reboot.")
+
+    if not args.skip_verify and b"DMKHHKB1|" in hfb_container:
+        print(f"\nWaiting for DMK device (0x{DMK_VID:04X}:0x{DMK_PID:04X}) and checking VIA...")
+        try:
+            _, proto = verify_dmk_after_flash()
+            print(f"Verified DMK device (0x{DMK_VID:04X}:0x{DMK_PID:04X}), VIA protocol 0x{proto:04X}.")
+        except Exception as exc:
+            print(f"Post-flash verification failed: {exc}")
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()

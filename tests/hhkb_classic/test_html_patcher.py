@@ -158,6 +158,25 @@ if(!$('patchButton').disabled||!$('patchStatus').textContent.includes('Incompati
                     number='PD-KB800YSC1',recoveryNumber='PD-KB800BSC',
                     wrongAt=0,rejectRecovery=True)
 
+    def test_webhid_verify_dmk_vid_pid_and_via(self):
+        body = '''
+const sent=[];
+const dmk={vendorId:0xcafe,productId:0x4014,opened:false,
+ collections:[{usagePage:0xff60,usage:0x61,inputReports:[{reportId:0}],outputReports:[{reportId:0}]}],
+ open:async()=>{dmk.opened=true},close:async()=>{dmk.opened=false},
+ addEventListener:(_,fn)=>{dmk.cb=fn},removeEventListener(){},
+ sendReport:async(_,pkt)=>{sent.push(Array.from(pkt));dmk.cb({reportId:0,data:new DataView(Uint8Array.from([1,0,12,...Array(29).fill(0)]).buffer)})}};
+navigator.hid={requestDevice:async()=>[dmk]};
+await verifyDmkDevice();
+if(sent.length!==1||sent[0].length!==32||sent[0][0]!==1)throw Error('invalid VIA probe');
+if(!$("targetInfo").textContent.includes('0xCAFE:0x4014')||!$("targetInfo").textContent.includes('0x000c'))throw Error('missing verification status');
+if(dmk.opened)throw Error('DMK device leaked');
+dmk.vendorId=0x04fe;
+let rejected=false;try{await verifyDmkDevice()}catch(e){rejected=true}
+if(!rejected)throw Error('accepted non-DMK VID');
+'''
+        self.run_js(body)
+
     @staticmethod
     def flash_harness():
         return '''
