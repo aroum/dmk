@@ -212,9 +212,9 @@ Testing on physical hardware has revealed the following behavior:
 
 In theory, one could generate a clean firmware image that the nRF would accept. That would yield a fully working USB keyboard, but the Bluetooth module would become useless until stock PFU firmware is reflashed. A potential multi-stage bypass concept is documented in the [Installation Guide](install.md#theoretical-multi-stage-workaround).
 
-## Backup & Restore: STM32L072CZY6 (Classic & Hybrid)
+## Backup & Restore: STM32L072RBT6 (Classic & Hybrid)
 
-The primary host microcontroller across HHKB Classic and Hybrid is the **STMicroelectronics STM32L072CZY6** (ARM Cortex-M0+, 192 KB Flash, 20 KB SRAM, 6 KB embedded EEPROM).
+The primary host microcontroller across HHKB Classic and Hybrid is the **STMicroelectronics STM32L072RBT6** (ARM Cortex-M0+, LQFP64, 128 KB Flash, 20 KB SRAM, 6 KB embedded EEPROM).
 
 ### STM32 Memory Map: Differences Between Classic and Hybrid
 

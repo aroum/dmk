@@ -9,8 +9,8 @@
 | Feature                  | HHKB Professional Classic    | HHKB Professional HYBRID                                                                 | HHKB Studio                                |
 | :----------------------- | :--------------------------- | :--------------------------------------------------------------------------------------- | :----------------------------------------- |
 | **Switch Technology**    | Electro-capacitive EC 45g    | Electro-capacitive EC 45g                                                                | Mechanical Hot-Swap MX (Linear 45g)        |
-| **Main MCU**             | STM32L072CZ (ARM Cortex-M0+) | STM32L072CZ (ANSI) / STM32L072RBT6 (JIS, 128 KB flash)                                   | STM32L4 series (ARM Cortex-M4)             |
-| **Wireless Transceiver** | None (Wired USB-C only)      | [Taiyo Yuden EYSHCNZWZ](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) / Kaga FEI EC2832 (nRF52832) | Nordic nRF52 series (BLE 5.0)              |
+| **Main MCU**             | STM32L072RBT6 (ARM Cortex-M0+, 128 KB flash) | STM32L072RBT6 (ARM Cortex-M0+, 128 KB flash)                                             | STM32L4 series (ARM Cortex-M4)             |
+| **Wireless Transceiver** | None (Wired USB-C only)                      | [Taiyo Yuden EYSHCNZWZ](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) or Kaga FEI EC2832 (nRF52832; likely revision-dependent, PCBs look identical and pinout is likely identical) | Nordic nRF52 series (BLE 5.0)              |
 | **Pointing Device**      | None                         | None                                                                                     | Isometric Pointing Stick + 3 Mouse Buttons |
 | **Gesture Controls**     | None                         | None                                                                                     | 4× Capacitive Touch Gesture Pads           |
 | **Power Source**         | USB-C Bus Power (5V)         | 2× AA Batteries / USB-C                                                                  | 4× AA Batteries / USB-C                    |
@@ -18,7 +18,7 @@
 
 ## HHKB Classic
 
-DMK firmware runs natively on the factory STM32L072CZ microcontroller of the wired USB-C HHKB Professional Classic series. No hardware modifications, soldering, or disassembly are required.
+DMK firmware runs natively on the factory STM32L072RBT6 microcontroller of the wired USB-C HHKB Professional Classic series. No hardware modifications, soldering, or disassembly are required.
 
 ### Supported ANSI Models (60-key US Layout)
 
@@ -40,7 +40,7 @@ The following 7 models represent the physical 60-key ANSI (US Layout) revisions 
 
 1. **Architecture Uniformity:**
    All 7 models share the exact same hardware motherboard architecture:
-   - Microcontroller: **STMicroelectronics STM32L072CZY6** (ARM Cortex-M0+, 192 KB Flash, 20 KB SRAM, 6 KB EEPROM).
+   - Microcontroller: **STMicroelectronics STM32L072RBT6** (ARM Cortex-M0+, LQFP64, 128 KB Flash, 20 KB SRAM, 6 KB EEPROM).
    - Sensor Board: Capacitive EC matrix (15 columns × 4 rows = 60 keys).
    - Factory Updater: Dual-bank flash layout (Bank 1 recovery bootloader + Bank 2 application firmware).
 
