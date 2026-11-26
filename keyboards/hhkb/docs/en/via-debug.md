@@ -134,7 +134,8 @@ From **Start calibration** until **Finish and save**, physical keys remain visib
 Outside an explicit calibration session, baseline and peak remain fixed: runtime ADC spikes do not expand the saved range. Recalibrate after changing domes, silencing rings or key travel.
 
 - **Actuation point:** Actuation depth (0.1–4.0 mm in 0.1 mm steps).
-- **Release hysteresis:** Classic mode release buffer (0.1–4.0 mm in 0.1 mm steps).
+- **Release hysteresis:** Classic mode release buffer (0.1–4.0 mm in 0.1 mm steps; hidden when Rapid Trigger is enabled).
+- **Rapid Trigger safety clamp:** Before a custom calibration is saved, effective RT press/release sensitivity is clamped to at least 0.4 mm (100 ‰) to prevent resting-noise oscillation.
 - **Settings EEPROM:** Compressed storage status: `Pending`, `Saving (compressed)`, `Saved (compressed)`, `Occupied: not saved`, `Full: not saved`, or a write error. See [compressed EEPROM storage](#compressed-eeprom-storage).
 
 ### 3. Rapid Trigger
@@ -418,7 +419,6 @@ The EC capacitive switch relies on a conical spring compressing against PCB sens
 
 USB soft-OFF keeps USB enumerated and VIA accessible, stops the matrix/sensors and blanks normal LEDs. Hold PC5 about 1 second and release to resume without reset; a 10-second hold cancels wake and repeats Nordic idle after the orange warning. Power off after sleep is battery-only; sleep itself is available on USB. Matrix wake and PC5 mappings keep their existing EEPROM settings.
 
-
 ## Compressed EEPROM storage
 
 The development firmware uses one atomic snapshot for all four keymap layers, eight combos, the full macro buffer, calibration, travel curve parameters and VIA settings. This applies to Classic and Hybrid, ANSI and JIS, including Type-S. Hybrid-only settings remain exclusive to Hybrid.
@@ -434,6 +434,5 @@ The fragmented physical ranges are `0x08080480–0x080804FF`, `0x08080524–0x08
 On first startup, compatible legacy DMK records are imported automatically (ANSI DMK1/DMK2 or JIS DMK2, plus compatible settings). When necessary, the newest legacy DMK2 snapshot is first copied and committed into its first legacy slot. Only after the new compact snapshot commits are owned legacy bytes in PFU table regions cleared. Power cuts during migration are recoverable. This does not reconstruct PFU bytes overwritten by older DMK firmware: restoring stock may still require the same-board backup or resetting the stock keymap in HHKB Keymap Tool. Older DMK builds cannot read the compressed format.
 
 Normal Bank 1 firmware updates should preserve the new storage because it avoids the known update metadata and stock keymap regions. This layout is a development implementation based on the available EEPROM map and Classic backup; it still needs a complete Hybrid/JIS EEPROM backup and hardware verification. Keep a [same-board EEPROM backup](backup-restore.md) before migration, and verify Settings EEPROM after updating.
-
 
 EC Matrix Stream samples telemetry at most once every 20 ms (50 Hz). Every matrix scan still processes every populated key. Rapid Trigger uses a cached raw reset threshold and combines normalization with state updates outside the reset zone. Inside that zone the inactive anchor is stored as zero until actuation arms the key again. Debug samples retain the exact normalized travel.

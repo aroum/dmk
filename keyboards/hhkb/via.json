@@ -1837,11 +1837,13 @@
               "type": "label",
               "content": [
                 "Use RT release sensitivity instead of hysteresis."
-              ]
+              ],
+              "showIf": "{id_hhkb_rapid_trigger} == 1"
             },
             {
               "label": "Release hysteresis",
               "type": "dropdown",
+              "showIf": "{id_hhkb_rapid_trigger} == 0",
               "options": [
                 [
                   "0.1 mm",

@@ -742,7 +742,7 @@ void hhkb_debug_feed_sample(uint8_t col, uint8_t row, uint16_t raw, uint16_t nor
 
 // USB consumes the latest travel update when the console endpoint is available.
 void hhkb_debug_flush_sample(void) {
-    cal_flush_log();
+    hhkb_cal_log_flush();
     if (!s_dbg_pending) return;
     taskENTER_CRITICAL();
     uint8_t row = s_dbg_row, col = s_dbg_col;
@@ -842,6 +842,10 @@ rt_cfg_t hhkb_get_scan_cfg(void) {
     taskENTER_CRITICAL();
     rt_cfg_t cfg = s_rt_cfg;
     if (!cfg.rt_enabled) cfg.release_pm = s_classic_release_pm;
+    else if (!s_custom_calibration) {
+        if (cfg.press_pm < 100) cfg.press_pm = 100;
+        if (cfg.release_pm < 100) cfg.release_pm = 100;
+    }
     taskEXIT_CRITICAL();
     return cfg;
 }
