@@ -24,7 +24,7 @@ The timer-driven scanner is enabled by default. VIA selects 50, 125, 250, 500, o
 
 ### USB SOF measurements on Classic ANSI
 
-SOF synchronization is enabled by default through `HHKB_SOF_LOCK=1`. Use the session toggle in VIA under Scan Rate for an A/B comparison. USB diagnostics, Polling Rate Monitor and the other VIA debug controls remain available. The implementation is described in [PR #10](https://github.com/aroum/dmk/pull/10).
+SOF synchronization is enabled by default through `HHKB_SOF_LOCK=1`. Use the session toggle in VIA under Scan Rate for an A/B comparison. USB diagnostics, Polling Rate Diagnostics and the other VIA debug controls remain available. The implementation is described in [PR #10](https://github.com/aroum/dmk/pull/10).
 
 On November 25, 2026, the user tested HHKB Classic ANSI on Linux/Chromium with debug firmware `6af27377` from [Actions #45550849676](https://github.com/aroum/dmk/actions/runs/45550849676). That firmware allowed switching SOF through VIA. The user waited 10 seconds before each recording, then pressed keys. Logs `hid-console-2026-11-25T06-49-12.743Z.txt` and `hid-console-2026-11-25T06-49-44.669Z.txt` correspond to SOF On and Off. The logs do not record the remaining settings or USB topology.
 

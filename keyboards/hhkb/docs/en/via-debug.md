@@ -155,20 +155,20 @@ Outside an explicit calibration session, baseline and peak remain fixed: runtime
   - `4`: System 2 profile indicator
 - **Orange LED (PA9):** Identical 5 modes for the orange LED.
 
-### 5. Power Saving
+### 5. Power
 
-- **Power Saving Mode:** Deep power-saving toggle when no USB host is present (charger-only, unmounted, or suspended):
+- **Power Mode:** Deep power-saving toggle when no USB host is present (charger-only, unmounted, or suspended):
   - When disconnected from USB host, turns off all LEDs and completely cuts power to the Topre capacitive sensor board (`PC14` and `PC7` pulled LOW) while suspending matrix scanning.
   - When a USB host connects, sensor power is restored and normal scanning resumes automatically.
 
 ### 6. Debug
 
 - **Firmware Version:** Displays the compiled DMK firmware version. Release 2026.11.22 reports `2026.11.22` here; HFB versions such as A4.50 are separate.
-- **EC Matrix Stream:** Streams real-time `[EC]` capacitance readings to the HID Console.
-- **VIA Telemetry Diag:** Diagnostic logging of incoming/outgoing VIA v3 packets.
-- **Polling Rate Monitor:** Telemetry for matrix scan and USB report frequency.
-- **Calibration Monitor:** Live tracking of sensor baseline values and capacitance drift.
-- **Reset and stock recovery:** two independent buttons: erase DMK EEPROM and restart DMK, or return to Bank 1 while preserving DMK settings.
+- **EC Matrix Diagnostics:** Streams real-time `[EC]` capacitance readings to the HID Console.
+- **VIA Telemetry Diagnostics:** Diagnostic logging of incoming/outgoing VIA v3 packets.
+- **Polling Rate Diagnostics:** Telemetry for matrix scan and USB report frequency.
+- **Calibration Diagnostics:** Live tracking of sensor baseline values and capacitance drift.
+- **Reset and recovery:** two independent buttons: erase DMK EEPROM and restart DMK, or return to Bank 1 while preserving DMK settings.
 
 ### Small readings near the released position
 
@@ -193,7 +193,7 @@ Check with both hands completely removed from the keyboard. If the readings stop
 > **Status Label Updates in VIA (Curve status, Calibration status, Settings EEPROM):**
 > Dynamic status labels (such as `Curve status`, `Calibration status`, `Settings EEPROM`, and similar fields) do not continuously poll or update live in the VIA web interface. Due to the architecture of WebHID and the VIA web app, updated values for these labels are retrieved from the controller only when switching between submenus or reloading the page in the browser (F5 / Ctrl+R / Cmd+R). If you adjust curve parameters or perform key calibration, reload the VIA page or switch menus to read the updated status.
 >
-> For continuous live tracking of calibration progress and sensor activity, toggle on **Calibration Monitor** under _HHKB Settings_ → _Debug_ and open the **HID Console** tab (enabled in VIA settings via _Show HID Console tab_) to observe the textual progress bar and per-key travel peak updates.
+> For continuous live tracking of calibration progress and sensor activity, toggle on **Calibration Diagnostics** under _HHKB Settings_ → _Debug_ and open the **HID Console** tab (enabled in VIA settings via _Show HID Console tab_) to observe the textual progress bar and per-key travel peak updates.
 
 ## Debugging and HID Console
 
@@ -207,7 +207,7 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
 
 ### 2. Logging Channels and Output Formats
 
-- **EC Matrix Stream:** Real-time stream of capacitive sensor samples `[EC]`.
+- **EC Matrix Diagnostics:** Real-time stream of capacitive sensor samples `[EC]`.
   - **Message Format:**
     ```text
     [EC] R<row> C<col> : raw=<raw> base=<base> peak=<peak> travel=<norm/10>% <DN|UP>
@@ -221,29 +221,29 @@ The **HHKB Settings** → **Debug** submenu provides granular toggles for diagno
     - `DN` / `UP` — Binary actuation state (`DN` = pressed, `UP` = released).
   - **Quiet Threshold Filtering:** To avoid flooding the console and USB buffers, intermediate travel updates are sent only when the raw ADC signal changes by more than **±40 units**, or instantly upon any transition (`DN` $\leftrightarrow$ `UP`).
 
-- **Calibration Monitor:** Live step-by-step progress logging for key calibration. Outputs baseline capture completion, real-time peak updates per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), a visual progress bar `[====>    ] X% (N/60)`, and ready-to-save notification.
+- **Calibration Diagnostics:** Live step-by-step progress logging for key calibration. Outputs baseline capture completion, real-time peak updates per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), a visual progress bar `[====>    ] X% (N/60)`, and ready-to-save notification.
 
-- **Polling Rate Monitor:** Periodic telemetry logging actual matrix scan and USB loop frequencies (e.g. `[RATE] matrix=1000 Hz (target: 1000 Hz), usb_loop=500 Hz`).
+- **Polling Rate Diagnostics:** Periodic telemetry logging actual matrix scan and USB loop frequencies (e.g. `[RATE] matrix=1000 Hz (target: 1000 Hz), usb_loop=500 Hz`).
   > [!NOTE]
   > **Matrix Scan Rate (`matrix`) vs USB Task Loop (`usb_loop`):**
   >
   > - `matrix`: Measured full-matrix scan rate. Selecting 1000 Hz requests a 1 ms period; actual throughput depends on scan duration and load. Use detailed scan diagnostics to verify deadlines.
   > - `usb_loop`: USB service-task iterations, not the USB HID polling rate. An idle HHKB waits for notifications with a one-second heartbeat; pending EEPROM work uses shorter waits. Input queues and USB events wake the task immediately. The HID endpoint still advertises a 1 ms interval (`bInterval=1`).
 
-- **VIA Telemetry Diag:** Diagnostic logging of incoming and outgoing VIA v3 protocol packets (`[VIA_DIAG] rx=... tx_sub=...`).
+- **VIA Telemetry Diagnostics:** Diagnostic logging of incoming and outgoing VIA v3 protocol packets (`[VIA_DIAG] rx=... tx_sub=...`).
 
 ### Detailed scan timing (ANSI and JIS)
 
 In **Actions → Build Firmware → Run workflow**, select the `dev` branch and enable **hhkb_scan_diagnostics**. This builds only HHKB variants with `HHKB_SCAN_DIAGNOSTICS=1`; artifact names end in `scan-debug`. Classic artifacts contain ready HFB containers. Hybrid artifacts contain STM32 binaries for local patching with the included HTML tool. Ordinary builds keep detailed scan diagnostics disabled.
 
-After flashing, enable HID Console and **Debug → Polling Rate Monitor** in VIA. At 1000 Hz, watch `[SCAN]`:
+After flashing, enable HID Console and **Debug → Polling Rate Diagnostics** in VIA. At 1000 Hz, watch `[SCAN]`:
 
 - `raw` / `max`: current and maximum duration of acquisition plus key processing.
 - `work_max`: maximum complete scan-and-publication duration, in microseconds. It should remain below 1000 µs with headroom.
 - `miss`: timer deadlines missed since the previous diagnostic report; it should remain zero in steady operation.
 - `q_full`: failed matrix-event queue submissions.
 
-Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key presses, and EC Matrix Stream off/on. First calibrate, finish calibration, then leave settings unchanged for a few seconds before recording results. Threshold-cache rebuilding after calibration/settings/curve changes is one-time work and can produce a transient timing spike. USB polling remains up to 1000 Hz; battery scanning retains its stock-style interval.
+Compare ANSI/JIS at the same settings: RT off/on, curve off/on, simultaneous key presses, and EC Matrix Diagnostics off/on. First calibrate, finish calibration, then leave settings unchanged for a few seconds before recording results. Threshold-cache rebuilding after calibration/settings/curve changes is one-time work and can produce a transient timing spike. USB polling remains up to 1000 Hz; battery scanning retains its stock-style interval.
 
 The scanner caches exact raw ADC press/release thresholds in classic mode, computes normalized travel once in RT mode, and reuses it for debug output. Previous-key processing overlaps C57 discharge with interrupts enabled. Discharge/stabilization minimum delays are unchanged, and the final key is processed in the same pass. This pipeline still needs waveform and timing verification on physical JIS hardware; compilation alone does not establish 1000 Hz headroom.
 
@@ -259,7 +259,7 @@ Physical modifiers, held HT modifiers, One-Shot modifiers and active `MK(...)` m
 
 Calibration accepts resting baselines from 20 to 2000 ADC counts, including switches below 100 counts. Finish validates the same baseline and peak bounds used at load time; an invalid capture leaves that key's previous range unchanged. The ADC peak must be at most 4095 and exceed baseline by more than 150 counts. The EEPROM format is unchanged.
 
-During calibration, acquisition stores one frame (120 bytes for ANSI, 150 for JIS). Baseline/peak bookkeeping runs after acquisition with the OpAmp off, instead of extending each inter-key interval. This does not guarantee calibration meets a 1 ms deadline: check diagnostics on hardware. At a 1000 Hz target, calibration runs at 500 Hz to leave USB/VIA a service window; lower targets and battery scanning are unchanged. Finish restores the normal rate. Calibration Monitor messages are formatted in the USB task instead of the 1 KiB matrix-task stack. Pending monitor messages may coalesce; Print status still lists all missing keys. The special inter-scan OpAmp policy from the fork is not included.
+During calibration, acquisition stores one frame (120 bytes for ANSI, 150 for JIS). Baseline/peak bookkeeping runs after acquisition with the OpAmp off, instead of extending each inter-key interval. This does not guarantee calibration meets a 1 ms deadline: check diagnostics on hardware. At a 1000 Hz target, calibration runs at 500 Hz to leave USB/VIA a service window; lower targets and battery scanning are unchanged. Finish restores the normal rate. Calibration Diagnostics messages are formatted in the USB task instead of the 1 KiB matrix-task stack. Pending monitor messages may coalesce; Print status still lists all missing keys. The special inter-scan OpAmp policy from the fork is not included.
 
 Use **Print status to HID Console** to list `[CAL] missing:` positions during calibration or `[CAL] unchanged:` positions afterwards. These lists use physical keys only, including on JIS. Release every key before starting; press each to bottom-out with normal force, rather than squeezing harder after it stops moving. Check the missing list before Finish. Coordinates refer to matrix positions, not the current layer's keycodes.
 
@@ -284,7 +284,7 @@ Enable **Debug → USB Report Diagnostics** for one `[USB]` line per second whil
 
 USB SOF phase lock is enabled by default through `HHKB_SOF_LOCK=1`. Switch it under Scan Rate for this session. EC console output shows the latest changed sample when USB can send it. See the [Classic ANSI measurements and JIS timing headroom](config.md#usb-sof-measurements-on-classic-ansi). VIA debug controls, including USB diagnostics, remain available.
 
-For comparisons, use a scan-diagnostic build and **Debug → Polling Rate Monitor**. `[SCAN] actual` is matrix throughput, `work_max` is worst scan/publication duration, `miss` counts missed scan deadlines, and `q_full` counts failed matrix-queue submissions. The `usb`/`usb_loop` value is USB task-loop frequency, not USB polling/report rate. `[LAT] lock=0` means phase lock is disabled or not acquired; its age/error estimates still require USB-trace validation. `[VIA_DIAG] tx_fail` concerns VIA responses, not keyboard reports. These counters do not measure lost USB packets or prove end-to-end delivery; use a USB trace for bus-level failures. Keep console settings identical in A/B runs and discard the initial reacquisition interval.
+For comparisons, use a scan-diagnostic build and **Debug → Polling Rate Diagnostics**. `[SCAN] actual` is matrix throughput, `work_max` is worst scan/publication duration, `miss` counts missed scan deadlines, and `q_full` counts failed matrix-queue submissions. The `usb`/`usb_loop` value is USB task-loop frequency, not USB polling/report rate. `[LAT] lock=0` means phase lock is disabled or not acquired; its age/error estimates still require USB-trace validation. `[VIA_DIAG] tx_fail` concerns VIA responses, not keyboard reports. These counters do not measure lost USB packets or prove end-to-end delivery; use a USB trace for bus-level failures. Keep console settings identical in A/B runs and discard the initial reacquisition interval.
 
 ### 1000 Hz scan timing
 
@@ -386,13 +386,13 @@ PB9, PB8, and PB7 provide the 0%, 5%, and 15% battery thresholds. DMK samples th
 1. Navigate to the **Configure** tab.
 2. Open **HHKB Settings** → **Debug** submenu.
 3. Toggle the desired logging flags:
-   - **EC Matrix Stream** — prints state transition events (press/release) with matrix coordinates `(col, row)`, raw ADC count (`raw`), normalized value (`norm` from 0 to 1000 permille), and current key status.
-   - **Calibration Monitor** — real-time progress bar and calibration stream: baseline capture, peak registration per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), completion percentage `[====>    ] X% (N/60)` for ANSI or `(N/69)` for JIS, and save readiness notifications.
+   - **EC Matrix Diagnostics** — prints state transition events (press/release) with matrix coordinates `(col, row)`, raw ADC count (`raw`), normalized value (`norm` from 0 to 1000 permille), and current key status.
+   - **Calibration Diagnostics** — real-time progress bar and calibration stream: baseline capture, peak registration per key (`[CAL] Key C3 R2 peak updated: 2650 -> 2890`), completion percentage `[====>    ] X% (N/60)` for ANSI or `(N/69)` for JIS, and save readiness notifications.
 
      > [!NOTE]
      > Switching between the **Configure** tab and **HID Console** does not interrupt or reset calibration — the state remains active in MCU RAM until _Finish and save_ is clicked. Console monitoring provides uninterrupted real-time visibility without having to manually refresh the status counter in the calibration menu.
-   - **Polling Rate Monitor** — outputs periodic reports of the actual matrix scan rate and USB task frequency (e.g. `[RATE] Matrix: 1000 Hz, USB: 500 Hz`).
-   - **VIA Telemetry Diag** — prints incoming VIA/Vial requests, commands, and parameter modifications.
+   - **Polling Rate Diagnostics** — outputs periodic reports of the actual matrix scan rate and USB task frequency (e.g. `[RATE] Matrix: 1000 Hz, USB: 500 Hz`).
+   - **VIA Telemetry Diagnostics** — prints incoming VIA/Vial requests, commands, and parameter modifications.
 
 > [!TIP]
 > You can save logs to a text file or clear the output area directly using the buttons in the upper-right corner of the **HID Console** tab in VIA.
@@ -435,4 +435,4 @@ On first startup, compatible legacy DMK records are imported automatically (ANSI
 
 Normal Bank 1 firmware updates should preserve the new storage because it avoids the known update metadata and stock keymap regions. This layout is a development implementation based on the available EEPROM map and Classic backup; it still needs a complete Hybrid/JIS EEPROM backup and hardware verification. Keep a [same-board EEPROM backup](backup-restore.md) before migration, and verify Settings EEPROM after updating.
 
-EC Matrix Stream samples telemetry at most once every 20 ms (50 Hz). Every matrix scan still processes every populated key. Rapid Trigger uses a cached raw reset threshold and combines normalization with state updates outside the reset zone. Inside that zone the inactive anchor is stored as zero until actuation arms the key again. Debug samples retain the exact normalized travel.
+EC Matrix Diagnostics samples telemetry at most once every 20 ms (50 Hz). Every matrix scan still processes every populated key. Rapid Trigger uses a cached raw reset threshold and combines normalization with state updates outside the reset zone. Inside that zone the inactive anchor is stored as zero until actuation arms the key again. Debug samples retain the exact normalized travel.
