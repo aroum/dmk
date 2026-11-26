@@ -235,6 +235,8 @@ void hhkb_calibration_save_to_eeprom(void) {
         FLASH->PEKEYR = 0x02030405;
     }
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
+        if (hhkb_get_debug_flag(DEBUG_FLAG_EEPROM))
+            debug_console_printf("[EEPROM] write failed: PECR locked\r\n");
         hhkb_settings_mark_dirty();
         return;
     }
@@ -288,6 +290,7 @@ void hhkb_calibration_save_to_eeprom(void) {
 #else
     volatile uint32_t *dst = (volatile uint32_t *)USER_EEPROM_ADDR;
     const uint32_t *src = (const uint32_t *)&cal;
+    bool wrote = false;
     for (size_t i = 0; i < sizeof(hhkb_eeprom_cal_t) / 4; i++) {
         if (dst[i] != src[i]) {
             while (FLASH->SR & FLASH_SR_BSY);
@@ -298,13 +301,18 @@ void hhkb_calibration_save_to_eeprom(void) {
             while (FLASH->SR & FLASH_SR_BSY);
             if ((FLASH->SR & errors) || dst[i] != src[i]) {
                 FLASH->PECR |= FLASH_PECR_PELOCK;
+                if (hhkb_get_debug_flag(DEBUG_FLAG_EEPROM))
+                    debug_console_printf("[EEPROM] write failed at word %u\r\n", (unsigned)i);
                 hhkb_settings_mark_dirty();
                 return;
             }
+            wrote = true;
             vTaskDelay(pdMS_TO_TICKS(1));
         }
     }
     FLASH->PECR |= FLASH_PECR_PELOCK;
+    if (wrote && hhkb_get_debug_flag(DEBUG_FLAG_EEPROM))
+        debug_console_printf("[EEPROM] settings saved\r\n");
 #endif
 }
 
@@ -369,7 +377,7 @@ void hhkb_calibration_load(void) {
             uint8_t sleep_hz = cal->led_mode[0] >> 4;
             if (sleep_hz >= 1 && sleep_hz <= 10) s_bt_sleep_hz = sleep_hz;
 #endif
-            s_debug_flags = cal->debug_flags & 0x1f;
+            s_debug_flags = cal->debug_flags & 0x3f;
             s_gesc_overrides = cal->led_mode[1] >> 4;
             s_gesc_ignore = (cal->scan_rate >> 3) & 3;
 

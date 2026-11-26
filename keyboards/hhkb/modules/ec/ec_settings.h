@@ -39,7 +39,7 @@ typedef struct __attribute__((aligned(4))) {
     uint16_t classic_release_pm;
     uint8_t curve[EC_CURVE_FIELDS];
     uint8_t led_mode[2]; // led_mode[1] high nibble: Grave Escape overrides; Hybrid: led_mode[0] high nibble stores sleep Hz (0 = legacy 1 Hz)
-    uint8_t debug_flags; // bits 0..4: debug; bit 6: bottom-zone byte valid; bit 7: Hybrid deep-timer format
+    uint8_t debug_flags; // bits 0..5: debug; bit 6: bottom-zone byte valid; bit 7: Hybrid deep-timer format
     uint8_t reserved[3];
 } hhkb_eeprom_cal_t;
 _Static_assert(sizeof(rt_cfg_t)==10, "Preserve RT EEPROM layout");
@@ -111,6 +111,7 @@ enum {
     DEBUG_FLAG_VIA   = 1U << 1, // 0x02: VIA telemetry diag [VIA_DIAG]
     DEBUG_FLAG_RATE  = 1U << 2, // 0x04: Polling/scan rate monitor [RATE]
     DEBUG_FLAG_CAL   = 1U << 3, // 0x08: Calibration progress monitor [CAL]
+    DEBUG_FLAG_EEPROM = 1U << 5, // 0x20: EEPROM write diagnostics [EEPROM]
 };
 
 bool hhkb_get_debug_flag(uint8_t flag);

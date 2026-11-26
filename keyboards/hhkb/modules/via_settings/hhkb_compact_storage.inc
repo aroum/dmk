@@ -39,6 +39,24 @@ static hhkb_pack_state c_pack;
 static bool c_packing;
 _Static_assert(C_RAW_BYTES <= UINT16_MAX, "Compact codec indices must fit");
 static const char *c_status = "Not saved";
+#ifndef HHKB_EEPROM_LOG
+#if defined(DEBUG_CONSOLE_ENABLE) && !defined(HHKB_EEPROM_WRITE)
+extern bool hhkb_get_debug_flag(uint8_t flag);
+extern void debug_console_printf(const char *fmt, ...);
+#define HHKB_EEPROM_LOG(fmt, ...) do { \
+    if (hhkb_get_debug_flag(DEBUG_FLAG_EEPROM)) debug_console_printf("[EEPROM] " fmt "\r\n", ##__VA_ARGS__); \
+} while (0)
+#else
+#define HHKB_EEPROM_LOG(...) ((void)0)
+#endif
+#endif
+static void c_write_failed(const char *where) {
+    (void)where;
+    if (strcmp(c_status, "Write failed: retrying") != 0) {
+        HHKB_EEPROM_LOG("write failed (%s), retrying", where);
+    }
+    c_status = "Write failed: retrying";
+}
 static volatile uint32_t *c_phys(unsigned offset) {
     return (volatile uint32_t *)(HHKB_EEPROM_BASE + offset);
 }
@@ -240,7 +258,11 @@ static bool c_build(void) {
     if(!c_packing) {
         for(unsigned i=0;i<NUM_KEYS;++i) {
             unsigned r=c_positions[i][0], c=c_positions[i][1];
-            if(c_cal.baseline[c][r]>4095 || c_cal.peak[c][r]>4095) { c_status="Invalid ADC: not saved"; return false; }
+            if(c_cal.baseline[c][r]>4095 || c_cal.peak[c][r]>4095) {
+                c_status="Invalid ADC: not saved";
+                HHKB_EEPROM_LOG("save failed: invalid ADC");
+                return false;
+            }
         }
         memset(c_image,0,sizeof(c_image)); memset(&c_pack,0,sizeof(c_pack));
         c_packing=true;
@@ -254,11 +276,19 @@ static bool c_build(void) {
     if(!result) return false;
     c_packing=false;
     size_t size=result>0 ? c_pack.o : 0;
-    if(!size) { c_status="Full: not saved"; return false; }
+    if(!size) {
+        c_status="Full: not saved";
+        HHKB_EEPROM_LOG("save failed: full (%u B raw)", (unsigned)C_RAW_BYTES);
+        return false;
+    }
     if(c_active>=0 && *c_word((unsigned)c_active,2)==size) {
         bool equal=true;
         for(unsigned i=5;i<C_SLOT_BYTES/4;++i) if(c_image[i]!=*c_word((unsigned)c_active,i)) { equal=false; break; }
-        if(equal) { c_status="Saved (compressed)"; return false; }
+        if(equal) {
+            c_status="Saved (compressed)";
+            HHKB_EEPROM_LOG("unchanged (skipped)");
+            return false;
+        }
     }
     c_image[0]=C_MAGIC; c_image[1]=c_generation+1; c_image[2]=size;
     c_image[3]=c_hash(c_image); c_image[4]=SLOT_COMMIT;
@@ -273,25 +303,26 @@ static bool c_cleanup_poll(void) {
         bool owned=(off>=0x700 && off<0xd00 && c_legacy_contains(off,c_flags)) ||
             (off>=0x1500 && off<0x1500+4*((c_flags>>4)&255));
         if(owned) {
-            if(!write_word(c_phys(off),0)) { --c_cleanup; c_status="Write failed: retrying"; }
+            if(!write_word(c_phys(off),0)) { --c_cleanup; c_write_failed("cleanup"); }
             return false;
         }
     }
-    if(!write_word(c_phys(0x1708),C_DONE)) { c_status="Write failed: retrying"; return false; }
+    if(!write_word(c_phys(0x1708),C_DONE)) { c_write_failed("cleanup done"); return false; }
     if(!c_pending && c_target<0) c_status="Saved (compressed)";
     return true;
 }
 bool hhkb_compact_reset(void) {
-    c_init(); if(c_blocked) return false;
+    c_init(); if(c_blocked) { HHKB_EEPROM_LOG("reset blocked"); return false; }
     if(!c_owner_valid()) {
         /* Preserve unknown factory data and let normal enrollment handle blank EEPROM. */
-        if(c_flags) return false;
+        if(c_flags) { HHKB_EEPROM_LOG("reset blocked: foreign data"); return false; }
         c_pending=c_packing=false;
         return true;
     }
-    if(!write_word(c_phys(0x1708),C_RESET)) return false;
-    if(!write_word(c_word(0,4),0) || !write_word(c_word(1,4),0)) return false;
+    if(!write_word(c_phys(0x1708),C_RESET)) { HHKB_EEPROM_LOG("reset failed: marker"); return false; }
+    if(!write_word(c_word(0,4),0) || !write_word(c_word(1,4),0)) { HHKB_EEPROM_LOG("reset failed: slot clear"); return false; }
     c_active=c_target=-1; c_pending=c_packing=false; c_status="Defaults (compressed)";
+    HHKB_EEPROM_LOG("reset to defaults");
     return true; /* tombstone remains until the first default snapshot commits */
 }
 bool vial_keyboard_keymap_reset(void) {
@@ -309,7 +340,7 @@ void vial_keyboard_keymap_poll(void) {
     c_init();
     if(c_blocked || !c_keymap_ready || !c_cal_ready) return;
     if(c_active>=0 && *c_phys(0x1708)==C_RESET) {
-        if(!write_word(c_phys(0x1708),0)) c_status="Write failed: retrying";
+        if(!write_word(c_phys(0x1708),0)) c_write_failed("reset clear");
         c_cleanup=0; return;
     }
     if(c_active>=0 && !c_cleanup_poll()) return;
@@ -319,7 +350,7 @@ void vial_keyboard_keymap_poll(void) {
             /* Complete a reset interrupted before either invalidation. Never
              * let a high-generation pre-reset slot become visible again. */
             if(!write_word(c_word(0,4),0) || !write_word(c_word(1,4),0)) {
-                c_status="Write failed: retrying"; return;
+                c_write_failed("reset invalidate"); return;
             }
         }
         c_pending=false;
@@ -330,19 +361,20 @@ void vial_keyboard_keymap_poll(void) {
             if(valid(1) && (!valid(0) || (int32_t)(slot(1)[1]-slot(0)[1])>0)) c_copy=1;
         }
         c_target=c_active<0?0:1-c_active; c_stage=0; c_status="Saving";
+        HHKB_EEPROM_LOG("saving slot=%d gen=%lu (%lu B)", c_target, (unsigned long)c_image[1], (unsigned long)c_image[2]);
     }
     if(c_copy>=0) {
         unsigned off; uint32_t value;
         if(c_copy_stage==0) { off=3; value=0; }
         else if(c_copy_stage<=SLOT_WORDS) { off=c_copy_stage-1; value=off==3?0:slot(1)[off]; }
         else { off=3; value=SLOT_COMMIT; }
-        if(!write_word((volatile uint32_t *)slot(0)+off,value)) { c_status="Write failed: retrying"; return; }
+        if(!write_word((volatile uint32_t *)slot(0)+off,value)) { c_write_failed("legacy copy"); return; }
         if(++c_copy_stage>SLOT_WORDS+1) { c_copy=-1; c_flags|=1; }
         return;
     }
     if(!c_owner_valid()) {
         uint32_t flags=c_flags|((uint32_t)(uint16_t)~c_flags<<16);
-        if(!write_word(c_phys(0x1704),flags) || !write_word(c_phys(0x1700),C_OWNER)) { c_status="Write failed: retrying"; return; }
+        if(!write_word(c_phys(0x1704),flags) || !write_word(c_phys(0x1700),C_OWNER)) { c_write_failed("owner"); return; }
     }
     unsigned off;
     uint32_t value;
@@ -350,9 +382,10 @@ void vial_keyboard_keymap_poll(void) {
     if(c_stage==0) { off=4; value=0; }
     else if(c_stage==C_SLOT_BYTES/4+1) { off=4; value=SLOT_COMMIT; }
     else { off=c_stage-1; value=off==4?0:c_image[off]; }
-    if(!write_word(c_word((unsigned)c_target,off),value)) { c_status="Write failed: retrying"; return; }
+    if(!write_word(c_word((unsigned)c_target,off),value)) { c_write_failed("slot"); return; }
     if(++c_stage==C_SLOT_BYTES/4+2) {
         c_active=c_target; c_target=-1; c_generation=c_image[1]; c_status=c_pending?"Pending":"Saved (compressed)";
+        HHKB_EEPROM_LOG("saved slot=%d gen=%lu", c_active, (unsigned long)c_generation);
     }
 }
 

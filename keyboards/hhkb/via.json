@@ -151,6 +151,18 @@
                 0,
                 18
               ]
+            }
+          ]
+        },
+        {
+          "label": "Behavior",
+          "content": [
+            {
+              "label": "Tap-Hold",
+              "type": "label",
+              "content": [
+                "Dual-role key timing (Mod-Tap / Layer-Tap)."
+              ]
             },
             {
               "label": "Tapping term (10 ms units)",
@@ -195,16 +207,13 @@
                 0,
                 17
               ]
-            }
-          ]
-        },
-        {
-          "label": "Grave Escape",
-          "content": [
+            },
             {
-              "label": "Key assignment",
+              "label": "Grave Escape",
               "type": "label",
-              "content": ["Assign KC_GESC in Keymap > Special > Any."]
+              "content": [
+                "Assign KC_GESC in Keymap > Special > Any."
+              ]
             },
             {
               "label": "Ignore modifier in reports",
@@ -1583,15 +1592,6 @@
               ]
             },
             {
-              "label": "Calibration status",
-              "type": "label",
-              "content": [
-                "id_hhkb_cal_status",
-                0,
-                26
-              ]
-            },
-            {
               "label": "Live updates",
               "type": "label",
               "content": [
@@ -2030,15 +2030,6 @@
                 "id_hhkb_classic_hysteresis",
                 0,
                 5
-              ]
-            },
-            {
-              "label": "Settings EEPROM",
-              "type": "label",
-              "content": [
-                "id_hhkb_settings_status",
-                0,
-                12
               ]
             }
           ]
@@ -2901,7 +2892,7 @@
               ]
             },
             {
-              "label": "EC Matrix Stream",
+              "label": "EC Matrix Diagnostics",
               "type": "toggle",
               "content": [
                 "id_hhkb_debug_enable",
@@ -2915,7 +2906,7 @@
               "content": ["id_hhkb_debug_usb", 0, 62]
             },
             {
-              "label": "VIA Telemetry Diag",
+              "label": "VIA Telemetry Diagnostics",
               "type": "toggle",
               "content": [
                 "id_hhkb_debug_via",
@@ -2924,7 +2915,7 @@
               ]
             },
             {
-              "label": "Polling Rate Monitor",
+              "label": "Polling Rate Diagnostics",
               "type": "toggle",
               "content": [
                 "id_hhkb_debug_rate",
@@ -2933,7 +2924,7 @@
               ]
             },
             {
-              "label": "Calibration Monitor",
+              "label": "Calibration Diagnostics",
               "type": "toggle",
               "content": [
                 "id_hhkb_debug_cal",
@@ -2942,10 +2933,19 @@
               ]
             },
             {
-              "label": "Reset and stock recovery",
+              "label": "EEPROM Write Diagnostics",
+              "type": "toggle",
+              "content": [
+                "id_hhkb_debug_eeprom",
+                0,
+                67
+              ]
+            },
+            {
+              "label": "Reset and recovery",
               "type": "label",
               "content": [
-                "Two independent actions: erase DMK settings and restart DMK, or return to stock Bank 1 while keeping settings."
+                "Erase DMK settings or return to Bank 1."
               ]
             },
             {
@@ -2976,25 +2976,6 @@
               "options": [1],
               "content": ["id_hhkb_recovery_execute", 0, 64],
               "showIf": "{id_dmk_reset_arm} == 1"
-            },
-            {
-              "label": "Recovery notice",
-              "type": "label",
-              "content": ["EEPROM erase keeps DMK in Bank 2. Bank 1 return keeps EEPROM but disables DMK until it is reflashed."]
-            },
-            {
-              "label": "Reset status",
-              "type": "label",
-              "content": [
-                "id_dmk_reset_status",
-                0,
-                39
-              ]
-            },
-            {
-              "label": "Status help",
-              "type": "label",
-              "content": ["Ready: no action queued. Armed: buttons enabled. Status describes the last request, not EEPROM health."]
             }
           ]
         }

@@ -56,7 +56,9 @@
 #ifndef HHKB_SOF_MARGIN_US
 #define HHKB_SOF_MARGIN_US 150
 #endif
-// #define HHKB_SCAN_DIAGNOSTICS 1
+#ifndef HHKB_SCAN_DIAGNOSTICS
+#define HHKB_SCAN_DIAGNOSTICS 1
+#endif
 
 /* --- Matrix Geometry --- */
 #ifdef HHKB_JIS

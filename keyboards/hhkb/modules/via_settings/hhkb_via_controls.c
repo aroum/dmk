@@ -24,6 +24,7 @@ static uint8_t debug_flag_for_id(uint8_t id) {
         case 24: return DEBUG_FLAG_RATE;
         case 25: return DEBUG_FLAG_CAL;
         case 62: return DEBUG_FLAG_USB;
+        case 67: return DEBUG_FLAG_EEPROM;
         default: return 0;
     }
 }
