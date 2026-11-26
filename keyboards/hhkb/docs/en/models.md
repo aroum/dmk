@@ -9,8 +9,8 @@
 | Feature                  | HHKB Professional Classic    | HHKB Professional HYBRID                                                                 | HHKB Studio                                |
 | :----------------------- | :--------------------------- | :--------------------------------------------------------------------------------------- | :----------------------------------------- |
 | **Switch Technology**    | Electro-capacitive EC 45g    | Electro-capacitive EC 45g                                                                | Mechanical Hot-Swap MX (Linear 45g)        |
-| **Main MCU**             | STM32L072CZ (ARM Cortex-M0+) | STM32L072CZ (ARM Cortex-M0+)                                                             | STM32L4 series (ARM Cortex-M4)             |
-| **Wireless Transceiver** | None (Wired USB-C only)      | [Taiyo Yuden EYSHCNZWZ](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) (nRF52832) | Nordic nRF52 series (BLE 5.0)              |
+| **Main MCU**             | STM32L072CZ (ARM Cortex-M0+) | STM32L072CZ (ANSI) / STM32L072RBT6 (JIS, 128 KB flash)                                   | STM32L4 series (ARM Cortex-M4)             |
+| **Wireless Transceiver** | None (Wired USB-C only)      | [Taiyo Yuden EYSHCNZWZ](https://docs.rs-online.com/2d1f/0900766b81699ea1.pdf) / Kaga FEI EC2832 (nRF52832) | Nordic nRF52 series (BLE 5.0)              |
 | **Pointing Device**      | None                         | None                                                                                     | Isometric Pointing Stick + 3 Mouse Buttons |
 | **Gesture Controls**     | None                         | None                                                                                     | 4× Capacitive Touch Gesture Pads           |
 | **Power Source**         | USB-C Bus Power (5V)         | 2× AA Batteries / USB-C                                                                  | 4× AA Batteries / USB-C                    |

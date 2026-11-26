@@ -433,20 +433,20 @@ The fragmented physical ranges are `0x08080480–0x080804FF`, `0x08080524–0x08
 
 #### EEPROM Map (6,144 bytes, `0x08080000–0x080817FF`)
 
-| Range | Size | Stock Classic | Stock Hybrid ANSI | Stock Hybrid JIS | DMK Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `0x08080000–0x080802FF` | 768 B | Keymaps (60 B × 6 layers, `+0x01..0x3C`) | Keymaps (60 B × 6 layers, `+0x01..0x3C`) | Keymaps (69 B × 6 layers, `+0x01..0x45`) | Used by stock (58–59 B layer tails unused) |
-| `0x08080300–0x0808034F` | 80 B | Factory identity (model, rev, serial, initial FW/BL) | Same | Same | Used by stock (do not touch) |
-| `0x08080350–0x0808044F` | 256 B | Update/keymap log (up to `0x0372`) | Log (up to `0x0444`) | Log (up to `0x0445`) | Used by stock (grows on PFU tool updates) |
-| `0x08080450–0x080804FF` | 176 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x0480–0x04FF` used by DMK, 128 B) |
-| `0x08080500–0x08080523` | 36 B | System flag (`0x050C`) | System flags (`0x0508–0x0521`) | System flags (`0x0500–0x0521`) | Used by stock |
-| `0x08080524–0x080805FF` | 220 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (used by DMK) |
-| `0x08080600–0x08080FFF` | 2560 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x0600–0x06FF` and `0x0D00–0x0FFF` used by DMK) |
-| `0x08081000–0x08081200` | 513 B | Factory EC sensor tables (`128 × uint16_t`) | Same | Same | Used by stock (do not touch) |
-| `0x08081201–0x0808130F` | 271 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (unused reserve) |
-| `0x08081310–0x0808133F` | 48 B | `0xAAAA` marker and current BL/App versions | Same | Same | Used by stock (updated on flash) |
-| `0x08081340–0x080813FF` | 192 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x1370–0x13FF` used by DMK, 144 B) |
-| `0x08081400–0x080817FF` | 1024 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x1700–0x17FF` used by DMK, 256 B) |
+| Range | Size | Stock (PFU: Classic ANSI, Hybrid ANSI/JIS) | DMK Status |
+| :--- | :--- | :--- | :--- |
+| `0x08080000–0x080802FF` | 768 B | Keymaps (6 × 128 B layers): Classic (ANSI) & Hybrid ANSI use `60 B` (`+0x01..0x3C`); Hybrid JIS uses `69 B` (`+0x01..0x45`) | Used by stock (58–59 B layer tails unused) |
+| `0x08080300–0x0808034F` | 80 B | Factory identity (model, rev, serial, initial FW/BL) | Used by stock (do not touch) |
+| `0x08080350–0x0808044F` | 256 B | Update/keymap log (Classic up to `0x0372`, Hybrid ANSI up to `0x0444`, Hybrid JIS up to `0x0445`) | Used by stock (grows on PFU tool updates) |
+| `0x08080450–0x080804FF` | 176 B | Empty (`0x00`) | **Free on all versions** (`0x0480–0x04FF` used by DMK, 128 B) |
+| `0x08080500–0x08080523` | 36 B | System flags (Classic: `0x050C`; Hybrid ANSI: `0x0508–0x0521`; Hybrid JIS: `0x0500–0x0521`) | Used by stock |
+| `0x08080524–0x080805FF` | 220 B | Empty (`0x00`) | **Free on all versions** (used by DMK) |
+| `0x08080600–0x08080FFF` | 2560 B | Empty (`0x00`) | **Free on all versions** (`0x0600–0x06FF` and `0x0D00–0x0FFF` used by DMK) |
+| `0x08081000–0x08081200` | 513 B | Factory EC sensor tables (`128 × uint16_t`) | Used by stock (do not touch) |
+| `0x08081201–0x0808130F` | 271 B | Empty (`0x00`) | **Free on all versions** (unused reserve) |
+| `0x08081310–0x0808133F` | 48 B | `0xAAAA` marker and current BL/App versions | Used by stock (updated on flash) |
+| `0x08081340–0x080813FF` | 192 B | Empty (`0x00`) | **Free on all versions** (`0x1370–0x13FF` used by DMK, 144 B) |
+| `0x08081400–0x080817FF` | 1024 B | Empty (`0x00`) | **Free on all versions** (`0x1700–0x17FF` used by DMK, 256 B) |
 
 In total, **~4,447 bytes** of contiguous blocks are free from stock across all three versions (plus ~353 bytes in the 6 keymap layer tails); the current DMK layout uses **1,772 bytes** entirely within these free regions.
 
