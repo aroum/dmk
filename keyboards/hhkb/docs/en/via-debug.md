@@ -431,6 +431,25 @@ Saving compresses in resumable slices of at most 512 source-byte reads per USB t
 
 The fragmented physical ranges are `0x08080480–0x080804FF`, `0x08080524–0x080806FF`, `0x08080D00–0x08080FFF`, `0x08081370–0x080813FF`, and `0x08081700–0x080817FF`. These avoid the known PFU keymap, factory sensor, Bluetooth configuration and boot/update metadata regions. Enrollment checks every candidate word: unknown nonzero data blocks writing with **Occupied: not saved**. ANSI and JIS ownership markers differ; one layout never reinterprets the other's records.
 
+#### EEPROM Map (6,144 bytes, `0x08080000–0x080817FF`)
+
+| Range | Size | Stock Classic | Stock Hybrid ANSI | Stock Hybrid JIS | DMK Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `0x08080000–0x080802FF` | 768 B | Keymaps (60 B × 6 layers, `+0x01..0x3C`) | Keymaps (60 B × 6 layers, `+0x01..0x3C`) | Keymaps (69 B × 6 layers, `+0x01..0x45`) | Used by stock (58–59 B layer tails unused) |
+| `0x08080300–0x0808034F` | 80 B | Factory identity (model, rev, serial, initial FW/BL) | Same | Same | Used by stock (do not touch) |
+| `0x08080350–0x0808044F` | 256 B | Update/keymap log (up to `0x0372`) | Log (up to `0x0444`) | Log (up to `0x0445`) | Used by stock (grows on PFU tool updates) |
+| `0x08080450–0x080804FF` | 176 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x0480–0x04FF` used by DMK, 128 B) |
+| `0x08080500–0x08080523` | 36 B | System flag (`0x050C`) | System flags (`0x0508–0x0521`) | System flags (`0x0500–0x0521`) | Used by stock |
+| `0x08080524–0x080805FF` | 220 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (used by DMK) |
+| `0x08080600–0x08080FFF` | 2560 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x0600–0x06FF` and `0x0D00–0x0FFF` used by DMK) |
+| `0x08081000–0x08081200` | 513 B | Factory EC sensor tables (`128 × uint16_t`) | Same | Same | Used by stock (do not touch) |
+| `0x08081201–0x0808130F` | 271 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (unused reserve) |
+| `0x08081310–0x0808133F` | 48 B | `0xAAAA` marker and current BL/App versions | Same | Same | Used by stock (updated on flash) |
+| `0x08081340–0x080813FF` | 192 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x1370–0x13FF` used by DMK, 144 B) |
+| `0x08081400–0x080817FF` | 1024 B | Empty (`0x00`) | Empty (`0x00`) | Empty (`0x00`) | **Free on all versions** (`0x1700–0x17FF` used by DMK, 256 B) |
+
+In total, **~4,447 bytes** of contiguous blocks are free from stock across all three versions (plus ~353 bytes in the 6 keymap layer tails); the current DMK layout uses **1,772 bytes** entirely within these free regions.
+
 On first startup, compatible legacy DMK records are imported automatically (ANSI DMK1/DMK2 or JIS DMK2, plus compatible settings). When necessary, the newest legacy DMK2 snapshot is first copied and committed into its first legacy slot. Only after the new compact snapshot commits are owned legacy bytes in PFU table regions cleared. Power cuts during migration are recoverable. This does not reconstruct PFU bytes overwritten by older DMK firmware: restoring stock may still require the same-board backup or resetting the stock keymap in HHKB Keymap Tool. Older DMK builds cannot read the compressed format.
 
 Normal Bank 1 firmware updates should preserve the new storage because it avoids the known update metadata and stock keymap regions. This layout is a development implementation based on the available EEPROM map and Classic backup; it still needs a complete Hybrid/JIS EEPROM backup and hardware verification. Keep a [same-board EEPROM backup](backup-restore.md) before migration, and verify Settings EEPROM after updating.
