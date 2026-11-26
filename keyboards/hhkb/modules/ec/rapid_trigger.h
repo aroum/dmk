@@ -54,7 +54,19 @@ void rt_prepare_raw_cache(rt_raw_cache_t *cache, const rt_key_t *key, const rt_s
 uint16_t rt_scan_normalize(const rt_key_t *key, uint16_t raw, const rt_scan_cfg_t *scan);
 bool rt_update_scan_travel(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t travel);
 bool rt_update_scan_sample(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel);
-bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel);
+bool rt_update_scan_cached_slow(rt_key_t *key, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel);
+
+static inline __attribute__((always_inline))
+bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache, const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
+    if (raw < cache->release_raw) {
+        key->down = false;
+        key->latched = false;
+        key->ext = 0;
+        if (travel) *travel = rt_scan_normalize(key, raw, scan);
+        return false;
+    }
+    return rt_update_scan_cached_slow(key, scan, raw, travel);
+}
 
 static inline __attribute__((always_inline))
 bool rt_update_raw_cached(rt_key_t *key, rt_raw_cache_t *cache, uint16_t raw) {

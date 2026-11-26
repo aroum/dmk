@@ -171,15 +171,8 @@ RT_SCAN_CODE(rt_update_scan_sample) bool rt_update_scan_sample(rt_key_t *key, co
 
 // In the reset zone no previous RT anchor survives. Zero is a canonical
 // anchor until actuation arms the key again; telemetry still gets exact travel.
-RT_SCAN_CODE(rt_update_scan_cached) bool rt_update_scan_cached(rt_key_t *key, const rt_raw_cache_t *cache,
+RT_SCAN_CODE(rt_update_scan_cached_slow) bool rt_update_scan_cached_slow(rt_key_t *key,
         const rt_scan_cfg_t *scan, uint16_t raw, uint16_t *travel) {
-    if (raw < cache->release_raw) {
-        key->down = false;
-        key->latched = false;
-        key->ext = 0;
-        if (travel) *travel = scan_normalize(key, raw, scan);
-        return false;
-    }
     uint16_t value = scan_normalize(key, raw, scan);
     if (travel) *travel = value;
     uint16_t bottom = scan->curve ? scan->curve[125] : RT_FULL_SCALE;

@@ -30,9 +30,6 @@ static inline void scan_delay_us(uint16_t us) {
 static bool s_oversampling_applied = false;
 
 static inline bool adc_start_sample(void) {
-    uint32_t timeout = 5000;
-    while ((ADC1->CR & ADC_CR_ADSTP) && --timeout);
-    if (!timeout) return false;
     ADC1->ISR = ADC_ISR_EOC; // Discard completion left by a previously timed-out sample.
     ADC1->CR |= ADC_CR_ADSTART;
     return true;
@@ -278,14 +275,13 @@ bool hhkb_matrix_scan_raw(matrix_row_t current_matrix[]) {
             static const uint8_t populated[MATRIX_COLS] = {29, 27, 29, 31, 29, 29, 31, 29, 31, 31, 31, 31, 31, 31, 31};
             if (!(populated[col] & (1U << row))) continue;
 #endif
-            // Overlap all previous-key work with discharge, not the row strobe.
-            // Keep >=2 us of discharge and >=4 us since release/mux selection.
+            // Overlap all previous-key work with C57 discharge, not the row strobe.
+            // settle_start is captured right after row release / mux selection,
+            // so waiting 4 us since settle_start guarantees >=2 us of discharge.
             GPIOC->BSRR = (1U << 8);
-            uint16_t discharge_start = (uint16_t)TIM2->CNT;
-            scan_prepare_pending(&pending, &prepared, debug_topre);
+            if (__builtin_expect(debug_topre, 0)) scan_prepare_pending(&pending, &prepared, true);
             changed |= scan_process_pending(&pending, &prepared, current_matrix);
-            scan_report_pending(&pending, false, false, debug_topre, &capture_failed);
-            scan_wait_since(discharge_start, 2);
+            if (__builtin_expect(debug_topre, 0)) scan_report_pending(&pending, false, false, true, &capture_failed);
             scan_wait_since(settle_start, 4);
 
             uint32_t saved_primask = __get_PRIMASK();
