@@ -235,8 +235,10 @@ void hhkb_calibration_save_to_eeprom(void) {
         FLASH->PEKEYR = 0x02030405;
     }
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
+#ifdef DEBUG_CONSOLE_ENABLE
         if (hhkb_get_debug_flag(DEBUG_FLAG_EEPROM))
             debug_console_printf("[EEPROM] write failed: PECR locked\r\n");
+#endif
         hhkb_settings_mark_dirty();
         return;
     }
@@ -301,8 +303,10 @@ void hhkb_calibration_save_to_eeprom(void) {
             while (FLASH->SR & FLASH_SR_BSY);
             if ((FLASH->SR & errors) || dst[i] != src[i]) {
                 FLASH->PECR |= FLASH_PECR_PELOCK;
+#ifdef DEBUG_CONSOLE_ENABLE
                 if (hhkb_get_debug_flag(DEBUG_FLAG_EEPROM))
                     debug_console_printf("[EEPROM] write failed at word %u\r\n", (unsigned)i);
+#endif
                 hhkb_settings_mark_dirty();
                 return;
             }
@@ -311,8 +315,12 @@ void hhkb_calibration_save_to_eeprom(void) {
         }
     }
     FLASH->PECR |= FLASH_PECR_PELOCK;
+#ifdef DEBUG_CONSOLE_ENABLE
     if (wrote && hhkb_get_debug_flag(DEBUG_FLAG_EEPROM))
         debug_console_printf("[EEPROM] settings saved\r\n");
+#else
+    (void)wrote;
+#endif
 #endif
 }
 

@@ -66,6 +66,7 @@ int main(void) {
 #define DEBUG_FLAG_RATE  4
 #define DEBUG_FLAG_CAL   8
 #define DEBUG_FLAG_USB   16
+#define DEBUG_FLAG_EEPROM 32
 #define EC_CURVE_ENABLE  30
 #define EC_CURVE_STATUS  37
 #define DMK_FW_VERSION   "26.11.25-test"

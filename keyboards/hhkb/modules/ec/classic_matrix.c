@@ -30,6 +30,9 @@ static inline void scan_delay_us(uint16_t us) {
 static bool s_oversampling_applied = false;
 
 static inline bool adc_start_sample(void) {
+    uint32_t timeout = 5000;
+    while ((ADC1->CR & ADC_CR_ADSTP) && --timeout);
+    if (!timeout) return false;
     ADC1->ISR = ADC_ISR_EOC; // Discard completion left by a previously timed-out sample.
     ADC1->CR |= ADC_CR_ADSTART;
     return true;

@@ -147,8 +147,8 @@ int main(void){
 
     def test_via_menu_and_eeprom_nibble(self):
         definition=json.loads((ROOT/'keyboards/hhkb/via.json').read_text())
-        tab=next(x for x in definition['menus'][0]['content'] if x['label']=='Grave Escape')
-        controls=[x for x in tab['content'] if x['type']=='toggle']
+        tab=next(x for x in definition['menus'][0]['content'] if x['label']=='Behavior')
+        controls=[x for x in tab['content'] if x['type']=='toggle' and x['content'][2]>=57]
         self.assertEqual([x['content'][2] for x in controls],list(range(57,61)))
         ignore=next(x for x in tab['content'] if x['type']=='dropdown')
         self.assertEqual(ignore['options'],[['None',0],['Alt',1],['Ctrl',2],['GUI',3]])
