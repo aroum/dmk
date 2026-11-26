@@ -1,4 +1,5 @@
-"""Unit tests for the minimal dmk_snprintf formatter and refactored VIA controls."""
+"""Unit tests for the minimal dmk_snprintf formatter, refactored VIA controls, and RT clamp."""
+import json
 import subprocess
 import tempfile
 import unittest
@@ -181,3 +182,71 @@ int main(void) {
                             '-DHHKB_HYBRID=1', '-DHHKB_COMPACT_STORAGE=1',
                             '-fsanitize=address,undefined', str(src), '-o', str(exe)], check=True)
             subprocess.run([str(exe)], check=True)
+
+    def test_uncalibrated_rt_clamp_and_via_showif(self):
+        ec_src = (ROOT / 'keyboards/hhkb/modules/ec/ec_settings.c').read_text()
+        code = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef struct {
+    bool rt_enabled;
+    uint16_t act_pm;
+    uint16_t press_pm;
+    uint16_t release_pm;
+    uint16_t reset_pm;
+    uint8_t bottom_dz;
+} rt_cfg_t;
+
+static rt_cfg_t s_rt_cfg = { .rt_enabled = true, .act_pm = 750, .press_pm = 25, .release_pm = 50, .reset_pm = 50, .bottom_dz = 5 };
+static uint16_t s_classic_release_pm = 100;
+static bool s_custom_calibration = false;
+static unsigned crit_depth;
+#define taskENTER_CRITICAL() (++crit_depth)
+#define taskEXIT_CRITICAL() (--crit_depth)
+
+''' + function(ec_src, 'rt_cfg_t hhkb_get_scan_cfg(') + r'''
+
+int main(void) {
+    // Uncalibrated + RT enabled: press_pm/release_pm below 100 are clamped to 100.
+    rt_cfg_t cfg = hhkb_get_scan_cfg();
+    assert(crit_depth == 0);
+    assert(cfg.press_pm == 100 && cfg.release_pm == 100);
+
+    // Values >= 100 stay untouched when uncalibrated.
+    s_rt_cfg.press_pm = 150;
+    s_rt_cfg.release_pm = 200;
+    cfg = hhkb_get_scan_cfg();
+    assert(cfg.press_pm == 150 && cfg.release_pm == 200);
+
+    // Classic mode: uses s_classic_release_pm even if below 100.
+    s_rt_cfg.rt_enabled = false;
+    s_classic_release_pm = 50;
+    cfg = hhkb_get_scan_cfg();
+    assert(cfg.release_pm == 50);
+
+    // Calibrated + RT enabled: full range down to 25 pm is unlocked.
+    s_rt_cfg.rt_enabled = true;
+    s_rt_cfg.press_pm = 25;
+    s_rt_cfg.release_pm = 25;
+    s_custom_calibration = true;
+    cfg = hhkb_get_scan_cfg();
+    assert(cfg.press_pm == 25 && cfg.release_pm == 25);
+    return 0;
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / 'rt_clamp.c'
+            exe = Path(tmp) / 'rt_clamp'
+            src.write_text(code)
+            subprocess.run(['clang', '-std=c11', '-Wall', '-Wextra', '-Werror',
+                            '-fsanitize=address,undefined', str(src), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
+        definition = json.loads((ROOT / 'keyboards/hhkb/via.json').read_text())
+        act_tab = next(x for x in definition['menus'][0]['content'] if x['label'] == 'Calibration')
+        with_rt = next(x for x in act_tab['content'] if x.get('label') == 'With Rapid Trigger')
+        rel_hyst = next(x for x in act_tab['content'] if x.get('label') == 'Release hysteresis')
+        self.assertEqual(with_rt.get('showIf'), '{id_hhkb_rapid_trigger} == 1')
+        self.assertEqual(rel_hyst.get('showIf'), '{id_hhkb_rapid_trigger} == 0')

@@ -109,3 +109,42 @@ int main(void){
         tab=next(t for t in menus if t['label']=='Scan Rate')
         control=next(c for c in tab['content'] if c.get('content')==['id_hhkb_sof_lock',0,61])
         self.assertEqual(control['type'],'toggle')
+
+    def test_note_work_allows_multi_frame_lead_and_caps_at_7800(self):
+        source = (ROOT / 'keyboards/hhkb/modules/ec/sof_lock.c').read_text()
+        code = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#define HHKB_SOF_LOCK 1
+#define HHKB_SOF_MARGIN_US 150U
+static volatile bool s_enabled = true;
+static struct { uint16_t CNT; } timer;
+#define TIM2 (&timer)
+static uint16_t s_work_peak, s_lead;
+''' + function(source, 'void sof_lock_note_work(') + r'''
+int main(void) {
+    // 100 ticks (25 us) + 600 ticks margin -> 700 ticks.
+    timer.CNT = 100;
+    sof_lock_note_work(0);
+    assert(s_lead == 700);
+
+    // 3720 ticks (930 us scan) + 600 ticks margin -> 4320 ticks (> 1 USB frame).
+    timer.CNT = 3720;
+    sof_lock_note_work(0);
+    assert(s_lead == 4320);
+
+    // Huge spike is capped at 7800 ticks (just under 2 USB frames).
+    timer.CNT = 9000;
+    sof_lock_note_work(0);
+    assert(s_lead == 7800);
+    return 0;
+}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / 'lead.c'
+            exe = Path(tmp) / 'lead'
+            src.write_text(code)
+            subprocess.run(['clang', '-std=c11', '-Wall', '-Wextra', '-Werror',
+                            '-fsanitize=address,undefined', str(src), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
