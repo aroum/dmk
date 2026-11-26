@@ -414,10 +414,17 @@ __attribute__((weak)) void hhkb_get_rt_rebuild(uint32_t *ms, uint32_t *count) {
     if (ms) *ms = 0;
     if (count) *count = 0;
 }
-__attribute__((weak)) void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *err_us,
-                                                       uint32_t *locked, uint32_t *lead_us, int32_t *in_us) {
+__attribute__((weak)) void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us,
+                                                       uint32_t *prep_avg_us, uint32_t *prep_max_us,
+                                                       uint32_t *xfer_avg_us, uint32_t *xfer_max_us,
+                                                       int32_t *err_us, uint32_t *locked,
+                                                       uint32_t *lead_us, int32_t *in_us) {
     if (avg_us) *avg_us = 0;
     if (max_us) *max_us = 0;
+    if (prep_avg_us) *prep_avg_us = 0;
+    if (prep_max_us) *prep_max_us = 0;
+    if (xfer_avg_us) *xfer_avg_us = 0;
+    if (xfer_max_us) *xfer_max_us = 0;
     if (err_us) *err_us = 0;
     if (locked) *locked = 0;
     if (lead_us) *lead_us = 0;
@@ -486,12 +493,16 @@ void vial_diag_task(void) {
                                  (unsigned long)work_max_us, (unsigned long)missed, (unsigned long)q_full,
                                  (unsigned long)usb_rate_hz);
             {
-                uint32_t age_avg = 0, age_max = 0, lock = 0, lead = 0;
+                uint32_t age_avg = 0, age_max = 0, prep_avg = 0, prep_max = 0;
+                uint32_t xfer_avg = 0, xfer_max = 0, lock = 0, lead = 0;
                 int32_t err = 0, in_off = 0;
-                hhkb_get_latency_diagnostics(&age_avg, &age_max, &err, &lock, &lead, &in_off);
-                debug_console_printf("[LAT] age_avg=%lu age_max=%lu us err=%ld us lock=%lu lead=%lu us in=%ld us\r\n",
-                                     (unsigned long)age_avg, (unsigned long)age_max, (long)err,
-                                     (unsigned long)lock, (unsigned long)lead, (long)in_off);
+                hhkb_get_latency_diagnostics(&age_avg, &age_max, &prep_avg, &prep_max,
+                                             &xfer_avg, &xfer_max, &err, &lock, &lead, &in_off);
+                debug_console_printf("[LAT] age=%lu/%lu prep=%lu/%lu xfer=%lu/%lu err=%ld lock=%lu lead=%lu in=%ld\r\n",
+                                     (unsigned long)age_avg, (unsigned long)age_max,
+                                     (unsigned long)prep_avg, (unsigned long)prep_max,
+                                     (unsigned long)xfer_avg, (unsigned long)xfer_max,
+                                     (long)err, (unsigned long)lock, (unsigned long)lead, (long)in_off);
             }
             hhkb_reset_scan_diagnostics_peaks();
 #else

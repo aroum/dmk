@@ -46,6 +46,9 @@ void sof_lock_note_publish(void);
 void sof_lock_note_fire(uint16_t fired);
 void usb_keyboard_report_armed(void);
 void usb_xfer_complete_from_isr(void);
-void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *err_us,
-                                  uint32_t *locked, uint32_t *lead_us, int32_t *in_us);
+void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us,
+                                  uint32_t *prep_avg_us, uint32_t *prep_max_us,
+                                  uint32_t *xfer_avg_us, uint32_t *xfer_max_us,
+                                  int32_t *err_us, uint32_t *locked,
+                                  uint32_t *lead_us, int32_t *in_us);
 #endif

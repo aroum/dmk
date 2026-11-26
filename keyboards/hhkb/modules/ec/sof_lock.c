@@ -12,7 +12,10 @@ static volatile bool s_report_pending;
 #ifdef HHKB_SCAN_DIAGNOSTICS
 static volatile uint16_t s_publish_compare;
 static volatile uint16_t s_age_from;
+static volatile uint16_t s_arm_time;
 static volatile uint32_t s_age_sum, s_age_cnt, s_age_max;
+static volatile uint32_t s_prep_sum, s_prep_max;
+static volatile uint32_t s_xfer_sum, s_xfer_max;
 #endif
 #if HHKB_SOF_LOCK || defined(HHKB_SCAN_DIAGNOSTICS)
 static volatile uint16_t s_last_compare;
@@ -27,6 +30,7 @@ void sof_lock_note_publish(void) { s_publish_compare = s_last_compare; }
 void usb_keyboard_report_armed(void) {
     if (!s_report_pending) {
 #ifdef HHKB_SCAN_DIAGNOSTICS
+        s_arm_time = (uint16_t)TIM2->CNT;
         s_age_from = s_publish_compare;
 #endif
         s_report_pending = true;
@@ -154,23 +158,40 @@ void usb_xfer_complete_from_isr(void) {
 #endif
     s_report_pending = false;
 #ifdef HHKB_SCAN_DIAGNOSTICS
+    uint32_t prep = (uint16_t)(s_arm_time - s_age_from);
+    uint32_t xfer = (uint16_t)(now - s_arm_time);
     uint32_t age = (uint16_t)(now - s_age_from);
     s_age_sum += age;
+    s_prep_sum += prep;
+    s_xfer_sum += xfer;
     s_age_cnt++;
     if (age > s_age_max) s_age_max = age;
+    if (prep > s_prep_max) s_prep_max = prep;
+    if (xfer > s_xfer_max) s_xfer_max = xfer;
 #endif
 }
 #endif
 
 #ifdef HHKB_SCAN_DIAGNOSTICS
-void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, int32_t *err_us,
-                                  uint32_t *locked, uint32_t *lead_us, int32_t *in_us) {
+void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us,
+                                  uint32_t *prep_avg_us, uint32_t *prep_max_us,
+                                  uint32_t *xfer_avg_us, uint32_t *xfer_max_us,
+                                  int32_t *err_us, uint32_t *locked,
+                                  uint32_t *lead_us, int32_t *in_us) {
     taskENTER_CRITICAL();
     uint32_t sum = s_age_sum, cnt = s_age_cnt, mx = s_age_max;
+    uint32_t p_sum = s_prep_sum, p_mx = s_prep_max;
+    uint32_t x_sum = s_xfer_sum, x_mx = s_xfer_max;
     s_age_sum = 0; s_age_cnt = 0; s_age_max = 0;
+    s_prep_sum = 0; s_prep_max = 0;
+    s_xfer_sum = 0; s_xfer_max = 0;
     taskEXIT_CRITICAL();
     if (avg_us) *avg_us = cnt ? sum / cnt / 4U : 0;
     if (max_us) *max_us = mx / 4U;
+    if (prep_avg_us) *prep_avg_us = cnt ? p_sum / cnt / 4U : 0;
+    if (prep_max_us) *prep_max_us = p_mx / 4U;
+    if (xfer_avg_us) *xfer_avg_us = cnt ? x_sum / cnt / 4U : 0;
+    if (xfer_max_us) *xfer_max_us = x_mx / 4U;
 #if HHKB_SOF_LOCK
     if (err_us) *err_us = s_last_err / 4;
     if (locked) *locked = fresh((uint16_t)TIM2->CNT) ? 1U : 0U;
