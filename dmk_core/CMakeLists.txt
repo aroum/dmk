@@ -111,11 +111,25 @@ function(build_keyboard KEYBOARD_NAME)
         set(VIAL_JSON_CANDIDATE "${ACTUAL_KEYBOARD_DIR}/vial${LAYOUT_VARIANT}.json")
         set(VIA_JSON_CANDIDATE "${ACTUAL_KEYBOARD_DIR}/via${LAYOUT_VARIANT}.json")
         set(VIAL_GEN_H_FILE "${CMAKE_CURRENT_BINARY_DIR}/vial_generated.h")
+        set(LAYOUT_JSON_GENERATED OFF)
 
         if(KBD_BASE STREQUAL "hhkb")
-            # VIA loads its definition from the client. Embed the smaller Vial definition.
-            set(CHOSEN_LAYOUT_JSON "${VIAL_JSON_CANDIDATE}")
+            # Keep VIA's curated geometry as the source of truth for both clients.
+            # Strip its menus for the embedded definition to conserve firmware space.
+            if(NOT EXISTS "${VIA_JSON_CANDIDATE}")
+                message(FATAL_ERROR "HHKB requires its curated via.json layout definition")
+            endif()
+            set(CHOSEN_LAYOUT_JSON "${CMAKE_CURRENT_BINARY_DIR}/vial.json")
             set(LAYOUT_JSON_NAME "vial.json")
+            set(LAYOUT_JSON_GENERATED ON)
+            add_custom_command(
+                OUTPUT "${CHOSEN_LAYOUT_JSON}"
+                COMMAND uv run python3 "${DMK_ROOT}/tools/hhkb/generate_vial.py"
+                    "${VIA_JSON_CANDIDATE}" "${CHOSEN_LAYOUT_JSON}"
+                DEPENDS "${VIA_JSON_CANDIDATE}" "${DMK_ROOT}/tools/hhkb/generate_vial.py"
+                COMMENT "Generating compact HHKB Vial definition from via.json"
+                VERBATIM
+            )
         elseif(IS_VIA_V3)
             # Prefer via.json, fallback to vial.json
             if(EXISTS "${VIA_JSON_CANDIDATE}")
@@ -182,7 +196,7 @@ function(build_keyboard KEYBOARD_NAME)
             endif()
         endif()
 
-        if(EXISTS "${CHOSEN_LAYOUT_JSON}")
+        if(LAYOUT_JSON_GENERATED OR EXISTS "${CHOSEN_LAYOUT_JSON}")
             add_custom_command(
                 OUTPUT "${VIAL_GEN_H_FILE}"
                 COMMAND uv run python3 "${DMK_ROOT}/tools/vial/compress.py" "${CHOSEN_LAYOUT_JSON}" "${VIAL_GEN_H_FILE}"
