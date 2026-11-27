@@ -57,6 +57,25 @@ Compiling yourself is optional: [GitHub Actions](#github-actions) publishes `dmk
 
 After obtaining the BIN, download the matching original PFU firmware yourself and create an HFB using the [HTML patcher and installation instructions](install.md#hybrid-local-patching). Local packaging is required even for a CI binary. See below for the Python alternative. Building or packaging alone does not flash the keyboard.
 
+## VIA and Vial layout generation
+
+`keyboards/hhkb/via.json` is the source of truth for both ANSI and JIS physical
+geometry, including key widths, spacing and the stepped JIS Enter key. Edit that
+file when adjusting the layout; matrix coordinates must stay aligned with `config.h`.
+
+The HHKB build runs `tools/hhkb/generate_vial.py` to derive a compact `vial.json`
+in the build directory, then compresses it into `vial_generated.h`. The compact
+definition preserves the complete layout and omits VIA menus and custom keycodes,
+as before. Changes to the source JSON automatically regenerate both build outputs.
+The generic `tools/vial/generate_json.py` only creates a matrix grid from `config.h`
+and is not the generator for HHKB's curated physical layout.
+
+To refresh the checked-in compact definition without building or flashing firmware:
+
+```bash
+python3 tools/hhkb/generate_vial.py keyboards/hhkb/via.json keyboards/hhkb/vial.json
+```
+
 ## Model Identifiers and HFB Container Formats
 
 The table lists the PFU-compatible version written to the final DMK HFB, not the DMK CalVer/git version shown in VIA. All final HFB versions end in `.50`: A4.50, A8.50, A9.50, A0.50 and A2.50. Hybrid input templates remain the original A0.48 (ANSI) and A2.49 (JIS); their SHA-256 checks are unchanged. The Python and HTML patchers update the output version and CRC while preserving the Nordic payload.
