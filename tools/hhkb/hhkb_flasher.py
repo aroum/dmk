@@ -135,9 +135,16 @@ def validate_container(data: bytes, expected_model=None, *, check_crc=True, chec
             raise ValueError(f"Firmware model {model!r} does not match keyboard {expected_model}")
     return model
 
-def find_hhkb_device(product_id=None):
-    """Locate matching HHKB device with UsagePage 0xFF00 / Usage 0x01."""
+def find_hhkb_device(product_id=None, include_dmk=True):
+    """Locate matching HHKB device with UsagePage 0xFF00 / Usage 0x01.
+
+    PFU's firmware and Bank 1 use VID 0x04FE. A running DMK Hybrid image built with HHKB_PFU_CHANNEL
+    exposes the same vendor interface under its own VID/PID; it answers 0x02 and hands over to Bank 1
+    on 0xE0, so it can be updated without SW6."""
     devices = hid.enumerate(PFU_VID)
+    if include_dmk and product_id is None:
+        devices += [d for d in hid.enumerate(DMK_VID, DMK_PID)
+                    if d.get("usage_page") == PFU_USAGE_PAGE and d.get("usage") == PFU_USAGE]
     matches = []
     for d in devices:
         if product_id is not None and d["product_id"] != product_id:
@@ -230,7 +237,11 @@ class HHKBDevice:
         deadline = time.monotonic() + timeout_sec
         last_error = None
         while time.monotonic() < deadline:
-            dev_info = find_hhkb_device(self.dev_info["product_id"])
+            # Bank 1 comes back under PFU's own VID/PID, whichever firmware answered E0.
+            if self.dev_info.get("vendor_id", PFU_VID) == PFU_VID:
+                dev_info = find_hhkb_device(self.dev_info["product_id"])
+            else:
+                dev_info = find_hhkb_device(None, include_dmk=False)
             if dev_info is not None:
                 try:
                     handle = hid.device()
@@ -416,7 +427,7 @@ def main():
     args = parser.parse_args()
 
     print("=== HHKB Open Flasher CLI ===")
-    print("Searching for connected HHKB keyboards (VID 0x04FE)...")
+    print(f"Searching for connected HHKB keyboards (VID 0x04FE, or DMK 0x{DMK_VID:04X}:0x{DMK_PID:04X} with its PFU channel)...")
     dev_info = find_hhkb_device()
 
     if not dev_info:

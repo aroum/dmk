@@ -46,6 +46,8 @@ With the keyboard powered off, set SW6 to ON, connect power, and return SW6 to O
 
 If the keyboard is currently running the original PFU firmware, its PFU update interface is already available: do **not** use SW6.
 
+**Hybrid, without SW6.** Hybrid images built with `HHKB_PFU_CHANNEL` (the default) keep the stock vendor interface (UsagePage `0xFF00`, Usage `0x01`, 64-byte reports) under DMK's own VID/PID. It answers `0x02` with the identity the factory wrote to EEPROM (model, revision, serial) and DMK's version `A0.00`, and on `0xE0` hands over to the stock Bank 1 updater exactly as PFU firmware does: no page is erased, and Bank 1 takes the update. The DMK flasher below finds it, so a running DMK Hybrid can be updated (or returned to stock) with no switch. Keymap Tool looks only for PFU's VID and does not see it. Every other PFU command is refused: the keymap and settings stay DMK's.
+
 > [!WARNING]
 > Make sure SW6 is OFF before flashing.
 
@@ -63,7 +65,7 @@ This is expected and does **not** mean that the update failed. At this point Ban
 
 ## Install with the DMK flasher
 
-You do not need the official Keymap Tool. `tools/hhkb/hhkb_flasher.py` talks to the PFU Raw HID update interface (VID `0x04FE`, UsagePage `0xFF00`, Usage `0x01`) exposed by Bank 1 and provides a cross-platform alternative for Linux, macOS, and Windows. Stock firmware already exposes this interface; a running DMK image has a different USB identity, so it must first be returned to Bank 1 through SW6 as described above.
+You do not need the official Keymap Tool. `tools/hhkb/hhkb_flasher.py` talks to the PFU Raw HID update interface (VID `0x04FE`, UsagePage `0xFF00`, Usage `0x01`) exposed by Bank 1 and provides a cross-platform alternative for Linux, macOS, and Windows. Stock firmware already exposes this interface, and so does a running DMK Hybrid image with `HHKB_PFU_CHANNEL` (above). A DMK image without it (Classic, or a Hybrid built with `HHKB_PFU_CHANNEL=0`) must first be returned to Bank 1 through SW6 as described above.
 
 ```bash
 uv run --with hidapi python3 tools/hhkb/hhkb_flasher.py --info

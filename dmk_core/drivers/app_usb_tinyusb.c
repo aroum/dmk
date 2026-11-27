@@ -248,6 +248,10 @@ static void usb_device_task(void *param) {
             tud_midi_rx_cb(0);
         }
 #endif
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+        extern void pfu_channel_task(void);
+        pfu_channel_task();
+#endif
 #ifdef VIAL
         extern void vial_flush_pending_report(void);
         extern void vial_eeprom_task(void);

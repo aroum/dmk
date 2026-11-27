@@ -89,6 +89,35 @@ class FlasherValidationTest(unittest.TestCase):
         self.assertIs(dev.handle, new_handle)
         self.assertEqual(dev.dev_info['path'], b'old')
 
+    def test_reconnect_from_dmk_channel_looks_for_bank1_only(self):
+        old_handle = types.SimpleNamespace(close=lambda: None)
+        new_handle = types.SimpleNamespace(open_path=lambda path: None,
+                                           set_nonblocking=lambda value: None)
+        dev = flasher.HHKBDevice.__new__(flasher.HHKBDevice)
+        dev.dev_info = {'vendor_id': flasher.DMK_VID, 'product_id': flasher.DMK_PID, 'path': b'dmk'}
+        dev.handle = old_handle
+        calls = []
+        def find_after_reset(product_id, include_dmk=True):
+            calls.append((product_id, include_dmk))
+            return {'vendor_id': flasher.PFU_VID, 'product_id': 0x22, 'path': b'bank1'}
+
+        with patch.object(flasher.time, 'sleep'), \
+             patch.object(flasher, 'find_hhkb_device', side_effect=find_after_reset), \
+             patch.object(flasher.hid, 'device', return_value=new_handle, create=True):
+            dev.reconnect()
+        self.assertEqual(calls, [(None, False)])  # any PFU product id, never DMK's own interface again
+        self.assertEqual(dev.dev_info['path'], b'bank1')
+
+    def test_find_includes_dmk_pfu_channel(self):
+        dmk = {'vendor_id': flasher.DMK_VID, 'product_id': flasher.DMK_PID, 'usage_page': 0xFF00, 'usage': 1,
+               'interface_number': 3, 'path': b'dmk'}
+        via = dict(dmk, usage_page=0xFF60, usage=0x61, path=b'via')
+        def enumerate_(vid=0, pid=0):
+            return [] if vid == flasher.PFU_VID else [via, dmk]
+        with patch.object(flasher.hid, 'enumerate', side_effect=enumerate_, create=True):
+            self.assertEqual(flasher.find_hhkb_device()['path'], b'dmk')
+            self.assertIsNone(flasher.find_hhkb_device(None, include_dmk=False))
+
     def test_firmware_transfer_matches_pfu_packet_format(self):
         image = flasher.wrap_binary_to_hfb(bytes(range(256)) * 256)
         dev = flasher.HHKBDevice.__new__(flasher.HHKBDevice)

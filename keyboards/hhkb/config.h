@@ -56,6 +56,14 @@
 #ifndef HHKB_SOF_MARGIN_US
 #define HHKB_SOF_MARGIN_US 150
 #endif
+/*
+ * HHKB_PFU_CHANNEL (Hybrid, default 1): the stock vendor HID channel, as far as firmware updates need it
+ * (modules/pfu_channel). A flasher or the official tool can then find the keyboard, read its identity
+ * and hand over to PFU's updater, so SW6 is not the only way back. 0 removes the interface.
+ */
+#if defined(HHKB_HYBRID) && !defined(HHKB_PFU_CHANNEL)
+#define HHKB_PFU_CHANNEL 1
+#endif
 #ifndef HHKB_SCAN_DIAGNOSTICS
 #define HHKB_SCAN_DIAGNOSTICS 1
 #endif
