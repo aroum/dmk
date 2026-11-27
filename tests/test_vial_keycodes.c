@@ -7,9 +7,11 @@
 #include "FreeRTOS.h"
 #include "keys.h"
 #include "vial.h"
+#include "app_usb_hid.h"
+#include "usb.h"
 
 TickType_t g_mock_ticks = 0;
-const uint32_t keymap[1][60] = {{0}};
+const uint32_t keymap[1][NUM_KEYS] = {{0}};
 const size_t keymap_layers = 1;
 
 void bootloader_jump(void) {}
@@ -32,7 +34,68 @@ uint16_t to_via_keycode(uint32_t dmk_key);
 uint32_t from_via_keycode(uint16_t via_key);
 void vial_process_packet(uint8_t const *request, uint8_t *response);
 
+static USB_HID_KeyboardReport_TypeDef last_report;
+static unsigned report_count;
+bool USB_HID_Init(void) { return true; }
+bool USB_HID_SendReport(const USB_HID_KeyboardReport_TypeDef *report) {
+    last_report = *report;
+    ++report_count;
+    return true;
+}
+bool USB_HID_SendConsumerReport(uint16_t usage) { (void)usage; return true; }
+
+static void test_modified_keycodes(void) {
+    // VIA uses four modifier bits plus a side flag, not an eight-bit HID mask.
+    // Exercise all 15 combinations on each side, including LGUI(Right), LALT
+    // and high right-side masks that overlap HID modifier keycode numbers.
+    for (unsigned right = 0; right < 2; ++right) {
+        for (unsigned bits = 1; bits < 16; ++bits) {
+            uint8_t mods = (uint8_t)(bits << (right ? 4 : 0));
+            uint16_t via = (uint16_t)(((bits | (right ? 0x10 : 0)) << 8) | K_RGHT);
+            uint32_t dmk = MK(mods, K_RGHT);
+            assert(from_via_keycode(via) == dmk);
+            assert(to_via_keycode(dmk) == via);
+
+            // Both VIA keymap write paths must store the exact HID mask.
+            uint8_t req[32] = {0x05, 0, 0, 0, via >> 8, via & 0xFF};
+            uint8_t resp[32] = {0};
+            vial_process_packet(req, resp);
+            assert(dynamic_keymap[0][0] == dmk);
+            req[0] = 0x04;
+            vial_process_packet(req, resp);
+            assert(resp[4] == (via >> 8) && resp[5] == (via & 0xFF));
+
+            req[0] = 0x13; req[3] = 2; // SET_BUFFER, offset 0, size 2
+            dynamic_keymap[0][0] = K_NULL;
+            vial_process_packet(req, resp);
+            assert(dynamic_keymap[0][0] == dmk);
+            req[0] = 0x12; // GET_BUFFER
+            vial_process_packet(req, resp);
+            assert(resp[4] == (via >> 8) && resp[5] == (via & 0xFF));
+
+            // Exercise the production USB report path used by DMK_MK dispatch.
+            usb_init();
+            report_count = 0;
+            uint32_t stored = dynamic_keymap[0][0];
+            usb_process_key_with_modifiers((stored >> 8) & 0xFF, stored & 0xFF, true);
+            assert(report_count == 1);
+            assert(last_report.Modifier == mods);
+            assert(last_report.Keycodes[0] == K_RGHT);
+            usb_process_key_with_modifiers((stored >> 8) & 0xFF, stored & 0xFF, false);
+            assert(report_count == 2 && last_report.Modifier == 0);
+            for (unsigned i = 0; i < 6; ++i) assert(last_report.Keycodes[i] == 0);
+        }
+    }
+    // A mask-free MK must not silently gain Ctrl on readback.
+    assert(to_via_keycode(MK(0, K_RGHT)) == K_RGHT);
+    assert(from_via_keycode(K_LGUI) == K_LGUI);
+    assert(from_via_keycode(K_RGUI) == K_RGUI);
+    assert(from_via_keycode(K_LALT) == K_LALT);
+    assert(from_via_keycode(K_RALT) == K_RALT);
+}
+
 int main(void) {
+    test_modified_keycodes();
     // 1. Media keys roundtrip
     assert(from_via_keycode(0x00A8) == K_MUTE);
     assert(to_via_keycode(K_MUTE) == 0x00A8);

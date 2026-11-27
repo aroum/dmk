@@ -132,6 +132,7 @@ clang -Wall -Wextra -Wno-unused-variable -DVIAL -DMCU_stm32l072 -DconfigTICK_RAT
     -I "${SCRIPT_DIR}/dmk_core/config" -I "${SCRIPT_DIR}/dmk_core/features" \
     -I "${SCRIPT_DIR}/dmk_core/drivers" -I "${SCRIPT_DIR}/dmk_core/core" \
     "${SCRIPT_DIR}/tests/test_vial_keycodes.c" "${SCRIPT_DIR}/dmk_core/features/vial.c" \
+    "${SCRIPT_DIR}/dmk_core/drivers/usb.c" \
     -o "${SCRIPT_DIR}/tests/test_vial_keycodes"
 "${SCRIPT_DIR}/tests/test_vial_keycodes"
 rm -f "${SCRIPT_DIR}/tests/test_vial_keycodes"
