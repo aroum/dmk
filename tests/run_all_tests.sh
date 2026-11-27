@@ -137,6 +137,24 @@ clang -Wall -Wextra -Wno-unused-variable -DVIAL -DMCU_stm32l072 -DconfigTICK_RAT
 "${SCRIPT_DIR}/tests/test_vial_keycodes"
 rm -f "${SCRIPT_DIR}/tests/test_vial_keycodes"
 
+
+# Exercise both HHKB layouts with their production reporting configuration.
+for layout in ansi jis; do
+    mod_tap_flags=(-DHHKB_HYBRID)
+    if [[ "$layout" == jis ]]; then mod_tap_flags+=(-DHHKB_JIS); fi
+    clang -Wall -Wextra -Wno-unused-variable -DVIAL -DMCU_stm32l072 -DconfigTICK_RATE_HZ=1000 \
+        "${mod_tap_flags[@]}" \
+        -I "${SCRIPT_DIR}/keyboards/hhkb" -I "${SCRIPT_DIR}/platforms/stm32l072" \
+        -I "${SCRIPT_DIR}/tests/mocks" -I "${SCRIPT_DIR}/dmk_core/include" \
+        -I "${SCRIPT_DIR}/dmk_core/config" -I "${SCRIPT_DIR}/dmk_core/features" \
+        -I "${SCRIPT_DIR}/dmk_core/drivers" -I "${SCRIPT_DIR}/dmk_core/core" \
+        "${SCRIPT_DIR}/tests/test_vial_mod_tap.c" "${SCRIPT_DIR}/dmk_core/features/vial.c" \
+        "${SCRIPT_DIR}/dmk_core/features/hold_tap.c" "${SCRIPT_DIR}/dmk_core/drivers/usb.c" \
+        -o "${SCRIPT_DIR}/tests/test_vial_mod_tap"
+    "${SCRIPT_DIR}/tests/test_vial_mod_tap"
+done
+rm -f "${SCRIPT_DIR}/tests/test_vial_mod_tap"
+
 if [[ -f "${SCRIPT_DIR}/keyboards/hhkb/modules/ec/rapid_trigger.c" ]]; then
     # HHKB Classic host-only algorithm and EEPROM guard tests
     HHKB_TEST_DIR="${SCRIPT_DIR}/tests/hhkb_classic"

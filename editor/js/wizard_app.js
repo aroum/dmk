@@ -2482,21 +2482,21 @@
             let result = key;
             activeModalModifiers.slice().reverse().forEach(mod => {
                 if (mod === 'HT_LSHIFT' || mod === 'HT_SHIFT') {
-                    result = `HT(MOD_LSHIFT, ${result})`;
+                    result = `MT(MOD_LSHIFT, ${result})`;
                 } else if (mod === 'HT_RSHIFT') {
-                    result = `HT(MOD_RSHIFT, ${result})`;
+                    result = `MT(MOD_RSHIFT, ${result})`;
                 } else if (mod === 'HT_LCTRL') {
-                    result = `HT(MOD_LCTRL, ${result})`;
+                    result = `MT(MOD_LCTRL, ${result})`;
                 } else if (mod === 'HT_RCTRL') {
-                    result = `HT(MOD_RCTRL, ${result})`;
+                    result = `MT(MOD_RCTRL, ${result})`;
                 } else if (mod === 'HT_LALT') {
-                    result = `HT(MOD_LALT, ${result})`;
+                    result = `MT(MOD_LALT, ${result})`;
                 } else if (mod === 'HT_RALT') {
-                    result = `HT(MOD_RALT, ${result})`;
+                    result = `MT(MOD_RALT, ${result})`;
                 } else if (mod === 'HT_LGUI') {
-                    result = `HT(MOD_LGUI, ${result})`;
+                    result = `MT(MOD_LGUI, ${result})`;
                 } else if (mod === 'HT_RGUI') {
-                    result = `HT(MOD_RGUI, ${result})`;
+                    result = `MT(MOD_RGUI, ${result})`;
                 } else {
                     result = `${mod}(${result})`;
                 }

@@ -709,11 +709,15 @@ typedef struct {
 #define DMK_HT 0x04000000
 #define DMK_TG 0x08000000
 #define DMK_MO 0x10000000
+#define DMK_MT 0x40000000
 
 // Helper Macros for Keymaps
 #define MK(mod_mask, kc) (DMK_MK | ((mod_mask) << 8) | (kc))
 #define HT(layer_or_mod, kc) (DMK_HT | ((layer_or_mod) << 8) | (kc))
 #define HT_T(layer_or_mod, kc, ms) (DMK_HT | ((layer_or_mod) << 8) | (kc) | ((uint32_t)(ms) << 16))
+// Explicit modifier-tap: masks 0..15 must not be mistaken for layer numbers.
+#define MT(mod_mask, kc) (DMK_MT | ((uint32_t)(mod_mask) << 8) | (kc))
+#define MT_T(mod_mask, kc, ms) (MT(mod_mask, kc) | ((uint32_t)(ms) << 16))
 #define TG(layer) (DMK_TG | (layer))
 #define MO(layer) (DMK_MO | (layer))
 

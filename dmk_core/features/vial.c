@@ -120,59 +120,16 @@ static uint8_t from_via_mouse_keycode(uint8_t via_kc) {
     return via_kc;
 }
 
-static uint8_t to_via_mods(uint8_t dmk_mod) {
-    // If given an HID modifier keycode (0xE0..0xE7), map to single VIA modifier value
-    switch (dmk_mod) {
-    case HID_KEY_CONTROL_LEFT: return 0x01;
-    case HID_KEY_SHIFT_LEFT:   return 0x02;
-    case HID_KEY_ALT_LEFT:     return 0x04;
-    case HID_KEY_GUI_LEFT:     return 0x08;
-    case HID_KEY_CONTROL_RIGHT: return 0x11;
-    case HID_KEY_SHIFT_RIGHT:   return 0x12;
-    case HID_KEY_ALT_RIGHT:     return 0x14;
-    case HID_KEY_GUI_RIGHT:     return 0x18;
-    default: break;
-    }
-
-    uint8_t via_mod = 0;
-    if (dmk_mod & MOD_LCTRL)
-        via_mod |= 0x01;
-    if (dmk_mod & MOD_LSHIFT)
-        via_mod |= 0x02;
-    if (dmk_mod & MOD_LALT)
-        via_mod |= 0x04;
-    if (dmk_mod & MOD_LGUI)
-        via_mod |= 0x08;
-    if (dmk_mod & MOD_RCTRL)
-        via_mod |= 0x11;
-    if (dmk_mod & MOD_RSHIFT)
-        via_mod |= 0x12;
-    if (dmk_mod & MOD_RALT)
-        via_mod |= 0x14;
-    if (dmk_mod & MOD_RGUI)
-        via_mod |= 0x18;
-    return via_mod;
+// QMK modifiers use four bits plus a side flag; DMK uses an eight-bit HID mask.
+static uint8_t to_via_mods(uint8_t mods) {
+    uint8_t via_mods = (mods & 0x0F) | (mods >> 4);
+    if (mods & 0xF0) via_mods |= 0x10;
+    return via_mods;
 }
 
-static uint8_t from_via_mods(uint8_t via_mod) {
-    uint8_t dmk_mod = 0;
-    if (via_mod & 0x01)
-        dmk_mod |= MOD_LCTRL;
-    if (via_mod & 0x02)
-        dmk_mod |= MOD_LSHIFT;
-    if (via_mod & 0x04)
-        dmk_mod |= MOD_LALT;
-    if (via_mod & 0x08)
-        dmk_mod |= MOD_LGUI;
-    if (via_mod & 0x11)
-        dmk_mod |= MOD_RCTRL;
-    if (via_mod & 0x12)
-        dmk_mod |= MOD_RSHIFT;
-    if (via_mod & 0x14)
-        dmk_mod |= MOD_RALT;
-    if (via_mod & 0x18)
-        dmk_mod |= MOD_RGUI;
-    return dmk_mod;
+static uint8_t from_via_mods(uint8_t mods) {
+    uint8_t mask = mods & 0x0F;
+    return (mods & 0x10) ? (mask << 4) : mask;
 }
 
 // Helper function to map DMK 32-bit keycodes to VIA 16-bit keycodes
@@ -225,20 +182,19 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
     if ((dmk_key & 0xFF000000) == DMK_TG)
         return 0x5260 | (dmk_key & 0xFF);
 
-    if ((dmk_key & 0xFF000000) == DMK_HT) {
-        uint8_t layer_or_mod = (dmk_key >> 8) & 0xFF;
+    if ((dmk_key & 0xFF000000) == DMK_HT || (dmk_key & 0xFF000000) == DMK_MT) {
+        uint8_t target = (dmk_key >> 8) & 0xFF;
         uint8_t kc = to_via_mouse_keycode(dmk_key & 0xFF);
-        return (layer_or_mod < 32) ? (0x4000 | (layer_or_mod << 8) | kc)
-                                   : (0x2000 | (to_via_mods(layer_or_mod) << 8) | kc);
+        if ((dmk_key & 0xFF000000) == DMK_HT) {
+            if (target < 16) return 0x4000 | (target << 8) | kc;
+            // Only legacy HT accepts standalone HID modifier keycodes.
+            if (target >= 0xE0 && target <= 0xE7) target = 1U << (target - 0xE0);
+        }
+        return 0x2000 | (to_via_mods(target) << 8) | kc;
     }
     if ((dmk_key & 0xFF000000) == DMK_MK) {
-        // MK always stores an HID bitmask, including masks in the 0xE0..0xE7
-        // range. Unlike HT, these must not be interpreted as HID keycodes.
-        uint8_t mods = (dmk_key >> 8) & 0xFF;
-        uint8_t via_mods = (mods & 0x0F) | (mods >> 4);
-        if (mods & 0xF0) via_mods |= 0x10;
         // QK_MODS is a range, not a prefix: 0x0100 would add Left Ctrl.
-        return (via_mods << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
+        return (to_via_mods((dmk_key >> 8) & 0xFF) << 8) | to_via_mouse_keycode(dmk_key & 0xFF);
     }
     if (dmk_key >= L_0 && dmk_key <= L_15)
         return 0x5220 | (dmk_key - L_0);
@@ -301,15 +257,10 @@ uint32_t from_via_keycode(uint16_t via_key) {
         return from_via_mouse_keycode((uint8_t)via_key);
     if (via_key >= 0x0002 && via_key <= 0x00FF)
         return via_key;
-    if (via_key >= 0x0100 && via_key <= 0x1FFF) {
-        // QMK's low four modifier bits select Ctrl/Shift/Alt/GUI; bit 4
-        // selects the right side for the whole chord. HID uses two nibbles.
-        uint8_t mods = (via_key >> 8) & 0x0F;
-        if (via_key & 0x1000) mods <<= 4;
-        return MK(mods, from_via_mouse_keycode(via_key & 0xFF));
-    }
+    if (via_key >= 0x0100 && via_key <= 0x1FFF)
+        return MK(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x2000 && via_key <= 0x3FFF)
-        return HT(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
+        return MT(from_via_mods((via_key >> 8) & 0x1F), from_via_mouse_keycode(via_key & 0xFF));
     if (via_key >= 0x4000 && via_key <= 0x4FFF)
         return HT((via_key >> 8) & 0x0F, from_via_mouse_keycode(via_key & 0xFF));
 

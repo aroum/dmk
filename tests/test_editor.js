@@ -313,14 +313,11 @@ test('Modal Keycode Builder & Modifiers', () => {
     sandbox.activeModalModifiers = ['LC', 'LS'];
     assert.strictEqual(sandbox.buildFinalModalKeycode(), 'LC(LS(K_C))');
 
-    sandbox.activeModalModifiers = ['HT_LSHIFT'];
-    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'HT(MOD_LSHIFT, K_C)');
+    for (const mod of ['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']) {
+        sandbox.activeModalModifiers = ['HT_' + mod];
+        assert.strictEqual(sandbox.buildFinalModalKeycode(), `MT(MOD_${mod}, K_C)`);
+    }
 
-    sandbox.activeModalModifiers = ['HT_LCTRL'];
-    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'HT(MOD_LCTRL, K_C)');
-
-    sandbox.activeModalModifiers = ['HT_LGUI'];
-    assert.strictEqual(sandbox.buildFinalModalKeycode(), 'HT(MOD_LGUI, K_C)');
 });
 
 test('Pin Validation & MCU Pin Formats', () => {
@@ -1463,7 +1460,7 @@ test('Codegen: Hold-Tap Keycodes in Keymap', () => {
     sandbox.configState.rowPins = ['GPIO0'];
     sandbox.configState.colPins = ['GPIO1'];
     sandbox.configState.activeKeys = [[true]];
-    sandbox.configState.keymaps = { DEF: ['HT(K_LCTL, K_A)'] };
+    sandbox.configState.keymaps = { DEF: ['MT(MOD_LCTRL, K_A)'] };
 
     sandbox.document.getElementById('kbName').value = 'HT_Test';
     sandbox.document.getElementById('mcuSelect').value = 'rp2040';
@@ -1472,7 +1469,7 @@ test('Codegen: Hold-Tap Keycodes in Keymap', () => {
 
     sandbox.generateConfigCode();
     const configH = sandbox.document.getElementById('configCodeOutput').textContent;
-    assert.ok(configH.includes('HT(K_LCTL, K_A)'), 'Hold-Tap keycode must be included in generated keymap');
+    assert.ok(configH.includes('MT(MOD_LCTRL, K_A)'), 'Mod-Tap keycode must be included in generated keymap');
 });
 
 

@@ -3,6 +3,7 @@
 #include "keys.h"
 #include "layers.h"
 #include "task.h"
+#include "usb.h"
 #include <string.h>
 
 #ifndef TAPPING_TERM_DEFAULT
@@ -28,7 +29,6 @@ __attribute__((weak)) uint16_t hold_tap_config_value(uint8_t id) {
 }
 
 extern void keyboard_send_key(uint16_t keycode, bool pressed);
-extern void keyboard_send_modifiers(uint8_t mod_mask, bool pressed);
 extern void oneshot_send_lazy_mods(void);
 extern void oneshot_on_tap_key(void);
 
@@ -36,10 +36,30 @@ void hold_tap_init(void) {
     memset(ht_trackers, 0, sizeof(ht_trackers));
     memset(&s_last_release, 0, sizeof(s_last_release));
     s_active_ht_count = 0;
+    usb_set_hold_tap_modifiers(0);
 }
 
 bool hold_tap_has_active(void) {
     return s_active_ht_count > 0;
+}
+
+static bool is_mod_tap(uint32_t key) {
+    return (key & 0xFF000000) == DMK_MT || ((key >> 8) & 0xFF) >= 16;
+}
+
+static void refresh_hold_modifiers(void) {
+    uint8_t mods = 0;
+    for (unsigned i = 0; i < MAX_HT_TRACKERS; ++i) {
+        uint32_t key = ht_trackers[i].keycode;
+        if (ht_trackers[i].state != HT_STATE_HOLD || !is_mod_tap(key)) continue;
+        uint8_t target = (key >> 8) & 0xFF;
+        // Preserve legacy HT(K_LCTL, ...) keycodes. Explicit MT always holds
+        // a bitmask, even when its value overlaps HID modifier usages.
+        if ((key & 0xFF000000) == DMK_HT && target >= 0xE0 && target <= 0xE7)
+            target = 1U << (target - 0xE0);
+        mods |= target;
+    }
+    usb_set_hold_tap_modifiers(mods);
 }
 
 static void activate_hold(HTTracker *tracker) {
@@ -48,10 +68,10 @@ static void activate_hold(HTTracker *tracker) {
     }
     tracker->state = HT_STATE_HOLD;
     uint8_t target = (tracker->keycode >> 8) & 0xFF;
-    if (target < 16)
-        layers_on(target);
+    if (is_mod_tap(tracker->keycode))
+        refresh_hold_modifiers();
     else
-        keyboard_send_modifiers(target, true);
+        layers_on(target);
 }
 
 void hold_tap_permissive_resolve(uint8_t except_row, uint8_t except_col) {
@@ -85,7 +105,7 @@ TickType_t hold_tap_check_timeouts(TickType_t now) {
 }
 
 bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed) {
-    if ((key & 0xFF000000) != DMK_HT)
+    if ((key & 0xFF000000) != DMK_HT && (key & 0xFF000000) != DMK_MT)
         return false;
 
     TickType_t now = xTaskGetTickCount();
@@ -139,6 +159,12 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                 uint8_t target = (ht_trackers[i].keycode >> 8) & 0xFF;
                 uint8_t kc = ht_trackers[i].keycode & 0xFF;
 
+                // A release may arrive before the timer task services the
+                // deadline. Decide using elapsed time rather than emitting a tap.
+                if (ht_trackers[i].state == HT_STATE_PRESSED &&
+                    now - ht_trackers[i].press_time >= ht_trackers[i].timeout_ticks)
+                    activate_hold(&ht_trackers[i]);
+
                 if (ht_trackers[i].state == HT_STATE_REPEAT) {
                     keyboard_send_key(kc, false);
                     oneshot_on_tap_key();
@@ -159,10 +185,11 @@ bool hold_tap_process_event(uint8_t row, uint8_t col, uint32_t key, bool pressed
                     s_last_release.release_time = now;
                     s_last_release.valid = true;
                 } else if (ht_trackers[i].state == HT_STATE_HOLD) {
-                    if (target < 16)
-                        layers_off(target);
+                    ht_trackers[i].state = HT_STATE_IDLE;
+                    if (is_mod_tap(ht_trackers[i].keycode))
+                        refresh_hold_modifiers();
                     else
-                        keyboard_send_modifiers(target, false);
+                        layers_off(target);
                     s_last_release.valid = false;
                 }
                 ht_trackers[i].state = HT_STATE_IDLE;

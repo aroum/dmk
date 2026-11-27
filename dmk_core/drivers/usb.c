@@ -24,6 +24,7 @@
 static USB_HID_KeyboardReport_TypeDef current_report;
 static uint8_t s_real_mods = 0;
 static uint8_t s_weak_mods = 0;
+static uint8_t s_hold_tap_mods = 0;
 
 #ifdef MATRIX_REPORT_BATCH
 static bool add_key_to_report(uint8_t keycode);
@@ -56,7 +57,7 @@ void usb_process_batched_key(uint16_t keycode, bool pressed) {
 #endif
 
 static bool sync_report_modifiers(void) {
-    uint8_t combined = s_real_mods | s_weak_mods;
+    uint8_t combined = s_real_mods | s_weak_mods | s_hold_tap_mods;
     if (current_report.Modifier != combined) {
         current_report.Modifier = combined;
         return true;
@@ -99,6 +100,7 @@ void usb_init(void) {
 
     s_real_mods = 0;
     s_weak_mods = 0;
+    s_hold_tap_mods = 0;
     current_report.ReportID = 1;
     current_report.Modifier = 0;
     current_report.Reserved = 0;
@@ -161,6 +163,17 @@ void usb_process_modifiers(uint8_t mod_mask, bool pressed) {
     if (sync_report_modifiers()) {
         USB_HID_SendReport(&current_report);
     }
+}
+
+/**
+ * @brief Replace the union of modifiers owned by active hold-taps.
+ */
+void usb_set_hold_tap_modifiers(uint8_t mod_mask) {
+#ifdef MATRIX_REPORT_BATCH
+    usb_flush_batched_keys();
+#endif
+    s_hold_tap_mods = mod_mask;
+    if (sync_report_modifiers()) USB_HID_SendReport(&current_report);
 }
 
 /**

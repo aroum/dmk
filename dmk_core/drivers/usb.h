@@ -34,6 +34,9 @@ void usb_flush_batched_keys(void);
  */
 void usb_process_modifiers(uint8_t mod_mask, bool pressed);
 
+// Replace the union of held mod-tap modifiers without releasing other sources.
+void usb_set_hold_tap_modifiers(uint8_t mod_mask);
+
 /**
  * @brief Batch process modified key: atomically update modifiers and keycode in a single HID report.
  * @param mod_mask 8-bit modifier mask

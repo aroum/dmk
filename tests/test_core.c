@@ -63,7 +63,15 @@ void hook_key_sent(uint16_t keycode, bool pressed) { (void)keycode; (void)presse
 #define QUICK_TAP_TERM 150
 #include "keys.h"
 #include "hold_tap.h"
+static void mock_hold_tap_modifiers(uint8_t mask) {
+    // The driver receives the complete union, not an individual key transition.
+    static uint8_t previous;
+    if (mask != previous) keyboard_send_modifiers(mask, mask != 0);
+    previous = mask;
+}
+#define usb_set_hold_tap_modifiers mock_hold_tap_modifiers
 #include "hold_tap.c"
+#undef usb_set_hold_tap_modifiers
 
 static void test_hold_tap_tap_before_timeout(void) {
     mock_reset_records();
@@ -111,9 +119,9 @@ static void test_hold_tap_hold_after_timeout(void) {
     TickType_t next_deadline = hold_tap_check_timeouts(g_mock_ticks);
     (void)next_deadline;
 
-    // Verify modifier activated (target >= 16 sent to keyboard_send_modifiers)
+    // Verify the legacy HID usage is converted to the exact modifier mask
     assert(s_recorded_mods_count == 1);
-    assert(s_recorded_mods[0].mod_mask == K_LCTL && s_recorded_mods[0].pressed == true);
+    assert(s_recorded_mods[0].mod_mask == MOD_LCTRL && s_recorded_mods[0].pressed == true);
     assert(s_recorded_keys_count == 0);
 
     // Release key at t=400
@@ -122,7 +130,7 @@ static void test_hold_tap_hold_after_timeout(void) {
 
     // Verify modifier released
     assert(s_recorded_mods_count == 2);
-    assert(s_recorded_mods[1].mod_mask == K_LCTL && s_recorded_mods[1].pressed == false);
+    assert(s_recorded_mods[1].mod_mask == 0 && s_recorded_mods[1].pressed == false);
     assert(s_recorded_keys_count == 0);
 
     printf("  ✔ test_hold_tap_hold_after_timeout passed\n");
@@ -177,13 +185,13 @@ static void test_hold_tap_custom_timeout(void) {
     g_mock_ticks = 185;
     hold_tap_check_timeouts(g_mock_ticks);
     assert(s_recorded_mods_count == 1);
-    assert(s_recorded_mods[0].mod_mask == K_LSFT && s_recorded_mods[0].pressed == true);
+    assert(s_recorded_mods[0].mod_mask == MOD_LSHIFT && s_recorded_mods[0].pressed == true);
 
     // Release at t=200
     g_mock_ticks = 200;
     hold_tap_process_event(0, 1, ht_key, false);
     assert(s_recorded_mods_count == 2);
-    assert(s_recorded_mods[1].mod_mask == K_LSFT && s_recorded_mods[1].pressed == false);
+    assert(s_recorded_mods[1].mod_mask == 0 && s_recorded_mods[1].pressed == false);
 
     printf("  ✔ test_hold_tap_custom_timeout passed\n");
 }

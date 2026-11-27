@@ -355,9 +355,11 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
 ### Hold-Tap
 
-- HT > Layer-tap/Mod-tap. Momentarily activates a layer or modifier when held, and sends a regular keycode when tapped. Only supports layers 0-15.
+Use `HT(layer, key)` for layer-tap (layers 0–15) and `MT(modifier_mask, key)` for mod-tap. A tap sends only the tap key; a hold activates only the selected layer or modifier mask. For example, `MT(MOD_LALT, K_LEFT)` holds Left Alt and taps Left Arrow.
 
-In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` (`&lt`) is merged into a single universal **Hold-Tap (HT)** function. The firmware automatically determines what to do: if the passed index is less than 16, it activates a layer; if it's a modifier mask, it activates a modifier.
+Modifier masks can be combined with `|`. VIA and Vial encode combinations from one side only; if a right-side modifier is selected, their format treats the whole combination as right-side. Native C `MT` supports mixed sides. Legacy `HT(K_LCTL, key)` remains supported, but `HT(MOD_LCTRL, key)` means layer 1: use `MT` for masks.
+
+After updating from firmware with the old modifier decoder, reassign affected mod-tap keys in VIA/Vial. Previously saved ambiguous keycodes cannot be safely migrated automatically; an EEPROM reset is not required.
 
 ```c
 // Duration (in ms) to hold the key to recognize it as "Hold" 
@@ -383,15 +385,11 @@ In C firmware syntax, the distinction between `Mod-Tap` (`&mt`) and `Layer-Tap` 
 // - To enable: set desired window (e.g. 120-150 ms).
 #define QUICK_TAP_TERM 0
 
-// [Universal Hold-Tap Macro]
-// Replaces both &mt and &lt from ZMK.
-// Argument layer_or_mod: if 0-15 is passed, it is Layer-Tap.
-//                        if modifier mask (e.g. MOD_LSHIFT) is passed, it is Mod-Tap.
-#define HT(layer_or_mod, kc)    (DMK_HT | ((layer_or_mod) << 8) | (kc))
-
-// Custom hold-tap definition with individual timeout
-#define HT_T(layer_or_mod, kc, ms) (DMK_HT | ((layer_or_mod) << 8) | (kc) | ((uint32_t)(ms) << 16))
-
+// Macros from keys.h:
+// HT(layer, kc), MT(mod_mask, kc)
+// HT_T(layer, kc, ms), MT_T(mod_mask, kc, ms)
+// Per-key timeout: 1–255 ms; 0 uses TAPPING_TERM_DEFAULT / runtime settings.
+// The tap argument is a basic 8-bit keycode, not another modifier/layer action.
 
 // ==========================================================================
 // 3. KEYMAP USAGE EXAMPLE
@@ -412,12 +410,12 @@ const uint32_t keymap[][NUM_ROWS][NUM_COLS] = {
 
         // 2. MOD-TAP EQUIVALENT (&mt LSHIFT F)
         // Held: is Left Shift. Tapped: sends key 'F'.
-        // Firmware detects MOD_LSHIFT and handles it as Mod-Tap, not Layer-Tap.
-        HT(MOD_LSHIFT, K_F),
+        // MT explicitly identifies the hold target as a modifier mask.
+        MT(MOD_LSHIFT, K_F),
 
         // 3. CUSTOM HOLD-TAP WITH INDIVIDUAL TIMEOUT
-        // For this key (Space / Ctrl), hold timing is increased to 300ms.
-        HT_T(MOD_LCTRL, K_SPC, 300) }
+        // For this key (Space / Ctrl), hold timing is set to 180ms.
+        MT_T(MOD_LCTRL, K_SPC, 180) }
     }
 };
 ```
