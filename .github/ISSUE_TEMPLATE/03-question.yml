@@ -1,0 +1,54 @@
+name: Question
+description: Ask a question about DMK firmware, hardware support, or documentation.
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: Related areas
+      description: Select all that apply. Area labels will be assigned automatically when the labeling workflow is enabled.
+      options:
+        - label: HHKB
+        - label: Other keyboard
+        - label: DMK core
+        - label: Docs
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly summarize your question.
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question / details
+      description: Explain what you need to know.
+    validations:
+      required: true
+  - type: input
+    id: keyboard
+    attributes:
+      label: Keyboard model
+      description: Exact model if applicable, or N/A.
+      placeholder: e.g. HHKB Professional HYBRID Type-S, PD-KB800BSC1
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version / branch
+      placeholder: e.g. dev, main, release version, or N/A
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing / what you have tried
+      description: Mention your keyboard, tests you performed, results, or Not tested / Not applicable.
+      placeholder: |
+        Keyboard tested: ...
+        What I tried: ...
+        Result: ...
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optional logs, links, screenshots, or related issues.
