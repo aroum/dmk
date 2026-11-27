@@ -438,6 +438,15 @@ __attribute__((weak)) bool hhkb_get_debug_flag(uint8_t flag) {
 }
 __attribute__((weak)) uint8_t hhkb_get_scan_rate(void) { return 4; }
 __attribute__((weak)) uint8_t hhkb_get_effective_scan_rate(void) { return hhkb_get_scan_rate(); }
+// Fallbacks only: with HHKB_SCAN_DIAGNOSTICS the real getters live in the (non-LTO) EC module, and LTO
+// would otherwise inline these weak stubs into vial_diag_task, printing constant zeros.
+void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full);
+void hhkb_reset_scan_diagnostics_peaks(void);
+void hhkb_get_rt_rebuild(uint32_t *ms, uint32_t *count);
+void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32_t *max_us, uint32_t *prep_avg_us, uint32_t *prep_max_us,
+                                  uint32_t *xfer_avg_us, uint32_t *xfer_max_us, int32_t *err_us, uint32_t *locked,
+                                  uint32_t *lead_us, int32_t *in_us);
+#ifndef HHKB_SCAN_DIAGNOSTICS
 __attribute__((weak)) void hhkb_get_scan_diagnostics(uint32_t *scan_us, uint32_t *scan_max_us, uint32_t *work_max_us, uint32_t *missed, uint32_t *q_full) {
     if (scan_us) *scan_us = 0;
     if (scan_max_us) *scan_max_us = 0;
@@ -466,6 +475,7 @@ __attribute__((weak)) void hhkb_get_latency_diagnostics(uint32_t *avg_us, uint32
     if (lead_us) *lead_us = 0;
     if (in_us) *in_us = 0;
 }
+#endif
 
 static uint32_t s_last_diag_tick = 0;
 static uint32_t s_usb_loop_total = 0;
