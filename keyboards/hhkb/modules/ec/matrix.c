@@ -6,6 +6,7 @@
 #include "task_internal.h"
 #include "config.h"
 #include "tusb.h"
+#include "usb.h"
 #include "sof_lock.h"
 #ifdef HHKB_HYBRID
 #include "hybrid.h"
@@ -24,6 +25,10 @@ extern QueueHandle_t matrix_queue;
 
 static matrix_row_t s_matrix_state[MATRIX_ROWS] = {0};
 static TaskHandle_t s_matrix_task;
+
+void keyboard_usb_resume_cb(void) {
+    if (s_matrix_task != NULL) xTaskNotifyGive(s_matrix_task);
+}
 static volatile uint16_t s_scan_period_ticks;
 static volatile uint8_t s_scan_divider;
 static uint8_t s_scan_phase;
@@ -371,9 +376,10 @@ void matrix_task(void *pvParameters) {
         }
         hhkb_hybrid_service();
 #endif
-        // Check power saving condition: host disconnected (not mounted) or USB suspended
+        // Check power saving condition: host disconnected (not mounted) or USB suspended without remote wakeup
+        bool remote_wake_suspend = tud_mounted() && tud_suspended() && usb_remote_wakeup_enabled();
         bool usb_power_saving = !battery && keyboard_power_saving_enabled() &&
-                                (!tud_mounted() || tud_suspended());
+                                (!tud_mounted() || (tud_suspended() && !remote_wake_suspend));
 #ifdef HHKB_HYBRID
         usb_power_saving = usb_power_saving && !hhkb_hybrid_output_bluetooth();
 #endif
@@ -395,11 +401,16 @@ void matrix_task(void *pvParameters) {
             GPIOC->BSRR = (1U << 14) | (1U << 7);
             vTaskDelay(pdMS_TO_TICKS(10)); // Settle analog power
             sensor_power_down = false;
+#if HHKB_SOF_LOCK
+            sof_lock_reset();
+#endif
             update_scan_period();
             TIM2->CCR1 = (uint16_t)(TIM2->CNT + s_scan_period_ticks);
             TIM2->SR = 0;
             NVIC_ClearPendingIRQ(TIM2_IRQn);
+            NVIC_EnableIRQ(TIM2_IRQn);
             TIM2->DIER |= TIM_DIER_CC1IE;
+            TIM2->CR1 |= TIM_CR1_CEN;
         }
 
         if (s_scan_rate_applied != hhkb_get_effective_scan_rate() ||

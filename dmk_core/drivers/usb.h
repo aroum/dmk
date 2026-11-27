@@ -49,6 +49,9 @@ void usb_process_modifiers(uint8_t mod_mask, bool pressed);
  */
 void usb_process_key_with_modifiers(uint8_t mod_mask, uint8_t keycode, bool pressed);
 
+bool usb_remote_wakeup_enabled(void);
+void keyboard_usb_resume_cb(void);
+
 #ifdef __cplusplus
 }
 #endif

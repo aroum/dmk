@@ -1,4 +1,5 @@
 #include "app_usb_hid.h"
+#include "usb.h"
 #include "config.h"
 #include "keyboard.h"
 #include "led.h"
@@ -116,9 +117,8 @@ static void usb_keyboard_flush(void) {
 
 static bool usb_enqueue_key_report(const queued_key_report_t *report) {
     if (tud_suspended()) {
-        // If Power Saving is NOT enabled (or disabled via DIP switch/config),
-        // issue USB Remote Wakeup on keypress!
-        if (!keyboard_power_saving_enabled()) {
+        // Issue USB Remote Wakeup when power saving is off or the host armed remote wakeup.
+        if (!keyboard_power_saving_enabled() || usb_remote_wakeup_enabled()) {
             tud_remote_wakeup();
         }
     }

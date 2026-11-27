@@ -352,19 +352,29 @@ void tud_umount_cb(void) {
     usb_mounted = false;
 }
 
+static volatile bool s_remote_wakeup_en = false;
+
+bool usb_remote_wakeup_enabled(void) {
+    return s_remote_wakeup_en;
+}
+
+__attribute__((weak)) void keyboard_usb_resume_cb(void) {}
+
 // Invoked when device is suspended
 void tud_suspend_cb(bool remote_wakeup_en) {
-    (void)remote_wakeup_en;
+    s_remote_wakeup_en = remote_wakeup_en;
     led_suspend();
     rgb_suspend();
 }
 
 // Re-send the current keyboard state if it changed while USB was suspended.
 void tud_resume_cb(void) {
+    s_remote_wakeup_en = false;
     led_resume();
     rgb_resume();
     extern void USB_HID_ResyncKeyboard(void);
     USB_HID_ResyncKeyboard();
+    keyboard_usb_resume_cb();
 }
 
 // This callback will be invoked when the host sends a SET_PROTOCOL request to switch between these modes.
