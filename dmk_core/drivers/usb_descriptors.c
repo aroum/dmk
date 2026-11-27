@@ -86,8 +86,26 @@ enum {
 #ifdef DEBUG_CONSOLE_ENABLE
     ITF_NUM_CONSOLE,
 #endif
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+    ITF_NUM_PFU,
+#endif
     ITF_TOTAL
 };
+
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+#include "pfu_channel.h"
+#define PFU_CONFIG_LEN TUD_HID_INOUT_DESC_LEN
+#define PFU_INTERFACES 1
+#ifndef EPNUM_PFU_OUT
+#define EPNUM_PFU_OUT 0x05
+#endif
+#ifndef EPNUM_PFU_IN
+#define EPNUM_PFU_IN 0x84
+#endif
+#else
+#define PFU_CONFIG_LEN 0
+#define PFU_INTERFACES 0
+#endif
 
 // Device descriptor
 tusb_desc_device_t const desc_device = {
@@ -124,24 +142,26 @@ tusb_desc_device_t const desc_device = {
 #endif
 
 #if defined(DEBUG_CONSOLE_ENABLE) && defined(VIAL) && defined(MIDI_USB)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
-#define TOTAL_INTERFACES 5
+#define BASE_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
+#define BASE_INTERFACES 5
 #elif defined(DEBUG_CONSOLE_ENABLE) && defined(VIAL)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN)
-#define TOTAL_INTERFACES 3
+#define BASE_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN)
+#define BASE_INTERFACES 3
 #elif defined(VIAL) && defined(MIDI_USB)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_MIDI_DESC_LEN)
-#define TOTAL_INTERFACES 4
+#define BASE_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_MIDI_DESC_LEN)
+#define BASE_INTERFACES 4
 #elif defined(VIAL)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
-#define TOTAL_INTERFACES 2
+#define BASE_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
+#define BASE_INTERFACES 2
 #elif defined(MIDI_USB)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
-#define TOTAL_INTERFACES 3
+#define BASE_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_MIDI_DESC_LEN)
+#define BASE_INTERFACES 3
 #else
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
-#define TOTAL_INTERFACES 1
+#define BASE_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
+#define BASE_INTERFACES 1
 #endif
+#define CONFIG_TOTAL_LEN (BASE_CONFIG_LEN + PFU_CONFIG_LEN)
+#define TOTAL_INTERFACES (BASE_INTERFACES + PFU_INTERFACES)
 
 #ifndef USB_REMOTE_WAKEUP_ENABLED
 #define USB_REMOTE_WAKEUP_ENABLED 1
@@ -222,6 +242,12 @@ uint8_t const desc_configuration[] = {
                        1),
 #endif
 
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+    // The stock HHKB Hybrid's vendor channel (64-byte reports both ways), for firmware updates
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_PFU, 0, HID_ITF_PROTOCOL_NONE, sizeof(pfu_channel_report_desc),
+                             EPNUM_PFU_OUT, EPNUM_PFU_IN, 64, 1),
+#endif
+
 #ifdef MIDI_USB
     // Interface 2 & 3 (or 1 & 2): MIDI descriptor
     TUD_MIDI_DESCRIPTOR(ITF_NUM_MIDI_AC, 0, EPNUM_MIDI_OUT, EPNUM_MIDI_IN, 64)
@@ -296,6 +322,11 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
 #ifdef DEBUG_CONSOLE_ENABLE
     if (instance == ITF_NUM_CONSOLE) {
         return desc_console_report;
+    }
+#endif
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+    if (instance == ITF_NUM_PFU) {
+        return pfu_channel_report_desc;
     }
 #endif
     (void)instance;
@@ -388,6 +419,11 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_
 #ifdef DEBUG_CONSOLE_ENABLE
     if (instance == ITF_NUM_CONSOLE) {
         debug_console_flush();
+    }
+#endif
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+    if (instance == ITF_NUM_PFU) {
+        pfu_channel_task();
     }
 #endif
 }
@@ -534,6 +570,12 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
                 has_pending_vial_response = true;
             }
         }
+        return;
+    }
+#endif
+#if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
+    if (instance == ITF_NUM_PFU) {
+        pfu_channel_request(ITF_NUM_PFU, buffer, bufsize);
         return;
     }
 #endif
