@@ -38,6 +38,7 @@ static bool tud_mounted(void){return mounted;}
 static bool tud_suspended(void){return suspended;}
 static bool tud_hid_ready(void){return ready;}
 static bool keyboard_power_saving_enabled(void){return true;}
+static bool usb_remote_wakeup_enabled(void){return false;}
 static void tud_remote_wakeup(void){}
 static void usb_keyboard_report_armed(void){}
 static void xTaskNotifyGive(void *p){(void)p;++notifications;}
