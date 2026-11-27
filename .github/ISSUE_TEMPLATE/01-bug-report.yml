@@ -1,0 +1,85 @@
+name: Bug Report
+description: Report a reproducible defect in DMK firmware or tooling.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please distinguish verified hardware behavior from tests or assumptions.
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: Affected areas
+      description: Select all that apply. Area labels will be assigned automatically when the labeling workflow is enabled.
+      options:
+        - label: HHKB
+        - label: Other keyboard
+        - label: DMK core
+        - label: Docs
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+      placeholder: Briefly explain the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: keyboard
+    attributes:
+      label: Keyboard model
+      description: Exact model and part number, or N/A if unrelated to hardware.
+      placeholder: e.g. HHKB Professional HYBRID Type-S, PD-KB800BS
+  - type: input
+    id: revision
+    attributes:
+      label: Hardware variant / revision
+      placeholder: e.g. ANSI, JIS, MCU revision; or N/A
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version / branch / commit
+      description: Specify the exact build, release tag, or commit hash where the bug occurred.
+      placeholder: e.g. dev @ abc1234 or release 2026.11.22
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing
+      description: Describe how you reproduced or tested this issue. State whether you used physical hardware, a build, or automated tests, and on which keyboard.
+      placeholder: |
+        Keyboard tested: ...
+        Hardware tested: yes/no
+        Test steps and results: ...
+        Not verified: ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, and additional context
+      description: Optional diagnostics, reproduction details, and links.

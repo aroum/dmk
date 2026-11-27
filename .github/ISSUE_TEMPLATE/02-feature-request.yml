@@ -1,0 +1,59 @@
+name: Feature Request
+description: Propose a new feature or improvement before implementation.
+title: "[Feature]: "
+labels: ["feature-request"]
+body:
+  - type: checkboxes
+    id: areas
+    attributes:
+      label: Affected areas
+      description: Select all that apply. Area labels will be assigned automatically when the labeling workflow is enabled.
+      options:
+        - label: HHKB
+        - label: Other keyboard
+        - label: DMK core
+        - label: Docs
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What would you like to add or change?
+    validations:
+      required: true
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Motivation / use case
+      description: What problem would this solve, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Explain the desired behavior. Include alternatives if relevant.
+    validations:
+      required: true
+  - type: input
+    id: keyboard
+    attributes:
+      label: Target keyboard model(s)
+      description: List affected models, or N/A for shared-core changes.
+      placeholder: e.g. HHKB Hybrid ANSI / JIS, or N/A
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing / proof of concept
+      description: Describe any tests on real keyboards, experiments, prototypes, or untested assumptions. You can say Not tested.
+      placeholder: |
+        Keyboard tested: ...
+        Hardware tested: yes/no
+        Results or prototype: ...
+        Not verified: ...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, screenshots, implementation notes, or related issues.

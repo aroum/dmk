@@ -1,0 +1,103 @@
+name: Auto Triage & Labels
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request_target:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply labels and PR target check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isPR = context.eventName === 'pull_request_target';
+            const item = isPR ? context.payload.pull_request : context.payload.issue;
+            const body = item.body || '';
+            const title = item.title || '';
+
+            const hasChecked = (pattern) =>
+              new RegExp(`^\\s*-\\s*\\[[xX]\\]\\s*(?:${pattern})\\s*$`, 'im').test(body);
+
+            const managedAreaLabels = ['HHKB', 'other-kbd', 'core', 'docs'];
+            const desired = new Set();
+
+            // Area checkboxes (Issues & PRs)
+            if (hasChecked('HHKB')) desired.add('HHKB');
+            if (hasChecked('Other keyboard|other-kbd')) desired.add('other-kbd');
+            if (hasChecked('DMK core|core')) desired.add('core');
+            if (hasChecked('Docs|Documentation')) desired.add('docs');
+
+            let managedTypeLabels = [];
+            if (!isPR) {
+              // Ensure Issue type label matches form
+              if (/^\[Bug\]:/i.test(title)) desired.add('bug');
+              else if (/^\[Feature\]:/i.test(title)) desired.add('feature-request');
+              else if (/^\[Question\]:/i.test(title)) desired.add('question');
+            } else {
+              managedTypeLabels = ['bug', 'enhancement', 'needs-hw-testing'];
+              if (hasChecked('Bug fix')) desired.add('bug');
+              if (hasChecked('New feature')) desired.add('enhancement');
+
+              const testedOnHw = hasChecked('Tested on physical hardware');
+              const notTested = hasChecked('Not tested');
+              if (!testedOnHw || notTested) {
+                desired.add('needs-hw-testing');
+              }
+
+              // Remind contributor to target dev instead of main
+              if (item.base.ref === 'main') {
+                const marker = 'Please target the `dev` branch instead of `main`';
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: item.number,
+                });
+                const alreadyCommented = comments.some((c) => c.body && c.body.includes(marker));
+                if (!alreadyCommented) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: item.number,
+                    body:
+                      'Thanks for the PR! **Please target the `dev` branch instead of `main`.**\n\n' +
+                      'The `dev` branch is used for integration and community hardware testing before changes are promoted to `main`. ' +
+                      'You can change the base branch directly at the top of this PR using the **Edit** button.',
+                  });
+                }
+              }
+            }
+
+            const existingNames = new Set((item.labels || []).map((l) => l.name));
+            const managed = new Set([...managedAreaLabels, ...managedTypeLabels]);
+
+            const toAdd = [...desired].filter((l) => !existingNames.has(l));
+            const toRemove = [...existingNames].filter((l) => managed.has(l) && !desired.has(l));
+
+            if (toAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: item.number,
+                labels: toAdd,
+              });
+            }
+            for (const label of toRemove) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: item.number,
+                  name: label,
+                });
+              } catch (err) {
+                if (err.status !== 404) throw err;
+              }
+            }
