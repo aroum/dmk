@@ -159,6 +159,43 @@ static bool process_system_key(uint32_t key, bool pressed) {
     return false;
 }
 
+#ifndef TAPPING_TOGGLE
+#define TAPPING_TOGGLE 5
+#endif
+#ifndef TAPPING_TERM_DEFAULT
+#define TAPPING_TERM_DEFAULT 200
+#endif
+
+// Layer tap-toggle (TT) state: tap counting per layer. Held = momentary MO;
+// repeated quick taps latch the layer after TAPPING_TOGGLE taps.
+static uint8_t s_tt_tap_count[16];
+static TickType_t s_tt_press_time[16];
+
+static void process_layer_tap_toggle(uint8_t lyr, bool pressed) {
+    if (lyr >= 16) return;
+    TickType_t now = xTaskGetTickCount();
+    if (pressed) {
+        // A long gap between taps restarts the sequence.
+        if (now - s_tt_press_time[lyr] > pdMS_TO_TICKS(TAPPING_TERM_DEFAULT * 4)) {
+            s_tt_tap_count[lyr] = 0;
+        }
+        layers_on(lyr);
+        s_tt_press_time[lyr] = now;
+        return;
+    }
+    if (now - s_tt_press_time[lyr] < pdMS_TO_TICKS(TAPPING_TERM_DEFAULT)) {
+        // Quick tap.
+        if (++s_tt_tap_count[lyr] >= TAPPING_TOGGLE) {
+            layers_toggle(lyr);
+            s_tt_tap_count[lyr] = 0;
+        }
+    } else {
+        // Held like MO: forget the tap sequence.
+        s_tt_tap_count[lyr] = 0;
+    }
+    layers_off(lyr);
+}
+
 /**
  * @brief Process decoded 32-bit keycode actions (MIDI, Macros, Layer Switch, One-Shot, Hold-Tap, RGB, Standard HID).
  * @param row Matrix row index.
@@ -207,6 +244,28 @@ static void process_matrix_action(uint8_t row, uint8_t col, uint32_t key, bool p
         if (pressed) {
             layers_toggle(lyr);
         }
+        return;
+    }
+
+    // 4b. Turn On Layer (TO(layer)) — activate layer persistently, clearing other latched layers
+    if ((key & 0xFF000000) == DMK_TO) {
+        if (pressed) {
+            layers_set_state(1U << (key & 0xFF));
+        }
+        return;
+    }
+
+    // 4c. Default Layer (DF(layer)) — make layer the persistent base
+    if ((key & 0xFF000000) == DMK_DF) {
+        if (pressed) {
+            layers_set_state(1U << (key & 0xFF));
+        }
+        return;
+    }
+
+    // 4d. Layer Tap-Toggle (TT(layer)) — momentary while held, toggles after repeated taps
+    if ((key & 0xFF000000) == DMK_TT) {
+        process_layer_tap_toggle((uint8_t)(key & 0xFF), pressed);
         return;
     }
 

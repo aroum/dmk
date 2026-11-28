@@ -69,6 +69,21 @@ int main(void) {
         assert(from_via_keycode(lt) == (uint32_t)HT(MO(layer), K_SCLN));
         assert(to_via_keycode(from_via_keycode(lt)) == lt);
     }
+    // Layer keycodes (MO, TG, TO, DF, TT, OSL) roundtrip via the VIA ranges.
+    for (unsigned layer = 0; layer < 16; ++layer) {
+        assert(from_via_keycode(0x5220 | layer) == (uint32_t)MO(layer));
+        assert(to_via_keycode(MO(layer)) == (0x5220 | layer));
+        assert(from_via_keycode(0x5260 | layer) == (uint32_t)TG(layer));
+        assert(to_via_keycode(TG(layer)) == (0x5260 | layer));
+        assert(from_via_keycode(0x5200 | layer) == (uint32_t)TO(layer));
+        assert(to_via_keycode(TO(layer)) == (0x5200 | layer));
+        assert(from_via_keycode(0x5240 | layer) == (uint32_t)DF(layer));
+        assert(to_via_keycode(DF(layer)) == (0x5240 | layer));
+        assert(from_via_keycode(0x52C0 | layer) == (uint32_t)TT(layer));
+        assert(to_via_keycode(TT(layer)) == (0x52C0 | layer));
+        assert(from_via_keycode(0x5280 | layer) == (uint32_t)OS_LAYER(layer));
+        assert(to_via_keycode(OS_LAYER(layer)) == (0x5280 | layer));
+    }
     // Issue #6: LCTL(KC_SCLN) must not read back as RCTL(KC_SCLN).
     assert(from_via_keycode(0x0133) == MK(MOD_LCTRL, K_SCLN));
     assert(to_via_keycode(from_via_keycode(0x0133)) == 0x0133);
