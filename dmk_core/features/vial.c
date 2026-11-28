@@ -212,6 +212,12 @@ uint16_t to_via_keycode(uint32_t dmk_key) {
         return 0x5220 | (dmk_key & 0xFF);
     if ((dmk_key & 0xFF000000) == DMK_TG)
         return 0x5260 | (dmk_key & 0xFF);
+    if ((dmk_key & 0xFF000000) == DMK_TO)
+        return 0x5200 | (dmk_key & 0xFF);
+    if ((dmk_key & 0xFF000000) == DMK_DF)
+        return 0x5240 | (dmk_key & 0xFF);
+    if ((dmk_key & 0xFF000000) == DMK_TT)
+        return 0x52C0 | (dmk_key & 0xFF);
 
     if (DMK_IS_HT(dmk_key)) {
         uint32_t hold, tap; uint8_t ms;
@@ -305,6 +311,21 @@ uint32_t from_via_keycode(uint16_t via_key) {
         return OS_MOD(from_via_mods(via_key & 0x1F));
     if (via_key >= 0x5280 && via_key <= 0x529F)
         return OS_LAYER(via_key & 0x0F);
+
+    // Layer Turn On
+    if (via_key >= 0x5200 && via_key <= 0x521F) {
+        return TO(via_key & 0x0F);
+    }
+
+    // Layer Default
+    if (via_key >= 0x5240 && via_key <= 0x525F) {
+        return DF(via_key & 0x0F);
+    }
+
+    // Layer Tap-Toggle
+    if (via_key >= 0x52C0 && via_key <= 0x52DF) {
+        return TT(via_key & 0x0F);
+    }
 
     // Layer Toggle
     if (via_key >= 0x5260 && via_key <= 0x527F) {

@@ -712,6 +712,9 @@ typedef struct {
 #define DMK_HT 0x80000000u
 #define DMK_TG 0x08000000
 #define DMK_MO 0x10000000
+#define DMK_TO 0x0C000000
+#define DMK_DF 0x0D000000
+#define DMK_TT 0x0E000000
 
 // Helper Macros for Keymaps
 #define MK(mod_mask, kc) (DMK_MK | ((mod_mask) << 8) | (kc))
@@ -762,6 +765,9 @@ typedef struct {
      (((key) & 0xFF000000u) == DMK_HT_MOD_LEGACY))
 #define TG(layer) (DMK_TG | (layer))
 #define MO(layer) (DMK_MO | (layer))
+#define TO(layer) (DMK_TO | (layer))
+#define DF(layer) (DMK_DF | (layer))
+#define TT(layer) (DMK_TT | (layer))
 
 #define DMK_OS_LEGACY(val)                                                                                                        \
     ((val) < 32 ? (DMK_OS | 0x20000 | (val))                                                                           \

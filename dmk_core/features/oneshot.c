@@ -33,7 +33,7 @@ bool oneshot_should_consume(uint32_t key) {
     if (key == 0 || (key >= L_0 && key <= L_15) || (key >= 0xE0 && key <= 0xE7))
         return false;
     uint32_t pfx = key & 0xFF000000;
-    if (pfx == DMK_MO || pfx == DMK_TG || pfx == DMK_OS || DMK_IS_HT(key))
+    if (pfx == DMK_MO || pfx == DMK_TG || pfx == DMK_TO || pfx == DMK_DF || pfx == DMK_TT || pfx == DMK_OS || DMK_IS_HT(key))
         return false;
     return !(key == K_LYRUP || key == K_LYRDWN || key == K_NULL);
 }
