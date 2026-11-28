@@ -51,6 +51,8 @@ If the keyboard is currently running the original PFU firmware, its PFU update i
 > [!WARNING]
 > Make sure SW6 is OFF before flashing.
 
+**Paranoid Mode (`SW1 = ON`).** When `SW1` is set to `ON` at boot, DMK disables the VIA/Vial (`0xFF60`), Debug Console (`0xFF31`), and PFU update (`0xFF00`) USB interfaces and skips their background tasks, exposing only the standard keyboard HID interface. Switching `SW1` requires a reboot / USB replug to take effect. Set `SW1` to `OFF` before using VIA, Vial, or the PFU channel.
+
 ## Install through HHKB Keymap Tool
 
 Download [HHKB Keymap Tool from the official website](https://happyhackingkb.com/download/).

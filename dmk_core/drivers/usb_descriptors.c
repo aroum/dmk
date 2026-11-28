@@ -1,4 +1,5 @@
 #include "usb_report_diag.h"
+#include "usb.h"
 #include "config.h"
 #include "led.h"
 #include "tusb.h"
@@ -279,10 +280,18 @@ uint8_t const *tud_descriptor_device_cb(void) {
     return (uint8_t const *)&desc_device;
 }
 
+#define PARANOID_CONFIG_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
+
+static uint8_t const desc_configuration_paranoid[] = {
+    TUD_CONFIG_DESCRIPTOR(1, 1, 0, PARANOID_CONFIG_LEN, USB_CONFIG_ATTRIBUTES, 100),
+    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), 0x81,
+                       CFG_TUD_HID_EP_BUFSIZE, HID_POLL_INTERVAL_MS),
+};
+
 // Configuration descriptor callback
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
     (void)index;
-    return desc_configuration;
+    return keyboard_paranoid_mode() ? desc_configuration_paranoid : desc_configuration;
 }
 
 #if TUD_OPT_HIGH_SPEED
@@ -314,6 +323,9 @@ uint8_t const *tud_descriptor_other_speed_configuration_cb(uint8_t index) {
 
 // HID report descriptor callback
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
+    if (keyboard_paranoid_mode() && instance != ITF_NUM_KEYBOARD) {
+        return NULL;
+    }
 #ifdef VIAL
     if (instance == ITF_NUM_VIAL) {
         return desc_vial_report;
@@ -575,6 +587,9 @@ void vial_diag_task(void) {
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
                            uint16_t bufsize) {
     (void)report_id;
+    if (keyboard_paranoid_mode() && instance != ITF_NUM_KEYBOARD) {
+        return;
+    }
 #ifdef VIAL
     if (instance == ITF_NUM_VIAL) {
         if (bufsize >= 32) {

@@ -261,3 +261,7 @@ void usb_send_midi_pitchbend(uint8_t chan, int16_t val) {
     midi_write(packet);
 }
 #endif
+
+__attribute__((weak)) bool keyboard_paranoid_mode(void) {
+    return false;
+}

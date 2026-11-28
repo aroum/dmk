@@ -79,7 +79,7 @@ static struct {uint32_t IOPENR;} rcc;
 #define RCC (&rcc)
 static unsigned SystemCoreClock=1000,clear_calls,metadata_calls,pages;
 static uint32_t hhkb_recovery_flash_error;
-static bool clear_ok;
+static bool clear_ok, s_paranoid_mode;
 static jmp_buf done;
 static void __NOP(void){}
 static void __disable_irq(void){}

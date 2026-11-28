@@ -11,7 +11,7 @@ extern "C" {
 #define DIP_SWITCH_COUNT 6
 
 typedef enum {
-    DIP_SW1 = 0, // Mode select bit 0 (HHK / Win / Mac)
+    DIP_SW1 = 0, // Paranoid mode: ON disables VIA/Console/PFU USB interfaces at boot
     DIP_SW2 = 1, // Mode select bit 1
     DIP_SW3 = 2, // Delete vs Backspace
     DIP_SW4 = 3, // Left ◇ (Gui) vs Fn

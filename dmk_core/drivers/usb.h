@@ -51,6 +51,7 @@ void usb_process_key_with_modifiers(uint8_t mod_mask, uint8_t keycode, bool pres
 
 bool usb_remote_wakeup_enabled(void);
 void keyboard_usb_resume_cb(void);
+bool keyboard_paranoid_mode(void);
 
 #ifdef __cplusplus
 }

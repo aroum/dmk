@@ -248,22 +248,24 @@ static void usb_device_task(void *param) {
             tud_midi_rx_cb(0);
         }
 #endif
+        if (!keyboard_paranoid_mode()) {
 #if defined(HHKB_HYBRID) && HHKB_PFU_CHANNEL
-        extern void pfu_channel_task(void);
-        pfu_channel_task();
+            extern void pfu_channel_task(void);
+            pfu_channel_task();
 #endif
 #ifdef VIAL
-        extern void vial_flush_pending_report(void);
-        extern void vial_eeprom_task(void);
-        vial_flush_pending_report();
-        vial_eeprom_task();
+            extern void vial_flush_pending_report(void);
+            extern void vial_eeprom_task(void);
+            vial_flush_pending_report();
+            vial_eeprom_task();
 #endif
 #ifdef DEBUG_CONSOLE_ENABLE
-        extern void vial_diag_task(void);
-        vial_diag_task();
-        extern void debug_console_flush(void);
-        debug_console_flush();
+            extern void vial_diag_task(void);
+            vial_diag_task();
+            extern void debug_console_flush(void);
+            debug_console_flush();
 #endif
+        }
 #ifdef HHKB_SCAN_DIAGNOSTICS
         TickType_t work_ticks = xTaskGetTickCount() - work_start;
         if (work_ticks >= pdMS_TO_TICKS(20)) {

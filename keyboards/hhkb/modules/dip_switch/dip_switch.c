@@ -33,6 +33,11 @@ static const struct {
 
 // Recovery diagnostics in owned RAM, never at an arbitrary SRAM address.
 volatile uint32_t hhkb_recovery_flash_error;
+static bool s_paranoid_mode = false;
+
+bool keyboard_paranoid_mode(void) {
+    return s_paranoid_mode;
+}
 
 static void write_eeprom_byte(uint32_t addr, uint8_t val) {
     if (FLASH->PECR & FLASH_PECR_PELOCK) {
@@ -157,6 +162,11 @@ void hhkb_early_dip_check(void) {
     GPIOC->PUPDR &= ~(3U << (4 * 2));
     GPIOC->PUPDR |=  (1U << (4 * 2)); // 01: Pull-up
 
+    // PA3 (SW1) is sampled at boot for paranoid mode (disables VIA/Console/PFU USB interfaces).
+    GPIOA->MODER &= ~(3U << (3 * 2));
+    GPIOA->PUPDR &= ~(3U << (3 * 2));
+    GPIOA->PUPDR |=  (1U << (3 * 2));
+
     // PA7 (SW5) is sampled only to request an explicit DMK settings erase.
     GPIOA->MODER &= ~(3U << (7 * 2));
     GPIOA->PUPDR &= ~(3U << (7 * 2));
@@ -164,6 +174,9 @@ void hhkb_early_dip_check(void) {
 
     // Small delay to let line settle
     for (volatile uint32_t i = 0; i < 500; i++) __NOP();
+
+    // SW1 is active LOW (ON = 0). Latched once at boot; reboot/replug to switch modes.
+    s_paranoid_mode = (GPIOA->IDR & (1U << 3)) == 0;
 
 #if defined(HHKB_SW6_REBOOT_TO_BANK1) && (HHKB_SW6_REBOOT_TO_BANK1 == 1)
     bool sw6_on = sw6_stable_on();
