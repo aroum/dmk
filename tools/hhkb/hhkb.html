@@ -137,7 +137,7 @@ $("patchButton").onclick=async()=>{
  catch(e){log(e.message);}finally{busy=false;await inspectPatch();if(selectedFirmware)$("flashButton").disabled=false;}
 };
 function channel(device,usagePage=0xff00,usage=1) {for(const c of device.collections)if(c.usagePage===usagePage&&c.usage===usage&&c.inputReports?.[0]&&c.outputReports?.[0])return{input:c.inputReports[0].reportId,output:c.outputReports[0].reportId};throw Error(usagePage===0xff60?"VIA Raw HID interface unavailable":"PFU vendor HID interface unavailable");}
-async function selectDevice() {const devices=await navigator.hid.requestDevice({filters:[{vendorId:0x04fe,usagePage:0xff00,usage:1}]});if(!devices.length)throw Error("No device selected");const d=devices[0];await d.open();return d;}
+async function selectDevice(bank1Only=false) {const filters=bank1Only?[{vendorId:0x04fe,usagePage:0xff00,usage:1}]:[{vendorId:0x04fe,usagePage:0xff00,usage:1},{vendorId:0xcafe,productId:0x4014,usagePage:0xff00,usage:1}];const devices=await navigator.hid.requestDevice({filters});if(!devices.length)throw Error("No device selected");const d=devices[0];await d.open();return d;}
 function checkTarget(info,model) {
  if(info.length<26)throw Error("Incomplete device identity response");
  const number=new TextDecoder().decode(info.slice(6,26)).replace(/\0.*$/,"").trim().toUpperCase();
@@ -160,7 +160,7 @@ async function flash(data) {
   log("Entering recovery. Re-select the keyboard after it reconnects.");await command([170,170,224,0,0,0]);device.removeEventListener("inputreport",onInput);await device.close();
   await new Promise(r=>setTimeout(r,10000));log("Reconnect ready. Press Select recovery keyboard.");$("flashButton").textContent="Select recovery keyboard";
   await new Promise(resolve=>{$("flashButton").disabled=false;$("flashButton").onclick=()=>{$("flashButton").disabled=true;resolve();};});
-  device=await selectDevice();ids=channel(device);device.addEventListener("inputreport",onInput);
+  device=await selectDevice(true);ids=channel(device);device.addEventListener("inputreport",onInput);
   const recovered=checkTarget(await command([170,170,2,0,0,0]),model);
   if(canonicalModelNumber(recovered)!==canonicalModelNumber(first))throw Error("Recovery device differs from the original target");
   log("Recovery target verified: "+recovered);

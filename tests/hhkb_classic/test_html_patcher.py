@@ -158,6 +158,23 @@ if(!$('patchButton').disabled||!$('patchStatus').textContent.includes('Incompati
                     number='PD-KB800YSC1',recoveryNumber='PD-KB800BSC',
                     wrongAt=0,rejectRecovery=True)
 
+    def test_webhid_accepts_dmk_pfu_channel_before_bank1_recovery(self):
+        body = '''
+const calls=[];
+const dmk={vendorId:0xcafe,productId:0x4014,opened:false,collections:[{usagePage:0xff00,usage:1,inputReports:[{reportId:0}],outputReports:[{reportId:0}]}],
+ open:async()=>{dmk.opened=true},close:async()=>{dmk.opened=false},addEventListener:(_,fn)=>{dmk.cb=fn},removeEventListener(){},
+ sendReport:async(_,pkt)=>{const r=new Uint8Array(64);r.set([85,85,pkt[2],0,0,0]);if(pkt[2]===2)r.set(new TextEncoder().encode('PD-KB820WS'),6);dmk.cb({reportId:0,data:new DataView(r.buffer)});}};
+const bank1={vendorId:0x04fe,productId:0x0021,opened:false,collections:[{usagePage:0xff00,usage:1,inputReports:[{reportId:0}],outputReports:[{reportId:0}]}],
+ open:async()=>{bank1.opened=true},close:async()=>{bank1.opened=false},addEventListener:(_,fn)=>{bank1.cb=fn},removeEventListener(){},
+ sendReport:async(_,pkt)=>{const r=new Uint8Array(64);r.set([85,85,pkt[2],0,0,0]);if(pkt[2]===2)r.set(new TextEncoder().encode('PD-KB820WS'),6);bank1.cb({reportId:0,data:new DataView(r.buffer)});}};
+navigator.hid={requestDevice:async(opts)=>{calls.push(opts.filters);return [calls.length===1?dmk:bank1];}};
+await flash(Uint8Array.from(image));
+if(calls.length!==2||!calls[0].some(f=>f.vendorId===0xcafe&&f.productId===0x4014&&f.usagePage===0xff00))throw Error('DMK PFU filter missing');
+if(calls[1].length!==1||calls[1][0].vendorId!==0x04fe)throw Error('recovery did not restrict to Bank 1');
+if(dmk.opened||bank1.opened)throw Error('device leaked');
+'''
+        self.run_js(body, image=list(container('AHJX01')))
+
     def test_webhid_verify_dmk_vid_pid_and_via(self):
         body = '''
 const sent=[];
