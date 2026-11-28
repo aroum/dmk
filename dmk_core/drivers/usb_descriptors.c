@@ -432,6 +432,9 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_
 #endif
     (void)report;
     (void)len;
+    if (keyboard_paranoid_mode() && instance != ITF_NUM_KEYBOARD) {
+        return;
+    }
 #ifdef VIAL
     if (instance == ITF_NUM_VIAL) {
         vial_tx_complete_count++;
@@ -775,6 +778,9 @@ int dmk_snprintf(char *buf, size_t size, const char *fmt, ...) {
 }
 
 void debug_console_printf(const char *fmt, ...) {
+    if (keyboard_paranoid_mode()) {
+        return;
+    }
     char tmp[128];
     va_list args;
     va_start(args, fmt);

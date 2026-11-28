@@ -124,6 +124,7 @@ int main(void) {
         self.assertIn('s_paranoid_mode = (GPIOA->IDR & (1U << 3)) == 0;', dip)
         self.assertIn('desc_configuration_paranoid', descs)
         self.assertIn('keyboard_paranoid_mode() && instance != ITF_NUM_KEYBOARD', descs)
+        self.assertIn('if (keyboard_paranoid_mode()) {\n        return;\n    }\n    char tmp[128];', descs)
         self.assertIn('if (!keyboard_paranoid_mode())', usb_task)
 
 
